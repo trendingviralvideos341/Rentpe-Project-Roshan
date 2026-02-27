@@ -8,6 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { createBooking } from "@/actions/bookings";
 import { getPropertyById } from "@/actions/properties";
 import { Input } from "@/components/ui/input";
+import { validateEmail, validatePhone, validateName } from "@/lib/validators";
 
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
 
@@ -34,6 +35,7 @@ export default function PropertyDetailPage() {
         occupationType: "",
         occupationDetail: "",
     });
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         const fetchProperty = async () => {
@@ -56,32 +58,20 @@ export default function PropertyDetailPage() {
     }, [id]);
 
     const handleBooking = async () => {
-        if (!formData.firstName || !formData.lastName || !formData.moveInDate) {
-            alert("Please fill in First Name, Last Name and Move-in Date.");
+        const errs: Record<string, string> = {};
+        const fnErr = validateName(formData.firstName); if (fnErr) errs.firstName = fnErr;
+        const lnErr = validateName(formData.lastName); if (lnErr) errs.lastName = lnErr;
+        const emErr = validateEmail(formData.email); if (emErr) errs.email = emErr;
+        const phErr = validatePhone(`+91${formData.phone}`); if (phErr) errs.phone = phErr;
+        if (!formData.moveInDate) errs.moveInDate = "Move-in date is required";
+        if (!formData.occupationType) errs.occupationType = "Occupation type is required";
+        if (!formData.occupationDetail.trim()) errs.occupationDetail = "Occupation detail is required";
+
+        if (Object.keys(errs).length > 0) {
+            setFieldErrors(errs);
             return;
         }
-        if (!formData.email || !isValidEmail(formData.email)) {
-            alert("Please enter a valid Email address (e.g. name@example.com).");
-            return;
-        }
-        if (!formData.phone || formData.phone.length !== 10) {
-            alert("Please enter a valid 10-digit Phone Number.");
-            return;
-        }
-        if (!formData.occupationType) {
-            alert("Please select your Occupation Type (Student / Working Professional / Other).");
-            return;
-        }
-        if (!formData.occupationDetail.trim()) {
-            alert(
-                formData.occupationType === "Student"
-                    ? "Please enter your College / University name."
-                    : formData.occupationType === "Working Professional"
-                        ? "Please enter your Company name."
-                        : "Please specify your occupation."
-            );
-            return;
-        }
+        setFieldErrors({});
 
         setBookingLoading(true);
         try {
@@ -277,19 +267,35 @@ export default function PropertyDetailPage() {
                                 <label className="text-sm font-medium">Full Name (As per ID) <span className="text-red-500">*</span></label>
                                 <div className="grid grid-cols-3 gap-2">
                                     <Input placeholder="First" required value={formData.firstName}
-                                        onChange={e => setFormData(p => ({ ...p, firstName: onlyLetters(e.target.value) }))} />
+                                        className={fieldErrors.firstName ? "border-red-500 ring-1 ring-red-200" : ""}
+                                        onChange={e => {
+                                            const v = onlyLetters(e.target.value);
+                                            setFormData(p => ({ ...p, firstName: v }));
+                                            if (fieldErrors.firstName) setFieldErrors(p => { const n = { ...p }; delete n.firstName; return n; });
+                                        }} />
                                     <Input placeholder="Middle" value={formData.middleName}
                                         onChange={e => setFormData(p => ({ ...p, middleName: onlyLetters(e.target.value) }))} />
                                     <Input placeholder="Last" required value={formData.lastName}
-                                        onChange={e => setFormData(p => ({ ...p, lastName: onlyLetters(e.target.value) }))} />
+                                        className={fieldErrors.lastName ? "border-red-500 ring-1 ring-red-200" : ""}
+                                        onChange={e => {
+                                            const v = onlyLetters(e.target.value);
+                                            setFormData(p => ({ ...p, lastName: v }));
+                                            if (fieldErrors.lastName) setFieldErrors(p => { const n = { ...p }; delete n.lastName; return n; });
+                                        }} />
                                 </div>
+                                {(fieldErrors.firstName || fieldErrors.lastName) && <p className="text-[10px] text-red-600 font-bold mt-1">First and Last name required (Letters only)</p>}
                             </div>
 
                             {/* Email & Phone with +91 */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Contact Details <span className="text-red-500">*</span></label>
                                 <Input type="email" placeholder="📧 Email for communication" value={formData.email}
-                                    onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+                                    className={fieldErrors.email ? "border-red-500 ring-1 ring-red-200" : ""}
+                                    onChange={e => {
+                                        setFormData(p => ({ ...p, email: e.target.value }));
+                                        if (fieldErrors.email) setFieldErrors(p => { const n = { ...p }; delete n.email; return n; });
+                                    }} />
+                                {fieldErrors.email && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.email}</p>}
                                 <div className="flex">
                                     <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-muted text-sm font-semibold text-muted-foreground select-none">
                                         🇮🇳 +91
@@ -297,12 +303,17 @@ export default function PropertyDetailPage() {
                                     <Input
                                         type="tel"
                                         placeholder="10-digit mobile number"
-                                        className="rounded-l-none"
+                                        className={`rounded-l-none ${fieldErrors.phone ? "border-red-500 ring-1 ring-red-200" : ""}`}
                                         maxLength={10}
                                         value={formData.phone}
-                                        onChange={e => setFormData(p => ({ ...p, phone: onlyDigits(e.target.value).slice(0, 10) }))}
+                                        onChange={e => {
+                                            const v = onlyDigits(e.target.value).slice(0, 10);
+                                            setFormData(p => ({ ...p, phone: v }));
+                                            if (fieldErrors.phone) setFieldErrors(p => { const n = { ...p }; delete n.phone; return n; });
+                                        }}
                                     />
                                 </div>
+                                {fieldErrors.phone && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.phone}</p>}
                                 {formData.phone.length > 0 && formData.phone.length < 10 && (
                                     <p className="text-[11px] text-red-500">Enter a valid 10-digit number ({10 - formData.phone.length} more digits needed)</p>
                                 )}
@@ -316,15 +327,19 @@ export default function PropertyDetailPage() {
                                         <button
                                             key={type}
                                             type="button"
-                                            onClick={() => setFormData(p => ({ ...p, occupationType: type, occupationDetail: "" }))}
+                                            onClick={() => {
+                                                setFormData(p => ({ ...p, occupationType: type, occupationDetail: "" }));
+                                                if (fieldErrors.occupationType) setFieldErrors(p => { const n = { ...p }; delete n.occupationType; return n; });
+                                            }}
                                             className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${formData.occupationType === type
                                                 ? "bg-blue-600 text-white border-blue-600"
-                                                : "border-gray-300 text-gray-600 hover:border-blue-400"}`}
+                                                : fieldErrors.occupationType ? "border-red-300 text-red-600 hover:border-red-400" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}
                                         >
                                             {type === "Student" ? "🎓 Student" : type === "Working Professional" ? "💼 Working Pro" : "👤 Other"}
                                         </button>
                                     ))}
                                 </div>
+                                {fieldErrors.occupationType && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationType}</p>}
                                 {formData.occupationType && (
                                     <Input
                                         placeholder={
@@ -332,16 +347,27 @@ export default function PropertyDetailPage() {
                                                 formData.occupationType === "Working Professional" ? "Company name" :
                                                     "Specify your occupation"
                                         }
+                                        className={fieldErrors.occupationDetail ? "border-red-500 ring-1 ring-red-200" : ""}
                                         value={formData.occupationDetail}
-                                        onChange={e => setFormData(p => ({ ...p, occupationDetail: e.target.value }))}
+                                        onChange={e => {
+                                            setFormData(p => ({ ...p, occupationDetail: e.target.value }));
+                                            if (fieldErrors.occupationDetail) setFieldErrors(p => { const n = { ...p }; delete n.occupationDetail; return n; });
+                                        }}
                                     />
                                 )}
+                                {fieldErrors.occupationDetail && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationDetail}</p>}
                             </div>
 
                             {/* Move-in date */}
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium">Preferred Move-in Date <span className="text-red-500">*</span></label>
-                                <Input type="date" required value={formData.moveInDate} onChange={e => setFormData(p => ({ ...p, moveInDate: e.target.value }))} />
+                                <Input type="date" required value={formData.moveInDate}
+                                    className={fieldErrors.moveInDate ? "border-red-500 ring-1 ring-red-200" : ""}
+                                    onChange={e => {
+                                        setFormData(p => ({ ...p, moveInDate: e.target.value }));
+                                        if (fieldErrors.moveInDate) setFieldErrors(p => { const n = { ...p }; delete n.moveInDate; return n; });
+                                    }} />
+                                {fieldErrors.moveInDate && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.moveInDate}</p>}
                             </div>
 
                             <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">

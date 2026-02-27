@@ -8,6 +8,7 @@ import { getBookings, approveBooking, markBookingPaid } from "@/actions/bookings
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
 import { getProperties } from "@/actions/properties";
+import { validateEmail, validatePhone, validateName, normalizePhone } from "@/lib/validators";
 
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -62,6 +63,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
         occupationDetail: booking.occupationDetail || "",
         onboardingDate: booking.onboardingDate || "",
     });
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
     const [selectedRoomId, setSelectedRoomId] = useState("");
     const [editAmount, setEditAmount] = useState(booking.amount || "");
@@ -120,17 +122,24 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     };
 
     const handleSave = async () => {
-        if (!form.email || !form.phone || !form.address || !form.city || !form.pincode || !form.onboardingDate) {
-            alert("Please fill all required fields: Email, Phone, Address, City, Pincode, and Onboarding Date."); return;
+        // ── Validation ──
+        const errs: Record<string, string> = {};
+        const emailErr = validateEmail(form.email); if (emailErr) errs.email = emailErr;
+        const phoneToValidate = citizenMode === "indian" ? `+91${form.phone}` : form.phone;
+        const phoneErr = validatePhone(phoneToValidate); if (phoneErr) errs.phone = phoneErr;
+        if (!form.address.trim()) errs.address = "Address is required";
+        if (citizenMode === "indian" && form.pincode.length !== 6) errs.pincode = "Valid 6-digit PIN required";
+        if (!form.city.trim()) errs.city = "City is required";
+        if (!form.onboardingDate) errs.onboardingDate = "Onboarding date required";
+        if (!form.occupationType) errs.occupationType = "Occupation type required";
+        if (!form.occupationDetail.trim()) errs.occupationDetail = "Occupation detail required";
+
+        if (Object.keys(errs).length > 0) {
+            setFieldErrors(errs);
+            alert("Please fix the errors highlighted in red.");
+            return;
         }
-        if (citizenMode === "indian" && form.phone.length !== 10) {
-            alert("Please enter a valid 10-digit phone number."); return;
-        }
-        if (citizenMode === "indian" && form.pincode.length !== 6) {
-            alert("Please enter a valid 6-digit Indian pincode."); return;
-        }
-        if (!form.occupationType) { alert("Please select an Occupation Type."); return; }
-        if (!form.occupationDetail.trim()) { alert("Please specify occupation details."); return; }
+        setFieldErrors({});
 
         // If booking is already PAID, ask about pending amount
         if (booking.status === "PAID" || booking.status === "CASH_PAID") {
@@ -326,9 +335,13 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {/* Email */}
                             <div>
-                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Email *</label>
-                                <input type="email" placeholder="student@email.com" className="w-full border rounded p-2 text-sm bg-white"
-                                    value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                                <input type="email" placeholder="student@email.com"
+                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.email ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    value={form.email} onChange={e => {
+                                        setForm(p => ({ ...p, email: e.target.value }));
+                                        if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: "" }));
+                                    }} />
+                                {fieldErrors.email && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.email}</p>}
                             </div>
                             {/* Phone */}
                             <div>
@@ -340,17 +353,26 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                         </span>
                                     )}
                                     <input type="tel" placeholder={citizenMode === "indian" ? "10-digit number" : "Phone number"}
-                                        className={`w-full border rounded p-2 text-sm bg-white ${citizenMode === "indian" ? "rounded-l-none" : ""}`}
+                                        className={`w-full border rounded p-2 text-sm bg-white ${citizenMode === "indian" ? "rounded-l-none" : ""} ${fieldErrors.phone ? "border-red-500 ring-1 ring-red-200" : ""}`}
                                         maxLength={citizenMode === "indian" ? 10 : 20}
                                         value={form.phone}
-                                        onChange={e => setForm(p => ({ ...p, phone: citizenMode === "indian" ? onlyDigits(e.target.value).slice(0, 10) : e.target.value }))} />
+                                        onChange={e => {
+                                            const v = citizenMode === "indian" ? onlyDigits(e.target.value).slice(0, 10) : e.target.value;
+                                            setForm(p => ({ ...p, phone: v }));
+                                            if (fieldErrors.phone) setFieldErrors(p => ({ ...p, phone: "" }));
+                                        }} />
                                 </div>
+                                {fieldErrors.phone && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.phone}</p>}
                             </div>
                             {/* Address */}
                             <div>
-                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Address *</label>
-                                <input type="text" placeholder="House No, Street..." className="w-full border rounded p-2 text-sm bg-white"
-                                    value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} />
+                                <input type="text" placeholder="House No, Street..."
+                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.address ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    value={form.address} onChange={e => {
+                                        setForm(p => ({ ...p, address: e.target.value }));
+                                        if (fieldErrors.address) setFieldErrors(p => ({ ...p, address: "" }));
+                                    }} />
+                                {fieldErrors.address && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.address}</p>}
                             </div>
                             {/* Pincode with auto-fetch */}
                             <div>
@@ -359,10 +381,16 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 </label>
                                 <input type="text"
                                     placeholder={citizenMode === "indian" ? "6-digit Indian pincode" : "Postal code"}
-                                    className="w-full border rounded p-2 text-sm bg-white"
+                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.pincode ? "border-red-500 ring-1 ring-red-200" : ""}`}
                                     maxLength={citizenMode === "indian" ? 6 : 15}
                                     value={form.pincode}
-                                    onChange={e => citizenMode === "indian" ? handlePincodeChange(e.target.value) : setForm(p => ({ ...p, pincode: e.target.value }))} />
+                                    onChange={e => {
+                                        const v = e.target.value;
+                                        if (citizenMode === "indian") handlePincodeChange(v);
+                                        else setForm(p => ({ ...p, pincode: v }));
+                                        if (fieldErrors.pincode) setFieldErrors(p => ({ ...p, pincode: "" }));
+                                    }} />
+                                {fieldErrors.pincode && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.pincode}</p>}
                             </div>
                             {/* City */}
                             <div>
@@ -370,9 +398,14 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                     City * {citizenMode === "indian" && form.city && <span className="text-green-600 text-[10px] ml-1">✓ Auto-filled</span>}
                                 </label>
                                 <input type="text" placeholder={citizenMode === "indian" ? "Auto-fetched from pincode" : "City name"}
-                                    className="w-full border rounded p-2 text-sm bg-white"
+                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.city ? "border-red-500 ring-1 ring-red-200" : ""}`}
                                     value={form.city}
-                                    onChange={e => setForm(p => ({ ...p, city: citizenMode === "indian" ? onlyLetters(e.target.value) : e.target.value }))} />
+                                    onChange={e => {
+                                        const v = citizenMode === "indian" ? onlyLetters(e.target.value) : e.target.value;
+                                        setForm(p => ({ ...p, city: v }));
+                                        if (fieldErrors.city) setFieldErrors(p => ({ ...p, city: "" }));
+                                    }} />
+                                {fieldErrors.city && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.city}</p>}
                             </div>
                             {/* Country */}
                             <div>
@@ -387,8 +420,12 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             {/* Onboarding Date */}
                             <div>
                                 <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Onboarding Date *</label>
-                                <input type="date" className="w-full border rounded p-2 text-sm bg-white"
-                                    value={form.onboardingDate} onChange={e => setForm(p => ({ ...p, onboardingDate: e.target.value }))} />
+                                <input type="date" className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.onboardingDate ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    value={form.onboardingDate} onChange={e => {
+                                        setForm(p => ({ ...p, onboardingDate: e.target.value }));
+                                        if (fieldErrors.onboardingDate) setFieldErrors(p => ({ ...p, onboardingDate: "" }));
+                                    }} />
+                                {fieldErrors.onboardingDate && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.onboardingDate}</p>}
                             </div>
                         </div>
 
@@ -397,18 +434,27 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Occupation Type *</label>
                             <div className="flex gap-2 flex-wrap">
                                 {OCCUPATION_TYPES.map(type => (
-                                    <button key={type} type="button" onClick={() => setForm(p => ({ ...p, occupationType: type }))}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${form.occupationType === type ? "bg-blue-600 text-white border-blue-600" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}>
+                                    <button key={type} type="button" onClick={() => {
+                                        setForm(p => ({ ...p, occupationType: type }));
+                                        if (fieldErrors.occupationType) setFieldErrors(p => ({ ...p, occupationType: "" }));
+                                    }}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${form.occupationType === type ? "bg-blue-600 text-white border-blue-600" : fieldErrors.occupationType ? "border-red-400 text-red-600 hover:border-red-500" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}>
                                         {type === "Student" ? "🎓 Student" : type === "Working Professional" ? "💼 Working Pro" : "👤 Other"}
                                     </button>
                                 ))}
                             </div>
+                            {fieldErrors.occupationType && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationType}</p>}
                         </div>
                         <div>
                             <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
                                 {form.occupationType === "Student" ? "College / University *" : "Company / Organisation *"}
                             </label>
-                            <input className="w-full border rounded p-2 text-sm bg-white" value={form.occupationDetail} onChange={e => setForm(p => ({ ...p, occupationDetail: e.target.value }))} />
+                            <input className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.occupationDetail ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                value={form.occupationDetail} onChange={e => {
+                                    setForm(p => ({ ...p, occupationDetail: e.target.value }));
+                                    if (fieldErrors.occupationDetail) setFieldErrors(p => ({ ...p, occupationDetail: "" }));
+                                }} />
+                            {fieldErrors.occupationDetail && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.occupationDetail}</p>}
                         </div>
 
                         {/* Room change */}

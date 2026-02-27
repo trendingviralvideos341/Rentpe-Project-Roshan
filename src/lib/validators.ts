@@ -4,12 +4,13 @@
  * Returns "" on success, error string on failure.
  */
 
-// ── Email ────────────────────────────────────────────────────────────────────
-// Strict format: local@domain.tld  — TLD must be 2-6 LETTERS only (no numbers)
+// Strict format: local@domain.tld — TLD must be 2-6 LETTERS only (no numbers)
 export const validateEmail = (v: string): string => {
-    if (!v.trim()) return "Email is required";
+    const trimmed = v.trim();
+    if (!trimmed) return "Email is required";
+    // standard industry regex but keeping TLD restricted to 2-6 alphabets as requested
     const re = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6}$/;
-    if (!re.test(v.trim())) return "Enter a valid email (e.g. name@company.com)";
+    if (!re.test(trimmed)) return "Enter a valid email (e.g. name@company.com)";
     return "";
 };
 
