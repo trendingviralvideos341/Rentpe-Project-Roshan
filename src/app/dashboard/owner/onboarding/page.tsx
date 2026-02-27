@@ -7,6 +7,7 @@ import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XC
 import { getBookings, approveBooking, markBookingPaid } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
+import { getProperties } from "@/actions/properties";
 
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -31,7 +32,7 @@ const onlyAmount = (v: string) => {
     return clean;
 };
 
-function OnboardingCard({ booking, rooms, onRefresh }: { booking: any; rooms: any[]; onRefresh: () => void }) {
+function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: any; rooms: any[]; properties: any[]; onRefresh: () => void }) {
     const [expanded, setExpanded] = useState(false);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -61,9 +62,23 @@ function OnboardingCard({ booking, rooms, onRefresh }: { booking: any; rooms: an
         occupationDetail: booking.occupationDetail || "",
         onboardingDate: booking.onboardingDate || "",
     });
+    const [selectedPropertyId, setSelectedPropertyId] = useState("");
     const [selectedRoomId, setSelectedRoomId] = useState("");
     const [editAmount, setEditAmount] = useState(booking.amount || "");
     const [editOccupancy, setEditOccupancy] = useState(booking.occupancy || "");
+
+    // Auto-select property of the booking if available
+    useEffect(() => {
+        if (booking.propertyName) {
+            const prop = properties.find(p => p.name === booking.propertyName);
+            if (prop) setSelectedPropertyId(prop.id);
+        }
+    }, [booking.propertyName, properties]);
+
+    // Filtered rooms
+    const filteredRooms = selectedPropertyId
+        ? rooms.filter(r => r.propertyId === selectedPropertyId)
+        : rooms;
 
     // ── Pending amount prompt state ──
     const [showPendingPrompt, setShowPendingPrompt] = useState(false);
@@ -298,11 +313,11 @@ function OnboardingCard({ booking, rooms, onRefresh }: { booking: any; rooms: an
                             <div className="flex gap-2">
                                 <button type="button" onClick={() => { setCitizenMode("indian"); setForm(p => ({ ...p, country: "India" })); }}
                                     className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${citizenMode === "indian" ? "bg-orange-500 text-white border-orange-500" : "border-gray-300 text-gray-600 hover:border-orange-400"}`}>
-                                    🇮🇳 India
+                                    India
                                 </button>
                                 <button type="button" onClick={() => setCitizenMode("international")}
                                     className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${citizenMode === "international" ? "bg-blue-500 text-white border-blue-500" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}>
-                                    🌍 International
+                                    International
                                 </button>
                             </div>
                         </div>
@@ -397,20 +412,35 @@ function OnboardingCard({ booking, rooms, onRefresh }: { booking: any; rooms: an
                         </div>
 
                         {/* Room change */}
-                        <div className="border-t pt-3">
-                            <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Change Room (optional)</label>
-                            <div className="flex gap-2">
-                                <select className="flex-1 border rounded p-2 text-sm bg-white" value={selectedRoomId} onChange={e => {
-                                    const r = rooms.find(rm => rm.id === e.target.value);
-                                    setSelectedRoomId(e.target.value);
-                                    if (r) { setEditAmount(`₹${r.price.toLocaleString()}`); setEditOccupancy(r.type); }
+                        <div className="border-t pt-3 space-y-3">
+                            <div>
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Select Property (PG)</label>
+                                <select className="w-full border rounded p-2 text-sm bg-white" value={selectedPropertyId} onChange={e => {
+                                    setSelectedPropertyId(e.target.value);
+                                    setSelectedRoomId(""); // Reset room when property changes
                                 }}>
-                                    <option value="">Keep current: {booking.roomAssigned || "Not Allocated"}</option>
-                                    {rooms.map(r => <option key={r.id} value={r.id}>{r.roomNumber} ({r.type}) — ₹{r.price.toLocaleString()}</option>)}
+                                    <option value="">Select a property...</option>
+                                    {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
-                                <input className="w-28 border rounded p-2 text-sm bg-white font-bold" value={editAmount}
-                                    onChange={e => setEditAmount(e.target.value)} placeholder="Amount" />
                             </div>
+
+                            {selectedPropertyId && (
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Select Room Allocation</label>
+                                    <div className="flex gap-2">
+                                        <select className="flex-1 border rounded p-2 text-sm bg-white" value={selectedRoomId} onChange={e => {
+                                            const r = filteredRooms.find(rm => rm.id === e.target.value);
+                                            setSelectedRoomId(e.target.value);
+                                            if (r) { setEditAmount(`₹${r.price.toLocaleString()}`); setEditOccupancy(r.type); }
+                                        }}>
+                                            <option value="">Keep current: {booking.roomAssigned || "Not Allocated"}</option>
+                                            {filteredRooms.map(r => <option key={r.id} value={r.id}>{r.roomNumber} ({r.type}) — ₹{r.price.toLocaleString()}</option>)}
+                                        </select>
+                                        <input className="w-28 border rounded p-2 text-sm bg-white font-bold" value={editAmount}
+                                            onChange={e => setEditAmount(e.target.value)} placeholder="Amount" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* ── Pending Amount Prompt (for PAID bookings) ── */}
@@ -575,13 +605,14 @@ function OnboardingCard({ booking, rooms, onRefresh }: { booking: any; rooms: an
 export default function OnboardingPage() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [rooms, setRooms] = useState<any[]>([]);
+    const [properties, setProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<"ALL" | "PENDING_PAYMENT" | "PAID">("ALL");
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [b, r] = await Promise.all([getBookings(), getAvailableRooms()]);
+            const [b, r, p] = await Promise.all([getBookings(), getAvailableRooms(), getProperties()]);
             // Only show bookings that have been accepted (not still pending, not rejected)
             const onboardingBookings = b.filter((bk: any) =>
                 bk.status === "APPROVED_PAYMENT_PENDING" ||
@@ -591,6 +622,7 @@ export default function OnboardingPage() {
             );
             setBookings(onboardingBookings);
             setRooms(r);
+            setProperties(p);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -676,7 +708,7 @@ export default function OnboardingPage() {
             ) : (
                 <div className="space-y-4">
                     {filtered.map(booking => (
-                        <OnboardingCard key={booking.id} booking={booking} rooms={rooms} onRefresh={fetchData} />
+                        <OnboardingCard key={booking.id} booking={booking} rooms={rooms} properties={properties} onRefresh={fetchData} />
                     ))}
                 </div>
             )}

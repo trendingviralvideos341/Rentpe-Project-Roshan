@@ -38,6 +38,6 @@ export async function getAvailableRooms(propertyId?: string) {
 
     return prisma.room.findMany({
         where,
-        select: { id: true, roomNumber: true, type: true, price: true }
+        select: { id: true, roomNumber: true, type: true, price: true, propertyId: true }
     });
 }

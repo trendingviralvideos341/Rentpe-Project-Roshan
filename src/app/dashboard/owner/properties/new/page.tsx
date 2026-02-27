@@ -187,10 +187,15 @@ export default function AddPropertyPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-1">
-                            <label className="text-sm font-medium">Property / PG Name <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium">Property / PG Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
                             <Input placeholder="e.g. SkyLiv Boys Hostel" value={name}
-                                onChange={e => setName(e.target.value)} className={inputErr("name")} />
-                            {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    setName(v);
+                                    const err = v.length > 0 ? validateName(v) : "";
+                                    setFieldErr("name", err);
+                                }} className={inputErr("name")} />
+                            {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name}</p>}
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
@@ -201,23 +206,23 @@ export default function AddPropertyPage() {
                                     const err = v.length > 0 ? validateName(v) : "";
                                     setFieldErr("ownerName", err);
                                 }} className={inputErr("ownerName")} />
-                            {errors.ownerName && <p className="text-xs text-red-500">{errors.ownerName}</p>}
+                            {errors.ownerName && <p className="text-xs text-red-600 font-semibold">{errors.ownerName}</p>}
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(+91 mandatory)</span></label>
-                            <Input placeholder="+919876543210" value={phone}
+                            <Input placeholder="e.g. +919876543210" value={phone}
                                 onChange={e => {
                                     const v = normalizePhone(e.target.value);
                                     setPhone(v);
                                     const err = v.length > 3 ? validatePhone(v) : "";
                                     setFieldErr("phone", err);
                                 }} maxLength={13} className={inputErr("phone")} />
-                            {errors.phone ? <p className="text-xs text-red-500">{errors.phone}</p>
+                            {errors.phone ? <p className="text-xs text-red-600 font-semibold">{errors.phone}</p>
                                 : <p className="text-[10px] text-muted-foreground">Format: +91 followed by 10 digits</p>}
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium">PG/Hostel Licence No. <span className="text-muted-foreground text-xs">(optional)</span></label>
-                            <Input placeholder="Govt. registered licence number" value={pgLicence} onChange={e => setPgLicence(e.target.value)} />
+                            <Input placeholder="e.g. GOV-12345-PG" value={pgLicence} onChange={e => setPgLicence(e.target.value)} />
                         </div>
                     </CardContent>
                 </Card>
