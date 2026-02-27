@@ -1,0 +1,238 @@
+'use server';
+
+import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+
+// ── Get or create the singleton settings row ──────────
+export async function getPlatformSettings() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    let settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+    if (!settings) {
+        settings = await prisma.platformSettings.create({
+            data: { id: "singleton" }
+        });
+    }
+    return settings;
+}
+
+// ── Update settings (admin only) ─────────────────────
+export async function updatePlatformSettings(data: {
+    feesEnabled?: boolean;
+    customerFeeFlat?: number;
+    customerFeePercent?: number;
+    ownerFeeFlat?: number;
+    ownerFeePercent?: number;
+}) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const settings = await prisma.platformSettings.upsert({
+        where: { id: "singleton" },
+        create: { id: "singleton", ...data },
+        update: data,
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'PLATFORM_SETTINGS_UPDATED',
+            targetId: 'singleton',
+            targetType: 'PLATFORM',
+            details: `Fees ${data.feesEnabled !== undefined ? (data.feesEnabled ? 'ENABLED' : 'DISABLED') : 'rates updated'}`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/admin/platform-fees');
+    return settings;
+}
+
+// ── Internal: calculate fees for a given amount ───────
+export async function calculateFees(amountStr: string, userId?: string, propertyName?: string): Promise<{
+    feesEnabled: boolean;
+    grossAmount: number;
+    customerFee: number;
+    totalCharged: number;
+    ownerNet: number;
+    ownerFee: number;
+    platformEarned: number;
+}> {
+    const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
+
+    let settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+
+    if (!settings || !settings.feesEnabled) {
+        return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0 };
+    }
+
+    // Check exemptions
+    let exemptCustomer = false;
+    let exemptOwner = false;
+    if (userId || propertyName) {
+        const exemptions = await (prisma as any).feeExemption.findMany({
+            where: {
+                OR: [
+                    { userId: userId || undefined },
+                    { propertyName: propertyName || undefined },
+                    { userId: null, propertyName: null }, // global exemption
+                ]
+            }
+        });
+        for (const ex of exemptions) {
+            if (ex.exemptCustomer) exemptCustomer = true;
+            if (ex.exemptOwner) exemptOwner = true;
+        }
+    }
+
+    // Customer fee: max(flat, percent%) added ON TOP
+    const customerFeeByPercent = (grossAmount * settings.customerFeePercent) / 100;
+    const customerFee = exemptCustomer ? 0 : Math.max(settings.customerFeeFlat, customerFeeByPercent);
+    const totalCharged = grossAmount + customerFee;
+
+    // Owner fee: max(flat, percent%) deducted FROM received amount
+    const ownerFeeByPercent = (grossAmount * settings.ownerFeePercent) / 100;
+    const ownerFee = exemptOwner ? 0 : Math.max(settings.ownerFeeFlat, ownerFeeByPercent);
+    const ownerNet = grossAmount - ownerFee;
+
+    const platformEarned = customerFee + ownerFee;
+
+    return {
+        feesEnabled: true,
+        grossAmount,
+        customerFee: Math.round(customerFee * 100) / 100,
+        totalCharged: Math.round(totalCharged * 100) / 100,
+        ownerNet: Math.round(ownerNet * 100) / 100,
+        ownerFee: Math.round(ownerFee * 100) / 100,
+        platformEarned: Math.round(platformEarned * 100) / 100,
+    };
+}
+
+// ── Record a platform fee after payment ───────────────
+export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string) {
+    const fees = await calculateFees(amountStr, userId, propertyName);
+    if (!fees.feesEnabled) return null;
+
+    // Add to platform wallet
+    await prisma.platformSettings.update({
+        where: { id: "singleton" },
+        data: { platformWalletBalance: { increment: fees.platformEarned } }
+    });
+
+    return await (prisma as any).platformFee.upsert({
+        where: { bookingId },
+        create: {
+            bookingId,
+            grossAmount: fees.grossAmount,
+            customerFee: fees.customerFee,
+            totalCharged: fees.totalCharged,
+            ownerNet: fees.ownerNet,
+            ownerFee: fees.ownerFee,
+            platformEarned: fees.platformEarned,
+        },
+        update: {
+            grossAmount: fees.grossAmount,
+            customerFee: fees.customerFee,
+            totalCharged: fees.totalCharged,
+            ownerNet: fees.ownerNet,
+            ownerFee: fees.ownerFee,
+            platformEarned: fees.platformEarned,
+        }
+    });
+}
+
+// ── Get platform wallet balance (admin only) ──────────
+export async function getPlatformWalletBalance() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+    return settings?.platformWalletBalance ?? 0;
+}
+
+// ── Get all platform fee records with booking/user details ──
+export async function getPlatformFees() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return await (prisma as any).platformFee.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+            booking: {
+                include: {
+                    user: { select: { id: true, name: true, email: true, displayId: true } }
+                }
+            }
+        }
+    });
+}
+
+// ── Get platform settings change log (audit logs) ──────
+export async function getPlatformChangeLogs() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return await prisma.auditLog.findMany({
+        where: { targetType: 'PLATFORM' },
+        orderBy: { timestamp: 'desc' },
+        take: 100
+    });
+}
+
+// ── Fee Exemptions ────────────────────────────────────
+export async function getFeeExemptions() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return await (prisma as any).feeExemption.findMany({
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+export async function addFeeExemption(data: {
+    userId?: string;
+    propertyName?: string;
+    exemptCustomer: boolean;
+    exemptOwner: boolean;
+    reason: string;
+}) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    if (!data.reason?.trim()) throw new Error("Reason is required.");
+
+    const exemption = await (prisma as any).feeExemption.create({ data });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'FEE_EXEMPTION_ADDED',
+            targetId: exemption.id,
+            targetType: 'PLATFORM',
+            details: `Exemption added: ${data.propertyName || 'All PGs'} / ${data.userId || 'All Users'} — Customer: ${data.exemptCustomer}, Owner: ${data.exemptOwner}. Reason: ${data.reason}`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/admin/platform-fees');
+    return exemption;
+}
+
+export async function removeFeeExemption(id: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    await (prisma as any).feeExemption.delete({ where: { id } });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'FEE_EXEMPTION_REMOVED',
+            targetId: id,
+            targetType: 'PLATFORM',
+            details: `Fee exemption ${id} removed.`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/admin/platform-fees');
+}

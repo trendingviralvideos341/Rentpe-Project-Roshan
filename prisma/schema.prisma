@@ -1,0 +1,433 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("RENTPE_DATABASE_URL")
+}
+
+// ─── Users ───────────────────────────────────────────
+model User {
+  id            String    @id @default(uuid())
+  displayId     String?   @unique // OW-XXXXXX, MADM-XXXX, TNT-XXXX etc.
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("USER") // ADMIN, OWNER, USER
+  name          String?
+  phone         String?
+  status        String    @default("ACTIVE") // ACTIVE, BANNED
+  bannedReason  String?
+  deletedAt     DateTime? // soft-delete timestamp
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  properties    Property[]
+  bookings      Booking[]
+  tickets       Ticket[]
+  notifications Notification[]
+  auditLogs     AuditLog[]    @relation("PerformedBy")
+  actionNotes   ActionNote[]  @relation("TargetUser")
+  ownerOnboardings  OwnerOnboarding[] @relation("OnboardedBy")
+}
+
+// ─── Properties ──────────────────────────────────────
+model Property {
+  id          String   @id @default(uuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  name        String
+  address     String
+  city        String
+  description String?
+  amenities   String   // JSON string
+  images      String   // JSON string (categorized: front,back,room,bathroom,common,balcony,other)
+  ownerName   String?  // building owner name
+  pgLicence   String?  // govt registered PG/hostel licence number (optional)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms       Room[]
+  foodMenu    FoodMenu[]
+  tickets     Ticket[]
+  tenants     Tenant[]
+}
+
+// ─── Rooms ───────────────────────────────────────────
+model Room {
+  id           String   @id @default(uuid())
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id])
+  roomNumber   String
+  type         String   // Single, Double, Triple
+  price        Float
+  availability Int      // beds available
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bookings     Booking[]
+  tenants      Tenant[]
+}
+
+// ─── Bookings ────────────────────────────────────────
+model Booking {
+  id             String   @id @default(uuid())
+  displayId      String   @unique // REQ-12345678
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  roomId         String?
+  room           Room?    @relation(fields: [roomId], references: [id])
+  propertyName   String
+  occupancy      String   // "Single", "Double", "Triple"
+  guestName      String
+  guestEmail        String?  // collected during onboarding
+  guestPhone        String?  // collected during onboarding
+  guestAddress      String?  // street address
+  guestCity         String?  // city
+  guestPincode      String?  // pincode / zip
+  guestCountry      String?  @default("India")  // country
+  occupationType    String?  // Student / Working Professional / Other
+  occupationDetail  String?  // mandatory manual text (college name / company / etc)
+  onboardingDate    String?  // actual move-in date confirmed by owner
+  moveInDate     String
+  status         String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED_PAYMENT_PENDING, PAID, REJECTED, CANCELLED
+  paymentStatus  String   @default("UNPAID") // UNPAID, PAID
+  paymentMethod  String?  // ONLINE, CASH
+  paidAt         DateTime?
+  amount         String
+  roomAssigned   String?  // "204 (Double)"
+  pendingAmount  String?  // additional payment after owner edits (e.g. "500.00")
+  agreementSigned Boolean  @default(false)
+  deletedAt      DateTime? // soft-delete timestamp
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  payments       Payment[]
+  documents      TenantDocument[]
+  platformFee    PlatformFee?
+}
+
+// ─── Tenants ─────────────────────────────────────────
+model Tenant {
+  id               String   @id @default(uuid())
+  displayId        String   @unique // TNT-XXXXXX
+  name             String
+  phone            String
+  email            String?
+  address          String?  // street address
+  city             String?  // city
+  pincode          String?  // pincode
+  country          String?  @default("India")
+  occupationType   String?  // Student / Working Professional / Other
+  occupationDetail String?  // college name / company name / etc
+  propertyId       String
+  property         Property @relation(fields: [propertyId], references: [id])
+  roomId           String
+  room             Room     @relation(fields: [roomId], references: [id])
+  roomNumber       String
+  roomType         String
+  rent             String
+  startDate        String
+  status           String   @default("ACTIVE") // ACTIVE, VACATED
+  vacatedOn        String?
+  vacateNote       String?  // mandatory reason when vacating
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  rentRecords  RentRecord[]
+}
+
+// ─── Rent Records ────────────────────────────────────
+model RentRecord {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  month     String   // "Feb 2024"
+  amount    String
+  paid      Boolean  @default(false)
+  paidOn    String?
+  createdAt DateTime @default(now())
+}
+
+// ─── Payments ────────────────────────────────────────
+model Payment {
+  id              String   @id @default(uuid())
+  bookingId       String
+  booking         Booking  @relation(fields: [bookingId], references: [id])
+  amount          Float
+  method          String   // ONLINE, CASH_TO_OWNER, UPI_TO_OWNER, SIMULATED
+  status          String   @default("PENDING") // PENDING, VERIFIED, FAILED
+  razorpayOrderId String?  // Razorpay order ID
+  razorpayId      String?  // Razorpay payment ID (null for simulated)
+  verifiedBy      String?  // SYSTEM, OWNER, ADMIN
+  date            DateTime @default(now())
+}
+
+// ─── Food Menu ───────────────────────────────────────
+model FoodMenu {
+  id          String   @id @default(uuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id])
+  dayOfWeek   String
+  mealType    String   // Breakfast, Lunch, Dinner
+  items       String
+}
+
+// ─── Support Tickets ─────────────────────────────────
+model Ticket {
+  id          String   @id @default(uuid())
+  displayId   String   @unique // TCK-123456
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  propertyId  String?
+  property    Property? @relation(fields: [propertyId], references: [id])
+  category    String   // CLEANING, WIFI, FOOD, PAYMENT, APP_ISSUE
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  priority    String   @default("MEDIUM")
+  assignedTo  String?
+  description String
+  replies     String?  // JSON string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Notifications ───────────────────────────────────
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─── Audit Log ───────────────────────────────────────
+model AuditLog {
+  id           String   @id @default(uuid())
+  action       String   // USER_BANNED, USER_UNBANNED, TEAM_ACCESS_REVOKED, TENANT_VACATED, etc.
+  targetId     String   // ID of the affected entity
+  targetType   String?  // USER, TEAM_MEMBER, STAFF, TENANT, BOOKING
+  details      String?
+  performedBy  String
+  performer    User     @relation("PerformedBy", fields: [performedBy], references: [id])
+  timestamp    DateTime @default(now())
+}
+
+// ─── Action Notes (persistent history for ban/revoke/remove) ──
+model ActionNote {
+  id           String   @id @default(uuid())
+  targetUserId String?
+  targetUser   User?    @relation("TargetUser", fields: [targetUserId], references: [id])
+  targetType   String   // USER, TEAM_MEMBER, OWNER_STAFF
+  targetId     String   // The ID of the team member / staff / user
+  action       String   // BANNED, UNBANNED, REVOKED, RESTORED, REMOVED
+  reason       String
+  performedBy  String   // who did it
+  timestamp    DateTime @default(now())
+}
+
+// ─── Tenant Documents (for verification) ─────────────
+model TenantDocument {
+  id           String   @id @default(uuid())
+  bookingId    String
+  booking      Booking  @relation(fields: [bookingId], references: [id])
+  type         String   // ID_PROOF, ADDRESS_PROOF, COLLEGE_COMPANY, SELFIE
+  fileData     String   // base64 encoded file
+  fileName     String?
+  status       String   @default("PENDING") // PENDING, VERIFIED, REJECTED
+  rejectedNote String?
+  uploadedAt   DateTime @default(now())
+  verifiedAt   DateTime?
+  verifiedBy   String?
+}
+
+// ─── Admin Team Members ──────────────────────────────
+model TeamMember {
+  id          String   @id @default(uuid())
+  displayId   String   @unique // ADM-T001
+  name        String
+  email       String
+  phone       String?
+  role        String   // "Support Lead", "Finance Ops"
+  permissions String   // JSON array as string
+  status      String   @default("ACTIVE") // ACTIVE, REVOKED
+  addedOn     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Owner Staff ─────────────────────────────────────
+model OwnerStaff {
+  id           String   @id @default(uuid())
+  displayId    String   @unique // STF-001
+  ownerId      String   // which owner this staff belongs to
+  name         String
+  email        String
+  phone        String?  // mandatory in UI, nullable in DB for existing rows
+  designation  String
+  staffAddress String?  // mandatory in UI, nullable in DB for existing rows
+  permissions  String   // JSON array as string
+  idProof      String?  // base64 ID verification doc
+  addressProof String?  // base64 address verification doc
+  photo        String?  // base64 photo (live or uploaded)
+  status       String   @default("ACTIVE") // ACTIVE, BLOCKED
+  addedOn      DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── Platform Settings (singleton) ───────────────────
+model PlatformSettings {
+  id                    String   @id @default("singleton")
+  feesEnabled           Boolean  @default(false)   // master switch — admin only
+  customerFeeFlat       Float    @default(10)       // ₹10 flat minimum
+  customerFeePercent    Float    @default(0.09)     // 0.09% of amount
+  ownerFeeFlat          Float    @default(10)       // ₹10 flat minimum
+  ownerFeePercent       Float    @default(0.10)     // 0.10% of amount
+  platformWalletBalance Float    @default(0)        // accumulated platform earnings
+  updatedAt             DateTime @updatedAt
+}
+
+// ─── Platform Fee Records (per booking) ──────────────
+model PlatformFee {
+  id             String   @id @default(uuid())
+  bookingId      String   @unique
+  booking        Booking  @relation(fields: [bookingId], references: [id])
+  grossAmount    Float    // what customer paid (rent amount)
+  customerFee    Float    // fee added on top of rent
+  totalCharged   Float    // grossAmount + customerFee (what customer actually pays)
+  ownerNet       Float    // what owner actually receives
+  ownerFee       Float    // fee deducted from owner's share
+  platformEarned Float    // total platform earnings (customerFee + ownerFee)
+  createdAt      DateTime @default(now())
+}
+
+// ─── Fee Exemptions (per user or per PG) ─────────────
+model FeeExemption {
+  id              String   @id @default(uuid())
+  userId          String?  // null = applies to all users for this PG
+  propertyName    String?  // null = applies to this user for all PGs
+  exemptCustomer  Boolean  @default(false) // skip customer fee
+  exemptOwner     Boolean  @default(false) // skip owner fee
+  reason          String
+  createdAt       DateTime @default(now())
+}
+
+// ─── Owner Onboarding Pipeline ────────────────────────
+model OwnerOnboarding {
+  id               String    @id @default(uuid())
+  displayId        String    @unique   // OOB-000001
+  source           String              // SELF_SUBMITTED | TEAM_VISIT
+
+  ownerName        String
+  ownerEmail       String
+  ownerPhone       String
+  buildingName     String
+  address          String
+  city             String
+  pincode          String
+  country          String    @default("India")
+  pgLicenceNumber  String?
+  notes            String?
+
+  // Documents (base64)
+  idProofData       String?
+  idProofName       String?
+  pgLicenceData     String?
+  pgLicenceName     String?
+  buildingImageData String?
+  buildingImageName String?
+  additionalPhotos  String   @default("[]")  // JSON: [{name, data}]
+
+  // Pipeline status
+  // PENDING_ONBOARDING → ACCEPTED_BY_ONBOARDER → PENDING_VERIFICATION → VERIFIED | REJECTED
+  status            String   @default("PENDING_ONBOARDING")
+
+  submittedById     String?  // User.id who self-submitted (owner)
+  onboardedById     String?  // User.id of ONBOARDER who accepted/submitted
+  verifiedById      String?  // User.id of VERIFIER
+
+  onboardedAt       DateTime?
+  verifiedAt        DateTime?
+  rejectedReason    String?
+
+  // Full audit trail — JSON: [{status, actorId, actorName, note, timestamp}]
+  auditTrail        String   @default("[]")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  onboardedBy User? @relation("OnboardedBy", fields: [onboardedById], references: [id])
+}
+
+// ─── Employee HR Onboarding ────────────────────────────
+model Employee {
+  id                    String    @id @default(uuid())
+  displayId             String    @unique // EOREQ-101, EOREQ-102... (Onboarding Request ID, assigned on creation)
+  empCode               String?   @unique // EMP101, EMP102... (assigned after activation by admin)
+  empCodeNotes          String?   // mandatory notes if manually edited
+
+  // Personal
+  name                  String
+  email                 String    @unique
+  phone                 String    // +91XXXXXXXXXX mandatory
+  dateOfBirth           String?
+  gender                String?   // Male | Female | Other
+  permanentAddress      String?
+  currentAddress        String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  emergencyContactRel   String?   // Father | Mother | Spouse | Other
+
+  // Employment
+  department            String    // Onboarder | Verifier | Support | Finance | Operations
+  designation           String    // specific title
+  permissions           String    @default("[]") // JSON array of permission ids
+  joiningDate           DateTime?
+  salary                Float?    // monthly gross CTC in ₹
+  employmentType        String    @default("FULL_TIME") // FULL_TIME | PART_TIME | CONTRACT
+
+  // Identity documents (base64)
+  aadhaarNumber         String?
+  aadhaarDoc            String?   // base64
+  aadhaarName           String?
+  panNumber             String?
+  panDoc                String?   // base64
+  panName               String?
+  photo                 String?   // base64 passport-size photo
+  photoName             String?
+  educationCert         String?   // base64 highest degree certificate
+  educationCertName     String?
+  experienceLetter      String?   // base64 previous employer letter
+  experienceLetterName  String?
+  policeVerification    String?   // base64 police clearance certificate
+  policeVerificationName String?
+  addressProof          String?   // base64 utility bill / rental agreement
+  addressProofName      String?
+
+  // Verification status
+  aadhaarVerified       Boolean   @default(false)
+  panVerified           Boolean   @default(false)
+  educationVerified     Boolean   @default(false)
+  addressVerified       Boolean   @default(false)
+  policeVerified        Boolean   @default(false)
+
+  // Background check
+  backgroundCheckStatus String    @default("PENDING") // PENDING | IN_PROGRESS | CLEARED | FLAGGED
+  backgroundCheckNotes  String?
+  backgroundCheckedAt   DateTime?
+
+  // Lifecycle
+  // PENDING_DOCS → DOCS_SUBMITTED → BACKGROUND_CHECK → ACTIVE | REJECTED | SUSPENDED | TERMINATED
+  status                String    @default("PENDING_DOCS")
+  rejectedReason        String?
+  suspensionReason      String?
+  terminatedReason      String?
+
+  // Full audit trail — JSON: [{action, actorId, actorName, note, timestamp}]
+  auditTrail            String    @default("[]")
+
+  addedById             String?   // admin who created
+  addedOn               DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+

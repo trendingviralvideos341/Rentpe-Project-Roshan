@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+:root {
+  /* Premium Palette */
+  --primary: #4F46E5; /* Indigo 600 */
+  --primary-foreground: #ffffff;
+  
+  --secondary: #06B6D4; /* Cyan 500 */
+  --secondary-foreground: #ffffff;
+  
+  --background: #ffffff;
+  --foreground: #0f172a; /* Slate 900 */
+  
+  --muted: #f1f5f9; /* Slate 100 */
+  --muted-foreground: #64748b; /* Slate 500 */
+  
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  
+  --border: #e2e8f0; /* Slate 200 */
+  --input: #e2e8f0;
+  
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #0f172a; /* Slate 900 */
+  --foreground: #f8fafc; /* Slate 50 */
+  
+  --muted: #1e293b; /* Slate 800 */
+  --muted-foreground: #94a3b8; /* Slate 400 */
+  
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  
+  --border: #334155; /* Slate 700 */
+  --input: #334155;
+}
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
