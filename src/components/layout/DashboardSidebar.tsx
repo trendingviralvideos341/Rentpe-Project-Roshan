@@ -30,10 +30,10 @@ export default function DashboardSidebar({ role }: SidebarProps) {
     const ownerLinks = [
         { href: "/dashboard/owner", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/owner/properties", label: "My Properties", icon: Building },
-        { href: "/dashboard/owner/bookings", label: "Bookings", icon: Users, badge: pendingCount },
-        { href: "/dashboard/owner/onboarding", label: "Onboarding", icon: ClipboardCheck },
+        { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
+        { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
         { href: "/dashboard/owner/tenants", label: "Tenants", icon: Calendar },
-        { href: "/dashboard/owner/verifications", label: "Doc Verifications", icon: FileCheck },
+        { href: "/dashboard/owner/verifications", label: "Customer Doc Verifications", icon: FileCheck },
         { href: "/dashboard/owner/staff", label: "My Staff", icon: UserPlus },
         { href: "/dashboard/owner/food-menu", label: "Food Menu", icon: Utensils },
         { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },
@@ -44,6 +44,9 @@ export default function DashboardSidebar({ role }: SidebarProps) {
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users },
+        { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Users },
+        { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
+        { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck },
         { href: "/dashboard/admin/team", label: "Team & Roles", icon: Shield },
         { href: "/dashboard/admin/employees", label: "Employees", icon: UserCheck },
         { href: "/dashboard/admin/transactions", label: "All Transactions", icon: CreditCard },

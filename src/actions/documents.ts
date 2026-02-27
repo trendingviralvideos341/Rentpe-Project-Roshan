@@ -76,15 +76,41 @@ export async function getPendingDocuments() {
 
         const docs = await prisma.tenantDocument.findMany({
             where: { bookingId: { in: bookingIds } },
-            include: { booking: { select: { displayId: true, guestName: true, propertyName: true } } },
+            include: {
+                booking: {
+                    select: {
+                        displayId: true,
+                        guestName: true,
+                        propertyName: true,
+                        guestPhone: true,
+                        guestEmail: true,
+                        roomAssigned: true,
+                        occupancy: true,
+                        amount: true
+                    }
+                }
+            },
             orderBy: { uploadedAt: 'desc' }
         });
         return docs;
     }
 
-    // Admin: all docs
+    // Admin: all docs with full customer details
     return await prisma.tenantDocument.findMany({
-        include: { booking: { select: { displayId: true, guestName: true, propertyName: true } } },
+        include: {
+            booking: {
+                select: {
+                    displayId: true,
+                    guestName: true,
+                    propertyName: true,
+                    guestPhone: true,
+                    guestEmail: true,
+                    roomAssigned: true,
+                    occupancy: true,
+                    amount: true
+                }
+            }
+        },
         orderBy: { uploadedAt: 'desc' }
     });
 }
