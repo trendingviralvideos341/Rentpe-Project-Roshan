@@ -107,7 +107,16 @@ export async function createProperty(formData: FormData) {
     return property;
 }
 
-export async function savePropertyDocuments(propertyId: string, docs: { pgPhotoUrl?: string, idProofUrl?: string, pgLicenceUrl?: string }) {
+export async function savePropertyDocuments(propertyId: string, docs: {
+    idProofUrl?: string,
+    pgLicenceUrl?: string,
+    pgPhotoUrl?: string,
+    frontBuildingPhoto?: string,
+    backBuildingPhoto?: string,
+    commonAreaPhoto?: string,
+    parkingPhoto?: string,
+    bathroomPhoto?: string,
+}) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
@@ -135,4 +144,23 @@ export async function addRoomToProperty(propertyId: string, roomData: { roomNumb
     });
 
     return room;
+}
+
+export async function editRoom(roomId: string, roomData: { roomNumber: string, type: string, price: number, availability: number, photoUrl?: string }) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { property: true }
+    });
+
+    if (!room || room.property.ownerId !== (session as any).userId) {
+        throw new Error("Room not found or unauthorized");
+    }
+
+    return prisma.room.update({
+        where: { id: roomId },
+        data: roomData
+    });
 }

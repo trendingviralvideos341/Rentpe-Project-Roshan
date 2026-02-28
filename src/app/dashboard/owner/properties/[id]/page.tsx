@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty } from "@/actions/properties";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom } from "@/actions/properties";
 import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +30,12 @@ export default function PropertyManagePage() {
     const [roomPhoto, setRoomPhoto] = useState<File | null>(null);
     const [savingRoom, setSavingRoom] = useState(false);
 
+    // Edit Room State
+    const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
+    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single", price: "", availability: "1" });
+    const [editRoomPhoto, setEditRoomPhoto] = useState<File | null>(null);
+    const [editingRoom, setEditingRoom] = useState(false);
+
     useEffect(() => {
         const fetchProperty = async () => {
             try {
@@ -48,7 +54,7 @@ export default function PropertyManagePage() {
         fetchProperty();
     }, [propertyId, router]);
 
-    const handleFileUpload = async (file: File, docType: 'pgPhotoUrl' | 'idProofUrl' | 'pgLicenceUrl') => {
+    const handleFileUpload = async (file: File, docType: string) => {
         if (file.size > 5 * 1024 * 1024) {
             alert(`File exceeds 5MB limit. Please upload a smaller size.`);
             return;
@@ -109,6 +115,56 @@ export default function PropertyManagePage() {
         } finally {
             setSavingRoom(false);
         }
+    };
+
+    const handleEditRoomSave = async () => {
+        if (!editRoomForm.roomNumber || !editRoomForm.price) {
+            alert("Room Number and Rent Price are required.");
+            return;
+        }
+
+        setEditingRoom(true);
+        try {
+            let photoUrl = "";
+            if (editRoomPhoto) {
+                if (editRoomPhoto.size > 5 * 1024 * 1024) throw new Error("Room photo exceeds 5MB");
+                const fd = new FormData(); fd.append('file', editRoomPhoto);
+                const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                const d = await res.json();
+                if (res.ok) photoUrl = d.url;
+            }
+
+            const updatedRoom = await editRoom(editRoomForm.id, {
+                roomNumber: editRoomForm.roomNumber,
+                type: editRoomForm.type,
+                price: parseFloat(editRoomForm.price),
+                availability: parseInt(editRoomForm.availability),
+                ...(photoUrl ? { photoUrl } : {})
+            });
+
+            setProperty({
+                ...property,
+                rooms: property.rooms.map((r: any) => r.id === editRoomForm.id ? { ...r, ...updatedRoom } : r)
+            });
+            setIsEditRoomOpen(false);
+            setEditRoomPhoto(null);
+        } catch (e: any) {
+            alert(`Error: ${e.message}`);
+        } finally {
+            setEditingRoom(false);
+        }
+    };
+
+    const openEditRoomDialog = (room: any) => {
+        setEditRoomForm({
+            id: room.id,
+            roomNumber: room.roomNumber,
+            type: room.type,
+            price: room.price.toString(),
+            availability: room.availability.toString(),
+        });
+        setEditRoomPhoto(null);
+        setIsEditRoomOpen(true);
     };
 
     if (loading) return <div className="p-20 text-center animate-pulse text-muted-foreground">Loading property details...</div>;
@@ -189,6 +245,54 @@ export default function PropertyManagePage() {
                                     </div>
                                 ))}
                             </div>
+
+                            {(property.frontBuildingPhoto || property.backBuildingPhoto || property.commonAreaPhoto || property.parkingPhoto || property.bathroomPhoto) && (
+                                <div className="mt-8 border-t pt-6">
+                                    <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Verified Building Photos</h4>
+                                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                                        {property.frontBuildingPhoto && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Front Building</span>
+                                                <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
+                                                    <img src={property.frontBuildingPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {property.backBuildingPhoto && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Back Building</span>
+                                                <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
+                                                    <img src={property.backBuildingPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {property.commonAreaPhoto && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Common Area</span>
+                                                <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
+                                                    <img src={property.commonAreaPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {property.parkingPhoto && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Parking Area</span>
+                                                <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
+                                                    <img src={property.parkingPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {property.bathroomPhoto && (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Bathroom</span>
+                                                <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
+                                                    <img src={property.bathroomPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -218,10 +322,13 @@ export default function PropertyManagePage() {
                                                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">{room.type}</Badge>
                                             </div>
                                             <div className="flex justify-between items-end">
-                                                <span className="flex items-center gap-1 text-sm font-medium"><BedDouble className="h-4 w-4 text-indigo-500" /> {room.availability} Beds Left</span>
-                                                <span className="font-bold text-green-700 text-xl flex items-center gap-1">
-                                                    <span className="text-xs text-muted-foreground font-normal">Rent:</span> ₹{room.price}
-                                                </span>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="flex items-center gap-1 text-sm font-medium"><BedDouble className="h-4 w-4 text-indigo-500" /> {room.availability} Beds Left</span>
+                                                    <span className="font-bold text-green-700 text-xl flex items-center gap-1">
+                                                        <span className="text-xs text-muted-foreground font-normal">Rent:</span> ₹{room.price}
+                                                    </span>
+                                                </div>
+                                                <Button variant="outline" size="sm" onClick={() => openEditRoomDialog(room)}>Edit Room</Button>
                                             </div>
                                         </div>
                                     ))}
@@ -238,96 +345,54 @@ export default function PropertyManagePage() {
                             <CardDescription>Upload necessary documents for Admin approval. Maximum size 5MB each.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* PG Photo */}
-                                <div className="border hover:border-indigo-400 transition-all rounded-lg p-5 flex flex-col justify-between">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-3 bg-indigo-100 rounded-full text-indigo-600"><ImageIcon className="w-6 h-6" /></div>
-                                        <div>
-                                            <h4 className="font-bold text-sm">Building Entry Photo</h4>
-                                            <p className="text-xs text-muted-foreground">Clear photo from outside</p>
-                                        </div>
-                                    </div>
-                                    {property.pgPhotoUrl ? (
-                                        <div className="flex flex-col gap-2">
-                                            <div className="w-full h-32 bg-muted rounded overflow-hidden">
-                                                <img src={property.pgPhotoUrl} className="w-full h-full object-cover" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {[
+                                    { key: 'frontBuildingPhoto', label: 'Front Building', desc: 'Clear front exterior photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*' },
+                                    { key: 'backBuildingPhoto', label: 'Back Building', desc: 'Clear rear exterior photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-teal-600', bgClass: 'bg-teal-50', borderHover: 'border-teal-200 hover:border-teal-400', accept: 'image/*' },
+                                    { key: 'commonAreaPhoto', label: 'Common Area', desc: 'Hallway, Lobby, or Shared', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*' },
+                                    { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
+                                    { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderHover: 'border-rose-200 hover:border-rose-400', accept: 'image/*' },
+                                    { key: 'idProofUrl', label: 'Owner ID Proof', desc: 'Aadhaar / PAN', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
+                                    { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' }
+                                ].map((cat) => (
+                                    <div key={cat.key} className={`border-2 ${cat.borderHover} transition-all rounded-xl p-4 flex flex-col justify-between shadow-sm bg-white`}>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className={`p-2 ${cat.bgClass} rounded-lg ${cat.colorClass}`}>{cat.icon}</div>
+                                            <div>
+                                                <h4 className="font-bold text-sm tracking-tight">{cat.label}</h4>
+                                                <p className="text-[10px] text-muted-foreground uppercase">{cat.desc}</p>
                                             </div>
-                                            <div className="text-xs text-green-600 font-bold flex items-center justify-center gap-1"><CheckCircle className="w-4 h-4" /> Uploaded</div>
                                         </div>
-                                    ) : (
-                                        <div className="mt-4 text-center">
-                                            <label className="cursor-pointer">
-                                                <input type="file" className="hidden" accept="image/*" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'pgPhotoUrl')} />
-                                                <div className="w-full border-2 border-dashed border-indigo-200 rounded-md py-6 hover:bg-indigo-50 transition-colors">
-                                                    <Upload className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
-                                                    <p className="text-sm font-semibold text-indigo-600">Select File</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-1">PNG, JPG up to 5MB</p>
+                                        {property[cat.key] ? (
+                                            <div className="flex flex-col gap-2 relative group">
+                                                <div className="w-full h-28 bg-muted rounded-lg overflow-hidden border">
+                                                    {property[cat.key].endsWith(".pdf") ?
+                                                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 relative group-hover:bg-slate-100 transition-colors">
+                                                            <FileText className="w-8 h-8 text-slate-400 mb-1" />
+                                                            <span className="text-[10px] font-bold text-slate-500">PDF Document</span>
+                                                        </div>
+                                                        : <img src={property[cat.key]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                    }
                                                 </div>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* ID Proof */}
-                                <div className="border hover:border-emerald-400 transition-all rounded-lg p-5 flex flex-col justify-between">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-3 bg-emerald-100 rounded-full text-emerald-600"><FileText className="w-6 h-6" /></div>
-                                        <div>
-                                            <h4 className="font-bold text-sm">Owner ID Proof</h4>
-                                            <p className="text-xs text-muted-foreground">Aadhaar / PAN</p>
-                                        </div>
-                                    </div>
-                                    {property.idProofUrl ? (
-                                        <div className="flex flex-col gap-2">
-                                            <div className="w-full h-32 bg-muted rounded overflow-hidden">
-                                                <img src={property.idProofUrl} className="w-full h-full object-cover" />
+                                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded shadow-sm border text-green-600">
+                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="text-[10px] font-bold text-center text-slate-500 mt-1">✓ Uploaded & Saved</div>
                                             </div>
-                                            <div className="text-xs text-green-600 font-bold flex items-center justify-center gap-1"><CheckCircle className="w-4 h-4" /> Uploaded</div>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-4 text-center">
-                                            <label className="cursor-pointer">
-                                                <input type="file" className="hidden" accept="image/*,.pdf" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'idProofUrl')} />
-                                                <div className="w-full border-2 border-dashed border-emerald-200 rounded-md py-6 hover:bg-emerald-50 transition-colors">
-                                                    <Upload className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                                                    <p className="text-sm font-semibold text-emerald-600">Select File</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-1">Image/PDF up to 5MB</p>
-                                                </div>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* PG Licence */}
-                                <div className="border hover:border-purple-400 transition-all rounded-lg p-5 flex flex-col justify-between">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-3 bg-purple-100 rounded-full text-purple-600"><Building2 className="w-6 h-6" /></div>
-                                        <div>
-                                            <h4 className="font-bold text-sm">PG / Hostel Licence</h4>
-                                            <p className="text-xs text-muted-foreground">Official municipal doc</p>
-                                        </div>
-                                    </div>
-                                    {property.pgLicenceUrl ? (
-                                        <div className="flex flex-col gap-2">
-                                            <div className="w-full h-32 bg-muted rounded overflow-hidden">
-                                                <img src={property.pgLicenceUrl} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="mt-2 text-center h-full flex flex-col justify-end">
+                                                <label className="cursor-pointer block w-full group">
+                                                    <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                    <div className={`w-full border-2 border-dashed ${cat.borderHover} rounded-lg py-5 group-hover:${cat.bgClass} transition-colors flex flex-col items-center justify-center h-28`}>
+                                                        <Upload className={`w-6 h-6 ${cat.colorClass} mb-2 opacity-60 group-hover:opacity-100 transition-opacity group-hover:-translate-y-1 duration-300`} />
+                                                        <p className={`text-xs font-bold ${cat.colorClass}`}>Upload File</p>
+                                                        <p className="text-[9px] text-muted-foreground mt-0.5">Max 5MB</p>
+                                                    </div>
+                                                </label>
                                             </div>
-                                            <div className="text-xs text-green-600 font-bold flex items-center justify-center gap-1"><CheckCircle className="w-4 h-4" /> Uploaded</div>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-4 text-center">
-                                            <label className="cursor-pointer">
-                                                <input type="file" className="hidden" accept="image/*,.pdf" disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'pgLicenceUrl')} />
-                                                <div className="w-full border-2 border-dashed border-purple-200 rounded-md py-6 hover:bg-purple-50 transition-colors">
-                                                    <Upload className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                                                    <p className="text-sm font-semibold text-purple-600">Select File</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-1">Image/PDF up to 5MB</p>
-                                                </div>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </CardContent>
                     </Card>
@@ -384,6 +449,61 @@ export default function PropertyManagePage() {
                         <Button type="button" variant="outline" onClick={() => setIsAddRoomOpen(false)}>Cancel</Button>
                         <Button type="button" onClick={handleSaveRoom} disabled={savingRoom} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {savingRoom ? "Saving..." : "Save Room"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Edit Room {editRoomForm.roomNumber}</DialogTitle>
+                        <DialogDescription>
+                            Update the details of this room or upload a new photo.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="editRoomNum">Room Number / Name</Label>
+                            <Input id="editRoomNum" placeholder="e.g. 101 or Deluxe A" value={editRoomForm.roomNumber} onChange={e => setEditRoomForm({ ...editRoomForm, roomNumber: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Select Bed Type</Label>
+                                <select className="w-full border rounded-md p-2 text-sm bg-background" value={editRoomForm.type} onChange={e => {
+                                    const type = e.target.value;
+                                    let avail = "1";
+                                    if (type === "Double") avail = "2";
+                                    if (type === "Triple") avail = "3";
+                                    if (type === "Four") avail = "4";
+                                    setEditRoomForm({ ...editRoomForm, type, availability: avail });
+                                }}>
+                                    <option value="Single">Single Bed</option>
+                                    <option value="Double">Double Sharing</option>
+                                    <option value="Triple">Triple Sharing</option>
+                                    <option value="Four">Four Rest</option>
+                                </select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="editRent">Monthly Rent (₹)</Label>
+                                <Input id="editRent" type="number" placeholder="5000" min="0" value={editRoomForm.price} onChange={e => setEditRoomForm({ ...editRoomForm, price: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="editAvail">Available Beds</Label>
+                                <Input id="editAvail" type="number" min="1" value={editRoomForm.availability} onChange={e => setEditRoomForm({ ...editRoomForm, availability: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="editPhoto">Update Photo <span className="text-xs text-muted-foreground">(opt)</span></Label>
+                                <Input id="editPhoto" type="file" accept="image/*" onChange={e => setEditRoomPhoto(e.target.files?.[0] || null)} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsEditRoomOpen(false)}>Cancel</Button>
+                        <Button type="button" onClick={handleEditRoomSave} disabled={editingRoom} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
+                            {editingRoom ? "Updating..." : "Update Room"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -43,6 +43,11 @@ model Property {
   pgPhotoUrl  String?
   idProofUrl  String?
   pgLicenceUrl String?
+  frontBuildingPhoto String?
+  backBuildingPhoto String?
+  commonAreaPhoto String?
+  parkingPhoto String?
+  bathroomPhoto String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   ownerName   String?

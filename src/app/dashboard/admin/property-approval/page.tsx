@@ -206,27 +206,36 @@ export default function AdminPropertyApprovalPage() {
                                         <h4 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1">
                                             <CheckCircle className="h-4 w-4" /> Uploaded Documents for Verification
                                         </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            {property.pgPhotoUrl ? (
-                                                <a href={property.pgPhotoUrl} target="_blank" className="block border rounded-md overflow-hidden hover:border-indigo-500 transition-colors">
-                                                    <div className="bg-muted p-2 text-xs font-bold text-center border-b">PG Photo</div>
-                                                    <img src={property.pgPhotoUrl} className="w-full h-24 object-cover" />
-                                                </a>
-                                            ) : <div className="p-4 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">Missing PG Photo</div>}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                                            {(() => {
+                                                const docs = [
+                                                    { key: 'pgPhotoUrl', label: 'PG / Bldg (Old)' },
+                                                    { key: 'frontBuildingPhoto', label: 'Front Bldg' },
+                                                    { key: 'backBuildingPhoto', label: 'Back Bldg' },
+                                                    { key: 'commonAreaPhoto', label: 'Common Area' },
+                                                    { key: 'parkingPhoto', label: 'Parking' },
+                                                    { key: 'bathroomPhoto', label: 'Bathroom' },
+                                                    { key: 'idProofUrl', label: 'ID Proof (Owner)' },
+                                                    { key: 'pgLicenceUrl', label: 'PG Licence' }
+                                                ];
 
-                                            {property.idProofUrl ? (
-                                                <a href={property.idProofUrl} target="_blank" className="block border rounded-md overflow-hidden hover:border-emerald-500 transition-colors">
-                                                    <div className="bg-muted p-2 text-xs font-bold text-center border-b">ID Proof</div>
-                                                    <img src={property.idProofUrl} className="w-full h-24 object-cover" />
-                                                </a>
-                                            ) : <div className="p-4 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">Missing ID Proof</div>}
+                                                const uploadedDocs = docs.filter(d => property[d.key]);
 
-                                            {property.pgLicenceUrl ? (
-                                                <a href={property.pgLicenceUrl} target="_blank" className="block border rounded-md overflow-hidden hover:border-purple-500 transition-colors">
-                                                    <div className="bg-muted p-2 text-xs font-bold text-center border-b">PG Licence</div>
-                                                    <img src={property.pgLicenceUrl} className="w-full h-24 object-cover" />
-                                                </a>
-                                            ) : <div className="p-4 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">Missing PG Licence</div>}
+                                                if (uploadedDocs.length === 0) {
+                                                    return <div className="col-span-full p-6 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">No verification documents uploaded.</div>;
+                                                }
+
+                                                return uploadedDocs.map((doc) => (
+                                                    <a href={property[doc.key]} target="_blank" key={doc.key} className="block border rounded-md overflow-hidden hover:border-indigo-500 transition-colors shadow-sm group bg-white">
+                                                        <div className="bg-muted/50 p-1.5 text-[10px] font-bold text-center border-b uppercase truncate">{doc.label}</div>
+                                                        {property[doc.key].endsWith(".pdf") ?
+                                                            <div className="w-full h-24 flex items-center justify-center bg-slate-50 group-hover:bg-slate-100 transition-colors">
+                                                                <span className="text-[10px] font-bold text-slate-500 break-words text-center px-1">PDF<br />Document</span>
+                                                            </div>
+                                                            : <img src={property[doc.key]} className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300" />}
+                                                    </a>
+                                                ));
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
