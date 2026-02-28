@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building, Plus, MapPin } from "lucide-react";
+import { Building, Plus, MapPin, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getProperties } from "@/actions/properties";
@@ -77,6 +77,14 @@ export default function OwnerPropertiesPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
+                            {property.status === 'REJECTED' && property.adminNotes && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                    <p className="text-xs font-bold text-red-800 uppercase mb-1 flex items-center gap-1">
+                                        <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
+                                    </p>
+                                    <p className="text-sm text-red-700">{property.adminNotes}</p>
+                                </div>
+                            )}
                             <p className="text-sm line-clamp-2 text-muted-foreground mb-4">
                                 {property.description}
                             </p>

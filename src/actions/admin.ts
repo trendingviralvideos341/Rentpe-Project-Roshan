@@ -418,12 +418,17 @@ export async function searchUserByEmail(email: string) {
     });
 }
 // ── Property Approval ────────────────────────────────
-export async function getPendingProperties() {
+export async function getAllPropertiesForAdmin(statusFilter?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
+    const where: any = {};
+    if (statusFilter && statusFilter !== 'ALL') {
+        where.status = statusFilter;
+    }
+
     return prisma.property.findMany({
-        where: { status: 'PENDING_APPROVAL' },
+        where,
         include: {
             owner: {
                 select: { name: true, email: true, phone: true }
@@ -432,6 +437,23 @@ export async function getPendingProperties() {
         },
         orderBy: { createdAt: 'desc' }
     });
+}
+
+export async function getAdminPropertyAnalytics() {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+        const [pending, approved, rejected] = await Promise.all([
+            prisma.property.count({ where: { status: 'PENDING_APPROVAL' } }),
+            prisma.property.count({ where: { status: 'LIVE' } }),
+            prisma.property.count({ where: { status: 'REJECTED' } })
+        ]);
+
+        return { pending, approved, rejected };
+    } catch (e) {
+        return { pending: 0, approved: 0, rejected: 0 };
+    }
 }
 
 export async function getPendingPropertiesCount() {
@@ -444,7 +466,7 @@ export async function getPendingPropertiesCount() {
     }
 }
 
-export async function approveProperty(propertyId: string, approved: boolean) {
+export async function approveProperty(propertyId: string, approved: boolean, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -452,15 +474,27 @@ export async function approveProperty(propertyId: string, approved: boolean) {
 
     const property = await prisma.property.update({
         where: { id: propertyId },
-        data: { status }
+        data: { status, adminNotes: notes || null }
     });
+
+    try {
+        await prisma.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: approved ? "PROPERTY_APPROVED" : "PROPERTY_REJECTED",
+                message: approved
+                    ? `Your property "${property.name}" is now LIVE! ${notes ? `Admin notes: ${notes}` : ""}`
+                    : `Action Required: Your property "${property.name}" was rejected. Admin Note: ${notes}`
+            }
+        });
+    } catch (e) { console.error("notify owner error", e); }
 
     await prisma.auditLog.create({
         data: {
             action: approved ? 'PROPERTY_APPROVED' : 'PROPERTY_REJECTED',
             targetId: propertyId,
             targetType: 'PROPERTY',
-            details: `Property ${property.name} ${approved ? 'approved' : 'rejected'} by admin`,
+            details: `Property ${property.name} ${approved ? 'approved' : 'rejected'}. Admin Notes: ${notes}`,
             performedBy: (session as any).userId
         }
     });
