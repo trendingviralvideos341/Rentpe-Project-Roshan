@@ -69,41 +69,40 @@ export async function createProperty(formData: FormData) {
     if (!description?.trim()) throw new Error("Description is required");
     if (!ownerName?.trim()) throw new Error("Building owner name is required");
 
-    // Create property
-    const property = await prisma.property.create({
-        data: {
-            name,
-            address,
-            city,
-            description,
-            amenities: amenities || "[]",
-            images: images || "[]",
-            ownerName: ownerName || null,
-            pgLicence: pgLicence || null,
-            ownerId: (session as any).userId,
-            status: "PENDING_APPROVAL",
-        }
-    });
+    // Create property and rooms in a transaction
+    const property = await prisma.$transaction(async (tx) => {
+        const newProperty = await tx.property.create({
+            data: {
+                name,
+                address,
+                city,
+                description,
+                amenities: amenities || "[]",
+                images: images || "[]",
+                ownerName: ownerName || null,
+                pgLicence: pgLicence || null,
+                ownerId: (session as any).userId,
+                status: "PENDING_APPROVAL",
+            }
+        });
 
-    // Create rooms if provided
-    if (roomsJson) {
-        try {
+        if (roomsJson) {
             const rooms = JSON.parse(roomsJson);
             if (Array.isArray(rooms) && rooms.length > 0) {
-                await prisma.room.createMany({
+                await tx.room.createMany({
                     data: rooms.map((r: any) => ({
-                        propertyId: property.id,
-                        roomNumber: r.roomNumber,
+                        propertyId: newProperty.id,
+                        roomNumber: r.roomNumber.toString(),
                         type: r.type,
-                        price: r.price,
-                        availability: r.availability,
+                        price: parseFloat(r.price),
+                        availability: parseInt(r.availability),
                     }))
                 });
             }
-        } catch (e) {
-            console.error("Failed to create rooms:", e);
         }
-    }
+
+        return newProperty;
+    });
 
     return property;
 }

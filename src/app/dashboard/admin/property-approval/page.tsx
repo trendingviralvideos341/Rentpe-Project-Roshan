@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, User, Phone, Mail, CheckCircle, XCircle, RefreshCcw, MapPin, BedDouble, AlertCircle } from "lucide-react";
 import { getAllPropertiesForAdmin, approveProperty, getAdminPropertyAnalytics } from "@/actions/admin";
 import { useToast } from "@/components/ui/use-toast";
@@ -80,9 +79,12 @@ export default function AdminPropertyApprovalPage() {
                 </Button>
             </div>
 
-            {/* Analytics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-amber-50 border-amber-200">
+            {/* Analytics Cards acting as Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card
+                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'PENDING_APPROVAL' ? 'bg-amber-100 border-amber-400 shadow-md scale-[1.02]' : 'bg-amber-50 border-amber-200 hover:bg-amber-100/50'}`}
+                    onClick={() => setFilterStatus('PENDING_APPROVAL')}
+                >
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-amber-800">Pending Approval</p>
@@ -91,7 +93,10 @@ export default function AdminPropertyApprovalPage() {
                         <AlertCircle className="h-8 w-8 text-amber-500 opacity-50" />
                     </CardContent>
                 </Card>
-                <Card className="bg-green-50 border-green-200">
+                <Card
+                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'LIVE' ? 'bg-green-100 border-green-400 shadow-md scale-[1.02]' : 'bg-green-50 border-green-200 hover:bg-green-100/50'}`}
+                    onClick={() => setFilterStatus('LIVE')}
+                >
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-green-800">Total Approved (Live)</p>
@@ -100,7 +105,10 @@ export default function AdminPropertyApprovalPage() {
                         <CheckCircle className="h-8 w-8 text-green-500 opacity-50" />
                     </CardContent>
                 </Card>
-                <Card className="bg-red-50 border-red-200">
+                <Card
+                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'REJECTED' ? 'bg-red-100 border-red-400 shadow-md scale-[1.02]' : 'bg-red-50 border-red-200 hover:bg-red-100/50'}`}
+                    onClick={() => setFilterStatus('REJECTED')}
+                >
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-red-800">Total Rejected</p>
@@ -110,15 +118,6 @@ export default function AdminPropertyApprovalPage() {
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Filters */}
-            <Tabs value={filterStatus} onValueChange={setFilterStatus}>
-                <TabsList className="grid w-full grid-cols-3 max-w-lg mb-6">
-                    <TabsTrigger value="PENDING_APPROVAL">Pending Review</TabsTrigger>
-                    <TabsTrigger value="LIVE">Approved (Live)</TabsTrigger>
-                    <TabsTrigger value="REJECTED">Rejected</TabsTrigger>
-                </TabsList>
-            </Tabs>
 
             {/* List */}
             {loading ? (
