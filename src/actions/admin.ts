@@ -434,6 +434,16 @@ export async function getPendingProperties() {
     });
 }
 
+export async function getPendingPropertiesCount() {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') return 0;
+        return await prisma.property.count({ where: { status: 'PENDING_APPROVAL' } });
+    } catch (e) {
+        return 0;
+    }
+}
+
 export async function approveProperty(propertyId: string, approved: boolean) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");

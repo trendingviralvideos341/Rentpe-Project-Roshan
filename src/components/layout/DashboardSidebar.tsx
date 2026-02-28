@@ -6,6 +6,7 @@ import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings,
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount } from "@/actions/bookings";
+import { getPendingPropertiesCount } from "@/actions/admin";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 
 interface SidebarProps {
@@ -15,16 +16,27 @@ interface SidebarProps {
 export default function DashboardSidebar({ role }: SidebarProps) {
     const pathname = usePathname();
     const [pendingCount, setPendingCount] = useState(0);
+    const [pendingPropCount, setPendingPropCount] = useState(0);
 
     useEffect(() => {
-        if (role !== "owner") return;
-        const checkBookings = async () => {
-            const count = await getPendingBookingsCount();
-            setPendingCount(count);
-        };
-        checkBookings();
-        const interval = setInterval(checkBookings, 5000);
-        return () => clearInterval(interval);
+        if (role === "owner") {
+            const checkBookings = async () => {
+                const count = await getPendingBookingsCount();
+                setPendingCount(count);
+            };
+            checkBookings();
+            const interval = setInterval(checkBookings, 5000);
+            return () => clearInterval(interval);
+        }
+        if (role === "admin") {
+            const checkProps = async () => {
+                const count = await getPendingPropertiesCount();
+                setPendingPropCount(count);
+            };
+            checkProps();
+            const interval = setInterval(checkProps, 5000);
+            return () => clearInterval(interval);
+        }
     }, [role]);
 
     const ownerLinks = [
@@ -44,6 +56,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users },
+        { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount },
         { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Users },
         { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
         { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck },

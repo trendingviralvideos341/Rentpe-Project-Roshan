@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, RefreshCcw, ChevronDown, ChevronUp } from "lucide-react";
@@ -144,7 +144,7 @@ export default function AuditLogPage() {
                                         const isExpanded = expandedRows.has(log.id);
                                         const hasDetails = log.details && log.details.length > 0;
                                         return (
-                                            <>
+                                            <React.Fragment key={log.id}>
                                                 <tr
                                                     key={log.id}
                                                     className={`hover:bg-muted/5 cursor-pointer ${isExpanded ? "bg-muted/10" : ""}`}
@@ -219,7 +219,7 @@ export default function AuditLogPage() {
                                                         </td>
                                                     </tr>
                                                 )}
-                                            </>
+                                            </React.Fragment>
                                         );
                                     })
                                 )}
