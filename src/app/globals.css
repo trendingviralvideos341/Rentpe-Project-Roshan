@@ -1,24 +1,30 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+@plugin "tailwindcss-animate";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
   /* Premium Palette */
-  --primary: oklch(0.205 0 0); /* Indigo 600 */
+  --primary: oklch(0.205 0 0);
+  /* Indigo 600 */
   --primary-foreground: oklch(0.985 0 0);
 
-  --secondary: oklch(0.97 0 0); /* Cyan 500 */
-  --secondary-foreground: oklch(0.205 0 0); /* Slate 900 */
+  --secondary: oklch(0.97 0 0);
+  /* Cyan 500 */
+  --secondary-foreground: oklch(0.205 0 0);
+  /* Slate 900 */
 
-  --muted: oklch(0.97 0 0); /* Slate 100 */
-  --muted-foreground: oklch(0.556 0 0); /* Slate 500 */
+  --muted: oklch(0.97 0 0);
+  /* Slate 100 */
+  --muted-foreground: oklch(0.556 0 0);
+  /* Slate 500 */
 
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
 
-  --border: oklch(0.922 0 0); /* Slate 200 */
+  --border: oklch(0.922 0 0);
+  /* Slate 200 */
   --input: oklch(0.922 0 0);
 
   --radius: 0.625rem;
@@ -67,16 +73,21 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0); /* Slate 900 */
-  --foreground: oklch(0.985 0 0); /* Slate 50 */
+  --background: oklch(0.145 0 0);
+  /* Slate 900 */
+  --foreground: oklch(0.985 0 0);
+  /* Slate 50 */
 
-  --muted: oklch(0.269 0 0); /* Slate 800 */
-  --muted-foreground: oklch(0.708 0 0); /* Slate 400 */
+  --muted: oklch(0.269 0 0);
+  /* Slate 800 */
+  --muted-foreground: oklch(0.708 0 0);
+  /* Slate 400 */
 
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
 
-  --border: oklch(1 0 0 / 10%); /* Slate 700 */
+  --border: oklch(1 0 0 / 10%);
+  /* Slate 700 */
   --input: oklch(1 0 0 / 15%);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -171,6 +182,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
