@@ -417,3 +417,47 @@ export async function searchUserByEmail(email: string) {
         select: { id: true, name: true, email: true, role: true, displayId: true, createdAt: true },
     });
 }
+// ── Property Approval ────────────────────────────────
+export async function getPendingProperties() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return prisma.property.findMany({
+        where: { status: 'PENDING_APPROVAL' },
+        include: {
+            owner: {
+                select: { name: true, email: true, phone: true }
+            },
+            rooms: true
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+export async function approveProperty(propertyId: string, approved: boolean) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const status = approved ? 'LIVE' : 'REJECTED';
+
+    const property = await prisma.property.update({
+        where: { id: propertyId },
+        data: { status }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: approved ? 'PROPERTY_APPROVED' : 'PROPERTY_REJECTED',
+            targetId: propertyId,
+            targetType: 'PROPERTY',
+            details: `Property ${property.name} ${approved ? 'approved' : 'rejected'} by admin`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+
+    return property;
+}

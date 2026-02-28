@@ -81,6 +81,7 @@ export async function createProperty(formData: FormData) {
             ownerName: ownerName || null,
             pgLicence: pgLicence || null,
             ownerId: (session as any).userId,
+            status: "PENDING_APPROVAL",
         }
     });
 

@@ -48,7 +48,16 @@ export default function OwnerPropertiesPage() {
                 {properties.map((property) => (
                     <Card key={property.id} className="overflow-hidden">
                         <div className="h-48 bg-muted relative">
-                            {property.images ? (
+                            <div className="absolute top-2 right-2 z-10">
+                                {property.status === 'LIVE' ? (
+                                    <Badge className="bg-green-600">Live</Badge>
+                                ) : property.status === 'PENDING_APPROVAL' ? (
+                                    <Badge variant="secondary" className="bg-amber-100 text-amber-700">Pending Approval</Badge>
+                                ) : (
+                                    <Badge variant="destructive">{property.status}</Badge>
+                                )}
+                            </div>
+                            {property.images && JSON.parse(property.images).length > 0 ? (
                                 <img
                                     src={JSON.parse(property.images)[0]}
                                     alt={property.name}

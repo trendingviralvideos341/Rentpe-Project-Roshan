@@ -11,11 +11,18 @@ export async function searchProperties(query?: string, filters?: {
     const where: any = {};
 
     if (query) {
-        where.OR = [
-            { name: { contains: query } },
-            { city: { contains: query } },
-            { address: { contains: query } }
+        where.AND = [
+            { status: 'LIVE' },
+            {
+                OR: [
+                    { name: { contains: query } },
+                    { city: { contains: query } },
+                    { address: { contains: query } }
+                ]
+            }
         ];
+    } else {
+        where.status = 'LIVE';
     }
 
     if (filters?.city) {

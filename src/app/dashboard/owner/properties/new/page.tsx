@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Plus, X, AlertTriangle } from "lucide-react";
+import { Upload, Plus, X, AlertTriangle, ShieldCheck } from "lucide-react";
 import { createProperty } from "@/actions/properties";
 import { validateName, validatePhone, validateEmail, normalizePhone } from "@/lib/validators";
 
@@ -359,7 +359,18 @@ export default function AddPropertyPage() {
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Bed Type <span className="text-red-500">*</span></label>
-                                        <select className="mt-1 w-full border rounded-md p-2 text-sm bg-background" value={room.type} onChange={e => updateRoom(i, "type", e.target.value)}>
+                                        <select className="mt-1 w-full border rounded-md p-2 text-sm bg-background" value={room.type} onChange={e => {
+                                            const type = e.target.value;
+                                            let autoAvail = "1";
+                                            if (type === "Double") autoAvail = "2";
+                                            if (type === "Triple") autoAvail = "3";
+                                            if (type === "Four") autoAvail = "4";
+
+                                            const updated = [...rooms];
+                                            updated[i].type = type;
+                                            updated[i].availability = autoAvail;
+                                            setRooms(updated);
+                                        }}>
                                             <option value="Single">Single Bed</option>
                                             <option value="Double">Double Sharing</option>
                                             <option value="Triple">Triple Sharing</option>
@@ -399,10 +410,17 @@ export default function AddPropertyPage() {
                     </CardContent>
                 </Card>
 
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center gap-3">
+                    <ShieldCheck className="h-5 w-5 text-purple-600" />
+                    <p className="text-sm text-purple-800 font-medium">
+                        Property will be listed as <span className="font-bold">Pending Approval</span>. It will go live after admin verification.
+                    </p>
+                </div>
+
                 <div className="flex justify-end space-x-4">
                     <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
                     <Button size="lg" type="submit" disabled={saving} className="bg-purple-700 hover:bg-purple-800">
-                        {saving ? "Publishing..." : "🏠 Publish Property"}
+                        {saving ? "Processing..." : "🏠 Submit for Approval"}
                     </Button>
                 </div>
             </form>
