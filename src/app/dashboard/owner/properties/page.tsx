@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getProperties } from "@/actions/properties";
 import { getSession } from "@/lib/auth";
+import { Badge } from "@/components/ui/badge";
 
 export default function OwnerPropertiesPage() {
     const [properties, setProperties] = useState<any[]>([]);
