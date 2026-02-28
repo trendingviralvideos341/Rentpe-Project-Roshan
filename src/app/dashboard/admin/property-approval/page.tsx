@@ -253,7 +253,7 @@ export default function AdminPropertyApprovalPage() {
                                 value={adminNotes}
                                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAdminNotes(e.target.value)}
                                 rows={4}
-                                className="bg-muted/20"
+                                className="bg-white border-2 border-muted-foreground/30 focus-visible:ring-indigo-500"
                             />
                             <p className="text-[10px] text-muted-foreground uppercase">This message will be permanently logged and sent directly to the owner.</p>
                         </div>
@@ -261,8 +261,8 @@ export default function AdminPropertyApprovalPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setActionDialog(null)} disabled={processing}>Cancel</Button>
                         <Button
-                            variant={actionDialog?.isApprove ? "default" : "destructive"}
-                            className={actionDialog?.isApprove ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                            variant="default"
+                            className={actionDialog?.isApprove ? "bg-green-600 hover:bg-green-700 text-white font-bold px-6" : "bg-red-600 hover:bg-red-700 text-white font-bold px-6"}
                             onClick={handleConfirmAction}
                             disabled={processing}
                         >
