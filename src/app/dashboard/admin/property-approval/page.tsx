@@ -200,6 +200,35 @@ export default function AdminPropertyApprovalPage() {
                                             </p>
                                         </div>
                                     )}
+
+                                    {/* Document Verification */}
+                                    <div className="space-y-4 lg:col-span-3 border-t pt-4">
+                                        <h4 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-1">
+                                            <CheckCircle className="h-4 w-4" /> Uploaded Documents for Verification
+                                        </h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            {property.pgPhotoUrl ? (
+                                                <a href={property.pgPhotoUrl} target="_blank" className="block border rounded-md overflow-hidden hover:border-indigo-500 transition-colors">
+                                                    <div className="bg-muted p-2 text-xs font-bold text-center border-b">PG Photo</div>
+                                                    <img src={property.pgPhotoUrl} className="w-full h-24 object-cover" />
+                                                </a>
+                                            ) : <div className="p-4 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">Missing PG Photo</div>}
+
+                                            {property.idProofUrl ? (
+                                                <a href={property.idProofUrl} target="_blank" className="block border rounded-md overflow-hidden hover:border-emerald-500 transition-colors">
+                                                    <div className="bg-muted p-2 text-xs font-bold text-center border-b">ID Proof</div>
+                                                    <img src={property.idProofUrl} className="w-full h-24 object-cover" />
+                                                </a>
+                                            ) : <div className="p-4 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">Missing ID Proof</div>}
+
+                                            {property.pgLicenceUrl ? (
+                                                <a href={property.pgLicenceUrl} target="_blank" className="block border rounded-md overflow-hidden hover:border-purple-500 transition-colors">
+                                                    <div className="bg-muted p-2 text-xs font-bold text-center border-b">PG Licence</div>
+                                                    <img src={property.pgLicenceUrl} className="w-full h-24 object-cover" />
+                                                </a>
+                                            ) : <div className="p-4 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">Missing PG Licence</div>}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Rooms Breakdown */}
@@ -209,14 +238,19 @@ export default function AdminPropertyApprovalPage() {
                                     </h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                         {property.rooms?.map((room: any) => (
-                                            <div key={room.id} className="border rounded-md p-3 text-sm flex flex-col justify-between" style={{ background: 'linear-gradient(to bottom right, rgba(0,0,0,0.01), rgba(0,0,0,0.03))' }}>
-                                                <div className="flex justify-between items-center mb-3 border-b pb-2">
-                                                    <span className="font-bold flex items-center gap-1"><Building2 className="h-3 w-3 text-muted-foreground" /> Room {room.roomNumber}</span>
+                                            <div key={room.id} className="border rounded-md p-3 text-sm flex flex-col justify-between relative overflow-hidden group" style={{ background: 'linear-gradient(to bottom right, rgba(0,0,0,0.01), rgba(0,0,0,0.03))' }}>
+                                                {room.photoUrl && (
+                                                    <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity">
+                                                        <img src={room.photoUrl} className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <div className="relative z-10 flex justify-between items-center mb-3 border-b pb-2">
+                                                    <span className="font-bold flex items-center gap-1 bg-white/80 p-1 rounded backdrop-blur-sm"><Building2 className="h-3 w-3" /> Room {room.roomNumber}</span>
                                                     <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full border border-blue-200">{room.type}</span>
                                                 </div>
-                                                <div className="flex justify-between items-end text-muted-foreground">
-                                                    <span className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded shadow-sm border"><BedDouble className="h-3 w-3 text-indigo-500" /> {room.availability} Beds</span>
-                                                    <span className="font-bold text-green-700 text-base">₹{room.price}</span>
+                                                <div className="relative z-10 flex justify-between items-end text-muted-foreground mt-4">
+                                                    <span className="flex items-center gap-1 font-medium bg-white/90 px-2 py-0.5 rounded shadow-sm border"><BedDouble className="h-3 w-3 text-indigo-500" /> {room.availability} Beds</span>
+                                                    <span className="font-bold text-green-700 text-base bg-white/90 px-1 rounded">₹{room.price}</span>
                                                 </div>
                                             </div>
                                         ))}

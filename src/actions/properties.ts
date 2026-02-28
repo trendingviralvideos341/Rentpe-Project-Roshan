@@ -106,3 +106,33 @@ export async function createProperty(formData: FormData) {
 
     return property;
 }
+
+export async function savePropertyDocuments(propertyId: string, docs: { pgPhotoUrl?: string, idProofUrl?: string, pgLicenceUrl?: string }) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    await prisma.property.update({
+        where: { id: propertyId, ownerId: (session as any).userId },
+        data: docs
+    });
+
+    return { success: true };
+}
+
+export async function addRoomToProperty(propertyId: string, roomData: { roomNumber: string, type: string, price: number, availability: number, photoUrl?: string }) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    // Verify ownership
+    const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: (session as any).userId } });
+    if (!property) throw new Error("Property not found or unauthorized");
+
+    const room = await prisma.room.create({
+        data: {
+            ...roomData,
+            propertyId
+        }
+    });
+
+    return room;
+}
