@@ -38,6 +38,7 @@ model Property {
   description String?
   amenities   String
   images      String
+  status      String     @default("PENDING_APPROVAL")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   ownerName   String?
