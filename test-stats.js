@@ -1,16 +1,17 @@
-'use server';
 
-import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-export async function getOwnerDashboardStats() {
+async function testStats() {
+    // Attempt to mimic a userId from the system
     try {
-        const session = await getSession();
-        if (!session || session.role !== 'OWNER') {
-            throw new Error("Unauthorized");
+        const owners = await prisma.user.findMany({ where: { role: 'OWNER' }, take: 1 });
+        if (owners.length === 0) {
+            console.log("No owners found in DB.");
+            return;
         }
-
-        const userId = (session as any).userId;
+        const userId = owners[0].id;
+        console.log(`Testing stats for owner: ${owners[0].email} (${userId})`);
 
         const [propertyCount, tenantCount, paidRecords, recentActivity] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId } }),
@@ -36,27 +37,23 @@ export async function getOwnerDashboardStats() {
             })
         ]);
 
+        console.log("Property Count:", propertyCount);
+        console.log("Tenant Count:", tenantCount);
+        console.log("Paid Records Count:", paidRecords.length);
+        console.log("Recent Activity Count:", recentActivity.length);
+
         const totalRevenue = paidRecords.reduce((sum, record) => {
             const value = parseFloat(record.amount.replace(/[^0-9.]/g, '')) || 0;
             return sum + value;
         }, 0);
 
-        return {
-            propertyCount,
-            tenantCount,
-            totalRevenue,
-            recentActivity
-        };
-    } catch (e: any) {
-        console.error("getOwnerDashboardStats Error:", e);
-        if (e.message === "Unauthorized") {
-            return { error: "Unauthorized" };
-        }
-        return {
-            propertyCount: 0,
-            tenantCount: 0,
-            totalRevenue: 0,
-            recentActivity: []
-        };
+        console.log("Total Revenue:", totalRevenue);
+        console.log("SUCCESS: All queries passed.");
+    } catch (e) {
+        console.error("FAILURE: Database query error:", e);
+    } finally {
+        await prisma.$disconnect();
     }
 }
+
+testStats();

@@ -53,6 +53,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [pincodeLoading, setPincodeLoading] = useState(false);
 
     const [form, setForm] = useState({
+        guestName: booking.guestName || "",
         email: booking.guestEmail || "",
         phone: booking.guestPhone?.replace(/^\+91/, "") || "",
         address: booking.guestAddress || "",
@@ -124,6 +125,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const handleSave = async () => {
         // ── Validation ──
         const errs: Record<string, string> = {};
+        if (!form.guestName.trim()) errs.guestName = "Full Name is required";
         const emailErr = validateEmail(form.email); if (emailErr) errs.email = emailErr;
         const phoneToValidate = citizenMode === "indian" ? `+91${form.phone}` : form.phone;
         const phoneErr = validatePhone(phoneToValidate); if (phoneErr) errs.phone = phoneErr;
@@ -158,6 +160,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                 amount: editAmount || booking.amount,
                 occupancy: editOccupancy || booking.occupancy,
                 roomAssigned: room ? `${room.roomNumber} (${editOccupancy || room.type})` : booking.roomAssigned,
+                guestName: form.guestName,
                 guestEmail: form.email,
                 guestPhone: citizenMode === "indian" ? `+91${form.phone}` : form.phone,
                 guestAddress: form.address,
@@ -333,10 +336,22 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
 
                         {/* Contact fields */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Full Name */}
+                            <div className="sm:col-span-2">
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Full Name * (Alphabets only)</label>
+                                <input type="text" placeholder="Student's Full Name"
+                                    className={`w-full border-2 rounded-lg p-2 text-sm bg-white font-medium focus:border-purple-300 focus:ring-0 ${fieldErrors.guestName ? "border-red-500 bg-red-50" : "border-purple-50"}`}
+                                    value={form.guestName} onChange={e => {
+                                        setForm(p => ({ ...p, guestName: onlyLetters(e.target.value) }));
+                                        if (fieldErrors.guestName) setFieldErrors(p => ({ ...p, guestName: "" }));
+                                    }} />
+                                {fieldErrors.guestName && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.guestName}</p>}
+                            </div>
                             {/* Email */}
                             <div>
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Email ID *</label>
                                 <input type="email" placeholder="student@email.com"
-                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.email ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    className={`w-full border-2 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 ${fieldErrors.email ? "border-red-500 bg-red-50" : "border-purple-50"}`}
                                     value={form.email} onChange={e => {
                                         setForm(p => ({ ...p, email: e.target.value }));
                                         if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: "" }));
@@ -365,9 +380,10 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 {fieldErrors.phone && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.phone}</p>}
                             </div>
                             {/* Address */}
-                            <div>
-                                <input type="text" placeholder="House No, Street..."
-                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.address ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                            <div className="sm:col-span-2">
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Street Address *</label>
+                                <input type="text" placeholder="House No, Street, Area..."
+                                    className={`w-full border-2 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 ${fieldErrors.address ? "border-red-500 bg-red-50" : "border-purple-50"}`}
                                     value={form.address} onChange={e => {
                                         setForm(p => ({ ...p, address: e.target.value }));
                                         if (fieldErrors.address) setFieldErrors(p => ({ ...p, address: "" }));
@@ -377,11 +393,11 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             {/* Pincode with auto-fetch */}
                             <div>
                                 <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                                    Pincode * {pincodeLoading && <span className="text-blue-500 animate-pulse ml-1">Fetching...</span>}
+                                    Pincode / Zip * {pincodeLoading && <span className="text-blue-500 animate-pulse ml-1 text-[10px]">🔄 Searching...</span>}
                                 </label>
                                 <input type="text"
-                                    placeholder={citizenMode === "indian" ? "6-digit Indian pincode" : "Postal code"}
-                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.pincode ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    placeholder={citizenMode === "indian" ? "6-digit Indian PIN" : "Postal code"}
+                                    className={`w-full border-2 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 ${fieldErrors.pincode ? "border-red-500 bg-red-50" : "border-purple-50"}`}
                                     maxLength={citizenMode === "indian" ? 6 : 15}
                                     value={form.pincode}
                                     onChange={e => {
@@ -395,10 +411,10 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             {/* City */}
                             <div>
                                 <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                                    City * {citizenMode === "indian" && form.city && <span className="text-green-600 text-[10px] ml-1">✓ Auto-filled</span>}
+                                    City * {citizenMode === "indian" && form.city && <span className="text-green-600 text-[10px] ml-1 font-bold">✓ Verified</span>}
                                 </label>
-                                <input type="text" placeholder={citizenMode === "indian" ? "Auto-fetched from pincode" : "City name"}
-                                    className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.city ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                <input type="text" placeholder={citizenMode === "indian" ? "Auto-fetches..." : "City name"}
+                                    className={`w-full border-2 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 ${fieldErrors.city ? "border-red-500 bg-red-50" : "border-purple-50"}`}
                                     value={form.city}
                                     onChange={e => {
                                         const v = citizenMode === "indian" ? onlyLetters(e.target.value) : e.target.value;
@@ -411,16 +427,20 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             <div>
                                 <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Country</label>
                                 {citizenMode === "indian" ? (
-                                    <input type="text" className="w-full border rounded p-2 text-sm bg-muted cursor-not-allowed" value="India" readOnly />
+                                    <div className="w-full border-2 border-purple-50 rounded-lg p-2 text-sm bg-muted text-muted-foreground flex items-center gap-2 select-none">
+                                        🇮🇳 India (Domestic)
+                                    </div>
                                 ) : (
-                                    <input type="text" placeholder="Country" className="w-full border rounded p-2 text-sm bg-white"
+                                    <input type="text" placeholder="e.g. United Kingdom"
+                                        className="w-full border-2 border-purple-50 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0"
                                         value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} />
                                 )}
                             </div>
                             {/* Onboarding Date */}
                             <div>
-                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Onboarding Date *</label>
-                                <input type="date" className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.onboardingDate ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">🗓 Onboarding Date *</label>
+                                <input type="date"
+                                    className={`w-full border-2 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 ${fieldErrors.onboardingDate ? "border-red-500 bg-red-50" : "border-purple-50"}`}
                                     value={form.onboardingDate} onChange={e => {
                                         setForm(p => ({ ...p, onboardingDate: e.target.value }));
                                         if (fieldErrors.onboardingDate) setFieldErrors(p => ({ ...p, onboardingDate: "" }));
@@ -430,63 +450,100 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         </div>
 
                         {/* Occupation */}
-                        <div>
-                            <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Occupation Type *</label>
-                            <div className="flex gap-2 flex-wrap">
-                                {OCCUPATION_TYPES.map(type => (
-                                    <button key={type} type="button" onClick={() => {
-                                        setForm(p => ({ ...p, occupationType: type }));
-                                        if (fieldErrors.occupationType) setFieldErrors(p => ({ ...p, occupationType: "" }));
-                                    }}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${form.occupationType === type ? "bg-blue-600 text-white border-blue-600" : fieldErrors.occupationType ? "border-red-400 text-red-600 hover:border-red-500" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}>
-                                        {type === "Student" ? "🎓 Student" : type === "Working Professional" ? "💼 Working Pro" : "👤 Other"}
-                                    </button>
-                                ))}
-                            </div>
-                            {fieldErrors.occupationType && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationType}</p>}
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                                {form.occupationType === "Student" ? "College / University *" : "Company / Organisation *"}
-                            </label>
-                            <input className={`w-full border rounded p-2 text-sm bg-white ${fieldErrors.occupationDetail ? "border-red-500 ring-1 ring-red-200" : ""}`}
-                                value={form.occupationDetail} onChange={e => {
-                                    setForm(p => ({ ...p, occupationDetail: e.target.value }));
-                                    if (fieldErrors.occupationDetail) setFieldErrors(p => ({ ...p, occupationDetail: "" }));
-                                }} />
-                            {fieldErrors.occupationDetail && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.occupationDetail}</p>}
-                        </div>
-
-                        {/* Room change */}
-                        <div className="border-t pt-3 space-y-3">
+                        <div className="space-y-4 pt-2">
                             <div>
-                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Select Property (PG)</label>
-                                <select className="w-full border rounded p-2 text-sm bg-white" value={selectedPropertyId} onChange={e => {
-                                    setSelectedPropertyId(e.target.value);
-                                    setSelectedRoomId(""); // Reset room when property changes
-                                }}>
-                                    <option value="">Select a property...</option>
-                                    {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                </select>
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Occupation Type *</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {OCCUPATION_TYPES.map(type => (
+                                        <button key={type} type="button"
+                                            onClick={() => {
+                                                setForm(p => ({ ...p, occupationType: type }));
+                                                if (fieldErrors.occupationType) setFieldErrors(p => ({ ...p, occupationType: "" }));
+                                            }}
+                                            className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition-all shadow-sm ${form.occupationType === type ? "bg-purple-600 text-white border-purple-600 ring-2 ring-purple-100" : fieldErrors.occupationType ? "border-red-400 text-red-600 bg-red-50 hover:border-red-500" : "border-purple-50 bg-white text-gray-600 hover:border-purple-200"}`}>
+                                            {type === "Student" ? "🎓 Student" : type === "Working Professional" ? "💼 Working Pro" : "👤 Other"}
+                                        </button>
+                                    ))}
+                                </div>
+                                {fieldErrors.occupationType && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationType}</p>}
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
+                                    {form.occupationType === "Student" ? "College / University Name *" : "Company / Organisation Name *"}
+                                </label>
+                                <input className={`w-full border-2 rounded-lg p-2 text-sm bg-white font-medium focus:border-purple-300 focus:ring-0 ${fieldErrors.occupationDetail ? "border-red-500 bg-red-50" : "border-purple-50"}`}
+                                    placeholder={form.occupationType === "Student" ? "e.g. IIT Delhi" : "e.g. Google India"}
+                                    value={form.occupationDetail} onChange={e => {
+                                        setForm(p => ({ ...p, occupationDetail: e.target.value }));
+                                        if (fieldErrors.occupationDetail) setFieldErrors(p => ({ ...p, occupationDetail: "" }));
+                                    }} />
+                                {fieldErrors.occupationDetail && <p className="text-[10px] text-red-600 font-bold mt-0.5">{fieldErrors.occupationDetail}</p>}
+                            </div>
+                        </div>
+
+                        {/* Room & Property Allocation */}
+                        <div className="border-t pt-4 mt-2 space-y-4">
+                            <div className="flex items-center gap-2 text-xs font-bold uppercase text-purple-800 mb-1">
+                                <RefreshCcw className="h-3 w-3" /> Change Room Allocation (Optional)
                             </div>
 
-                            {selectedPropertyId && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Select Room Allocation</label>
-                                    <div className="flex gap-2">
-                                        <select className="flex-1 border rounded p-2 text-sm bg-white" value={selectedRoomId} onChange={e => {
-                                            const r = filteredRooms.find(rm => rm.id === e.target.value);
-                                            setSelectedRoomId(e.target.value);
-                                            if (r) { setEditAmount(`₹${r.price.toLocaleString()}`); setEditOccupancy(r.type); }
-                                        }}>
-                                            <option value="">Keep current: {booking.roomAssigned || "Not Allocated"}</option>
-                                            {filteredRooms.map(r => <option key={r.id} value={r.id}>{r.roomNumber} ({r.type}) — ₹{r.price.toLocaleString()}</option>)}
-                                        </select>
-                                        <input className="w-28 border rounded p-2 text-sm bg-white font-bold" value={editAmount}
-                                            onChange={e => setEditAmount(e.target.value)} placeholder="Amount" />
-                                    </div>
+                                    <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Select Property (PG)</label>
+                                    <select
+                                        className="w-full border-2 border-purple-100 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 transition-all"
+                                        value={selectedPropertyId}
+                                        onChange={e => {
+                                            setSelectedPropertyId(e.target.value);
+                                            setSelectedRoomId(""); // Reset room selection
+                                        }}
+                                    >
+                                        <option value="">Select a property...</option>
+                                        {properties.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                            )}
+
+                                {selectedPropertyId && (
+                                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                        <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Select Room (Available Only)</label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                className="flex-1 border-2 border-purple-100 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 transition-all font-medium"
+                                                value={selectedRoomId}
+                                                onChange={e => {
+                                                    const r = filteredRooms.find(rm => rm.id === e.target.value);
+                                                    setSelectedRoomId(e.target.value);
+                                                    if (r) {
+                                                        setEditAmount(`₹${r.price.toLocaleString()}`);
+                                                        setEditOccupancy(r.type);
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">Keep current: {booking.roomAssigned || "Not Allocated"}</option>
+                                                {filteredRooms.map(r => (
+                                                    <option key={r.id} value={r.id}>
+                                                        Room {r.roomNumber} — {r.type} (₹{r.price.toLocaleString()}) — {r.availability} beds left
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="relative w-32">
+                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground select-none">₹</span>
+                                                <input
+                                                    className="w-full border-2 border-purple-100 rounded-lg p-2 pl-5 text-sm bg-white font-bold text-purple-900 focus:border-purple-300 focus:ring-0"
+                                                    value={editAmount.replace(/[^0-9.]/g, '')}
+                                                    onChange={e => setEditAmount(`₹${onlyAmount(e.target.value)}`)}
+                                                    placeholder="Amount"
+                                                />
+                                            </div>
+                                        </div>
+                                        {filteredRooms.length === 0 && (
+                                            <p className="text-[10px] text-amber-600 font-bold mt-1 italic">⚠️ No available rooms in this PG.</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* ── Pending Amount Prompt (for PAID bookings) ── */}

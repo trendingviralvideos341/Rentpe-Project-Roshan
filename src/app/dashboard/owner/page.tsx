@@ -16,6 +16,10 @@ export default function OwnerDashboard() {
         setError(false);
         try {
             const data = await getOwnerDashboardStats();
+            if (!data || (data as any).error === "Unauthorized") {
+                window.location.href = "/login";
+                return;
+            }
             setStats(data);
         } catch (e) {
             console.error(e);
@@ -34,7 +38,8 @@ export default function OwnerDashboard() {
     if (error || !stats) return (
         <div className="p-8 text-center text-red-500">
             <p>Failed to load dashboard statistics. Please ensure you are logged in as an Owner.</p>
-            <Button variant="outline" className="mt-4" onClick={fetchStats}>Retry</Button>
+            <Button variant="outline" className="mt-4" onClick={() => window.location.href = "/login"}>Login Again</Button>
+            <Button variant="ghost" className="mt-4 ml-2" onClick={fetchStats}>Retry</Button>
         </div>
     );
 
