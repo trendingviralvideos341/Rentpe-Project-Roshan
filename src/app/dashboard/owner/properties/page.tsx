@@ -78,7 +78,7 @@ export default function OwnerPropertiesPage() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {property.status === 'REJECTED' && property.adminNotes && (
+                                {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
                                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                                         <p className="text-xs font-bold text-red-800 uppercase mb-1 flex items-center gap-1">
                                             <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
@@ -91,7 +91,14 @@ export default function OwnerPropertiesPage() {
                                 </p>
                                 <div className="flex justify-between items-center text-sm pt-2 border-t mt-4">
                                     <span className="font-bold flex items-center gap-1"><Building className="h-4 w-4 text-purple-600" /> {property.rooms?.length || 0} Rooms</span>
-                                    <span className="text-purple-600 font-semibold text-xs uppercase hover:underline flex items-center">View Details &rarr;</span>
+                                    <div className="flex items-center gap-2">
+                                        {property.adminNotes?.includes('[REUPLOAD') && property.status !== 'LIVE' && (
+                                            <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-300 bg-red-50 animate-pulse">
+                                                Action Required
+                                            </Badge>
+                                        )}
+                                        <span className="text-purple-600 font-semibold text-xs uppercase hover:underline flex items-center">View Details &rarr;</span>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

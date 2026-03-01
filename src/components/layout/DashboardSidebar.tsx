@@ -7,6 +7,7 @@ import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount } from "@/actions/bookings";
 import { getPendingPropertiesCount } from "@/actions/admin";
+import { getPendingOwnerActionCount } from "@/actions/properties";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 
 interface SidebarProps {
@@ -23,6 +24,8 @@ export default function DashboardSidebar({ role }: SidebarProps) {
             const checkBookings = async () => {
                 const count = await getPendingBookingsCount();
                 setPendingCount(count);
+                const propCount = await getPendingOwnerActionCount();
+                setPendingPropCount(propCount);
             };
             checkBookings();
             const interval = setInterval(checkBookings, 5000);
@@ -41,7 +44,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
 
     const ownerLinks = [
         { href: "/dashboard/owner", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/owner/properties", label: "My Properties", icon: Building },
+        { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
         { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
         { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
         { href: "/dashboard/owner/tenants", label: "Tenants", icon: Calendar },

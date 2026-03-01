@@ -48,7 +48,8 @@ model Property {
   commonAreaPhotos String?
   parkingPhoto String?
   bathroomPhoto String?
-  createdAt   DateTime   @default(now())
+  verifiedDocs  String    @default("[]")
+  createdAt     DateTime  @default(now())
   updatedAt   DateTime   @updatedAt
   ownerName   String?
   pgLicence   String?

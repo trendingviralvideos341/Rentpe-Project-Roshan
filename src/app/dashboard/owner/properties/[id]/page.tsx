@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom } from "@/actions/properties";
-import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus } from "lucide-react";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom, deletePropertyDocument } from "@/actions/properties";
+import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus, Trash2, RefreshCcw, Eye } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -125,6 +125,52 @@ export default function PropertyManagePage() {
         }
     };
 
+    const handleDelete = async (docType: string, index?: number) => {
+        if (!confirm("Are you sure you want to delete this document?")) return;
+
+        setUploading(true);
+        try {
+            const res = await deletePropertyDocument(propertyId, docType, index);
+            if (res.success) {
+                // Refresh local state
+                const updatedProperty = { ...property };
+                if (index !== undefined && property[docType]) {
+                    const items = JSON.parse(property[docType]);
+                    items.splice(index, 1);
+                    updatedProperty[docType] = items.length > 0 ? JSON.stringify(items) : null;
+                } else {
+                    updatedProperty[docType] = null;
+                }
+                setProperty(updatedProperty);
+                alert("Deleted successfully.");
+            } else {
+                alert("Delete failed.");
+            }
+        } catch (error) {
+            console.error("Delete Error:", error);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const getReuploadNote = (docType: string) => {
+        if (!property?.adminNotes) return null;
+
+        const lines = property.adminNotes.split('\n');
+        const matches = lines.filter((l: string) => l.startsWith(`[REUPLOAD:${docType}`));
+
+        if (matches.length > 0) {
+            return matches.map((m: string) => {
+                const tagFull = m.match(/\[REUPLOAD:[a-zA-Z0-9-]+\]/)?.[0] || '';
+                const parts = tagFull.replace('[REUPLOAD:', '').replace(']', '').split('-');
+                const index = parts[1] ? `(Photo ${parseInt(parts[1]) + 1}) - ` : '';
+                return `${index}${m.replace(tagFull, '').trim()}`.trim();
+            }).join(' | ');
+        }
+
+        return null;
+    };
+
     const handleSaveRoom = async () => {
         if (!roomForm.roomNumber || !roomForm.price) {
             alert("Room Number and Rent Price are required.");
@@ -237,14 +283,19 @@ export default function PropertyManagePage() {
                 </div>
             </div>
 
-            {property.status === 'REJECTED' && property.adminNotes && (
+            {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
                     <h3 className="text-red-800 font-bold mb-2 flex items-center gap-2">
                         <AlertCircle className="h-5 w-5" /> Admin Feedback / Corrections Needed
                     </h3>
-                    <p className="text-red-700">{property.adminNotes}</p>
+                    <p className="text-red-700 whitespace-pre-wrap">{property.adminNotes}</p>
                     <div className="mt-4">
-                        <Button variant="destructive" size="sm">Edit Property to Resolve Issues</Button>
+                        <Button variant="destructive" size="sm" onClick={() => {
+                            if (property.adminNotes.includes('[REUPLOAD')) {
+                                const tab = document.querySelector('[value="verification"]') as HTMLElement;
+                                if (tab) tab.click();
+                            }
+                        }}>Review Required Changes</Button>
                     </div>
                 </div>
             )}
@@ -253,7 +304,18 @@ export default function PropertyManagePage() {
                 <TabsList className="grid w-full grid-cols-3 max-w-2xl">
                     <TabsTrigger value="details">Property Details</TabsTrigger>
                     <TabsTrigger value="rooms">Rooms ({property.rooms?.length || 0})</TabsTrigger>
-                    <TabsTrigger value="verification">Verification Documents</TabsTrigger>
+                    <TabsTrigger
+                        value="verification"
+                        className={`relative transition-all ${property.adminNotes?.includes('[REUPLOAD') ? 'bg-red-50 text-red-700 data-[state=active]:bg-red-100 data-[state=active]:text-red-900 font-bold border border-red-200' : ''}`}
+                    >
+                        Verification Documents
+                        {property.adminNotes?.includes('[REUPLOAD') && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5" title="Action Required">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white shadow-sm"></span>
+                            </span>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="details" className="pt-4 space-y-4">
@@ -381,12 +443,12 @@ export default function PropertyManagePage() {
                             <CardDescription>Upload necessary documents for Admin approval. Maximum size 5MB each.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[
                                     { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
                                     { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway, Lobby, or Shared (4 Photos)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*', isArray: true, max: 4 },
-                                    { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
                                     { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderHover: 'border-rose-200 hover:border-rose-400', accept: 'image/*' },
+                                    { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
                                     { key: 'aadhaarProof', label: 'Owner Aadhaar Proof', desc: 'Clear front/back of Aadhaar', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
                                     { key: 'panProof', label: 'Owner PAN Proof', desc: 'Clear photo of PAN Card', icon: <FileText className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*,.pdf' },
                                     { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' }
@@ -410,20 +472,62 @@ export default function PropertyManagePage() {
                                                         for (let i = 0; i < 4; i++) {
                                                             if (photos[i]) {
                                                                 const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
+                                                                const isDocVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key}-${i}`);
+                                                                const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
+
                                                                 slots.push(
-                                                                    <div key={`photo-${i}`} className="relative group/img h-20 bg-muted rounded-md overflow-hidden border shadow-inner">
+                                                                    <div key={`photo-${i}`} className={`relative h-20 rounded-md overflow-hidden border shadow-inner group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-muted'}`}>
                                                                         <img src={img} className="w-full h-full object-cover" />
-                                                                        <div className="absolute top-1 right-1 bg-white/90 p-0.5 rounded shadow-sm text-green-600">
-                                                                            <CheckCircle className="w-3 h-3" />
+                                                                        {/* Delete & View Buttons - Top Left - HIGHEST Z-INDEX */}
+                                                                        <div className="absolute top-0 left-0 flex z-[999] opacity-100 flex-row">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
+                                                                                className="bg-red-600 text-white px-2 py-1.5 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40"
+                                                                                title="Delete Photo"
+                                                                            >
+                                                                                <Trash2 className="w-4 h-4 mr-1" />
+                                                                                <span className="text-[10px] font-bold">Delete</span>
+                                                                            </button>
+                                                                            <a
+                                                                                href={img}
+                                                                                target="_blank"
+                                                                                className="bg-slate-800 text-white px-2 py-1.5 shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center border-r border-b border-white/40 rounded-br-md ml-[1px]"
+                                                                                title="View Full Size"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                            >
+                                                                                <Eye className="w-4 h-4 mr-1" />
+                                                                                <span className="text-[10px] font-bold">View</span>
+                                                                            </a>
+                                                                        </div>
+
+                                                                        {/* Status Badge - Top Right */}
+                                                                        <div className="absolute top-0 right-0 z-[999]">
+                                                                            {isDocVerified ? (
+                                                                                <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Verified">
+                                                                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                                                                    <span className="text-[10px] font-bold">Verified</span>
+                                                                                </div>
+                                                                            ) : isReuploadRequired ? (
+                                                                                <div className="bg-red-600 animate-pulse text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Reupload Required">
+                                                                                    <AlertCircle className="w-4 h-4 mr-1" />
+                                                                                    <span className="text-[10px] font-bold">Reupload</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="bg-amber-500 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Pending Approval">
+                                                                                    <AlertCircle className="w-4 h-4 mr-1" />
+                                                                                    <span className="text-[10px] font-bold">Pending</span>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                 );
                                                             } else {
                                                                 slots.push(
-                                                                    <label key={`slot-${i}`} className="cursor-pointer border-2 border-dashed rounded-md flex flex-col items-center justify-center h-20 hover:bg-muted/30 transition-all hover:scale-[1.02] active:scale-95">
+                                                                    <label key={`slot-${i}`} className={`cursor-pointer border-2 border-dashed ${cat.borderHover} rounded-md flex flex-col items-center justify-center h-20 ${cat.bgClass} transition-all hover:scale-[1.02] active:scale-95 group/slot`}>
                                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                        <Plus className="w-4 h-4 text-muted-foreground animate-pulse" />
-                                                                        <span className="text-[8px] font-bold uppercase mt-1">Add Photo</span>
+                                                                        <Plus className={`w-4 h-4 ${cat.colorClass} opacity-60 group-hover/slot:opacity-100 group-hover/slot:scale-110 transition-all`} />
+                                                                        <span className={`text-[8px] font-bold uppercase mt-1 ${cat.colorClass}`}>Add Photo</span>
                                                                     </label>
                                                                 );
                                                             }
@@ -449,6 +553,15 @@ export default function PropertyManagePage() {
                                                         }} />
                                                     </div>
                                                 </div>
+                                                {getReuploadNote(cat.key) && (
+                                                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
+                                                        <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                                                        <div>
+                                                            <span className="font-bold block uppercase">Reupload Required:</span>
+                                                            {getReuploadNote(cat.key)}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : property[cat.key] ? (
                                             <div className="flex flex-col gap-2 relative group h-full">
@@ -461,22 +574,80 @@ export default function PropertyManagePage() {
                                                         : <img src={property[cat.key]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                                     }
                                                 </div>
-                                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded shadow-sm border text-green-600">
-                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                {/* Delete & Reupload Buttons - HIGHEST Z-INDEX */}
+                                                <div className="absolute top-0 left-0 flex z-[999] opacity-100 flex-row">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key); }}
+                                                        className="bg-red-600 text-white p-2 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40 group/btn"
+                                                        title="Delete Document"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                    <label
+                                                        className="cursor-pointer bg-blue-600 text-white p-2 shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center border-r border-b border-white/40 ml-[1px]"
+                                                        title="Reupload Document"
+                                                    >
+                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                        <RefreshCcw className="w-4 h-4" />
+                                                    </label>
+                                                    <a
+                                                        href={property[cat.key]}
+                                                        target="_blank"
+                                                        className="bg-slate-800 text-white p-2 shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center border-r border-b border-white/40 rounded-br-md ml-[1px]"
+                                                        title="View Full Size"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </a>
+                                                </div>
+
+                                                <div className="absolute top-0 right-0 z-[999]">
+                                                    {(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) ? (
+                                                        <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Verified">
+                                                            <CheckCircle className="w-4 h-4 mr-1" />
+                                                            <span className="text-[10px] font-bold">Verified</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-amber-500 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Pending Approval">
+                                                            <AlertCircle className="w-4 h-4 mr-1" />
+                                                            <span className="text-[10px] font-bold">Pending</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="mt-auto pt-2">
-                                                    <div className="text-[10px] font-bold text-center text-slate-500 mb-1">✓ Uploaded & Saved</div>
-                                                    <div className="text-[9px] text-center text-indigo-500 border rounded py-0.5 bg-indigo-50">Verified Document</div>
+                                                    {getReuploadNote(cat.key) ? (
+                                                        <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
+                                                            <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                                                            <div>
+                                                                <span className="font-bold block uppercase">Reupload Required:</span>
+                                                                {getReuploadNote(cat.key)}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1">
+                                                            <div className="text-[10px] font-bold text-center text-slate-500 mb-1">✓ Uploaded & Saved</div>
+                                                            {(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) ? (
+                                                                <div className="text-[9px] text-center text-green-600 font-bold border-green-200 border rounded py-1 bg-green-50 flex items-center justify-center gap-1">
+                                                                    <CheckCircle className="w-2.5 h-2.5" /> Verified Document
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-[9px] text-center text-amber-600 font-bold border-amber-200 border rounded py-1 bg-amber-50 flex items-center justify-center gap-1">
+                                                                    <AlertCircle className="w-2.5 h-2.5" /> Pending Approval
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="mt-2 text-center h-full flex flex-col justify-end">
-                                                <label className="cursor-pointer block w-full group">
+                                                <label className="cursor-pointer block w-full group h-full">
                                                     <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                    <div className={`w-full border-2 border-dashed ${cat.borderHover} rounded-lg py-5 group-hover:${cat.bgClass} transition-all flex flex-col items-center justify-center h-28 hover:shadow-md`}>
+                                                    <div className={`w-full h-full border-2 border-dashed ${cat.borderHover} rounded-lg flex flex-col items-center justify-center py-5 ${cat.bgClass} transition-all hover:shadow-md hover:scale-[1.02] active:scale-95`}>
                                                         <Upload className={`w-6 h-6 ${cat.colorClass} mb-2 opacity-60 group-hover:opacity-100 transition-all group-hover:-translate-y-1 duration-300`} />
-                                                        <p className={`text-xs font-bold ${cat.colorClass}`}>Upload File</p>
-                                                        <p className="text-[9px] text-muted-foreground mt-0.5">5.00 MB Available</p>
+                                                        <p className={`text-xs font-bold ${cat.colorClass}`}>Upload {cat.label}</p>
+                                                        <p className="text-[9px] text-muted-foreground mt-0.5 opacity-70">5.00 MB Available</p>
                                                     </div>
                                                 </label>
                                             </div>

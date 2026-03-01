@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, User, Phone, Mail, CheckCircle, XCircle, RefreshCcw, MapPin, BedDouble, AlertCircle } from "lucide-react";
-import { getAllPropertiesForAdmin, approveProperty, getAdminPropertyAnalytics } from "@/actions/admin";
+import { getAllPropertiesForAdmin, approveProperty, getAdminPropertyAnalytics, markPropertyPending } from "@/actions/admin";
+import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function AdminPropertyApprovalPage() {
@@ -17,9 +18,11 @@ export default function AdminPropertyApprovalPage() {
     const [filterStatus, setFilterStatus] = useState("PENDING_APPROVAL");
 
     // Dialog state
-    const [actionDialog, setActionDialog] = useState<{ isOpen: boolean; propertyId: string; propertyName: string; isApprove: boolean } | null>(null);
+    const [actionDialog, setActionDialog] = useState<{ isOpen: boolean; propertyId: string; propertyName: string; isApprove: boolean; currentStatus?: string } | null>(null);
     const [adminNotes, setAdminNotes] = useState("");
     const [processing, setProcessing] = useState(false);
+    const [reuploadDialog, setReuploadDialog] = useState<{ isOpen: boolean; propertyId: string; docType: string; label: string } | null>(null);
+    const [reuploadNote, setReuploadNote] = useState("");
 
     const { toast } = useToast();
 
@@ -45,7 +48,7 @@ export default function AdminPropertyApprovalPage() {
 
     const handleConfirmAction = async () => {
         if (!actionDialog) return;
-        if (!adminNotes.trim()) {
+        if (!adminNotes.trim() && !actionDialog.isApprove) {
             toast({ title: "Required", description: "Admin notes are required for this action.", variant: "destructive" });
             return;
         }
@@ -62,6 +65,60 @@ export default function AdminPropertyApprovalPage() {
             fetchData();
         } catch (e: any) {
             toast({ title: "Action Failed", description: e.message, variant: "destructive" });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleMarkPending = async () => {
+        if (!actionDialog) return;
+        setProcessing(true);
+        try {
+            await markPropertyPending(actionDialog.propertyId, adminNotes);
+            toast({ title: "Status Updated", description: "Property moved to Pending Approval." });
+            setActionDialog(null);
+            setAdminNotes("");
+            fetchData();
+        } catch (e: any) {
+            toast({ title: "Action Failed", description: e.message, variant: "destructive" });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleRequestReupload = async () => {
+        if (!reuploadDialog) return;
+        if (!reuploadNote.trim()) {
+            toast({ title: "Required", description: "Reason for reupload is required.", variant: "destructive" });
+            return;
+        }
+
+        setProcessing(true);
+        try {
+            await requestDocumentReupload(reuploadDialog.propertyId, reuploadDialog.docType, reuploadNote);
+            toast({ title: "Request Sent", description: `Reupload request for ${reuploadDialog.label} sent to owner.` });
+            setReuploadDialog(null);
+            setReuploadNote("");
+            fetchData();
+        } catch (e: any) {
+            toast({ title: "Request Failed", description: e.message, variant: "destructive" });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleToggleVerification = async (propertyId: string, docKey: string, isVerified: boolean) => {
+        setProcessing(true);
+        try {
+            const res = await togglePropertyDocumentVerification(propertyId, docKey, !isVerified);
+            if (res.success) {
+                toast({ title: isVerified ? "Verification Removed" : "Document Verified", description: "Status updated successfully." });
+                fetchData();
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (e: any) {
+            toast({ title: "Update Failed", description: e.message, variant: "destructive" });
         } finally {
             setProcessing(false);
         }
@@ -155,15 +212,15 @@ export default function AdminPropertyApprovalPage() {
                                     <div className="flex gap-2">
                                         {property.status === 'PENDING_APPROVAL' ? (
                                             <>
-                                                <Button size="sm" variant="destructive" className="h-8" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: false })}>
+                                                <Button size="sm" variant="destructive" className="h-8" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: false, currentStatus: property.status })}>
                                                     <XCircle className="h-4 w-4 mr-1" /> Reject
                                                 </Button>
-                                                <Button size="sm" className="h-8 bg-green-600 hover:bg-green-700 hover:text-white text-white" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: true })}>
+                                                <Button size="sm" className="h-8 bg-green-600 hover:bg-green-700 hover:text-white text-white" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: true, currentStatus: property.status })}>
                                                     <CheckCircle className="h-4 w-4 mr-1" /> Approve
                                                 </Button>
                                             </>
                                         ) : (
-                                            <Button size="sm" variant="outline" className="h-8" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: property.status !== 'LIVE' })}>
+                                            <Button size="sm" variant="outline" className="h-8" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: property.status !== 'LIVE', currentStatus: property.status })}>
                                                 Change Status
                                             </Button>
                                         )}
@@ -225,14 +282,16 @@ export default function AdminPropertyApprovalPage() {
                                                     if (d.isArray) {
                                                         try {
                                                             const urls = JSON.parse(property[d.key]);
-                                                            urls.forEach((url: string, i: number) => {
-                                                                uploadedItems.push({ url, label: `${d.label} ${i + 1}`, key: `${d.key}-${i}` });
+                                                            urls.forEach((u: any, i: number) => {
+                                                                const actualUrl = typeof u === 'string' ? u : u.url;
+                                                                uploadedItems.push({ url: actualUrl, label: `${d.label} ${i + 1}`, key: `${d.key}-${i}` });
                                                             });
                                                         } catch (e) {
-                                                            console.error("Error parsing buildingPhotos:", e);
+                                                            console.error("Error parsing photos:", e);
                                                         }
                                                     } else {
-                                                        uploadedItems.push({ url: property[d.key], label: d.label, key: d.key });
+                                                        const actualUrl = typeof property[d.key] === 'string' ? property[d.key] : property[d.key].url;
+                                                        uploadedItems.push({ url: actualUrl, label: d.label, key: d.key });
                                                     }
                                                 });
 
@@ -240,16 +299,50 @@ export default function AdminPropertyApprovalPage() {
                                                     return <div className="col-span-full p-6 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">No verification documents uploaded.</div>;
                                                 }
 
-                                                return uploadedItems.map((item) => (
-                                                    <a href={item.url} target="_blank" key={item.key} className="block border rounded-md overflow-hidden hover:border-indigo-500 transition-colors shadow-sm group bg-white">
-                                                        <div className="bg-muted/50 p-1.5 text-[10px] font-bold text-center border-b uppercase truncate">{item.label}</div>
-                                                        {item.url.endsWith(".pdf") ?
-                                                            <div className="w-full h-24 flex items-center justify-center bg-slate-50 group-hover:bg-slate-100 transition-colors">
-                                                                <span className="text-[10px] font-bold text-slate-500 break-words text-center px-1">PDF<br />Document</span>
+                                                return uploadedItems.map((item) => {
+                                                    const isVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(item.key);
+
+                                                    return (
+                                                        <div key={item.key} className="relative group">
+                                                            <a href={item.url} target="_blank" className={`block border-2 rounded-md overflow-hidden transition-colors shadow-sm bg-white ${isVerified ? 'border-green-500' : 'hover:border-indigo-500'}`}>
+                                                                <div className={`p-1.5 text-[10px] font-bold text-center border-b uppercase truncate ${isVerified ? 'bg-green-100 text-green-800' : 'bg-muted/50'}`}>
+                                                                    {item.label} {isVerified && "✓"}
+                                                                </div>
+                                                                {String(item.url || "").endsWith(".pdf") ?
+                                                                    <div className="w-full h-24 flex items-center justify-center bg-slate-50 group-hover:bg-slate-100 transition-colors">
+                                                                        <span className="text-[10px] font-bold text-slate-500 break-words text-center px-1">PDF<br />Document</span>
+                                                                    </div>
+                                                                    : <img src={String(item.url || "")} className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300" />}
+                                                            </a>
+                                                            <div className="absolute bottom-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleToggleVerification(property.id, item.key, isVerified);
+                                                                    }}
+                                                                    className={`p-1 rounded shadow-sm flex items-center gap-1 text-[8px] font-bold uppercase ${isVerified ? 'bg-red-500 text-white' : 'bg-green-600 text-white'}`}
+                                                                    disabled={processing}
+                                                                >
+                                                                    {isVerified ? "Unverify" : "Verify Doc"}
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        setReuploadDialog({
+                                                                            isOpen: true,
+                                                                            propertyId: property.id,
+                                                                            docType: item.key,
+                                                                            label: item.label
+                                                                        });
+                                                                    }}
+                                                                    className="bg-amber-500 text-white p-1 rounded shadow-sm flex items-center gap-1 text-[8px] font-bold uppercase transition-all"
+                                                                >
+                                                                    <RefreshCcw className="w-2.5 h-2.5" /> Reupload
+                                                                </button>
                                                             </div>
-                                                            : <img src={item.url} className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300" />}
-                                                    </a>
-                                                ));
+                                                        </div>
+                                                    );
+                                                });
                                             })()}
                                         </div>
                                     </div>
@@ -317,6 +410,16 @@ export default function AdminPropertyApprovalPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setActionDialog(null)} disabled={processing}>Cancel</Button>
+                        {actionDialog?.currentStatus === 'REJECTED' && (
+                            <Button
+                                variant="secondary"
+                                className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
+                                onClick={handleMarkPending}
+                                disabled={processing}
+                            >
+                                {processing ? "Processing..." : "Move to Pending Approval"}
+                            </Button>
+                        )}
                         <Button
                             variant="default"
                             className={actionDialog?.isApprove ? "bg-green-600 hover:bg-green-700 text-white font-bold px-6" : "bg-red-600 hover:bg-red-700 text-white font-bold px-6"}
@@ -324,6 +427,42 @@ export default function AdminPropertyApprovalPage() {
                             disabled={processing}
                         >
                             {processing ? "Processing..." : `Confirm ${actionDialog?.isApprove ? "Approval" : "Rejection"}`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reupload Request Dialog */}
+            <Dialog open={!!reuploadDialog} onOpenChange={(open: boolean) => !open && setReuploadDialog(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <RefreshCcw className="w-5 h-5 text-amber-500" />
+                            Request Reupload: {reuploadDialog?.label}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Ask the owner to reupload this specific document. They will see your reason on their dashboard.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold">Reason for Reupload</label>
+                            <Textarea
+                                placeholder="e.g. Photo is blurry, document is expired, wrong side uploaded..."
+                                value={reuploadNote}
+                                onChange={(e) => setReuploadNote(e.target.value)}
+                                className="bg-white border-2 border-muted-foreground/30 focus-visible:ring-amber-500"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setReuploadDialog(null)} disabled={processing}>Cancel</Button>
+                        <Button
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            onClick={handleRequestReupload}
+                            disabled={processing}
+                        >
+                            {processing ? "Sending..." : "Send Request"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

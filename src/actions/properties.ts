@@ -30,6 +30,18 @@ export async function getProperties(ownerId?: string) {
     });
 }
 
+export async function getPendingOwnerActionCount() {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') return 0;
+
+    const properties = await prisma.property.findMany({
+        where: { ownerId: (session as any).userId },
+        select: { status: true, adminNotes: true }
+    });
+
+    return properties.filter(p => p.status === 'REJECTED' || (p.status === 'PENDING_APPROVAL' && p.adminNotes?.includes('[REUPLOAD'))).length;
+}
+
 export async function getPropertyById(id: string) {
     return prisma.property.findUnique({
         where: { id },
@@ -163,4 +175,117 @@ export async function editRoom(roomId: string, roomData: { roomNumber: string, t
         where: { id: roomId },
         data: roomData
     });
+}
+
+export async function deletePropertyDocument(propertyId: string, docType: string, index?: number) {
+    try {
+        const property = await prisma.property.findUnique({
+            where: { id: propertyId },
+            select: { [docType]: true, verifiedDocs: true } as any
+        });
+
+        if (!property) return { success: false, error: "Property not found" };
+
+        let updateData: any = {};
+        const currentValue = (property as any)[docType];
+        let verifiedDocs = JSON.parse((property as any).verifiedDocs || "[]");
+
+        if (index !== undefined && currentValue) {
+            // Handle JSON array fields (buildingPhotos, commonAreaPhotos)
+            try {
+                const photos = JSON.parse(currentValue);
+                if (Array.isArray(photos)) {
+                    photos.splice(index, 1);
+                    updateData[docType] = photos.length > 0 ? JSON.stringify(photos) : null;
+
+                    // Remove verification for this specific slot
+                    const docKey = `${docType}-${index}`;
+                    verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey);
+                }
+            } catch (e) {
+                updateData[docType] = null;
+            }
+        } else {
+            // Handle single string fields
+            updateData[docType] = null;
+            verifiedDocs = verifiedDocs.filter((key: string) => key !== docType);
+        }
+
+        updateData.verifiedDocs = JSON.stringify(verifiedDocs);
+
+        await prisma.property.update({
+            where: { id: propertyId },
+            data: updateData
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Delete Doc Error:", error);
+        return { success: false, error: "Failed to delete document" };
+    }
+}
+
+export async function togglePropertyDocumentVerification(propertyId: string, docKey: string, verified: boolean) {
+    try {
+        const property = await prisma.property.findUnique({
+            where: { id: propertyId },
+            select: { verifiedDocs: true }
+        });
+
+        if (!property) return { success: false, error: "Property not found" };
+
+        let verifiedDocs = [];
+        try {
+            verifiedDocs = JSON.parse(property.verifiedDocs || "[]");
+        } catch (e) {
+            verifiedDocs = [];
+        }
+
+        if (verified) {
+            if (!verifiedDocs.includes(docKey)) {
+                verifiedDocs.push(docKey);
+            }
+        } else {
+            verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey);
+        }
+
+        await prisma.property.update({
+            where: { id: propertyId },
+            data: { verifiedDocs: JSON.stringify(verifiedDocs) }
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+export async function requestDocumentReupload(propertyId: string, docType: string, note: string) {
+    try {
+        const property = await prisma.property.findUnique({
+            where: { id: propertyId },
+            select: { adminNotes: true }
+        });
+
+        if (!property) return { success: false, error: "Property not found" };
+
+        // Append reupload request to admin notes using a structured tag
+        const reuploadTag = `[REUPLOAD:${docType}] ${note}`;
+        const newNotes = property.adminNotes
+            ? `${property.adminNotes}\n${reuploadTag}`
+            : reuploadTag;
+
+        await prisma.property.update({
+            where: { id: propertyId },
+            data: {
+                adminNotes: newNotes,
+                status: 'PENDING_APPROVAL' // Set to pending to notify owner without rejecting the whole property
+            }
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Request Reupload Error:", error);
+        return { success: false, error: "Failed to request reupload" };
+    }
 }

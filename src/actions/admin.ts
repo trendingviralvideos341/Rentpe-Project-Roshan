@@ -505,3 +505,38 @@ export async function approveProperty(propertyId: string, approved: boolean, not
 
     return property;
 }
+
+export async function markPropertyPending(propertyId: string, notes: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.update({
+        where: { id: propertyId },
+        data: { status: 'PENDING_APPROVAL', adminNotes: notes || null }
+    });
+
+    try {
+        await prisma.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_PENDING",
+                message: `Your property "${property.name}" has been moved back to Pending Approval. ${notes ? `Admin notes: ${notes}` : ""}`
+            }
+        });
+    } catch (e) { console.error("notify owner error", e); }
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'PROPERTY_PENDING',
+            targetId: propertyId,
+            targetType: 'PROPERTY',
+            details: `Property ${property.name} marked as Pending. Admin Notes: ${notes}`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+
+    return property;
+}
