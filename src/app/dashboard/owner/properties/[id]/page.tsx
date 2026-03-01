@@ -622,15 +622,44 @@ export default function PropertyManagePage() {
                                                         }} />
                                                     </div>
                                                 </div>
-                                                {getReuploadNote(cat.key) && (
-                                                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
-                                                        <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
-                                                        <div>
-                                                            <span className="font-bold block uppercase">Reupload Required:</span>
-                                                            {getReuploadNote(cat.key)}
-                                                        </div>
-                                                    </div>
-                                                )}
+
+                                                <div className="mt-auto pt-2">
+                                                    {(() => {
+                                                        const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
+                                                        if (photos.length === 0) return null;
+
+                                                        const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
+                                                        // Check if ALL uploaded photos in this array are verified
+                                                        const allVerified = photos.length > 0 && photos.every((_: any, idx: number) => verifiedDocs.includes(`${cat.key}-${idx}`));
+
+                                                        if (getReuploadNote(cat.key)) {
+                                                            return (
+                                                                <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
+                                                                    <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                                                                    <div>
+                                                                        <span className="font-bold block uppercase">Reupload Required:</span>
+                                                                        {getReuploadNote(cat.key)}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <div className="space-y-1">
+                                                                <div className="text-[10px] font-bold text-center text-slate-500 mb-1">✓ Uploaded & Saved</div>
+                                                                {allVerified ? (
+                                                                    <div className="text-[9px] text-center text-green-600 font-bold border-green-200 border rounded py-1 bg-green-50 flex items-center justify-center gap-1">
+                                                                        <CheckCircle className="w-2.5 h-2.5" /> All Documents Verified
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="text-[9px] text-center text-amber-600 font-bold border-amber-200 border rounded py-1 bg-amber-50 flex items-center justify-center gap-1">
+                                                                        <AlertCircle className="w-2.5 h-2.5" /> Pending Approval
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
                                             </div>
                                         ) : property[cat.key] ? (
                                             <div className="flex flex-col gap-2 relative group h-full">
@@ -648,26 +677,29 @@ export default function PropertyManagePage() {
                                                     <button
                                                         type="button"
                                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key); }}
-                                                        className="bg-red-600 text-white p-2 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40 group/btn"
+                                                        className="bg-red-600 text-white px-2 py-1.5 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40 group/btn"
                                                         title="Delete Document"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-4 h-4 mr-1" />
+                                                        <span className="text-[10px] font-bold">Delete</span>
                                                     </button>
                                                     <label
-                                                        className="cursor-pointer bg-blue-600 text-white p-2 shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center border-r border-b border-white/40 ml-[1px]"
+                                                        className="cursor-pointer bg-blue-600 text-white px-2 py-1.5 shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center border-r border-b border-white/40 ml-[1px]"
                                                         title="Reupload Document"
                                                     >
                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                        <RefreshCcw className="w-4 h-4" />
+                                                        <RefreshCcw className="w-4 h-4 mr-1" />
+                                                        <span className="text-[10px] font-bold">Reupload</span>
                                                     </label>
                                                     <a
                                                         href={property[cat.key]}
                                                         target="_blank"
-                                                        className="bg-slate-800 text-white p-2 shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center border-r border-b border-white/40 rounded-br-md ml-[1px]"
+                                                        className="bg-slate-800 text-white px-2 py-1.5 shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center border-r border-b border-white/40 rounded-br-md ml-[1px]"
                                                         title="View Full Size"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        <Eye className="w-4 h-4" />
+                                                        <Eye className="w-4 h-4 mr-1" />
+                                                        <span className="text-[10px] font-bold">View</span>
                                                     </a>
                                                 </div>
 
