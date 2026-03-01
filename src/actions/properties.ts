@@ -128,6 +128,7 @@ export async function savePropertyDocuments(propertyId: string, docs: {
     commonAreaPhotos?: string,
     parkingPhoto?: string,
     bathroomPhoto?: string,
+    adminNotes?: string | null,
 }) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");

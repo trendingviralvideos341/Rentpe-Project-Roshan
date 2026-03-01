@@ -111,6 +111,18 @@ export default function PropertyManagePage() {
                     newPropertyState[docType] = data.url;
                 }
 
+                // If this document had a REUPLOAD request, clear it
+                if (property.adminNotes) {
+                    const lines = property.adminNotes.split('\n');
+                    const filteredLines = lines.filter((l: string) => !l.startsWith(`[REUPLOAD:${docType}`));
+                    const newAdminNotes = filteredLines.join('\n');
+
+                    if (newAdminNotes !== property.adminNotes) {
+                        updateData.adminNotes = newAdminNotes;
+                        newPropertyState.adminNotes = newAdminNotes;
+                    }
+                }
+
                 await savePropertyDocuments(propertyId, updateData);
                 setProperty(newPropertyState);
                 alert(`Document uploaded successfully!`);
