@@ -12,6 +12,7 @@ export default function TenantsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filterType, setFilterType] = useState("ALL");
+    const [filterProperty, setFilterProperty] = useState("ALL");
     const [filterPayment, setFilterPayment] = useState("ALL");
     const [expandedTenant, setExpandedTenant] = useState<string | null>(null);
     const [blockNotes, setBlockNotes] = useState<Record<string, string>>({});
@@ -82,15 +83,24 @@ export default function TenantsPage() {
         } catch { alert("Failed to unblock tenant."); }
     };
 
+    const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
+
     const filteredTenants = tenants.filter(t => {
-        const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.roomNumber.includes(search) || t.displayId.includes(search);
+        const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
+            t.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
+            t.displayId.toLowerCase().includes(search.toLowerCase());
+
         const matchType = filterType === "ALL" || t.roomType === filterType;
+        const matchProperty = filterProperty === "ALL" || t.property?.name === filterProperty;
+
         const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
         const isPaid = latestRent?.paid ?? false;
-        if (filterPayment === "BLOCKED") return matchSearch && matchType && t.status === "VACATED";
+
+        if (filterPayment === "BLOCKED") return matchSearch && matchType && matchProperty && t.status === "VACATED";
         if (filterPayment !== "ALL" && t.status === "VACATED") return false;
+
         const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
-        return matchSearch && matchType && matchPayment;
+        return matchSearch && matchType && matchProperty && matchPayment;
     });
 
     const unpaidCount = tenants.filter(t => {
@@ -113,23 +123,58 @@ export default function TenantsPage() {
                 </div>
             </div>
 
-            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-indigo-50 border-indigo-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Expected Rent</p>
+                        <p className="text-2xl font-black text-indigo-900 mt-1">
+                            ₹{filteredTenants.reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-[10px] text-indigo-500 mt-1">Based on {filteredTenants.length} tenants</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-emerald-50 border-emerald-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Collected This Month</p>
+                        <p className="text-2xl font-black text-emerald-900 mt-1">
+                            ₹{filteredTenants.filter(t => t.rentRecords.some((r: any) => r.month === currentMonth && r.paid)).reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-[10px] text-emerald-500 mt-1">{filteredTenants.filter(t => t.rentRecords.some((r: any) => r.month === currentMonth && r.paid)).length} Payments received</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-rose-50 border-rose-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-bold text-rose-600 uppercase tracking-wider">Pending This Month</p>
+                        <p className="text-2xl font-black text-rose-900 mt-1">
+                            ₹{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status !== "VACATED").reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-[10px] text-rose-500 mt-1">{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status !== "VACATED").length} Unpaid tenants</p>
+                    </CardContent>
+                </Card>
+            </div>
             <Card>
                 <CardContent className="p-4">
                     <div className="flex flex-wrap gap-4 items-center">
                         <div className="flex-1 min-w-[200px]">
                             <Input placeholder="Search by name, room, or ID..." value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
+                        <select className="border rounded-md p-2 bg-background text-sm" value={filterProperty} onChange={e => setFilterProperty(e.target.value)}>
+                            <option value="ALL">All Properties (PGs)</option>
+                            {properties.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                            ))}
+                        </select>
                         <select className="border rounded-md p-2 bg-background text-sm" value={filterType} onChange={e => setFilterType(e.target.value)}>
                             <option value="ALL">All Room Types</option>
-                            <option value="Single">Single</option>
-                            <option value="Double">Double</option>
-                            <option value="Triple">Triple</option>
+                            <option value="Single Sharing">Single Sharing</option>
+                            <option value="Double Sharing">Double Sharing</option>
+                            <option value="Three Sharing">Three Sharing</option>
+                            <option value="Four Sharing">Four Sharing</option>
                         </select>
                         <select className="border rounded-md p-2 bg-background text-sm" value={filterPayment} onChange={e => setFilterPayment(e.target.value)}>
-                            <option value="ALL">All Payment Status</option>
-                            <option value="PAID">Rent Paid</option>
-                            <option value="UNPAID">Rent Unpaid</option>
+                            <option value="ALL">All Payments</option>
+                            <option value="PAID">Rent Paid (This Month)</option>
+                            <option value="UNPAID">Rent Unpaid (This Month)</option>
                             <option value="BLOCKED">Blocked Tenants</option>
                         </select>
                     </div>
@@ -144,7 +189,7 @@ export default function TenantsPage() {
                             <thead className="bg-muted border-b">
                                 <tr>
                                     <th className="p-4 text-left font-medium">Tenant ID</th>
-                                    <th className="p-4 text-left font-medium">Name</th>
+                                    <th className="p-4 text-left font-medium">Name & PG</th>
                                     <th className="p-4 text-left font-medium">Room</th>
                                     <th className="p-4 text-left font-medium">Start Date</th>
                                     <th className="p-4 text-left font-medium">Monthly Rent</th>
@@ -166,6 +211,7 @@ export default function TenantsPage() {
                                                 <td className="p-4 font-mono text-xs">{t.displayId}</td>
                                                 <td className="p-4">
                                                     <div className={`font-medium ${isBlocked ? "line-through text-red-400" : ""}`}>{t.name}</div>
+                                                    <div className="text-[10px] text-indigo-600 font-bold uppercase">{t.property?.name || "Unknown PG"}</div>
                                                     <div className="text-xs text-muted-foreground">{t.phone}</div>
                                                 </td>
                                                 <td className="p-4 text-sm">{t.roomNumber} <span className="text-xs text-muted-foreground">({t.roomType})</span></td>

@@ -12,6 +12,7 @@ export async function getTenants() {
     const tenants = await prisma.tenant.findMany({
         where: { property: { ownerId: userId } },
         include: {
+            property: { select: { name: true } },
             rentRecords: { orderBy: { createdAt: 'desc' } }
         },
         orderBy: { name: 'asc' }
