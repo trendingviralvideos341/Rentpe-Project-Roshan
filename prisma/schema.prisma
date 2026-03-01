@@ -41,7 +41,8 @@ model Property {
   status      String     @default("PENDING_APPROVAL")
   adminNotes  String?
   pgPhotoUrl  String?
-  idProofUrl  String?
+  aadhaarProof String?
+  panProof     String?
   pgLicenceUrl String?
   buildingPhotos String?
   commonAreaPhoto String?

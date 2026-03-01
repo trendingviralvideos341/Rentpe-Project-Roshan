@@ -356,11 +356,12 @@ export default function PropertyManagePage() {
                         <CardContent>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {[
-                                    { key: 'buildingPhotos', label: 'Building Photos', desc: 'Max 4 exterior/interior photos', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
+                                    { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
                                     { key: 'commonAreaPhoto', label: 'Common Area', desc: 'Hallway, Lobby, or Shared', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*' },
                                     { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
                                     { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderHover: 'border-rose-200 hover:border-rose-400', accept: 'image/*' },
-                                    { key: 'idProofUrl', label: 'Owner ID Proof', desc: 'Aadhaar / PAN', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
+                                    { key: 'aadhaarProof', label: 'Owner Aadhaar Proof', desc: 'Clear front/back of Aadhaar', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
+                                    { key: 'panProof', label: 'Owner PAN Proof', desc: 'Clear photo of PAN Card', icon: <FileText className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*,.pdf' },
                                     { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' }
                                 ].map((cat) => (
                                     <div key={cat.key} className={`border-2 ${cat.borderHover} transition-all rounded-xl p-4 flex flex-col justify-between shadow-sm bg-white`}>
@@ -376,21 +377,32 @@ export default function PropertyManagePage() {
                                         {cat.isArray ? (
                                             <div className="space-y-3">
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    {(property.buildingPhotos ? JSON.parse(property.buildingPhotos) : []).map((url: string, idx: number) => (
-                                                        <div key={idx} className="relative group/img h-20 bg-muted rounded-md overflow-hidden border">
-                                                            <img src={url} className="w-full h-full object-cover" />
-                                                            <div className="absolute top-1 right-1 bg-white/90 p-0.5 rounded shadow-sm text-green-600">
-                                                                <CheckCircle className="w-3 h-3" />
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    {(!property.buildingPhotos || JSON.parse(property.buildingPhotos).length < cat.max!) && (
-                                                        <label className="cursor-pointer border-2 border-dashed rounded-md flex flex-col items-center justify-center h-20 hover:bg-muted/30 transition-colors">
-                                                            <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                            <Plus className="w-4 h-4 text-muted-foreground" />
-                                                            <span className="text-[8px] font-bold uppercase mt-1">Add Photo</span>
-                                                        </label>
-                                                    )}
+                                                    {(() => {
+                                                        const photos = property.buildingPhotos ? JSON.parse(property.buildingPhotos) : [];
+                                                        const slots = [];
+                                                        // Render uploaded photos first
+                                                        for (let i = 0; i < 4; i++) {
+                                                            if (photos[i]) {
+                                                                slots.push(
+                                                                    <div key={`photo-${i}`} className="relative group/img h-20 bg-muted rounded-md overflow-hidden border">
+                                                                        <img src={photos[i]} className="w-full h-full object-cover" />
+                                                                        <div className="absolute top-1 right-1 bg-white/90 p-0.5 rounded shadow-sm text-green-600">
+                                                                            <CheckCircle className="w-3 h-3" />
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            } else {
+                                                                slots.push(
+                                                                    <label key={`slot-${i}`} className="cursor-pointer border-2 border-dashed rounded-md flex flex-col items-center justify-center h-20 hover:bg-muted/30 transition-colors">
+                                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                                        <Plus className="w-4 h-4 text-muted-foreground" />
+                                                                        <span className="text-[8px] font-bold uppercase mt-1">Add Photo</span>
+                                                                    </label>
+                                                                );
+                                                            }
+                                                        }
+                                                        return slots;
+                                                    })()}
                                                 </div>
                                                 <div className="text-[10px] font-bold text-center text-slate-500">
                                                     {property.buildingPhotos ? JSON.parse(property.buildingPhotos).length : 0} / {cat.max} Uploaded

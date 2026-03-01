@@ -108,7 +108,8 @@ export async function createProperty(formData: FormData) {
 }
 
 export async function savePropertyDocuments(propertyId: string, docs: {
-    idProofUrl?: string,
+    aadhaarProof?: string,
+    panProof?: string,
     pgLicenceUrl?: string,
     pgPhotoUrl?: string,
     buildingPhotos?: string, // JSON array string

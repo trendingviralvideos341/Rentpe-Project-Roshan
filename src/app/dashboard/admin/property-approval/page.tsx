@@ -214,7 +214,8 @@ export default function AdminPropertyApprovalPage() {
                                                     { key: 'commonAreaPhoto', label: 'Common Area' },
                                                     { key: 'parkingPhoto', label: 'Parking' },
                                                     { key: 'bathroomPhoto', label: 'Bathroom' },
-                                                    { key: 'idProofUrl', label: 'ID Proof (Owner)' },
+                                                    { key: 'aadhaarProof', label: 'Aadhaar' },
+                                                    { key: 'panProof', label: 'PAN Card' },
                                                     { key: 'pgLicenceUrl', label: 'PG Licence' }
                                                 ];
 
