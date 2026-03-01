@@ -52,7 +52,9 @@ export async function searchProperties(query?: string, filters?: {
             minPrice,
             rating: 4.5, // Placeholder
             amenities: JSON.parse(p.amenities || "[]"),
-            image: JSON.parse(p.images || "[]")[0] || ""
+            image: JSON.parse(p.images || "[]")[0] || "",
+            buildingPhotos: p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [],
+            commonAreaPhotos: p.commonAreaPhotos ? JSON.parse(p.commonAreaPhotos) : []
         };
     });
 

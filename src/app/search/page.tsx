@@ -7,6 +7,7 @@ import { Search, MapPin, Star, Building } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { searchProperties } from "@/actions/search";
+import { ImageCarousel } from "@/components/ImageCarousel";
 
 export default function SearchPage() {
     const [query, setQuery] = useState("");
@@ -81,23 +82,29 @@ export default function SearchPage() {
                         {properties.map((prop) => (
                             <Card key={prop.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
                                 <Link href={`/property/${prop.id}`} className="block">
-                                    <div className="h-48 overflow-hidden relative bg-muted cursor-pointer">
-                                        {prop.image ? (
-                                            <img
-                                                src={prop.image}
-                                                alt={prop.name}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 group-hover:from-purple-100 group-hover:to-blue-100 transition-colors">
-                                                <Building className="h-12 w-12 text-purple-300" />
-                                            </div>
-                                        )}
-                                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-bold flex items-center">
+                                    <div className="h-48 overflow-hidden relative bg-muted cursor-pointer group/image">
+                                        {(() => {
+                                            const mergedImages: string[] = [];
+                                            if (prop.buildingPhotos && Array.isArray(prop.buildingPhotos)) {
+                                                prop.buildingPhotos.forEach((p: any) => {
+                                                    if (p) mergedImages.push(typeof p === 'string' ? p : p.url);
+                                                });
+                                            }
+                                            if (prop.commonAreaPhotos && Array.isArray(prop.commonAreaPhotos)) {
+                                                prop.commonAreaPhotos.forEach((p: any) => {
+                                                    if (p) mergedImages.push(typeof p === 'string' ? p : p.url);
+                                                });
+                                            }
+
+                                            return <ImageCarousel images={mergedImages} alt={prop.name} />;
+                                        })()}
+
+                                        <div className="absolute top-2 right-2 z-[30] bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-bold flex items-center">
                                             <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" /> {prop.rating}
                                         </div>
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                            <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-purple-700 font-bold text-sm px-3 py-1.5 rounded-full shadow">
+                                        {/* Overlay - now requires higher z-index to sit above carousel buttons, but we only want the text, not a click blocker */}
+                                        <div className="absolute inset-0 z-[10] pointer-events-none bg-black/0 group-hover/image:bg-black/10 transition-colors flex items-center justify-center">
+                                            <span className="opacity-0 group-hover/image:opacity-100 transition-opacity bg-white/90 text-purple-700 font-bold text-sm px-3 py-1.5 rounded-full shadow pointer-events-auto">
                                                 👁 View Details
                                             </span>
                                         </div>
