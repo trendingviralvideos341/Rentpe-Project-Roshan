@@ -135,6 +135,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
         if (!form.onboardingDate) errs.onboardingDate = "Onboarding date required";
         if (!form.occupationType) errs.occupationType = "Occupation type required";
         if (!form.occupationDetail.trim()) errs.occupationDetail = "Occupation detail required";
+        if (!selectedRoomId && !booking.roomId && !booking.roomAssigned) errs.roomSelection = "Room allocation is required";
 
         if (Object.keys(errs).length > 0) {
             setFieldErrors(errs);
@@ -484,7 +485,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         {/* Room & Property Allocation */}
                         <div className="border-t pt-4 mt-2 space-y-4">
                             <div className="flex items-center gap-2 text-xs font-bold uppercase text-purple-800 mb-1">
-                                <RefreshCcw className="h-3 w-3" /> Change Room Allocation (Optional)
+                                <RefreshCcw className="h-3 w-3" /> Allocate Room *
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -521,10 +522,10 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                                     }
                                                 }}
                                             >
-                                                <option value="">Keep current: {booking.roomAssigned || "Not Allocated"}</option>
+                                                <option value="">{booking.roomAssigned ? `Keep current: ${booking.roomAssigned}` : "Select a room..."}</option>
                                                 {filteredRooms.map(r => (
                                                     <option key={r.id} value={r.id}>
-                                                        Room {r.roomNumber} — {r.type} (₹{r.price.toLocaleString()}) — {r.availability} beds left
+                                                        Room {r.roomNumber} — {r.type} (₹{r.price.toLocaleString()}) — {r.availability || 0} beds left
                                                     </option>
                                                 ))}
                                             </select>
@@ -541,6 +542,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                         {filteredRooms.length === 0 && (
                                             <p className="text-[10px] text-amber-600 font-bold mt-1 italic">⚠️ No available rooms in this PG.</p>
                                         )}
+                                        {fieldErrors.roomSelection && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.roomSelection}</p>}
                                     </div>
                                 )}
                             </div>
