@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { getProperties } from "@/actions/properties";
 import { getSession } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { ImageCarousel } from "@/components/ImageCarousel";
 
 export default function OwnerPropertiesPage() {
     const [properties, setProperties] = useState<any[]>([]);
@@ -60,37 +61,29 @@ export default function OwnerPropertiesPage() {
                                     )}
                                 </div>
                                 {(() => {
-                                    let coverPhoto = null;
-                                    // 1. Try first building photo
+                                    let mergedImages: string[] = [];
+
+                                    // 1. Gather Building Photos
                                     if (property.buildingPhotos) {
                                         try {
                                             const photos = JSON.parse(property.buildingPhotos);
-                                            if (photos && photos.length > 0 && photos[0]) {
-                                                coverPhoto = typeof photos[0] === 'string' ? photos[0] : photos[0].url;
-                                            }
-                                        } catch (e) { }
-                                    }
-                                    // 2. Fallback to first common area photo
-                                    if (!coverPhoto && property.commonAreaPhotos) {
-                                        try {
-                                            const photos = JSON.parse(property.commonAreaPhotos);
-                                            if (photos && photos.length > 0 && photos[0]) {
-                                                coverPhoto = typeof photos[0] === 'string' ? photos[0] : photos[0].url;
-                                            }
+                                            photos.forEach((p: any) => {
+                                                if (p) mergedImages.push(typeof p === 'string' ? p : p.url);
+                                            });
                                         } catch (e) { }
                                     }
 
-                                    return coverPhoto ? (
-                                        <img
-                                            src={coverPhoto}
-                                            alt={property.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <Building className="h-12 w-12 text-muted-foreground" />
-                                        </div>
-                                    );
+                                    // 2. Gather Common Area Photos
+                                    if (property.commonAreaPhotos) {
+                                        try {
+                                            const photos = JSON.parse(property.commonAreaPhotos);
+                                            photos.forEach((p: any) => {
+                                                if (p) mergedImages.push(typeof p === 'string' ? p : p.url);
+                                            });
+                                        } catch (e) { }
+                                    }
+
+                                    return <ImageCarousel images={mergedImages} alt={property.name} />;
                                 })()}
                             </div>
                             <CardHeader className="pb-2">
