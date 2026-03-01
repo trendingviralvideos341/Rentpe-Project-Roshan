@@ -42,10 +42,24 @@ export default function PropertyDetailPage() {
             try {
                 const data = await getPropertyById(id);
                 if (data) {
+                    let allImages: string[] = [];
+                    if (data.buildingPhotos) {
+                        try {
+                            const parsed = JSON.parse(data.buildingPhotos);
+                            parsed.forEach((p: any) => { if (p) allImages.push(typeof p === 'string' ? p : p.url); });
+                        } catch (e) { }
+                    }
+                    if (data.commonAreaPhotos) {
+                        try {
+                            const parsed = JSON.parse(data.commonAreaPhotos);
+                            parsed.forEach((p: any) => { if (p) allImages.push(typeof p === 'string' ? p : p.url); });
+                        } catch (e) { }
+                    }
+
                     setProperty({
                         ...data,
                         amenities: JSON.parse(data.amenities || "[]"),
-                        images: JSON.parse(data.images || "[]")
+                        images: allImages
                     });
                 }
             } catch (error) {
@@ -235,9 +249,9 @@ export default function PropertyDetailPage() {
                                         return acc;
                                     }, {})
                                 ).map((room: any) => (
-                                    <div key={room.type} className="flex justify-between items-center mb-2">
-                                        <span className="font-medium">{room.type} Room</span>
-                                        <span className="font-bold text-lg">₹{room.price.toLocaleString()}/mo</span>
+                                    <div key={room.type} className="flex justify-between items-center mb-2 border-b pb-2 last:border-0 last:pb-0">
+                                        <span className="font-medium text-sm text-muted-foreground">{room.type}</span>
+                                        <span className="font-bold text-lg text-primary">₹{room.price.toLocaleString()}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
                                     </div>
                                 ))}
                                 {property.rooms.length === 0 && (
