@@ -66,6 +66,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     });
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
+    const [selectedBedType, setSelectedBedType] = useState(booking.occupancy || "ALL");
     const [selectedRoomId, setSelectedRoomId] = useState("");
     const [editAmount, setEditAmount] = useState(booking.amount || "");
     const [editOccupancy, setEditOccupancy] = useState(booking.occupancy || "");
@@ -79,9 +80,11 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     }, [booking.propertyName, properties]);
 
     // Filtered rooms
-    const filteredRooms = selectedPropertyId
-        ? rooms.filter(r => r.propertyId === selectedPropertyId)
-        : rooms;
+    const filteredRooms = rooms.filter(r => {
+        if (selectedPropertyId && r.propertyId !== selectedPropertyId) return false;
+        if (selectedBedType && selectedBedType !== "ALL" && r.type !== selectedBedType) return false;
+        return true;
+    });
 
     // ── Pending amount prompt state ──
     const [showPendingPrompt, setShowPendingPrompt] = useState(false);
@@ -505,6 +508,25 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                         ))}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Bed Type Filter</label>
+                                    <select
+                                        className="w-full border-2 border-purple-100 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 transition-all"
+                                        value={selectedBedType}
+                                        onChange={e => {
+                                            setSelectedBedType(e.target.value);
+                                            setSelectedRoomId("");
+                                        }}
+                                    >
+                                        <option value="ALL">All Bed Types</option>
+                                        <option value="Single Sharing">Single Sharing</option>
+                                        <option value="Double Sharing">Double Sharing</option>
+                                        <option value="Three Sharing">Three Sharing</option>
+                                        <option value="Four Sharing">Four Sharing</option>
+                                        <option value="Five Sharing">Five Sharing</option>
+                                        <option value="Six Sharing">Six Sharing</option>
+                                    </select>
+                                </div>
 
                                 {selectedPropertyId && (
                                     <div className="animate-in fade-in slide-in-from-top-1 duration-200">
@@ -523,11 +545,18 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                                 }}
                                             >
                                                 <option value="">{booking.roomAssigned ? `Keep current: ${booking.roomAssigned}` : "Select a room..."}</option>
-                                                {filteredRooms.map(r => (
-                                                    <option key={r.id} value={r.id}>
-                                                        Room {r.roomNumber} — {r.type} (₹{r.price.toLocaleString()}) — {r.availability || 0} beds left
-                                                    </option>
-                                                ))}
+                                                {filteredRooms.map(r => {
+                                                    const avail = r.availability || 0;
+                                                    let colorClass = "text-green-600 font-bold";
+                                                    if (avail < 5) colorClass = "text-red-600 font-bold";
+                                                    else if (avail >= 5 && avail <= 15) colorClass = "text-orange-500 font-bold";
+
+                                                    return (
+                                                        <option key={r.id} value={r.id} className={colorClass}>
+                                                            Room {r.roomNumber} — {r.type} (₹{r.price.toLocaleString()}) — {avail} beds left
+                                                        </option>
+                                                    );
+                                                })}
                                             </select>
                                             <div className="relative w-32">
                                                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground select-none">₹</span>
@@ -540,7 +569,19 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                             </div>
                                         </div>
                                         {filteredRooms.length === 0 && (
-                                            <p className="text-[10px] text-amber-600 font-bold mt-1 italic">⚠️ No available rooms in this PG.</p>
+                                            <p className="text-[10px] text-amber-600 font-bold mt-1 italic">⚠️ No rooms match criteria.</p>
+                                        )}
+                                        {selectedRoomId && (
+                                            <div className="mt-2 text-xs">
+                                                {(() => {
+                                                    const selRoom = filteredRooms.find(r => r.id === selectedRoomId);
+                                                    if (!selRoom) return null;
+                                                    const avail = selRoom.availability || 0;
+                                                    if (avail < 5) return <span className="text-red-600 font-bold">🔴 Only {avail} beds left in this room!</span>;
+                                                    if (avail >= 5 && avail <= 15) return <span className="text-orange-500 font-bold">🟠 {avail} beds remaining</span>;
+                                                    return <span className="text-green-600 font-bold">🟢 {avail} beds available</span>;
+                                                })()}
+                                            </div>
                                         )}
                                         {fieldErrors.roomSelection && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.roomSelection}</p>}
                                     </div>
