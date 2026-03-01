@@ -59,9 +59,31 @@ export default function OwnerPropertiesPage() {
                                         <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold border-2 border-red-800">Rejected</Badge>
                                     )}
                                 </div>
-                                {property.images && JSON.parse(property.images).length > 0 ? (
+                            </div>
+                            {(() => {
+                                let coverPhoto = null;
+                                // 1. Try first building photo
+                                if (property.buildingPhotos) {
+                                    try {
+                                        const photos = JSON.parse(property.buildingPhotos);
+                                        if (photos && photos.length > 0 && photos[0]) {
+                                            coverPhoto = typeof photos[0] === 'string' ? photos[0] : photos[0].url;
+                                        }
+                                    } catch (e) { }
+                                }
+                                // 2. Fallback to first common area photo
+                                if (!coverPhoto && property.commonAreaPhotos) {
+                                    try {
+                                        const photos = JSON.parse(property.commonAreaPhotos);
+                                        if (photos && photos.length > 0 && photos[0]) {
+                                            coverPhoto = typeof photos[0] === 'string' ? photos[0] : photos[0].url;
+                                        }
+                                    } catch (e) { }
+                                }
+
+                                return coverPhoto ? (
                                     <img
-                                        src={JSON.parse(property.images)[0]}
+                                        src={coverPhoto}
                                         alt={property.name}
                                         className="w-full h-full object-cover"
                                     />
@@ -69,79 +91,80 @@ export default function OwnerPropertiesPage() {
                                     <div className="w-full h-full flex items-center justify-center">
                                         <Building className="h-12 w-12 text-muted-foreground" />
                                     </div>
-                                )}
+                                );
+                            })()}
+                        </div>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-xl">{property.name}</CardTitle>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                                <MapPin className="h-3 w-3 mr-1" /> {property.city}
                             </div>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xl">{property.name}</CardTitle>
-                                <div className="flex items-center text-sm text-muted-foreground">
-                                    <MapPin className="h-3 w-3 mr-1" /> {property.city}
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
-                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                                        <p className="text-xs font-bold text-red-800 uppercase mb-2 flex items-center gap-1 border-b border-red-200 pb-1">
-                                            <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
-                                        </p>
-                                        <div className="text-sm text-red-700 space-y-1">
-                                            {property.adminNotes.split('\n').map((line: string, i: number) => {
-                                                if (line.includes('[REUPLOAD:')) {
-                                                    // Parse readable category from the tag
-                                                    const tagMatch = line.match(/\[REUPLOAD:([a-zA-Z0-9-]+)\]/);
-                                                    let prefix = "Document Reupload";
-                                                    if (tagMatch && tagMatch[1]) {
-                                                        const rawKey = tagMatch[1].split('-')[0];
-                                                        const mapping: Record<string, string> = {
-                                                            buildingPhotos: "Building Photos",
-                                                            commonAreaPhotos: "Common Area",
-                                                            bathroomPhoto: "Bathroom",
-                                                            parkingPhoto: "Parking",
-                                                            aadhaarProof: "Aadhaar",
-                                                            panProof: "PAN Card",
-                                                            pgLicenceUrl: "PG Licence"
-                                                        };
-                                                        prefix = mapping[rawKey] || rawKey;
-                                                    }
-                                                    const cleanText = line.replace(/\[REUPLOAD:[a-zA-Z0-9-]+\]/g, '').trim();
-                                                    if (!cleanText) return null;
-                                                    return (
-                                                        <div key={i} className="flex gap-2">
-                                                            <span className="font-bold shrink-0">{prefix}:</span>
-                                                            <span>{cleanText}</span>
-                                                        </div>
-                                                    );
+                        </CardHeader>
+                        <CardContent>
+                            {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                    <p className="text-xs font-bold text-red-800 uppercase mb-2 flex items-center gap-1 border-b border-red-200 pb-1">
+                                        <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
+                                    </p>
+                                    <div className="text-sm text-red-700 space-y-1">
+                                        {property.adminNotes.split('\n').map((line: string, i: number) => {
+                                            if (line.includes('[REUPLOAD:')) {
+                                                // Parse readable category from the tag
+                                                const tagMatch = line.match(/\[REUPLOAD:([a-zA-Z0-9-]+)\]/);
+                                                let prefix = "Document Reupload";
+                                                if (tagMatch && tagMatch[1]) {
+                                                    const rawKey = tagMatch[1].split('-')[0];
+                                                    const mapping: Record<string, string> = {
+                                                        buildingPhotos: "Building Photos",
+                                                        commonAreaPhotos: "Common Area",
+                                                        bathroomPhoto: "Bathroom",
+                                                        parkingPhoto: "Parking",
+                                                        aadhaarProof: "Aadhaar",
+                                                        panProof: "PAN Card",
+                                                        pgLicenceUrl: "PG Licence"
+                                                    };
+                                                    prefix = mapping[rawKey] || rawKey;
                                                 }
-                                                return <div key={i}>{line}</div>;
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                                <p className="text-sm line-clamp-2 text-muted-foreground mb-4">
-                                    {property.description}
-                                </p>
-                                <div className="flex justify-between items-center text-sm pt-2 border-t mt-4">
-                                    <span className="font-bold flex items-center gap-1"><Building className="h-4 w-4 text-purple-600" /> {property.rooms?.length || 0} Rooms</span>
-                                    <div className="flex items-center gap-2">
-                                        {property.adminNotes?.includes('[REUPLOAD') && property.status !== 'LIVE' && (
-                                            <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-300 bg-red-100 animate-pulse shadow-sm px-2 py-0.5">
-                                                Action Required
-                                            </Badge>
-                                        )}
-                                        <span className="text-indigo-600 font-bold text-xs uppercase bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-600 hover:text-white transition-all flex items-center shadow-sm">
-                                            View Details &rarr;
-                                        </span>
+                                                const cleanText = line.replace(/\[REUPLOAD:[a-zA-Z0-9-]+\]/g, '').trim();
+                                                if (!cleanText) return null;
+                                                return (
+                                                    <div key={i} className="flex gap-2">
+                                                        <span className="font-bold shrink-0">{prefix}:</span>
+                                                        <span>{cleanText}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return <div key={i}>{line}</div>;
+                                        })}
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            )}
+                            <p className="text-sm line-clamp-2 text-muted-foreground mb-4">
+                                {property.description}
+                            </p>
+                            <div className="flex justify-between items-center text-sm pt-2 border-t mt-4">
+                                <span className="font-bold flex items-center gap-1"><Building className="h-4 w-4 text-purple-600" /> {property.rooms?.length || 0} Rooms</span>
+                                <div className="flex items-center gap-2">
+                                    {property.adminNotes?.includes('[REUPLOAD') && property.status !== 'LIVE' && (
+                                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-300 bg-red-100 animate-pulse shadow-sm px-2 py-0.5">
+                                            Action Required
+                                        </Badge>
+                                    )}
+                                    <span className="text-indigo-600 font-bold text-xs uppercase bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-600 hover:text-white transition-all flex items-center shadow-sm">
+                                        View Details &rarr;
+                                    </span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                     </Link>
                 ))}
-                {properties.length === 0 && (
-                    <div className="col-span-full p-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
-                        No properties listed yet. Start by adding your first one!
-                    </div>
-                )}
-            </div>
+            {properties.length === 0 && (
+                <div className="col-span-full p-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+                    No properties listed yet. Start by adding your first one!
+                </div>
+            )}
         </div>
+        </div >
     );
 }
