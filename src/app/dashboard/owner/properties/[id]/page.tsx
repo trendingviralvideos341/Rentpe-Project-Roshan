@@ -547,17 +547,25 @@ export default function PropertyManagePage() {
                                                                 slots.push(
                                                                     <div key={`photo-${i}`} className={`relative h-20 rounded-md overflow-hidden border shadow-inner group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-muted'}`}>
                                                                         <img src={img} className="w-full h-full object-cover" />
-                                                                        {/* Delete & View Buttons - Top Left - HIGHEST Z-INDEX */}
+                                                                        {/* Delete, Reupload, View Buttons - Top Left - HIGHEST Z-INDEX */}
                                                                         <div className="absolute top-0 left-0 flex z-[999] opacity-100 flex-row">
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
-                                                                                className="bg-red-600 text-white px-2 py-1.5 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40"
-                                                                                title="Delete Photo"
+                                                                                className="bg-red-600 text-white px-2 py-1.5 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40 group/btn"
+                                                                                title="Delete Document"
                                                                             >
                                                                                 <Trash2 className="w-4 h-4 mr-1" />
                                                                                 <span className="text-[10px] font-bold">Delete</span>
                                                                             </button>
+                                                                            <label
+                                                                                className="cursor-pointer bg-blue-600 text-white px-2 py-1.5 shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center border-r border-b border-white/40 ml-[1px]"
+                                                                                title="Reupload Document"
+                                                                            >
+                                                                                <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                                                <RefreshCcw className="w-4 h-4 mr-1" />
+                                                                                <span className="text-[10px] font-bold">Reupload</span>
+                                                                            </label>
                                                                             <a
                                                                                 href={img}
                                                                                 target="_blank"
