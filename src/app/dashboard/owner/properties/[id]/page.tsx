@@ -566,7 +566,7 @@ export default function PropertyManagePage() {
                                                                             >
                                                                                 <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
                                                                                 <RefreshCcw className="w-3 h-3 mr-1" />
-                                                                                <span className="text-[9px] font-bold">Swap</span>
+                                                                                <span className="text-[9px] font-bold">Reupload</span>
                                                                             </label>
                                                                             <a
                                                                                 href={img}
@@ -700,7 +700,7 @@ export default function PropertyManagePage() {
                                                         >
                                                             <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
                                                             <RefreshCcw className="w-3 h-3 mr-1" />
-                                                            <span className="text-[9px] font-bold">Swap</span>
+                                                            <span className="text-[9px] font-bold">Reupload</span>
                                                         </label>
                                                         <a
                                                             href={property[cat.key]}
