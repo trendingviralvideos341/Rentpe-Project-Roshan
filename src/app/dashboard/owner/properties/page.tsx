@@ -80,10 +80,40 @@ export default function OwnerPropertiesPage() {
                             <CardContent>
                                 {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
                                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                                        <p className="text-xs font-bold text-red-800 uppercase mb-1 flex items-center gap-1">
+                                        <p className="text-xs font-bold text-red-800 uppercase mb-2 flex items-center gap-1 border-b border-red-200 pb-1">
                                             <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
                                         </p>
-                                        <p className="text-sm text-red-700">{property.adminNotes}</p>
+                                        <div className="text-sm text-red-700 space-y-1">
+                                            {property.adminNotes.split('\n').map((line: string, i: number) => {
+                                                if (line.includes('[REUPLOAD:')) {
+                                                    // Parse readable category from the tag
+                                                    const tagMatch = line.match(/\[REUPLOAD:([a-zA-Z0-9-]+)\]/);
+                                                    let prefix = "Document Reupload";
+                                                    if (tagMatch && tagMatch[1]) {
+                                                        const rawKey = tagMatch[1].split('-')[0];
+                                                        const mapping: Record<string, string> = {
+                                                            buildingPhotos: "Building Photos",
+                                                            commonAreaPhotos: "Common Area",
+                                                            bathroomPhoto: "Bathroom",
+                                                            parkingPhoto: "Parking",
+                                                            aadhaarProof: "Aadhaar",
+                                                            panProof: "PAN Card",
+                                                            pgLicenceUrl: "PG Licence"
+                                                        };
+                                                        prefix = mapping[rawKey] || rawKey;
+                                                    }
+                                                    const cleanText = line.replace(/\[REUPLOAD:[a-zA-Z0-9-]+\]/g, '').trim();
+                                                    if (!cleanText) return null;
+                                                    return (
+                                                        <div key={i} className="flex gap-2">
+                                                            <span className="font-bold shrink-0">{prefix}:</span>
+                                                            <span>{cleanText}</span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return <div key={i}>{line}</div>;
+                                            })}
+                                        </div>
                                     </div>
                                 )}
                                 <p className="text-sm line-clamp-2 text-muted-foreground mb-4">
@@ -93,11 +123,13 @@ export default function OwnerPropertiesPage() {
                                     <span className="font-bold flex items-center gap-1"><Building className="h-4 w-4 text-purple-600" /> {property.rooms?.length || 0} Rooms</span>
                                     <div className="flex items-center gap-2">
                                         {property.adminNotes?.includes('[REUPLOAD') && property.status !== 'LIVE' && (
-                                            <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-300 bg-red-50 animate-pulse">
+                                            <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-300 bg-red-100 animate-pulse shadow-sm px-2 py-0.5">
                                                 Action Required
                                             </Badge>
                                         )}
-                                        <span className="text-purple-600 font-semibold text-xs uppercase hover:underline flex items-center">View Details &rarr;</span>
+                                        <span className="text-indigo-600 font-bold text-xs uppercase bg-indigo-50 px-3 py-1.5 rounded-md hover:bg-indigo-600 hover:text-white transition-all flex items-center shadow-sm">
+                                            View Details &rarr;
+                                        </span>
                                     </div>
                                 </div>
                             </CardContent>

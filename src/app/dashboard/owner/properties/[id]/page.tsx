@@ -168,16 +168,31 @@ export default function PropertyManagePage() {
     const getReuploadNote = (docType: string) => {
         if (!property?.adminNotes) return null;
 
+        const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
+        // If the entire category is verified, ignore the reupload note
+        if (verifiedDocs.includes(docType)) return null;
+
         const lines = property.adminNotes.split('\n');
         const matches = lines.filter((l: string) => l.startsWith(`[REUPLOAD:${docType}`));
 
         if (matches.length > 0) {
-            return matches.map((m: string) => {
+            const parsedNotes = matches.map((m: string) => {
                 const tagFull = m.match(/\[REUPLOAD:[a-zA-Z0-9-]+\]/)?.[0] || '';
                 const parts = tagFull.replace('[REUPLOAD:', '').replace(']', '').split('-');
+
+                // If it's a specific photo in an array, check if that specific photo is verified
+                if (parts[1]) {
+                    const specificDocKey = `${docType}-${parts[1]}`;
+                    if (verifiedDocs.includes(specificDocKey)) return null;
+                }
+
                 const index = parts[1] ? `(Photo ${parseInt(parts[1]) + 1}) - ` : '';
                 return `${index}${m.replace(tagFull, '').trim()}`.trim();
-            }).join(' | ');
+            }).filter(Boolean);
+
+            if (parsedNotes.length > 0) {
+                return parsedNotes.join(' | ');
+            }
         }
 
         return null;
@@ -297,12 +312,54 @@ export default function PropertyManagePage() {
 
             {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
-                    <h3 className="text-red-800 font-bold mb-2 flex items-center gap-2">
+                    <h3 className="text-red-800 font-bold mb-3 flex items-center gap-2 border-b border-red-200 pb-2">
                         <AlertCircle className="h-5 w-5" /> Admin Feedback / Corrections Needed
                     </h3>
-                    <p className="text-red-700 whitespace-pre-wrap">{property.adminNotes}</p>
-                    <div className="mt-4">
-                        <Button variant="destructive" size="sm" onClick={() => {
+                    <div className="text-red-700 space-y-2 mb-4">
+                        {property.adminNotes.split('\n').map((line: string, i: number) => {
+                            if (line.includes('[REUPLOAD:')) {
+                                const tagMatch = line.match(/\[REUPLOAD:([a-zA-Z0-9-]+)\]/);
+                                let prefix = "Document Reupload";
+                                if (tagMatch && tagMatch[1]) {
+                                    const rawKey = tagMatch[1].split('-')[0];
+                                    const mapping: Record<string, string> = {
+                                        buildingPhotos: "Building Photos",
+                                        commonAreaPhotos: "Common Area",
+                                        bathroomPhoto: "Bathroom",
+                                        parkingPhoto: "Parking",
+                                        aadhaarProof: "Aadhaar",
+                                        panProof: "PAN Card",
+                                        pgLicenceUrl: "PG Licence"
+                                    };
+                                    prefix = mapping[rawKey] || rawKey;
+
+                                    // Append specific photo index if present
+                                    const parts = tagMatch[1].split('-');
+                                    if (parts[1]) {
+                                        prefix += ` (Photo ${parseInt(parts[1]) + 1})`;
+                                    }
+                                }
+                                const cleanText = line.replace(/\[REUPLOAD:[a-zA-Z0-9-]+\]/g, '').trim();
+                                if (!cleanText) return null;
+
+                                // Hide if this specific document is verified
+                                const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
+                                if (tagMatch && tagMatch[1] && verifiedDocs.includes(tagMatch[1])) {
+                                    return null;
+                                }
+
+                                return (
+                                    <div key={i} className="flex gap-2">
+                                        <span className="font-bold shrink-0">{prefix}:</span>
+                                        <span>{cleanText}</span>
+                                    </div>
+                                );
+                            }
+                            return <div key={i}>{line}</div>;
+                        })}
+                    </div>
+                    <div className="mt-2">
+                        <Button variant="destructive" size="sm" className="shadow-sm font-bold" onClick={() => {
                             if (property.adminNotes.includes('[REUPLOAD')) {
                                 const tab = document.querySelector('[value="verification"]') as HTMLElement;
                                 if (tab) tab.click();
