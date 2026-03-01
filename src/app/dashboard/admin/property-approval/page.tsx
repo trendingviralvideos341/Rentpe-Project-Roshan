@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, User, Phone, Mail, CheckCircle, XCircle, RefreshCcw, MapPin, BedDouble, AlertCircle } from "lucide-react";
+import { Building2, User, Phone, Mail, CheckCircle, XCircle, RefreshCcw, MapPin, BedDouble, AlertCircle, ImageIcon, FileText, Upload, Eye } from "lucide-react";
 import { getAllPropertiesForAdmin, approveProperty, getAdminPropertyAnalytics, markPropertyPending } from "@/actions/admin";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
 import { useToast } from "@/components/ui/use-toast";
@@ -347,94 +347,133 @@ export default function AdminPropertyApprovalPage() {
                                                 <CheckCircle className="h-4 w-4 text-green-600" /> Uploaded Documents for Verification
                                             </h4>
 
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                                                {(() => {
-                                                    const docs = [
-                                                        { key: 'pgPhotoUrl', label: 'PG / Bldg (Old)' },
-                                                        { key: 'buildingPhotos', label: 'Bldg Photo', isArray: true },
-                                                        { key: 'commonAreaPhotos', label: 'Common Area', isArray: true },
-                                                        { key: 'parkingPhoto', label: 'Parking' },
-                                                        { key: 'bathroomPhoto', label: 'Bathroom' },
-                                                        { key: 'aadhaarProof', label: 'Aadhaar' },
-                                                        { key: 'panProof', label: 'PAN Card' },
-                                                        { key: 'pgLicenceUrl', label: 'PG Licence' }
-                                                    ];
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {[
+                                                    { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-200', isArray: true },
+                                                    { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway, Lobby, or Shared (4 Photos)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200', isArray: true },
+                                                    { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderClass: 'border-rose-200' },
+                                                    { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderClass: 'border-amber-200' },
+                                                    { key: 'aadhaarProof', label: 'Owner Aadhaar Proof', desc: 'Clear front/back of Aadhaar', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderClass: 'border-emerald-200' },
+                                                    { key: 'panProof', label: 'Owner PAN Proof', desc: 'Clear photo of PAN Card', icon: <FileText className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderClass: 'border-blue-200' },
+                                                    { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' }
+                                                ].map((cat) => (
+                                                    <div key={cat.key} className={`border-2 ${cat.borderClass} transition-all rounded-xl p-4 flex flex-col justify-between shadow-sm bg-white`}>
+                                                        <div className="flex items-center gap-3 mb-4">
+                                                            <div className={`p-2 ${cat.bgClass} rounded-lg ${cat.colorClass}`}>{cat.icon}</div>
+                                                            <div>
+                                                                <h4 className="font-bold text-sm tracking-tight">{cat.label}</h4>
+                                                                <p className="text-[10px] text-muted-foreground uppercase">{cat.desc}</p>
+                                                            </div>
+                                                        </div>
 
-                                                    const uploadedItems: { url: string; label: string; key: string }[] = [];
-                                                    docs.forEach(d => {
-                                                        if (!property[d.key]) return;
-                                                        if (d.isArray) {
-                                                            try {
-                                                                const urls = JSON.parse(property[d.key]);
-                                                                urls.forEach((u: any, i: number) => {
-                                                                    const actualUrl = typeof u === 'string' ? u : u.url;
-                                                                    uploadedItems.push({ url: actualUrl, label: `${d.label} ${i + 1}`, key: `${d.key}-${i}` });
-                                                                });
-                                                            } catch (e) {
-                                                                console.error("Error parsing photos:", e);
-                                                            }
-                                                        } else {
-                                                            const actualUrl = typeof property[d.key] === 'string' ? property[d.key] : property[d.key].url;
-                                                            uploadedItems.push({ url: actualUrl, label: d.label, key: d.key });
-                                                        }
-                                                    });
+                                                        {cat.isArray ? (
+                                                            <div className="space-y-3">
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {(() => {
+                                                                        const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
+                                                                        const slots = [];
+                                                                        for (let i = 0; i < 4; i++) {
+                                                                            if (photos[i]) {
+                                                                                const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
+                                                                                const isVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key}-${i}`);
 
-                                                    if (uploadedItems.length === 0) {
-                                                        return <div className="col-span-full p-10 border border-dashed rounded-xl text-center text-sm text-muted-foreground bg-muted/20">No verification documents have been uploaded by the owner yet.</div>;
-                                                    }
-
-                                                    return uploadedItems.map((item) => {
-                                                        const isVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(item.key);
-
-                                                        return (
-                                                            <div key={item.key} className="relative group flex flex-col h-full bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all overflow-hidden">
-                                                                <div className={`p-2 text-[11px] font-bold text-center border-b uppercase truncate flex items-center justify-center gap-1 ${isVerified ? 'bg-green-50 text-green-800 border-green-200' : 'bg-muted/50'}`}>
-                                                                    {item.label} {isVerified && <CheckCircle className="h-3 w-3 text-green-600" />}
-                                                                </div>
-
-                                                                <a href={item.url} target="_blank" className={`block flex-1 overflow-hidden relative ${isVerified ? 'ring-2 ring-green-400 ring-inset' : ''}`}>
-                                                                    {String(item.url || "").endsWith(".pdf") ?
-                                                                        <div className="w-full h-32 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors">
-                                                                            <span className="text-[10px] font-bold text-slate-500 break-words text-center px-1 border-2 border-slate-200 rounded p-2">PDF DOC</span>
-                                                                        </div>
-                                                                        : <img src={String(item.url || "")} className="w-full h-32 object-cover transition-transform duration-500 hover:scale-110" />}
-
-                                                                    {/* Overlay for quick actions on hover */}
-                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                                                                        <span className="text-white text-xs font-bold bg-black/50 px-2 py-1 rounded">View Full Size</span>
-                                                                    </div>
-                                                                </a>
-
-                                                                <div className="grid grid-cols-2 border-t divide-x">
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            handleToggleVerification(property.id, item.key, isVerified);
-                                                                        }}
-                                                                        className={`py-2 px-1 flex items-center justify-center gap-1 text-[9px] font-bold uppercase transition-colors ${isVerified ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'hover:bg-green-50 text-slate-600 hover:text-green-700'}`}
-                                                                        disabled={processing}
-                                                                    >
-                                                                        {isVerified ? <><XCircle className="w-3 h-3" /> Unverify</> : <><CheckCircle className="w-3 h-3" /> Verify Doc</>}
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            setReuploadDialog({
-                                                                                isOpen: true,
-                                                                                propertyId: property.id,
-                                                                                docType: item.key,
-                                                                                label: item.label
-                                                                            });
-                                                                        }}
-                                                                        className="py-2 px-1 hover:bg-amber-50 text-slate-600 hover:text-amber-700 flex items-center justify-center gap-1 text-[9px] font-bold uppercase transition-colors"
-                                                                    >
-                                                                        <RefreshCcw className="w-3 h-3" /> Reupload
-                                                                    </button>
+                                                                                slots.push(
+                                                                                    <div key={`photo-${i}`} className={`relative h-24 rounded-md overflow-hidden border shadow-inner group/img ${isVerified ? 'ring-2 ring-green-400 ring-offset-1' : 'bg-muted'}`}>
+                                                                                        <img src={img} className="w-full h-full object-cover" />
+                                                                                        {/* Admin Actions - Verify / Reupload */}
+                                                                                        <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-slate-200 flex opacity-0 group-hover/img:opacity-100 transition-opacity divide-x">
+                                                                                            <button
+                                                                                                onClick={(e) => { e.preventDefault(); handleToggleVerification(property.id, `${cat.key}-${i}`, isVerified); }}
+                                                                                                className={`flex-1 py-1.5 flex items-center justify-center gap-1 text-[9px] font-bold uppercase transition-colors ${isVerified ? 'hover:bg-red-50 text-red-600' : 'hover:bg-green-50 text-green-700'}`}
+                                                                                                disabled={processing}
+                                                                                            >
+                                                                                                {isVerified ? "Unverify" : "Verify Doc"}
+                                                                                            </button>
+                                                                                            <button
+                                                                                                onClick={(e) => { e.preventDefault(); setReuploadDialog({ isOpen: true, propertyId: property.id, docType: `${cat.key}-${i}`, label: `${cat.label} ${i + 1}` }); }}
+                                                                                                className="flex-1 py-1.5 hover:bg-amber-50 text-amber-700 flex items-center justify-center gap-1 text-[9px] font-bold uppercase transition-colors"
+                                                                                            >
+                                                                                                Reupload
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <div className="absolute top-0 right-0 z-10">
+                                                                                            {isVerified && (
+                                                                                                <div className="bg-green-600 text-white p-1 rounded-bl-md shadow-sm" title="Verified">
+                                                                                                    <CheckCircle className="w-3 h-3" />
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <a href={img} target="_blank" className="absolute top-0 left-0 bg-slate-800/80 text-white p-1 rounded-br-md shadow-sm opacity-0 group-hover/img:opacity-100 transition-opacity" title="View Full Size">
+                                                                                            <Eye className="w-3 h-3" />
+                                                                                        </a>
+                                                                                    </div>
+                                                                                );
+                                                                            } else {
+                                                                                slots.push(
+                                                                                    <div key={`slot-${i}`} className={`border-2 border-dashed border-slate-200 rounded-md flex flex-col items-center justify-center h-24 bg-slate-50 opacity-60`}>
+                                                                                        <span className={`text-[8px] font-bold uppercase mt-1 text-slate-400`}>Awaiting Upload</span>
+                                                                                    </div>
+                                                                                );
+                                                                            }
+                                                                        }
+                                                                        return slots;
+                                                                    })()}
                                                                 </div>
                                                             </div>
-                                                        );
-                                                    });
-                                                })()}
+                                                        ) : property[cat.key] ? (
+                                                            <div className="flex flex-col gap-2 relative group h-full">
+                                                                {(() => {
+                                                                    const img = typeof property[cat.key] === 'string' ? property[cat.key] : property[cat.key].url;
+                                                                    const isVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key);
+
+                                                                    return (
+                                                                        <div className={`w-full h-32 rounded-lg overflow-hidden border shadow-inner relative ${isVerified ? 'ring-2 ring-green-400 ring-offset-2' : 'bg-muted'}`}>
+                                                                            {img.endsWith(".pdf") ?
+                                                                                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 transition-colors">
+                                                                                    <FileText className="w-8 h-8 text-slate-400 mb-1" />
+                                                                                    <span className="text-[10px] font-bold text-slate-500">PDF Document</span>
+                                                                                </div>
+                                                                                : <img src={img} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                            }
+                                                                            <div className="absolute top-0 right-0 z-10">
+                                                                                {isVerified && (
+                                                                                    <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-sm" title="Verified">
+                                                                                        <CheckCircle className="w-4 h-4" />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <a href={img} target="_blank" className="absolute top-0 left-0 bg-slate-800/80 text-white p-1.5 rounded-br-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity" title="View Full Size">
+                                                                                <Eye className="w-4 h-4" />
+                                                                            </a>
+
+                                                                            <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-slate-200 flex divide-x opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                <button
+                                                                                    onClick={(e) => { e.preventDefault(); handleToggleVerification(property.id, cat.key, isVerified); }}
+                                                                                    className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold uppercase transition-colors ${isVerified ? 'hover:bg-red-50 text-red-600' : 'hover:bg-green-50 text-green-700'}`}
+                                                                                    disabled={processing}
+                                                                                >
+                                                                                    {isVerified ? <><XCircle className="w-4 h-4" /> Unverify</> : <><CheckCircle className="w-4 h-4" /> Verify Doc</>}
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={(e) => { e.preventDefault(); setReuploadDialog({ isOpen: true, propertyId: property.id, docType: cat.key, label: cat.label }); }}
+                                                                                    className="flex-1 py-3 hover:bg-amber-50 text-amber-700 flex items-center justify-center gap-1.5 text-xs font-bold uppercase transition-colors"
+                                                                                >
+                                                                                    <RefreshCcw className="w-4 h-4" /> Reupload
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-2 text-center h-full flex flex-col justify-end">
+                                                                <div className={`w-full h-32 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50 opacity-60`}>
+                                                                    <p className={`text-xs font-bold text-slate-400 mt-2 uppercase tracking-wider`}>Awaiting Upload</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </TabsContent>
