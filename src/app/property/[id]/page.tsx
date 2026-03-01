@@ -10,6 +10,8 @@ import { getPropertyById } from "@/actions/properties";
 import { Input } from "@/components/ui/input";
 import { validateEmail, validatePhone, validateName } from "@/lib/validators";
 
+import { ImageCarousel } from "@/components/ImageCarousel";
+
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
 
 // ── Input helpers ──
@@ -126,33 +128,9 @@ export default function PropertyDetailPage() {
 
     return (
         <div className="container mx-auto max-w-6xl py-8 px-4">
-            {/* Image Gallery */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px] mb-8 rounded-xl overflow-hidden bg-muted">
-                {mainImage ? (
-                    <img src={mainImage} className="w-full h-full object-cover" alt={property.name} />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <Building className="h-20 w-20 text-muted-foreground/30" />
-                    </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                    {otherImages.map((img: string, i: number) => (
-                        <img key={i} src={img} className="w-full h-full object-cover" alt={`${property.name} ${i + 2}`} />
-                    ))}
-                    {property.images.length > 4 && (
-                        <div className="relative">
-                            <img src={property.images[4]} className="w-full h-full object-cover" alt="More" />
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-xl cursor-pointer hover:bg-black/40">
-                                +{property.images.length - 4} More
-                            </div>
-                        </div>
-                    )}
-                    {property.images.length < 4 && [1, 2, 3].slice(0, 4 - property.images.length).map(i => (
-                        <div key={i} className="bg-muted-foreground/10 flex items-center justify-center">
-                            <Building className="h-8 w-8 text-muted-foreground/20" />
-                        </div>
-                    ))}
-                </div>
+            {/* Image Gallery Header */}
+            <div className="h-[400px] md:h-[500px] mb-8 rounded-xl overflow-hidden bg-muted shadow-lg border">
+                <ImageCarousel images={property.images} alt={property.name} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -196,6 +174,53 @@ export default function PropertyDetailPage() {
                             {property.amenities.length === 0 && (
                                 <p className="text-sm text-muted-foreground col-span-full">Information about amenities will be provided during visit.</p>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Categorized Photo Gallery */}
+                    <div>
+                        <h2 className="text-xl font-bold mb-4">Property Gallery</h2>
+                        <div className="space-y-6">
+                            {(() => {
+                                const renderCategoryGrid = (title: string, dataString: string | null) => {
+                                    if (!dataString) return null;
+                                    try {
+                                        const photos = JSON.parse(dataString).map((p: any) => typeof p === 'string' ? p : p.url).filter(Boolean);
+                                        if (photos.length === 0) return null;
+                                        return (
+                                            <div>
+                                                <h3 className="text-md font-semibold mb-3 text-muted-foreground flex items-center gap-2">
+                                                    <div className="h-1 flex-1 bg-muted rounded"></div>
+                                                    <span>{title} ({photos.length})</span>
+                                                    <div className="h-1 flex-1 bg-muted rounded"></div>
+                                                </h3>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                                    {photos.map((url: string, idx: number) => (
+                                                        <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted border hover:shadow-md transition-shadow">
+                                                            <a href={url} target="_blank" rel="noopener noreferrer">
+                                                                <img src={url} alt={`${title} ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                                                            </a>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    } catch (e) { return null; }
+                                };
+
+                                return (
+                                    <>
+                                        {renderCategoryGrid("Building Photos", property.buildingPhotos)}
+                                        {renderCategoryGrid("Common Area", property.commonAreaPhotos)}
+                                        {property.bathroomPhoto && renderCategoryGrid("Bathroom", JSON.stringify([property.bathroomPhoto]))}
+                                        {property.parkingPhoto && renderCategoryGrid("Parking Area", JSON.stringify([property.parkingPhoto]))}
+
+                                        {!property.buildingPhotos && !property.commonAreaPhotos && !property.bathroomPhoto && !property.parkingPhoto && (
+                                            <p className="text-sm text-muted-foreground">No additional gallery photos available.</p>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
 
