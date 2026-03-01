@@ -288,14 +288,6 @@ export async function markBookingPaid(id: string, method: string) {
                 });
             }
 
-            // Decrement available beds for this room
-            if (room.availability > 0) {
-                await prisma.room.update({
-                    where: { id: room.id },
-                    data: { availability: room.availability - 1 }
-                });
-            }
-
             // Log tenant creation
             await prisma.auditLog.create({
                 data: {
@@ -311,6 +303,7 @@ export async function markBookingPaid(id: string, method: string) {
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/tenants');
+    revalidatePath('/dashboard/owner/properties');
     revalidatePath('/dashboard/admin');
     revalidatePath('/dashboard/student');
     return booking;
