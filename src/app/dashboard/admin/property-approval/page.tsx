@@ -210,8 +210,7 @@ export default function AdminPropertyApprovalPage() {
                                             {(() => {
                                                 const docs = [
                                                     { key: 'pgPhotoUrl', label: 'PG / Bldg (Old)' },
-                                                    { key: 'frontBuildingPhoto', label: 'Front Bldg' },
-                                                    { key: 'backBuildingPhoto', label: 'Back Bldg' },
+                                                    { key: 'buildingPhotos', label: 'Bldg Photo', isArray: true },
                                                     { key: 'commonAreaPhoto', label: 'Common Area' },
                                                     { key: 'parkingPhoto', label: 'Parking' },
                                                     { key: 'bathroomPhoto', label: 'Bathroom' },
@@ -219,20 +218,35 @@ export default function AdminPropertyApprovalPage() {
                                                     { key: 'pgLicenceUrl', label: 'PG Licence' }
                                                 ];
 
-                                                const uploadedDocs = docs.filter(d => property[d.key]);
+                                                const uploadedItems: { url: string; label: string; key: string }[] = [];
+                                                docs.forEach(d => {
+                                                    if (!property[d.key]) return;
+                                                    if (d.isArray) {
+                                                        try {
+                                                            const urls = JSON.parse(property[d.key]);
+                                                            urls.forEach((url: string, i: number) => {
+                                                                uploadedItems.push({ url, label: `${d.label} ${i + 1}`, key: `${d.key}-${i}` });
+                                                            });
+                                                        } catch (e) {
+                                                            console.error("Error parsing buildingPhotos:", e);
+                                                        }
+                                                    } else {
+                                                        uploadedItems.push({ url: property[d.key], label: d.label, key: d.key });
+                                                    }
+                                                });
 
-                                                if (uploadedDocs.length === 0) {
+                                                if (uploadedItems.length === 0) {
                                                     return <div className="col-span-full p-6 border border-dashed rounded-md text-center text-xs text-muted-foreground bg-muted/20">No verification documents uploaded.</div>;
                                                 }
 
-                                                return uploadedDocs.map((doc) => (
-                                                    <a href={property[doc.key]} target="_blank" key={doc.key} className="block border rounded-md overflow-hidden hover:border-indigo-500 transition-colors shadow-sm group bg-white">
-                                                        <div className="bg-muted/50 p-1.5 text-[10px] font-bold text-center border-b uppercase truncate">{doc.label}</div>
-                                                        {property[doc.key].endsWith(".pdf") ?
+                                                return uploadedItems.map((item) => (
+                                                    <a href={item.url} target="_blank" key={item.key} className="block border rounded-md overflow-hidden hover:border-indigo-500 transition-colors shadow-sm group bg-white">
+                                                        <div className="bg-muted/50 p-1.5 text-[10px] font-bold text-center border-b uppercase truncate">{item.label}</div>
+                                                        {item.url.endsWith(".pdf") ?
                                                             <div className="w-full h-24 flex items-center justify-center bg-slate-50 group-hover:bg-slate-100 transition-colors">
                                                                 <span className="text-[10px] font-bold text-slate-500 break-words text-center px-1">PDF<br />Document</span>
                                                             </div>
-                                                            : <img src={property[doc.key]} className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300" />}
+                                                            : <img src={item.url} className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300" />}
                                                     </a>
                                                 ));
                                             })()}

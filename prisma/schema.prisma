@@ -43,8 +43,7 @@ model Property {
   pgPhotoUrl  String?
   idProofUrl  String?
   pgLicenceUrl String?
-  frontBuildingPhoto String?
-  backBuildingPhoto String?
+  buildingPhotos String?
   commonAreaPhoto String?
   parkingPhoto String?
   bathroomPhoto String?

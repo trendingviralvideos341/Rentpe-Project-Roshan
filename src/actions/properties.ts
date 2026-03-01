@@ -111,8 +111,7 @@ export async function savePropertyDocuments(propertyId: string, docs: {
     idProofUrl?: string,
     pgLicenceUrl?: string,
     pgPhotoUrl?: string,
-    frontBuildingPhoto?: string,
-    backBuildingPhoto?: string,
+    buildingPhotos?: string, // JSON array string
     commonAreaPhoto?: string,
     parkingPhoto?: string,
     bathroomPhoto?: string,

@@ -67,8 +67,25 @@ export default function PropertyManagePage() {
             const data = await res.json();
 
             if (res.ok && data.url) {
-                await savePropertyDocuments(propertyId, { [docType]: data.url });
-                setProperty({ ...property, [docType]: data.url });
+                let updateData: any = { [docType]: data.url };
+                let newPropertyState = { ...property };
+
+                if (docType === 'buildingPhotos') {
+                    const existingPhotos = property.buildingPhotos ? JSON.parse(property.buildingPhotos) : [];
+                    if (existingPhotos.length >= 4) {
+                        alert("Maximum 4 building photos allowed.");
+                        setUploading(false);
+                        return;
+                    }
+                    const updatedPhotos = [...existingPhotos, data.url];
+                    updateData = { buildingPhotos: JSON.stringify(updatedPhotos) };
+                    newPropertyState.buildingPhotos = updateData.buildingPhotos;
+                } else {
+                    newPropertyState[docType] = data.url;
+                }
+
+                await savePropertyDocuments(propertyId, updateData);
+                setProperty(newPropertyState);
                 alert(`Document uploaded successfully!`);
             } else {
                 alert(`Upload failed: ${data.error}`);
@@ -246,26 +263,18 @@ export default function PropertyManagePage() {
                                 ))}
                             </div>
 
-                            {(property.frontBuildingPhoto || property.backBuildingPhoto || property.commonAreaPhoto || property.parkingPhoto || property.bathroomPhoto) && (
+                            {(property.buildingPhotos || property.commonAreaPhoto || property.parkingPhoto || property.bathroomPhoto) && (
                                 <div className="mt-8 border-t pt-6">
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Verified Building Photos</h4>
                                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                                        {property.frontBuildingPhoto && (
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-semibold">Front Building</span>
+                                        {property.buildingPhotos && JSON.parse(property.buildingPhotos).map((img: string, i: number) => (
+                                            <div key={i} className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Building Photo {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
-                                                    <img src={property.frontBuildingPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                    <img src={img} className="object-cover w-full h-full hover:scale-105 transition-transform" />
                                                 </div>
                                             </div>
-                                        )}
-                                        {property.backBuildingPhoto && (
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-semibold">Back Building</span>
-                                                <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
-                                                    <img src={property.backBuildingPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
-                                                </div>
-                                            </div>
-                                        )}
+                                        ))}
                                         {property.commonAreaPhoto && (
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Common Area</span>
@@ -347,8 +356,7 @@ export default function PropertyManagePage() {
                         <CardContent>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {[
-                                    { key: 'frontBuildingPhoto', label: 'Front Building', desc: 'Clear front exterior photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*' },
-                                    { key: 'backBuildingPhoto', label: 'Back Building', desc: 'Clear rear exterior photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-teal-600', bgClass: 'bg-teal-50', borderHover: 'border-teal-200 hover:border-teal-400', accept: 'image/*' },
+                                    { key: 'buildingPhotos', label: 'Building Photos', desc: 'Max 4 exterior/interior photos', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
                                     { key: 'commonAreaPhoto', label: 'Common Area', desc: 'Hallway, Lobby, or Shared', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*' },
                                     { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
                                     { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderHover: 'border-rose-200 hover:border-rose-400', accept: 'image/*' },
@@ -363,7 +371,32 @@ export default function PropertyManagePage() {
                                                 <p className="text-[10px] text-muted-foreground uppercase">{cat.desc}</p>
                                             </div>
                                         </div>
-                                        {property[cat.key] ? (
+
+                                        {/* Display logic for arrays (Building Photos) or single files */}
+                                        {cat.isArray ? (
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {(property.buildingPhotos ? JSON.parse(property.buildingPhotos) : []).map((url: string, idx: number) => (
+                                                        <div key={idx} className="relative group/img h-20 bg-muted rounded-md overflow-hidden border">
+                                                            <img src={url} className="w-full h-full object-cover" />
+                                                            <div className="absolute top-1 right-1 bg-white/90 p-0.5 rounded shadow-sm text-green-600">
+                                                                <CheckCircle className="w-3 h-3" />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {(!property.buildingPhotos || JSON.parse(property.buildingPhotos).length < cat.max!) && (
+                                                        <label className="cursor-pointer border-2 border-dashed rounded-md flex flex-col items-center justify-center h-20 hover:bg-muted/30 transition-colors">
+                                                            <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                            <Plus className="w-4 h-4 text-muted-foreground" />
+                                                            <span className="text-[8px] font-bold uppercase mt-1">Add Photo</span>
+                                                        </label>
+                                                    )}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-center text-slate-500">
+                                                    {property.buildingPhotos ? JSON.parse(property.buildingPhotos).length : 0} / {cat.max} Uploaded
+                                                </div>
+                                            </div>
+                                        ) : property[cat.key] ? (
                                             <div className="flex flex-col gap-2 relative group">
                                                 <div className="w-full h-28 bg-muted rounded-lg overflow-hidden border">
                                                     {property[cat.key].endsWith(".pdf") ?
