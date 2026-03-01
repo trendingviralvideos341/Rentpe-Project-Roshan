@@ -211,7 +211,7 @@ export default function AdminPropertyApprovalPage() {
                                                 const docs = [
                                                     { key: 'pgPhotoUrl', label: 'PG / Bldg (Old)' },
                                                     { key: 'buildingPhotos', label: 'Bldg Photo', isArray: true },
-                                                    { key: 'commonAreaPhoto', label: 'Common Area' },
+                                                    { key: 'commonAreaPhotos', label: 'Common Area', isArray: true },
                                                     { key: 'parkingPhoto', label: 'Parking' },
                                                     { key: 'bathroomPhoto', label: 'Bathroom' },
                                                     { key: 'aadhaarProof', label: 'Aadhaar' },

@@ -113,7 +113,7 @@ export async function savePropertyDocuments(propertyId: string, docs: {
     pgLicenceUrl?: string,
     pgPhotoUrl?: string,
     buildingPhotos?: string, // JSON array string
-    commonAreaPhoto?: string,
+    commonAreaPhotos?: string,
     parkingPhoto?: string,
     bathroomPhoto?: string,
 }) {

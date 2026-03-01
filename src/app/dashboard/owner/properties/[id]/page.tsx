@@ -55,10 +55,36 @@ export default function PropertyManagePage() {
     }, [propertyId, router]);
 
     const handleFileUpload = async (file: File, docType: string) => {
-        if (file.size > 5 * 1024 * 1024) {
-            alert(`File exceeds 5MB limit. Please upload a smaller size.`);
+        // Category-based size limit logic (User wants 5MB total per category)
+        const categories = {
+            buildingPhotos: { max: 5 * 1024 * 1024, isArray: true },
+            commonAreaPhotos: { max: 5 * 1024 * 1024, isArray: true },
+            parkingPhoto: { max: 5 * 1024 * 1024, isArray: false },
+            bathroomPhoto: { max: 5 * 1024 * 1024, isArray: false },
+            aadhaarProof: { max: 5 * 1024 * 1024, isArray: false },
+            panProof: { max: 5 * 1024 * 1024, isArray: false },
+            pgLicenceUrl: { max: 5 * 1024 * 1024, isArray: false }
+        } as any;
+
+        const cat = categories[docType];
+        if (file.size > (cat?.max || 5 * 1024 * 1024)) {
+            alert(`File exceeds the limit.`);
             return;
         }
+
+        // Logic for "Remaining MB" calculation: 
+        // We'll calculate it on the fly in the render, but we need to ensure the new file fits.
+        if (cat?.isArray) {
+            const photos = property[docType] ? JSON.parse(property[docType]) : [];
+            // For simplicity, we'll assume each existing photo is ~1MB if size not tracked, 
+            // but the user wants real-time. I'll add a 'size' property to the JSON if it doesn't exist.
+            const totalUsed = photos.reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0);
+            if (totalUsed + file.size > cat.max) {
+                alert(`Not enough space! Only ${(cat.max - totalUsed) / (1024 * 1024)} MB remaining.`);
+                return;
+            }
+        }
+
         setUploading(true);
         try {
             const formData = new FormData();
@@ -70,16 +96,17 @@ export default function PropertyManagePage() {
                 let updateData: any = { [docType]: data.url };
                 let newPropertyState = { ...property };
 
-                if (docType === 'buildingPhotos') {
-                    const existingPhotos = property.buildingPhotos ? JSON.parse(property.buildingPhotos) : [];
+                if (cat?.isArray) {
+                    const existingPhotos = property[docType] ? JSON.parse(property[docType]) : [];
                     if (existingPhotos.length >= 4) {
-                        alert("Maximum 4 building photos allowed.");
+                        alert("Maximum 4 photos allowed for this category.");
                         setUploading(false);
                         return;
                     }
-                    const updatedPhotos = [...existingPhotos, data.url];
-                    updateData = { buildingPhotos: JSON.stringify(updatedPhotos) };
-                    newPropertyState.buildingPhotos = updateData.buildingPhotos;
+                    // Store as {url, size} for the real-time indicator
+                    const updatedPhotos = [...existingPhotos, { url: data.url, size: file.size }];
+                    updateData = { [docType]: JSON.stringify(updatedPhotos) };
+                    newPropertyState[docType] = updateData[docType];
                 } else {
                     newPropertyState[docType] = data.url;
                 }
@@ -267,22 +294,22 @@ export default function PropertyManagePage() {
                                 <div className="mt-8 border-t pt-6">
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Verified Building Photos</h4>
                                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                                        {property.buildingPhotos && JSON.parse(property.buildingPhotos).map((img: string, i: number) => (
+                                        {property.buildingPhotos && JSON.parse(property.buildingPhotos).map((img: any, i: number) => (
                                             <div key={i} className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Building Photo {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
-                                                    <img src={img} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                    <img src={typeof img === 'string' ? img : img.url} className="object-cover w-full h-full hover:scale-105 transition-transform" />
                                                 </div>
                                             </div>
                                         ))}
-                                        {property.commonAreaPhoto && (
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-semibold">Common Area</span>
+                                        {property.commonAreaPhotos && JSON.parse(property.commonAreaPhotos).map((img: any, i: number) => (
+                                            <div key={i} className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Common Area {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
-                                                    <img src={property.commonAreaPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                    <img src={typeof img === 'string' ? img : img.url} className="object-cover w-full h-full hover:scale-105 transition-transform" />
                                                 </div>
                                             </div>
-                                        )}
+                                        ))}
                                         {property.parkingPhoto && (
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Parking Area</span>
@@ -357,7 +384,7 @@ export default function PropertyManagePage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {[
                                     { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
-                                    { key: 'commonAreaPhoto', label: 'Common Area', desc: 'Hallway, Lobby, or Shared', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*' },
+                                    { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway, Lobby, or Shared (4 Photos)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*', isArray: true, max: 4 },
                                     { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
                                     { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderHover: 'border-rose-200 hover:border-rose-400', accept: 'image/*' },
                                     { key: 'aadhaarProof', label: 'Owner Aadhaar Proof', desc: 'Clear front/back of Aadhaar', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
@@ -378,14 +405,14 @@ export default function PropertyManagePage() {
                                             <div className="space-y-3">
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {(() => {
-                                                        const photos = property.buildingPhotos ? JSON.parse(property.buildingPhotos) : [];
+                                                        const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
                                                         const slots = [];
-                                                        // Render uploaded photos first
                                                         for (let i = 0; i < 4; i++) {
                                                             if (photos[i]) {
+                                                                const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
                                                                 slots.push(
-                                                                    <div key={`photo-${i}`} className="relative group/img h-20 bg-muted rounded-md overflow-hidden border">
-                                                                        <img src={photos[i]} className="w-full h-full object-cover" />
+                                                                    <div key={`photo-${i}`} className="relative group/img h-20 bg-muted rounded-md overflow-hidden border shadow-inner">
+                                                                        <img src={img} className="w-full h-full object-cover" />
                                                                         <div className="absolute top-1 right-1 bg-white/90 p-0.5 rounded shadow-sm text-green-600">
                                                                             <CheckCircle className="w-3 h-3" />
                                                                         </div>
@@ -393,9 +420,9 @@ export default function PropertyManagePage() {
                                                                 );
                                                             } else {
                                                                 slots.push(
-                                                                    <label key={`slot-${i}`} className="cursor-pointer border-2 border-dashed rounded-md flex flex-col items-center justify-center h-20 hover:bg-muted/30 transition-colors">
+                                                                    <label key={`slot-${i}`} className="cursor-pointer border-2 border-dashed rounded-md flex flex-col items-center justify-center h-20 hover:bg-muted/30 transition-all hover:scale-[1.02] active:scale-95">
                                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                        <Plus className="w-4 h-4 text-muted-foreground" />
+                                                                        <Plus className="w-4 h-4 text-muted-foreground animate-pulse" />
                                                                         <span className="text-[8px] font-bold uppercase mt-1">Add Photo</span>
                                                                     </label>
                                                                 );
@@ -404,13 +431,28 @@ export default function PropertyManagePage() {
                                                         return slots;
                                                     })()}
                                                 </div>
-                                                <div className="text-[10px] font-bold text-center text-slate-500">
-                                                    {property.buildingPhotos ? JSON.parse(property.buildingPhotos).length : 0} / {cat.max} Uploaded
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="text-[10px] font-bold flex justify-between px-1">
+                                                        <span className="text-slate-500">{property[cat.key] ? JSON.parse(property[cat.key]).length : 0} / {cat.max} Photos</span>
+                                                        <span className="text-indigo-600">
+                                                            {(() => {
+                                                                const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
+                                                                const totalUsed = photos.reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0);
+                                                                const left = 5 * 1024 * 1024 - totalUsed;
+                                                                return `${(Math.max(0, left) / (1024 * 1024)).toFixed(2)} MB Left`;
+                                                            })()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                                        <div className="h-full bg-indigo-500 transition-all duration-500" style={{
+                                                            width: `${Math.min(100, (JSON.parse(property[cat.key] || '[]').reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}%`
+                                                        }} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         ) : property[cat.key] ? (
-                                            <div className="flex flex-col gap-2 relative group">
-                                                <div className="w-full h-28 bg-muted rounded-lg overflow-hidden border">
+                                            <div className="flex flex-col gap-2 relative group h-full">
+                                                <div className="w-full h-28 bg-muted rounded-lg overflow-hidden border shadow-inner">
                                                     {property[cat.key].endsWith(".pdf") ?
                                                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 relative group-hover:bg-slate-100 transition-colors">
                                                             <FileText className="w-8 h-8 text-slate-400 mb-1" />
@@ -422,16 +464,19 @@ export default function PropertyManagePage() {
                                                 <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded shadow-sm border text-green-600">
                                                     <CheckCircle className="w-3.5 h-3.5" />
                                                 </div>
-                                                <div className="text-[10px] font-bold text-center text-slate-500 mt-1">✓ Uploaded & Saved</div>
+                                                <div className="mt-auto pt-2">
+                                                    <div className="text-[10px] font-bold text-center text-slate-500 mb-1">✓ Uploaded & Saved</div>
+                                                    <div className="text-[9px] text-center text-indigo-500 border rounded py-0.5 bg-indigo-50">Verified Document</div>
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="mt-2 text-center h-full flex flex-col justify-end">
                                                 <label className="cursor-pointer block w-full group">
                                                     <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                    <div className={`w-full border-2 border-dashed ${cat.borderHover} rounded-lg py-5 group-hover:${cat.bgClass} transition-colors flex flex-col items-center justify-center h-28`}>
-                                                        <Upload className={`w-6 h-6 ${cat.colorClass} mb-2 opacity-60 group-hover:opacity-100 transition-opacity group-hover:-translate-y-1 duration-300`} />
+                                                    <div className={`w-full border-2 border-dashed ${cat.borderHover} rounded-lg py-5 group-hover:${cat.bgClass} transition-all flex flex-col items-center justify-center h-28 hover:shadow-md`}>
+                                                        <Upload className={`w-6 h-6 ${cat.colorClass} mb-2 opacity-60 group-hover:opacity-100 transition-all group-hover:-translate-y-1 duration-300`} />
                                                         <p className={`text-xs font-bold ${cat.colorClass}`}>Upload File</p>
-                                                        <p className="text-[9px] text-muted-foreground mt-0.5">Max 5MB</p>
+                                                        <p className="text-[9px] text-muted-foreground mt-0.5">5.00 MB Available</p>
                                                     </div>
                                                 </label>
                                             </div>

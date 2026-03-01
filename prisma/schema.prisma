@@ -45,7 +45,7 @@ model Property {
   panProof     String?
   pgLicenceUrl String?
   buildingPhotos String?
-  commonAreaPhoto String?
+  commonAreaPhotos String?
   parkingPhoto String?
   bathroomPhoto String?
   createdAt   DateTime   @default(now())
