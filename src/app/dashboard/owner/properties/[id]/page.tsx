@@ -490,7 +490,18 @@ export default function PropertyManagePage() {
                                             </div>
                                             <div className="flex justify-between items-end">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className="flex items-center gap-1 text-sm font-medium"><BedDouble className="h-4 w-4 text-indigo-500" /> {room.availability} Beds Left</span>
+                                                    {(() => {
+                                                        const avail = room.availability || 0;
+                                                        if (avail === 0) {
+                                                            return <span className="flex items-center gap-1 text-sm font-bold text-red-600"><BedDouble className="h-4 w-4" /> 0 Beds Left (Full)</span>;
+                                                        } else if (avail < 5) {
+                                                            return <span className="flex items-center gap-1 text-sm font-bold text-red-500"><BedDouble className="h-4 w-4" /> {avail} Beds Left</span>;
+                                                        } else if (avail >= 5 && avail <= 15) {
+                                                            return <span className="flex items-center gap-1 text-sm font-bold text-orange-500"><BedDouble className="h-4 w-4" /> {avail} Beds Left</span>;
+                                                        } else {
+                                                            return <span className="flex items-center gap-1 text-sm font-bold text-green-600"><BedDouble className="h-4 w-4" /> {avail} Beds Left</span>;
+                                                        }
+                                                    })()}
                                                     <span className="font-bold text-green-700 text-xl flex items-center gap-1">
                                                         <span className="text-xs text-muted-foreground font-normal">Rent:</span> ₹{room.price}
                                                     </span>
@@ -852,15 +863,19 @@ export default function PropertyManagePage() {
                                 <select className="w-full border rounded-md p-2 text-sm bg-background" value={editRoomForm.type} onChange={e => {
                                     const type = e.target.value;
                                     let avail = "1";
-                                    if (type === "Double") avail = "2";
-                                    if (type === "Triple") avail = "3";
-                                    if (type === "Four") avail = "4";
+                                    if (type === "Double Sharing") avail = "2";
+                                    if (type === "Three Sharing") avail = "3";
+                                    if (type === "Four Sharing") avail = "4";
+                                    if (type === "Five Sharing") avail = "5";
+                                    if (type === "Six Sharing") avail = "6";
                                     setEditRoomForm({ ...editRoomForm, type, availability: avail });
                                 }}>
-                                    <option value="Single">Single Bed</option>
-                                    <option value="Double">Double Sharing</option>
-                                    <option value="Triple">Triple Sharing</option>
-                                    <option value="Four">Four Rest</option>
+                                    <option value="Single Sharing">Single Sharing</option>
+                                    <option value="Double Sharing">Double Sharing</option>
+                                    <option value="Three Sharing">Three Sharing</option>
+                                    <option value="Four Sharing">Four Sharing</option>
+                                    <option value="Five Sharing">Five Sharing</option>
+                                    <option value="Six Sharing">Six Sharing</option>
                                 </select>
                             </div>
                             <div className="grid gap-2">

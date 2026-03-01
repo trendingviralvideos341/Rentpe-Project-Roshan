@@ -288,6 +288,14 @@ export async function markBookingPaid(id: string, method: string) {
                 });
             }
 
+            // Decrement available beds for this room
+            if (room.availability > 0) {
+                await prisma.room.update({
+                    where: { id: room.id },
+                    data: { availability: room.availability - 1 }
+                });
+            }
+
             // Log tenant creation
             await prisma.auditLog.create({
                 data: {
