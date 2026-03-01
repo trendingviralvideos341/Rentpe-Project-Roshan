@@ -526,6 +526,15 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                         <option value="Five Sharing">Five Sharing</option>
                                         <option value="Six Sharing">Six Sharing</option>
                                     </select>
+                                    {selectedPropertyId && selectedBedType !== "ALL" && (
+                                        <div className="mt-2 text-[11px]">
+                                            {(() => {
+                                                const totalBeds = filteredRooms.reduce((sum, r) => sum + (r.availability || 0), 0);
+                                                if (totalBeds === 0) return <span className="text-red-600 font-bold">🔴 No beds available in {selectedBedType}</span>;
+                                                return <span className="text-blue-700 font-bold">🛏️ {totalBeds} total {selectedBedType} beds available</span>;
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {selectedPropertyId && (
