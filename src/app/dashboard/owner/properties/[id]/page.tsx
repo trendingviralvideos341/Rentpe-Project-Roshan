@@ -26,13 +26,13 @@ export default function PropertyManagePage() {
 
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
-    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single", price: "", availability: "1" });
+    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
     const [roomPhoto, setRoomPhoto] = useState<File | null>(null);
     const [savingRoom, setSavingRoom] = useState(false);
 
     // Edit Room State
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
-    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single", price: "", availability: "1" });
+    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
     const [editRoomPhoto, setEditRoomPhoto] = useState<File | null>(null);
     const [editingRoom, setEditingRoom] = useState(false);
 
@@ -225,7 +225,7 @@ export default function PropertyManagePage() {
 
             setProperty({ ...property, rooms: [...(property.rooms || []), newRoom] });
             setIsAddRoomOpen(false);
-            setRoomForm({ roomNumber: "", type: "Single", price: "", availability: "1" });
+            setRoomForm({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
             setRoomPhoto(null);
         } catch (e: any) {
             alert(`Error: ${e.message}`);
@@ -793,15 +793,19 @@ export default function PropertyManagePage() {
                                 <select className="w-full border rounded-md p-2 text-sm bg-background" value={roomForm.type} onChange={e => {
                                     const type = e.target.value;
                                     let avail = "1";
-                                    if (type === "Double") avail = "2";
-                                    if (type === "Triple") avail = "3";
-                                    if (type === "Four") avail = "4";
+                                    if (type === "Double Sharing") avail = "2";
+                                    if (type === "Three Sharing") avail = "3";
+                                    if (type === "Four Sharing") avail = "4";
+                                    if (type === "Five Sharing") avail = "5";
+                                    if (type === "Six Sharing") avail = "6";
                                     setRoomForm({ ...roomForm, type, availability: avail });
                                 }}>
-                                    <option value="Single">Single Bed</option>
-                                    <option value="Double">Double Sharing</option>
-                                    <option value="Triple">Triple Sharing</option>
-                                    <option value="Four">Four Rest</option>
+                                    <option value="Single Sharing">Single Sharing</option>
+                                    <option value="Double Sharing">Double Sharing</option>
+                                    <option value="Three Sharing">Three Sharing</option>
+                                    <option value="Four Sharing">Four Sharing</option>
+                                    <option value="Five Sharing">Five Sharing</option>
+                                    <option value="Six Sharing">Six Sharing</option>
                                 </select>
                             </div>
                             <div className="grid gap-2">

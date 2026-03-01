@@ -42,7 +42,7 @@ export default function AddPropertyPage() {
     };
 
     const addRoom = () => {
-        setRooms([...rooms, { roomNumber: "", type: "Single", price: "", availability: "1" }]);
+        setRooms([...rooms, { roomNumber: "", type: "Single Sharing", price: "", availability: "1" }]);
     };
 
     const removeRoom = (i: number) => {
@@ -365,17 +365,23 @@ export default function AddPropertyPage() {
                                             if (type === "Double") autoAvail = "2";
                                             if (type === "Triple") autoAvail = "3";
                                             if (type === "Four") autoAvail = "4";
+                                            if (type === "Double Sharing") autoAvail = "2";
+                                            if (type === "Three Sharing") autoAvail = "3";
+                                            if (type === "Four Sharing") autoAvail = "4";
+                                            if (type === "Five Sharing") autoAvail = "5";
+                                            if (type === "Six Sharing") autoAvail = "6";
 
                                             const updated = [...rooms];
                                             updated[i].type = type;
                                             updated[i].availability = autoAvail;
                                             setRooms(updated);
                                         }}>
-                                            <option value="Single">Single Bed</option>
-                                            <option value="Double">Double Sharing</option>
-                                            <option value="Triple">Triple Sharing</option>
-                                            <option value="Four">Four Sharing</option>
-                                            <option value="Dormitory">Dormitory</option>
+                                            <option value="Single Sharing">Single Sharing</option>
+                                            <option value="Double Sharing">Double Sharing</option>
+                                            <option value="Three Sharing">Three Sharing</option>
+                                            <option value="Four Sharing">Four Sharing</option>
+                                            <option value="Five Sharing">Five Sharing</option>
+                                            <option value="Six Sharing">Six Sharing</option>
                                         </select>
                                     </div>
                                     <div>
