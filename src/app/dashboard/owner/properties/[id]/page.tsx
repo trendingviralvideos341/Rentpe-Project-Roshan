@@ -545,41 +545,43 @@ export default function PropertyManagePage() {
                                                                 const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
 
                                                                 slots.push(
-                                                                    <div key={`photo-${i}`} className={`relative h-20 rounded-md overflow-hidden border shadow-inner group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-muted'}`}>
-                                                                        <img src={img} className="w-full h-full object-cover" />
-                                                                        {/* Delete, Reupload, View Buttons - Top Left - HIGHEST Z-INDEX */}
-                                                                        <div className="absolute top-0 left-0 flex z-[999] opacity-100 flex-row">
+                                                                    <div key={`photo-${i}`} className={`relative h-24 rounded-md border shadow-sm group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-white'}`}>
+                                                                        <div className="w-full h-16 rounded-t-md overflow-hidden">
+                                                                            <img src={img} className="w-full h-full object-cover" />
+                                                                        </div>
+                                                                        {/* Delete, Reupload, View Buttons - Bottom Row */}
+                                                                        <div className="flex w-full mt-auto h-8 rounded-b-md overflow-hidden">
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
-                                                                                className="bg-red-600 text-white px-2 py-1.5 rounded-br-md shadow-xl hover:bg-red-700 transition-all flex items-center justify-center border-r border-b border-white/40 group/btn"
+                                                                                className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
                                                                                 title="Delete Document"
                                                                             >
-                                                                                <Trash2 className="w-4 h-4 mr-1" />
-                                                                                <span className="text-[10px] font-bold">Delete</span>
+                                                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                                                <span className="text-[9px] font-bold">Delete</span>
                                                                             </button>
                                                                             <label
-                                                                                className="cursor-pointer bg-blue-600 text-white px-2 py-1.5 shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center border-r border-b border-white/40 ml-[1px]"
+                                                                                className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
                                                                                 title="Reupload Document"
                                                                             >
                                                                                 <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                                <RefreshCcw className="w-4 h-4 mr-1" />
-                                                                                <span className="text-[10px] font-bold">Reupload</span>
+                                                                                <RefreshCcw className="w-3 h-3 mr-1" />
+                                                                                <span className="text-[9px] font-bold">Swap</span>
                                                                             </label>
                                                                             <a
                                                                                 href={img}
                                                                                 target="_blank"
-                                                                                className="bg-slate-800 text-white px-2 py-1.5 shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center border-r border-b border-white/40 rounded-br-md ml-[1px]"
+                                                                                className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-all flex items-center justify-center"
                                                                                 title="View Full Size"
                                                                                 onClick={(e) => e.stopPropagation()}
                                                                             >
-                                                                                <Eye className="w-4 h-4 mr-1" />
-                                                                                <span className="text-[10px] font-bold">View</span>
+                                                                                <Eye className="w-3 h-3 mr-1" />
+                                                                                <span className="text-[9px] font-bold">View</span>
                                                                             </a>
                                                                         </div>
 
-                                                                        {/* Status Badge - Top Right */}
-                                                                        <div className="absolute top-0 right-0 z-[999]">
+                                                                        {/* Status Badge - Top Right floating over image */}
+                                                                        <div className="absolute top-0 right-0 z-[10]">
                                                                             {isDocVerified ? (
                                                                                 <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Verified">
                                                                                     <CheckCircle className="w-4 h-4 mr-1" />
