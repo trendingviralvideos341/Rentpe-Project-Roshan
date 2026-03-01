@@ -147,6 +147,17 @@ export async function approveBooking(id: string, data: {
         }
     });
 
+    // If a room is being assigned for the first time in this approval, deduct availability
+    if (data.roomId && data.roomId !== (booking as any).roomId) {
+        const roomToUpdate = await prisma.room.findUnique({ where: { id: data.roomId } });
+        if (roomToUpdate && roomToUpdate.availability > 0) {
+            await prisma.room.update({
+                where: { id: data.roomId },
+                data: { availability: roomToUpdate.availability - 1 }
+            });
+        }
+    }
+
     await prisma.auditLog.create({
         data: {
             action: 'BOOKING_APPROVED',
@@ -158,6 +169,7 @@ export async function approveBooking(id: string, data: {
     });
 
     revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/owner/properties');
     revalidatePath('/dashboard/student');
     return booking;
 }
@@ -279,14 +291,6 @@ export async function markBookingPaid(id: string, method: string) {
                     paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
                 }
             });
-
-            // Decrement available beds for this room
-            if (room.availability > 0) {
-                await prisma.room.update({
-                    where: { id: room.id },
-                    data: { availability: room.availability - 1 }
-                });
-            }
 
             // Log tenant creation
             await prisma.auditLog.create({
