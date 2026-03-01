@@ -125,6 +125,8 @@ export async function approveBooking(id: string, data: {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
+    const existingBooking = await prisma.booking.findUnique({ where: { id } });
+
     const booking = await (prisma as any).booking.update({
         where: { id },
         data: {
@@ -147,16 +149,31 @@ export async function approveBooking(id: string, data: {
         }
     });
 
-    // If a room is being assigned for the first time in this approval, deduct availability
-    if (data.roomId && data.roomId !== (booking as any).roomId) {
-        const roomToUpdate = await prisma.room.findUnique({ where: { id: data.roomId } });
-        if (roomToUpdate && roomToUpdate.availability > 0) {
-            await prisma.room.update({
-                where: { id: data.roomId },
-                data: { availability: roomToUpdate.availability - 1 }
-            });
+    // Handle bed availability changes if the room assignment has changed
+    if (existingBooking && data.roomId !== existingBooking.roomId) {
+        // Increment (return) bed to the old room if the booking was already assigned to one
+        if (existingBooking.roomId) {
+            const oldRoom = await prisma.room.findUnique({ where: { id: existingBooking.roomId } });
+            if (oldRoom) {
+                await prisma.room.update({
+                    where: { id: oldRoom.id },
+                    data: { availability: oldRoom.availability + 1 }
+                });
+            }
+        }
+        // Decrement (take) bed from the newly assigned room
+        if (data.roomId) {
+            const newRoom = await prisma.room.findUnique({ where: { id: data.roomId } });
+            if (newRoom && newRoom.availability > 0) {
+                await prisma.room.update({
+                    where: { id: newRoom.id },
+                    data: { availability: newRoom.availability - 1 }
+                });
+            }
         }
     }
+
+
 
     await prisma.auditLog.create({
         data: {
@@ -178,10 +195,23 @@ export async function rejectBooking(id: string, reason?: string) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
+    const existingBooking = await prisma.booking.findUnique({ where: { id } });
+
     const booking = await prisma.booking.update({
         where: { id },
         data: { status: 'REJECTED' }
     });
+
+    // Return bed if room was assigned
+    if (existingBooking && existingBooking.roomId) {
+        const room = await prisma.room.findUnique({ where: { id: existingBooking.roomId } });
+        if (room) {
+            await prisma.room.update({
+                where: { id: room.id },
+                data: { availability: room.availability + 1 }
+            });
+        }
+    }
 
     await prisma.auditLog.create({
         data: {
@@ -194,6 +224,7 @@ export async function rejectBooking(id: string, reason?: string) {
     });
 
     revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/owner/properties');
     revalidatePath('/dashboard/student');
     return booking;
 }
@@ -372,6 +403,17 @@ export async function cancelBooking(id: string) {
         data: { status: 'CANCELLED' }
     });
 
+    // Return bed if room was assigned
+    if (booking.roomId) {
+        const room = await prisma.room.findUnique({ where: { id: booking.roomId } });
+        if (room) {
+            await prisma.room.update({
+                where: { id: room.id },
+                data: { availability: room.availability + 1 }
+            });
+        }
+    }
+
     await prisma.auditLog.create({
         data: {
             action: 'BOOKING_CANCELLED',
@@ -384,5 +426,6 @@ export async function cancelBooking(id: string) {
 
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/owner/properties');
     return updated;
 }
