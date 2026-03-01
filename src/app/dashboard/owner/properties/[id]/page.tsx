@@ -512,7 +512,7 @@ export default function PropertyManagePage() {
                             <CardDescription>Upload necessary documents for Admin approval. Maximum size 5MB each.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {[
                                     { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
                                     { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway, Lobby, or Shared (4 Photos)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*', isArray: true, max: 4 },

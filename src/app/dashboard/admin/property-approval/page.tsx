@@ -347,7 +347,7 @@ export default function AdminPropertyApprovalPage() {
                                                 <CheckCircle className="h-4 w-4 text-green-600" /> Uploaded Documents for Verification
                                             </h4>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 {[
                                                     { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-200', isArray: true },
                                                     { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway, Lobby, or Shared (4 Photos)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200', isArray: true },
