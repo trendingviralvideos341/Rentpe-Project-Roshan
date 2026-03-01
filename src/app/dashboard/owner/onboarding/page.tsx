@@ -530,7 +530,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
 
                                 {selectedPropertyId && (
                                     <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                                        <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Select Room (Available Only)</label>
+                                        <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Select Room Number</label>
                                         <div className="flex gap-2">
                                             <select
                                                 className="flex-1 border-2 border-purple-100 rounded-lg p-2 text-sm bg-white focus:border-purple-300 focus:ring-0 transition-all font-medium"
@@ -544,7 +544,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                                     }
                                                 }}
                                             >
-                                                <option value="">{booking.roomAssigned ? `Keep current: ${booking.roomAssigned}` : "Select a room..."}</option>
+                                                <option value="">{booking.roomAssigned ? `Keep current: ${booking.roomAssigned.split(' ')[1] || booking.roomAssigned}` : "Select Room No."}</option>
                                                 {filteredRooms.map(r => {
                                                     const avail = r.availability || 0;
                                                     let colorClass = "text-green-600 font-bold";
@@ -553,7 +553,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
 
                                                     return (
                                                         <option key={r.id} value={r.id} className={colorClass}>
-                                                            Room {r.roomNumber} — {r.type} (₹{r.price.toLocaleString()}) — {avail} beds left
+                                                            Room {r.roomNumber}
                                                         </option>
                                                     );
                                                 })}
