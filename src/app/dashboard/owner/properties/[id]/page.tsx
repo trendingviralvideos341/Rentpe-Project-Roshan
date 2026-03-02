@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom, deletePropertyDocument } from "@/actions/properties";
-import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus, Trash2, RefreshCcw, Eye } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus, Trash2, RefreshCcw, Eye, Camera } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -36,6 +36,13 @@ export default function PropertyManagePage() {
     const [editRoomPhoto, setEditRoomPhoto] = useState<File | null>(null);
     const [editingRoom, setEditingRoom] = useState(false);
 
+    // Live Capture State
+    const [isCaptureOpen, setIsCaptureOpen] = useState(false);
+    const [capturing, setCapturing] = useState(false);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
     useEffect(() => {
         const fetchProperty = async () => {
             try {
@@ -54,7 +61,64 @@ export default function PropertyManagePage() {
         fetchProperty();
     }, [propertyId, router]);
 
-    const handleFileUpload = async (file: File, docType: string) => {
+    const startCapture = async () => {
+        setIsCaptureOpen(true);
+        setCapturing(true);
+        try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setStream(mediaStream);
+            if (videoRef.current) {
+                videoRef.current.srcObject = mediaStream;
+                videoRef.current.play();
+            }
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            alert("Could not access camera. Please ensure it's enabled and try again.");
+            setCapturing(false);
+            setIsCaptureOpen(false);
+        }
+    };
+
+    const stopCapture = useCallback(() => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+        setCapturing(false);
+        setIsCaptureOpen(false);
+    }, [stream]);
+
+    const capturePhoto = async () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            if (context) {
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(async (blob) => {
+                    if (blob) {
+                        const file = new File([blob], "live_capture.png", { type: "image/png" });
+                        await handleFileUpload(file, 'livePhotoUrl');
+                        stopCapture();
+                    }
+                }, 'image/png');
+            }
+        }
+    };
+
+    // Cleanup effect for camera stream
+    useEffect(() => {
+        return () => {
+            stopCapture();
+        };
+    }, [stopCapture]);
+
+    const handleFileUpload = async (file: File, docType: string, index?: number) => {
         // Category-based size limit logic (User wants 5MB total per category)
         const categories = {
             buildingPhotos: { max: 5 * 1024 * 1024, isArray: true },
@@ -63,7 +127,8 @@ export default function PropertyManagePage() {
             bathroomPhoto: { max: 5 * 1024 * 1024, isArray: false },
             aadhaarProof: { max: 5 * 1024 * 1024, isArray: false },
             panProof: { max: 5 * 1024 * 1024, isArray: false },
-            pgLicenceUrl: { max: 5 * 1024 * 1024, isArray: false }
+            pgLicenceUrl: { max: 5 * 1024 * 1024, isArray: false },
+            livePhotoUrl: { max: 5 * 1024 * 1024, isArray: false }
         } as any;
 
         const cat = categories[docType];
@@ -98,13 +163,19 @@ export default function PropertyManagePage() {
 
                 if (cat?.isArray) {
                     const existingPhotos = property[docType] ? JSON.parse(property[docType]) : [];
-                    if (existingPhotos.length >= 4) {
+                    if (existingPhotos.length >= 4 && index === undefined) { // Only check if adding new, not reuploading existing
                         alert("Maximum 4 photos allowed for this category.");
                         setUploading(false);
                         return;
                     }
                     // Store as {url, size} for the real-time indicator
-                    const updatedPhotos = [...existingPhotos, { url: data.url, size: file.size }];
+                    let updatedPhotos;
+                    if (index !== undefined) { // Reuploading a specific photo
+                        updatedPhotos = [...existingPhotos];
+                        updatedPhotos[index] = { url: data.url, size: file.size };
+                    } else { // Adding a new photo
+                        updatedPhotos = [...existingPhotos, { url: data.url, size: file.size }];
+                    }
                     updateData = { [docType]: JSON.stringify(updatedPhotos) };
                     newPropertyState[docType] = updateData[docType];
                 } else {
@@ -114,7 +185,8 @@ export default function PropertyManagePage() {
                 // If this document had a REUPLOAD request, clear it
                 if (property.adminNotes) {
                     const lines = property.adminNotes.split('\n');
-                    const filteredLines = lines.filter((l: string) => !l.startsWith(`[REUPLOAD:${docType}`));
+                    const reuploadTag = index !== undefined ? `[REUPLOAD:${docType} -${index}]` : `[REUPLOAD:${docType}]`;
+                    const filteredLines = lines.filter((l: string) => !l.startsWith(reuploadTag));
                     const newAdminNotes = filteredLines.join('\n');
 
                     if (newAdminNotes !== property.adminNotes) {
@@ -127,7 +199,7 @@ export default function PropertyManagePage() {
                 setProperty(newPropertyState);
                 alert(`Document uploaded successfully!`);
             } else {
-                alert(`Upload failed: ${data.error}`);
+                alert(`Upload failed: ${data.error} `);
             }
         } catch (error) {
             console.error("Upload Error:", error);
@@ -138,6 +210,14 @@ export default function PropertyManagePage() {
     };
 
     const handleDelete = async (docType: string, index?: number) => {
+        const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
+        const docKey = index !== undefined ? `${docType} -${index} ` : docType;
+
+        if (verifiedDocs.includes(docKey)) {
+            alert("Verified documents cannot be deleted.");
+            return;
+        }
+
         if (!confirm("Are you sure you want to delete this document?")) return;
 
         setUploading(true);
@@ -173,7 +253,7 @@ export default function PropertyManagePage() {
         if (verifiedDocs.includes(docType)) return null;
 
         const lines = property.adminNotes.split('\n');
-        const matches = lines.filter((l: string) => l.startsWith(`[REUPLOAD:${docType}`));
+        const matches = lines.filter((l: string) => l.startsWith(`[REUPLOAD:${docType} `));
 
         if (matches.length > 0) {
             const parsedNotes = matches.map((m: string) => {
@@ -182,12 +262,12 @@ export default function PropertyManagePage() {
 
                 // If it's a specific photo in an array, check if that specific photo is verified
                 if (parts[1]) {
-                    const specificDocKey = `${docType}-${parts[1]}`;
+                    const specificDocKey = `${docType} -${parts[1]} `;
                     if (verifiedDocs.includes(specificDocKey)) return null;
                 }
 
                 const index = parts[1] ? `(Photo ${parseInt(parts[1]) + 1}) - ` : '';
-                return `${index}${m.replace(tagFull, '').trim()}`.trim();
+                return `${index}${m.replace(tagFull, '').trim()} `.trim();
             }).filter(Boolean);
 
             if (parsedNotes.length > 0) {
@@ -228,7 +308,7 @@ export default function PropertyManagePage() {
             setRoomForm({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
             setRoomPhoto(null);
         } catch (e: any) {
-            alert(`Error: ${e.message}`);
+            alert(`Error: ${e.message} `);
         } finally {
             setSavingRoom(false);
         }
@@ -266,7 +346,7 @@ export default function PropertyManagePage() {
             setIsEditRoomOpen(false);
             setEditRoomPhoto(null);
         } catch (e: any) {
-            alert(`Error: ${e.message}`);
+            alert(`Error: ${e.message} `);
         } finally {
             setEditingRoom(false);
         }
@@ -300,7 +380,7 @@ export default function PropertyManagePage() {
                             ${property.status === 'LIVE' ? 'bg-green-100 text-green-700' : ''}
                             ${property.status === 'REJECTED' ? 'bg-red-100 text-red-700' : ''}
                             ${property.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-700' : ''}
-                        `}>
+`}>
                             {property.status.replace('_', ' ')}
                         </Badge>
                     </h1>
@@ -329,7 +409,8 @@ export default function PropertyManagePage() {
                                         parkingPhoto: "Parking",
                                         aadhaarProof: "Aadhaar",
                                         panProof: "PAN Card",
-                                        pgLicenceUrl: "PG Licence"
+                                        pgLicenceUrl: "PG Licence",
+                                        livePhotoUrl: "Live Photo"
                                     };
                                     prefix = mapping[rawKey] || rawKey;
 
@@ -375,7 +456,7 @@ export default function PropertyManagePage() {
                     <TabsTrigger value="rooms">Rooms ({property.rooms?.length || 0})</TabsTrigger>
                     <TabsTrigger
                         value="verification"
-                        className={`relative transition-all ${property.adminNotes?.includes('[REUPLOAD') ? 'bg-red-50 text-red-700 data-[state=active]:bg-red-100 data-[state=active]:text-red-900 font-bold border border-red-200' : ''}`}
+                        className={`relative transition - all ${property.adminNotes?.includes('[REUPLOAD') ? 'bg-red-50 text-red-700 data-[state=active]:bg-red-100 data-[state=active]:text-red-900 font-bold border border-red-200' : ''} `}
                     >
                         Verification Documents
                         {property.adminNotes?.includes('[REUPLOAD') && (
@@ -416,7 +497,7 @@ export default function PropertyManagePage() {
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 {property.images && JSON.parse(property.images).map((img: string, i: number) => (
                                     <div key={i} className="aspect-video bg-muted rounded-md overflow-hidden relative">
-                                        <img src={img} alt={`Property image ${i + 1}`} className="object-cover w-full h-full" />
+                                        <img src={img} alt={`Property image ${i + 1} `} className="object-cover w-full h-full" />
                                     </div>
                                 ))}
                             </div>
@@ -531,11 +612,12 @@ export default function PropertyManagePage() {
                                     { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
                                     { key: 'aadhaarProof', label: 'Owner Aadhaar Proof', desc: 'Clear front/back of Aadhaar', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
                                     { key: 'panProof', label: 'Owner PAN Proof', desc: 'Clear photo of PAN Card', icon: <FileText className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*,.pdf' },
-                                    { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' }
+                                    { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' },
+                                    { key: 'livePhotoUrl', label: 'Live Photo Capture', desc: 'Real-time Identity Check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'border-cyan-200 hover:border-cyan-400', isLive: true }
                                 ].map((cat) => (
-                                    <div key={cat.key} className={`border-2 ${cat.borderHover} transition-all rounded-xl p-4 flex flex-col justify-between shadow-sm bg-white`}>
+                                    <div key={cat.key} className={`border - 2 ${cat.borderHover} transition - all rounded - xl p - 4 flex flex - col justify - between shadow - sm bg - white`}>
                                         <div className="flex items-center gap-3 mb-4">
-                                            <div className={`p-2 ${cat.bgClass} rounded-lg ${cat.colorClass}`}>{cat.icon}</div>
+                                            <div className={`p - 2 ${cat.bgClass} rounded - lg ${cat.colorClass} `}>{cat.icon}</div>
                                             <div>
                                                 <h4 className="font-bold text-sm tracking-tight">{cat.label}</h4>
                                                 <p className="text-[10px] text-muted-foreground uppercase">{cat.desc}</p>
@@ -552,33 +634,37 @@ export default function PropertyManagePage() {
                                                         for (let i = 0; i < 4; i++) {
                                                             if (photos[i]) {
                                                                 const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
-                                                                const isDocVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key}-${i}`);
-                                                                const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
+                                                                const isDocVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key} -${i} `);
+                                                                const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key} -${i}]`);
 
                                                                 slots.push(
-                                                                    <div key={`photo-${i}`} className={`relative h-24 rounded-md border shadow-sm group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-white'}`}>
+                                                                    <div key={`photo - ${i} `} className={`relative h - 24 rounded - md border shadow - sm group / img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-white'} `}>
                                                                         <div className="w-full h-16 rounded-t-md overflow-hidden">
                                                                             <img src={img} className="w-full h-full object-cover" />
                                                                         </div>
                                                                         {/* Delete, Reupload, View Buttons - Bottom Row */}
                                                                         <div className="flex w-full mt-auto h-8 rounded-b-md overflow-hidden">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
-                                                                                className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
-                                                                                title="Delete Document"
-                                                                            >
-                                                                                <Trash2 className="w-3 h-3 mr-1" />
-                                                                                <span className="text-[9px] font-bold">Delete</span>
-                                                                            </button>
-                                                                            <label
-                                                                                className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
-                                                                                title="Reupload Document"
-                                                                            >
-                                                                                <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                                <RefreshCcw className="w-3 h-3 mr-1" />
-                                                                                <span className="text-[9px] font-bold">Reupload</span>
-                                                                            </label>
+                                                                            {!isDocVerified && (
+                                                                                <>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
+                                                                                        className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
+                                                                                        title="Delete Document"
+                                                                                    >
+                                                                                        <Trash2 className="w-3 h-3 mr-1" />
+                                                                                        <span className="text-[9px] font-bold">Delete</span>
+                                                                                    </button>
+                                                                                    <label
+                                                                                        className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
+                                                                                        title="Reupload Document"
+                                                                                    >
+                                                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key, i)} />
+                                                                                        <RefreshCcw className="w-3 h-3 mr-1" />
+                                                                                        <span className="text-[9px] font-bold">Reupload</span>
+                                                                                    </label>
+                                                                                </>
+                                                                            )}
                                                                             <a
                                                                                 href={img}
                                                                                 target="_blank"
@@ -614,10 +700,10 @@ export default function PropertyManagePage() {
                                                                 );
                                                             } else {
                                                                 slots.push(
-                                                                    <label key={`slot-${i}`} className={`cursor-pointer border-2 border-dashed ${cat.borderHover} rounded-md flex flex-col items-center justify-center h-20 ${cat.bgClass} transition-all hover:scale-[1.02] active:scale-95 group/slot`}>
+                                                                    <label key={`slot - ${i} `} className={`cursor - pointer border - 2 border - dashed ${cat.borderHover} rounded - md flex flex - col items - center justify - center h - 20 ${cat.bgClass} transition - all hover: scale - [1.02] active: scale - 95 group / slot`}>
                                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                        <Plus className={`w-4 h-4 ${cat.colorClass} opacity-60 group-hover/slot:opacity-100 group-hover/slot:scale-110 transition-all`} />
-                                                                        <span className={`text-[8px] font-bold uppercase mt-1 ${cat.colorClass}`}>Add Photo</span>
+                                                                        <Plus className={`w - 4 h - 4 ${cat.colorClass} opacity - 60 group - hover / slot: opacity - 100 group - hover / slot: scale - 110 transition - all`} />
+                                                                        <span className={`text - [8px] font - bold uppercase mt - 1 ${cat.colorClass} `}>Add Photo</span>
                                                                     </label>
                                                                 );
                                                             }
@@ -639,7 +725,7 @@ export default function PropertyManagePage() {
                                                     </div>
                                                     <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                                                         <div className="h-full bg-indigo-500 transition-all duration-500" style={{
-                                                            width: `${Math.min(100, (JSON.parse(property[cat.key] || '[]').reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}%`
+                                                            width: `${Math.min(100, (JSON.parse(property[cat.key] || '[]').reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}% `
                                                         }} />
                                                     </div>
                                                 </div>
@@ -651,7 +737,7 @@ export default function PropertyManagePage() {
 
                                                         const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
                                                         // Check if ALL uploaded photos in this array are verified
-                                                        const allVerified = photos.length > 0 && photos.every((_: any, idx: number) => verifiedDocs.includes(`${cat.key}-${idx}`));
+                                                        const allVerified = photos.length > 0 && photos.every((_: any, idx: number) => verifiedDocs.includes(`${cat.key} -${idx} `));
 
                                                         if (getReuploadNote(cat.key)) {
                                                             return (
@@ -696,23 +782,27 @@ export default function PropertyManagePage() {
                                                     </div>
                                                     {/* Delete, Reupload, View Buttons - Bottom Row */}
                                                     <div className="flex w-full mt-auto h-8 rounded-b-md overflow-hidden">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key); }}
-                                                            className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
-                                                            title="Delete Document"
-                                                        >
-                                                            <Trash2 className="w-3 h-3 mr-1" />
-                                                            <span className="text-[9px] font-bold">Delete</span>
-                                                        </button>
-                                                        <label
-                                                            className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
-                                                            title="Reupload Document"
-                                                        >
-                                                            <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                            <RefreshCcw className="w-3 h-3 mr-1" />
-                                                            <span className="text-[9px] font-bold">Reupload</span>
-                                                        </label>
+                                                        {!(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key); }}
+                                                                    className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
+                                                                    title="Delete Document"
+                                                                >
+                                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                                    <span className="text-[9px] font-bold">Delete</span>
+                                                                </button>
+                                                                <label
+                                                                    className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
+                                                                    title="Reupload Document"
+                                                                >
+                                                                    <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                                    <RefreshCcw className="w-3 h-3 mr-1" />
+                                                                    <span className="text-[9px] font-bold">Reupload</span>
+                                                                </label>
+                                                            </>
+                                                        )}
                                                         <a
                                                             href={property[cat.key]}
                                                             target="_blank"
@@ -767,14 +857,22 @@ export default function PropertyManagePage() {
                                             </div>
                                         ) : (
                                             <div className="mt-2 text-center h-full flex flex-col justify-end">
-                                                <label className="cursor-pointer block w-full group h-full">
-                                                    <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                    <div className={`w-full h-full border-2 border-dashed ${cat.borderHover} rounded-lg flex flex-col items-center justify-center py-5 ${cat.bgClass} transition-all hover:shadow-md hover:scale-[1.02] active:scale-95`}>
-                                                        <Upload className={`w-6 h-6 ${cat.colorClass} mb-2 opacity-60 group-hover:opacity-100 transition-all group-hover:-translate-y-1 duration-300`} />
-                                                        <p className={`text-xs font-bold ${cat.colorClass}`}>Upload {cat.label}</p>
-                                                        <p className="text-[9px] text-muted-foreground mt-0.5 opacity-70">5.00 MB Available</p>
+                                                {cat.isLive ? (
+                                                    <div onClick={() => startCapture()} className={`cursor - pointer w - full h - full border - 2 border - dashed ${cat.borderHover} rounded - lg flex flex - col items - center justify - center py - 5 ${cat.bgClass} transition - all hover: shadow - md hover: scale - [1.02] active: scale - 95 group / live`}>
+                                                        <Camera className={`w - 6 h - 6 ${cat.colorClass} mb - 2 opacity - 60 group - hover: opacity - 100 transition - all group - hover: -translate - y - 1 duration - 300`} />
+                                                        <p className={`text - xs font - bold ${cat.colorClass} `}>Capture Live Photo</p>
+                                                        <p className="text-[9px] text-muted-foreground mt-0.5 opacity-70">Identity verification required</p>
                                                     </div>
-                                                </label>
+                                                ) : (
+                                                    <label className="cursor-pointer block w-full group h-full">
+                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                        <div className={`w - full h - full border - 2 border - dashed ${cat.borderHover} rounded - lg flex flex - col items - center justify - center py - 5 ${cat.bgClass} transition - all hover: shadow - md hover: scale - [1.02] active: scale - 95`}>
+                                                            <Upload className={`w - 6 h - 6 ${cat.colorClass} mb - 2 opacity - 60 group - hover: opacity - 100 transition - all group - hover: -translate - y - 1 duration - 300`} />
+                                                            <p className={`text - xs font - bold ${cat.colorClass} `}>Upload {cat.label}</p>
+                                                            <p className="text-[9px] text-muted-foreground mt-0.5 opacity-70">5.00 MB Available</p>
+                                                        </div>
+                                                    </label>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -898,6 +996,51 @@ export default function PropertyManagePage() {
                         <Button type="button" variant="outline" onClick={() => setIsEditRoomOpen(false)}>Cancel</Button>
                         <Button type="button" onClick={handleEditRoomSave} disabled={editingRoom} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
                             {editingRoom ? "Updating..." : "Update Room"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Camera Capture Dialog */}
+            <Dialog open={isCaptureOpen} onOpenChange={(open) => !open && stopCapture()}>
+                <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-white">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <Camera className="w-5 h-5 text-cyan-400" />
+                            Live Identity Verification
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            Please position your face clearly in the frame and click capture.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="relative aspect-video bg-black rounded-lg overflow-hidden border border-slate-700 shadow-2xl">
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                            <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center bg-white/20 backdrop-blur-sm animate-pulse">
+                                <div className="w-12 h-12 bg-white rounded-full shadow-lg" />
+                            </div>
+                        </div>
+                    </div>
+                    <canvas ref={canvasRef} className="hidden" />
+                    <DialogFooter className="flex sm:justify-between gap-3">
+                        <Button variant="outline" onClick={stopCapture} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={capturePhoto}
+                            disabled={capturing || uploading}
+                            className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold flex-1"
+                        >
+                            {capturing || uploading ? (
+                                <><RefreshCcw className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+                            ) : (
+                                <><Camera className="w-4 h-4 mr-2" /> Capture Photo</>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

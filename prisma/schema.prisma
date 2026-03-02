@@ -48,6 +48,7 @@ model Property {
   commonAreaPhotos String?
   parkingPhoto String?
   bathroomPhoto String?
+  livePhotoUrl  String?
   verifiedDocs  String    @default("[]")
   createdAt     DateTime  @default(now())
   updatedAt   DateTime   @updatedAt
