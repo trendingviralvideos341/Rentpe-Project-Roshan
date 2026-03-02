@@ -453,15 +453,6 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
                                     <Shield className="w-3.5 h-3.5" /> {verifiedPercentage}% Verified
                                 </Badge>
                             )}
-
-                            {!isFullyVerified && (
-                                <Button
-                                    className={`h-11 px-6 rounded-xl ${overallStatus === 'REJECTED' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'} text-white shadow-lg transition-all active:scale-90 flex items-center gap-2 font-black uppercase text-[10px] tracking-widest`}
-                                    onClick={onViewPortfolio}
-                                >
-                                    <ShieldCheck className="w-4 h-4" /> Review
-                                </Button>
-                            )}
                         </div>
                     </div>
                 </div>
