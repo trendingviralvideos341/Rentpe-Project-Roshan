@@ -303,33 +303,49 @@ export default function OwnerVerificationsPage() {
 
             {/* Preview Modal */}
             <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-                <DialogContent className="sm:max-w-xl p-0 overflow-hidden bg-slate-900 border-none rounded-3xl">
-                    <div className="p-6 bg-white/10 backdrop-blur-xl flex justify-between items-center text-white border-b border-white/5">
-                        <div className="flex items-center gap-4">
-                            <div className="p-2.5 bg-indigo-500 rounded-xl text-white">{previewDoc && TYPE_ICONS[previewDoc.type]}</div>
+                <DialogContent className="!fixed !inset-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !rounded-none bg-slate-950 flex flex-col !shadow-none !border-none z-[110] !p-0">
+                    <div className="p-6 bg-white/5 backdrop-blur-3xl flex justify-between items-center text-white border-b border-white/10 sticky top-0">
+                        <div className="flex items-center gap-6">
+                            <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">{previewDoc && TYPE_ICONS[previewDoc.type]}</div>
                             <div>
-                                <DialogTitle className="font-black text-sm tracking-widest uppercase text-white">
+                                <DialogTitle className="font-black text-lg tracking-[0.15em] uppercase text-white leading-tight">
                                     {previewDoc && TYPE_LABELS[previewDoc.type]}
                                 </DialogTitle>
-                                <DialogDescription className="text-[10px] font-bold opacity-50 uppercase tracking-tighter text-white/70">
-                                    Document preview for {previewDoc?.booking?.guestName}
+                                <DialogDescription className="text-[11px] font-black opacity-40 uppercase tracking-[0.1em] text-white transition-opacity group-hover:opacity-100">
+                                    Full Document View • {previewDoc?.booking?.guestName}
                                 </DialogDescription>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="hover:bg-white/10 text-white rounded-full" onClick={() => setPreviewDoc(null)}>✕</Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-rose-500/20 hover:text-rose-500 text-white/50 rounded-2xl h-12 w-12 transition-all"
+                            onClick={() => setPreviewDoc(null)}
+                        >
+                            <XCircle className="w-8 h-8" />
+                        </Button>
                     </div>
-                    <div className="flex items-center justify-center p-8 min-h-[400px]">
+                    <div className="flex-1 flex items-center justify-center p-4 min-h-0 bg-black/40">
                         {previewDoc?.fileData?.startsWith("data:image") ? (
-                            <img src={previewDoc.fileData} className="max-w-full max-h-[60vh] object-contain rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-4 border-white/10" />
+                            <img
+                                src={previewDoc.fileData}
+                                className="max-w-[95vw] max-h-[85vh] object-contain rounded-2xl shadow-[0_0_100px_rgba(30,58,138,0.2)] animate-in zoom-in duration-500"
+                            />
                         ) : (
                             <div className="text-white/30 text-center font-black uppercase tracking-widest text-xs">
-                                <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                No Visual Preview
+                                <FileText className="w-24 h-24 mx-auto mb-6 opacity-10" />
+                                No Visual Data Found
                             </div>
                         )}
                     </div>
-                    <div className="p-6 bg-black/40 border-t border-white/5 flex justify-end">
-                        <Button variant="outline" className="text-white border-white/20 hover:bg-white/10 font-bold rounded-xl" onClick={() => setPreviewDoc(null)}>Close Experience</Button>
+                    <div className="p-8 bg-slate-900/50 backdrop-blur-xl border-t border-white/5 flex justify-center sticky bottom-0">
+                        <Button
+                            variant="outline"
+                            className="bg-white/5 text-white border-white/10 hover:bg-white/10 hover:text-white font-black uppercase tracking-[0.2em] text-[10px] h-14 px-12 rounded-2xl transition-all shadow-2xl active:scale-95"
+                            onClick={() => setPreviewDoc(null)}
+                        >
+                            Close Experience
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -430,9 +446,9 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
                                 </Badge>
                             ) : (
                                 <Badge className={`h-11 px-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg animate-in zoom-in duration-500 flex items-center gap-2 border-none ${verifiedPercentage >= 75 ? 'bg-indigo-600 text-white shadow-indigo-100' :
-                                        verifiedPercentage >= 50 ? 'bg-indigo-500 text-white shadow-indigo-100' :
-                                            verifiedPercentage >= 25 ? 'bg-indigo-400 text-white shadow-indigo-100' :
-                                                'bg-slate-400 text-white shadow-slate-100'
+                                    verifiedPercentage >= 50 ? 'bg-indigo-500 text-white shadow-indigo-100' :
+                                        verifiedPercentage >= 25 ? 'bg-indigo-400 text-white shadow-indigo-100' :
+                                            'bg-slate-400 text-white shadow-slate-100'
                                     }`}>
                                     <Shield className="w-3.5 h-3.5" /> {verifiedPercentage}% Verified
                                 </Badge>
@@ -440,11 +456,10 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
 
                             {!isFullyVerified && (
                                 <Button
-                                    className={`h-11 w-11 p-0 rounded-xl ${overallStatus === 'REJECTED' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white shadow-lg transition-all active:scale-90 flex items-center justify-center`}
-                                    title="Review & Verify Submissions"
+                                    className={`h-11 px-6 rounded-xl ${overallStatus === 'REJECTED' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'} text-white shadow-lg transition-all active:scale-90 flex items-center gap-2 font-black uppercase text-[10px] tracking-widest`}
                                     onClick={onViewPortfolio}
                                 >
-                                    <ShieldCheck className="w-5 h-5" />
+                                    <ShieldCheck className="w-4 h-4" /> Review
                                 </Button>
                             )}
                         </div>
