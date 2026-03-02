@@ -168,7 +168,7 @@ export default function OwnerVerificationsPage() {
 
             {/* Document Detail Panel (Drill-down) */}
             <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-                <DialogContent className="max-w-[95vw] w-full h-[95vh] overflow-hidden p-0 border-none rounded-none md:rounded-[3rem] bg-slate-50 flex flex-col shadow-2xl">
+                <DialogContent className="max-w-[98vw] w-full h-[98vh] overflow-hidden p-0 border-none rounded-none md:rounded-[3rem] bg-slate-50 flex flex-col shadow-2xl">
                     {selectedBooking && (
                         <>
                             {/* Pro Header */}
@@ -405,16 +405,16 @@ function BookingRow({ group, onSelect }: { group: any, onSelect: any }) {
 
                     <div className="flex items-center">
                         <Button
-                            className={`relative h-16 px-12 font-black text-[13px] uppercase tracking-widest rounded-2xl transition-all duration-500 hover:scale-105 active:scale-95 ${group.pendingCount > 0
-                                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-2xl shadow-orange-200 animate-pulse-glow border-b-[6px] border-orange-700'
+                            className={`relative h-11 px-8 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all duration-500 hover:scale-105 active:scale-95 ${group.pendingCount > 0
+                                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-100 animate-pulse-glow'
                                 : isFullyVerified
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xl shadow-emerald-200 animate-pulse-glow-emerald border-b-[6px] border-emerald-800'
-                                    : 'bg-slate-900 hover:bg-black text-white hover:shadow-2xl border-b-[6px] border-black'
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 animate-pulse-glow-emerald'
+                                    : 'bg-slate-900 hover:bg-black text-white hover:shadow-lg shadow-slate-100'
                                 }`}
                             onClick={() => onSelect(group)}
                         >
-                            <Shield className="w-5 h-5 mr-4" />
-                            {group.pendingCount > 0 ? 'REVIEW SUBMISSIONS →' : isFullyVerified ? 'ALL VERIFIED ✔' : 'VIEW PORTFOLIO'}
+                            <Shield className="w-4 h-4 mr-2" />
+                            {group.pendingCount > 0 ? 'REVIEW SUBMISSIONS' : isFullyVerified ? 'ALL VERIFIED ✔' : 'VIEW PORTFOLIO'}
                             {group.pendingCount > 0 && (
                                 <span className="absolute -top-4 -right-4 w-10 h-10 bg-red-600 text-[14px] rounded-full flex items-center justify-center border-4 border-white font-black shadow-2xl ring-4 ring-red-50 animate-in zoom-in duration-500">
                                     {group.pendingCount}
@@ -457,114 +457,111 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
     const isReuploadPending = doc.status === "PENDING_REUPLOAD";
 
     return (
-        <Card className={`border-2 shadow-xl rounded-[2.5rem] overflow-hidden transition-all duration-700 bg-white group hover:shadow-2xl ${isVerified ? 'border-emerald-200 ring-4 ring-emerald-50/20' : 'border-slate-100'}`}>
-            <CardContent className="p-0">
-                <div className="flex flex-col lg:flex-row min-h-[400px]">
-                    {/* Left: Huge Preview Area */}
-                    <div className="w-full lg:w-[45%] relative bg-slate-900 overflow-hidden cursor-zoom-in group/img" onClick={onView}>
-                        {doc.fileData?.startsWith("data:image") ? (
-                            <img src={doc.fileData} className="w-full h-full object-contain p-4 group-hover/img:scale-105 transition-all duration-700" />
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
-                                <FileText className="w-16 h-16 opacity-20 mb-4" />
-                                <span className="font-black uppercase tracking-widest text-[10px] opacity-30 text-white">Digital Document</span>
+        <Card className={`border-2 shadow-xl rounded-[2rem] overflow-hidden transition-all duration-700 bg-white group hover:shadow-2xl ${isVerified ? 'border-emerald-200 shadow-emerald-50/50' : 'border-slate-100 shadow-slate-200/50'} h-full flex flex-col`}>
+            <CardContent className="p-0 flex-1 flex flex-col lg:flex-row">
+                {/* Left: Huge Preview Area (Now 60% wide for clear viewing) */}
+                <div className="w-full lg:w-[60%] relative bg-slate-900 overflow-hidden cursor-zoom-in group/img" onClick={onView}>
+                    {doc.fileData?.startsWith("data:image") ? (
+                        <img src={doc.fileData} className="w-full h-full object-contain p-2 group-hover/img:scale-105 transition-all duration-700" title="Click for Full Resolution" />
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
+                            <FileText className="w-16 h-16 opacity-20 mb-4" />
+                            <span className="font-black uppercase tracking-widest text-[10px] opacity-30 text-white text-center px-10">Document Preview Not Available<br />(Click to Download)</span>
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
+                    <div className="absolute bottom-4 left-6 flex items-center gap-3">
+                        <div className="bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/20">
+                            <Eye className="w-4 h-4 text-white" />
+                        </div>
+                        <p className="text-white text-[9px] font-bold uppercase tracking-widest">High-Res Document View</p>
+                    </div>
+                </div>
+
+                {/* Right: Compact Info and Actions */}
+                <div className="flex-1 p-6 flex flex-col justify-between bg-white border-l border-slate-50">
+                    <div className="space-y-4">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-3 rounded-xl ${isVerified ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                    {TYPE_ICONS[type]}
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-lg text-slate-900 tracking-tight uppercase leading-none">{TYPE_LABELS[type]}</h4>
+                                    <Badge className="bg-slate-50 text-slate-400 border-none font-bold text-[8px] uppercase px-2 py-0.5 mt-2">ID: {doc.id.slice(-8)}</Badge>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                {isVerified && <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-100 font-black text-[8px] uppercase px-2 py-1 rounded-md">VERIFIED ✓</Badge>}
+                                {isPending && <Badge className="bg-orange-50 text-orange-600 border border-orange-100 font-black text-[8px] uppercase px-2 py-1 rounded-md">AWAITING REVIEW</Badge>}
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Info className="w-3.5 h-3.5" />
+                                Review Points
+                            </h5>
+                            <ul className="space-y-2">
+                                {['Clear Name Matching', 'Check Expiry/Validity', 'Visual authenticity'].map(check => (
+                                    <li key={check} className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
+                                        <div className="w-1 h-1 rounded-full bg-indigo-300"></div>
+                                        {check}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {isRejected && doc.rejectedNote && (
+                            <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
+                                <p className="text-[10px] font-bold text-rose-700 leading-relaxed italic">"{doc.rejectedNote}"</p>
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
-                        <div className="absolute bottom-4 left-6 flex items-center gap-3">
-                            <div className="bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/20">
-                                <Eye className="w-4 h-4 text-white" />
-                            </div>
-                            <p className="text-white text-[10px] font-bold uppercase tracking-widest">Click to Expand</p>
-                        </div>
                     </div>
 
-                    {/* Right: Info and Actions */}
-                    <div className="flex-1 p-8 flex flex-col justify-between bg-white">
-                        <div className="space-y-6">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-4 rounded-2xl ${isVerified ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {TYPE_ICONS[type]}
-                                    </div>
-                                    <div>
-                                        <h4 className="font-black text-xl text-slate-900 tracking-tight uppercase leading-none">{TYPE_LABELS[type]}</h4>
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <Badge className="bg-slate-100 text-slate-500 border-none font-bold text-[9px] uppercase px-2 py-0.5">Verification Point</Badge>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    {isVerified && <Badge className="bg-emerald-100 text-emerald-700 border-none font-black text-[9px] uppercase px-3 py-1.5 rounded-lg">VERIFIED ✓</Badge>}
-                                    {isPending && <Badge className="bg-orange-100 text-orange-700 border-none font-black text-[9px] uppercase px-3 py-1.5 rounded-lg">PENDING</Badge>}
-                                    {isRejected && <Badge className="bg-rose-100 text-rose-700 border-none font-black text-[9px] uppercase px-3 py-1.5 rounded-lg">REJECTED</Badge>}
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <Info className="w-3.5 h-3.5" />
-                                    Review Requirements
-                                </h5>
-                                <ul className="space-y-2">
-                                    {['Check Name Details', 'Validity Date', 'Photo matched'].map(check => (
-                                        <li key={check} className="flex items-center gap-2.5 text-[11px] font-bold text-slate-600">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-300"></div>
-                                            {check}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {isRejected && doc.rejectedNote && (
-                                <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
-                                    <p className="text-[11px] font-bold text-rose-700 leading-relaxed italic">"{doc.rejectedNote}"</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Actions */}
-                        {!isVerified ? (
-                            <div className="flex items-center gap-3 pt-6">
+                    {/* Actions (Sleeker and smaller as requested) */}
+                    {!isVerified ? (
+                        <div className="flex flex-col gap-2 pt-6">
+                            <div className="flex gap-2">
                                 <Button
                                     variant="outline"
-                                    className="h-12 flex-1 rounded-xl border-2 border-slate-100 text-rose-600 hover:bg-rose-50 font-black text-[10px] uppercase tracking-widest"
+                                    className="h-11 flex-1 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-black text-[9px] uppercase tracking-widest"
                                     onClick={onReject}
                                 >
-                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
                                     Reject
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="h-12 flex-1 rounded-xl border-2 border-slate-100 text-indigo-600 hover:bg-indigo-50 font-black text-[10px] uppercase tracking-widest"
+                                    className="h-11 flex-1 rounded-xl border border-slate-200 text-indigo-600 hover:bg-indigo-50 font-black text-[9px] uppercase tracking-widest"
                                     onClick={onReject}
                                 >
-                                    <RefreshCcw className="w-4 h-4 mr-2" />
+                                    <RefreshCcw className="w-3.5 h-3.5 mr-2" />
                                     Resend
                                 </Button>
-                                <Button
-                                    className="h-12 flex-[1.5] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-100"
-                                    onClick={onVerify}
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Approve Document
-                                </Button>
                             </div>
-                        ) : (
-                            <div className="pt-6">
-                                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <FileCheck className="w-5 h-5 text-emerald-500" />
-                                        <span className="text-[11px] font-black text-emerald-700 uppercase">Trusted and Verified</span>
-                                    </div>
-                                    <Button variant="ghost" size="sm" className="text-emerald-500 hover:text-emerald-700 font-bold text-[10px] uppercase" onClick={onView}>View Proof</Button>
+                            <Button
+                                className="h-11 w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-[0.1em] shadow-lg shadow-indigo-100 mt-1"
+                                onClick={onVerify}
+                            >
+                                <CheckCircle className="w-3.5 h-3.5 mr-2" />
+                                Approve Now
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="pt-6">
+                            <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <FileCheck className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-[10px] font-black text-emerald-700 uppercase">System Authenticated</span>
                                 </div>
+                                <Button variant="ghost" size="sm" className="text-emerald-600 hover:bg-white font-bold text-[9px] uppercase" onClick={onView}>Zoom Document</Button>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 }
 
