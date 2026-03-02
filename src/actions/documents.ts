@@ -79,6 +79,7 @@ export async function getPendingDocuments() {
             include: {
                 booking: {
                     select: {
+                        id: true,
                         displayId: true,
                         guestName: true,
                         propertyName: true,
@@ -102,6 +103,7 @@ export async function getPendingDocuments() {
         include: {
             booking: {
                 select: {
+                    id: true,
                     displayId: true,
                     guestName: true,
                     propertyName: true,

@@ -768,12 +768,10 @@ export default function OnboardingPage() {
         setLoading(true);
         try {
             const [b, r, p] = await Promise.all([getBookings(), getAvailableRooms(), getProperties()]);
-            // Only show bookings that have been accepted (not still pending, not rejected)
+            // Only show bookings that have been accepted and NOT yet fully paid (staying in onboarding)
             const onboardingBookings = b.filter((bk: any) =>
                 bk.status === "APPROVED_PAYMENT_PENDING" ||
-                bk.status === "APPROVED" ||
-                bk.status === "PAID" ||
-                bk.status === "CASH_PAID"
+                bk.status === "APPROVED"
             );
             setBookings(onboardingBookings);
             setRooms(r);
