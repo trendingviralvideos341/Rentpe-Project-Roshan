@@ -299,50 +299,144 @@ export default function AdminDocVerificationPage() {
 
             {/* Preview Modal */}
             <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-                <DialogContent className="!fixed !inset-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !rounded-none bg-slate-950 flex flex-col !shadow-none !border-none z-[110] !p-0">
-                    <div className="p-6 bg-white/5 backdrop-blur-3xl flex justify-between items-center text-white border-b border-white/10 sticky top-0">
-                        <div className="flex items-center gap-6">
-                            <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">{previewDoc && TYPE_ICONS[previewDoc.type]}</div>
-                            <div>
-                                <DialogTitle className="font-black text-lg tracking-[0.15em] uppercase text-white leading-tight">
-                                    {previewDoc && TYPE_LABELS[previewDoc.type]}
-                                </DialogTitle>
-                                <DialogDescription className="text-[11px] font-black opacity-40 uppercase tracking-[0.1em] text-white transition-opacity group-hover:opacity-100">
-                                    Full Document View • {previewDoc?.booking?.guestName}
-                                </DialogDescription>
+                <DialogContent className="!fixed !inset-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !rounded-none bg-slate-950 flex flex-col md:flex-row !shadow-none !border-none z-[110] !p-0">
+                    <div className="flex-1 flex flex-col h-full overflow-hidden">
+                        <div className="p-6 bg-white/5 backdrop-blur-3xl flex justify-between items-center text-white border-b border-white/10 shrink-0">
+                            <div className="flex items-center gap-6">
+                                <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">{previewDoc && TYPE_ICONS[previewDoc.type]}</div>
+                                <div>
+                                    <DialogTitle className="font-black text-lg tracking-[0.15em] uppercase text-white leading-tight">
+                                        {previewDoc && TYPE_LABELS[previewDoc.type]}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-[11px] font-black opacity-40 uppercase tracking-[0.1em] text-white transition-opacity group-hover:opacity-100">
+                                        Full Document View • {previewDoc?.booking?.guestName}
+                                    </DialogDescription>
+                                </div>
                             </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="md:hidden hover:bg-rose-500/20 hover:text-rose-500 text-white/50 rounded-2xl h-12 w-12 transition-all"
+                                onClick={() => setPreviewDoc(null)}
+                            >
+                                <XCircle className="w-8 h-8" />
+                            </Button>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="hover:bg-rose-500/20 hover:text-rose-500 text-white/50 rounded-2xl h-12 w-12 transition-all"
-                            onClick={() => setPreviewDoc(null)}
-                        >
-                            <XCircle className="w-8 h-8" />
-                        </Button>
+
+                        <div className="flex-1 flex items-center justify-center p-4 min-h-0 bg-black/40 overflow-auto">
+                            {previewDoc?.fileData?.startsWith("data:image") ? (
+                                <img
+                                    src={previewDoc.fileData}
+                                    className="max-w-[95vw] max-h-[85vh] object-contain rounded-2xl shadow-[0_0_100px_rgba(30,58,138,0.2)] animate-in zoom-in duration-500"
+                                    alt="Document"
+                                />
+                            ) : (
+                                <div className="text-white/30 text-center font-black uppercase tracking-widest text-xs">
+                                    <FileText className="w-24 h-24 mx-auto mb-6 opacity-10" />
+                                    No Visual Data Found
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex-1 flex items-center justify-center p-4 min-h-0 bg-black/40">
-                        {previewDoc?.fileData?.startsWith("data:image") ? (
-                            <img
-                                src={previewDoc.fileData}
-                                className="max-w-[95vw] max-h-[85vh] object-contain rounded-2xl shadow-[0_0_100px_rgba(30,58,138,0.2)] animate-in zoom-in duration-500"
-                                alt="Document"
-                            />
-                        ) : (
-                            <div className="text-white/30 text-center font-black uppercase tracking-widest text-xs">
-                                <FileText className="w-24 h-24 mx-auto mb-6 opacity-10" />
-                                No Visual Data Found
-                            </div>
-                        )}
-                    </div>
-                    <div className="p-10 bg-slate-900/80 backdrop-blur-2xl border-t border-white/10 flex justify-center sticky bottom-0">
-                        <Button
-                            variant="default"
-                            className="bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white font-black uppercase tracking-[0.3em] text-[12px] h-16 px-16 rounded-[2rem] transition-all shadow-[0_20px_40px_rgba(79,70,229,0.3)] hover:shadow-[0_25px_50px_rgba(79,70,229,0.4)] hover:-translate-y-1 active:scale-95 border-t border-white/20"
-                            onClick={() => setPreviewDoc(null)}
-                        >
-                            CLOSE
-                        </Button>
+
+                    {/* Audit Trail Sidebar */}
+                    <div className="w-full md:w-96 bg-slate-900 border-l border-white/10 flex flex-col h-[50vh] md:h-screen shrink-0">
+                        <div className="p-6 border-b border-white/10 shrink-0 flex items-center justify-between">
+                            <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm flex items-center gap-3">
+                                <Clock className="w-4 h-4 text-indigo-400" />
+                                Audit History
+                            </h3>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hidden md:flex hover:bg-rose-500/20 hover:text-rose-500 text-white/50 rounded-xl h-10 w-10 transition-all"
+                                onClick={() => setPreviewDoc(null)}
+                            >
+                                <XCircle className="w-6 h-6" />
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+                            {(() => {
+                                if (!previewDoc) return null;
+                                let trail = [];
+                                try {
+                                    trail = JSON.parse(previewDoc.auditTrail || '[]');
+                                } catch (e) { }
+
+                                if (trail.length === 0) {
+                                    return (
+                                        <div className="text-center text-white/30 mt-10">
+                                            <Info className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                                            <p className="text-[10px] uppercase tracking-widest font-bold">No history available</p>
+                                        </div>
+                                    );
+                                }
+
+                                return trail.map((event: any, index: number) => {
+                                    const isLast = index === trail.length - 1;
+                                    let icon = <Info className="w-3.5 h-3.5" />;
+                                    let color = "text-indigo-400";
+                                    let bg = "bg-indigo-500/20";
+                                    let border = "border-indigo-500/30";
+
+                                    if (event.action === 'UPLOADED' || event.action === 'REUPLOADED') {
+                                        icon = <Upload className="w-3.5 h-3.5" />;
+                                        color = "text-indigo-400";
+                                        bg = "bg-indigo-500/20";
+                                        border = "border-indigo-500/30";
+                                    } else if (event.action === 'VERIFIED') {
+                                        icon = <CheckCircle className="w-3.5 h-3.5" />;
+                                        color = "text-emerald-400";
+                                        bg = "bg-emerald-500/20";
+                                        border = "border-emerald-500/30";
+                                    } else if (event.action === 'REJECTED') {
+                                        icon = <XCircle className="w-3.5 h-3.5" />;
+                                        color = "text-rose-400";
+                                        bg = "bg-rose-500/20";
+                                        border = "border-rose-500/30";
+                                    }
+
+                                    return (
+                                        <div key={index} className="relative flex gap-4">
+                                            {!isLast && <div className="absolute left-4 top-10 bottom-[-2rem] w-px bg-white/10"></div>}
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${bg} ${color} border ${border} shadow-lg shadow-black/50`}>
+                                                {icon}
+                                            </div>
+                                            <div className="flex-1 pt-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className={`text-[11px] font-black uppercase tracking-widest ${color}`}>
+                                                        {event.action}
+                                                    </span>
+                                                    <span className="text-[9px] text-white/40 font-mono">
+                                                        {new Date(event.timestamp).toLocaleString(undefined, {
+                                                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-white/60 mb-2 leading-relaxed">{event.details}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-[8px] uppercase tracking-wider bg-white/5 border-white/10 text-white/50 px-2 py-0">
+                                                        Role: {event.role || 'System'}
+                                                    </Badge>
+                                                    <span className="text-[8px] font-mono text-white/30 truncate max-w-[120px]" title={event.performedBy}>
+                                                        ID: {event.performedBy?.substring(0, 8)}...
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+                        <div className="p-6 bg-slate-900/80 backdrop-blur-2xl border-t border-white/10 shrink-0">
+                            <Button
+                                variant="default"
+                                className="w-full bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white font-black uppercase tracking-[0.3em] text-[11px] h-12 rounded-xl transition-all shadow-[0_10px_20px_rgba(79,70,229,0.3)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.4)] hover:-translate-y-0.5 active:scale-95 border-t border-white/20"
+                                onClick={() => setPreviewDoc(null)}
+                            >
+                                CLOSE PREVIEW
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

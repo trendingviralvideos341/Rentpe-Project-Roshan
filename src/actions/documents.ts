@@ -13,12 +13,32 @@ export async function uploadTenantDocument(data: {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
+    const userId = (session as any).userId;
+    const userRole = session.role || 'USER';
+
+    const auditEvent = {
+        action: 'UPLOADED',
+        timestamp: new Date().toISOString(),
+        performedBy: userId,
+        role: userRole,
+        details: `Document ${data.type} uploaded`
+    };
+
     // Upsert: if doc of this type already exists for this booking, replace it
     const existing = await prisma.tenantDocument.findFirst({
         where: { bookingId: data.bookingId, type: data.type }
     });
 
     if (existing) {
+        let currentTrail = [];
+        try {
+            currentTrail = JSON.parse(existing.auditTrail || '[]');
+        } catch (e) { }
+
+        auditEvent.action = 'REUPLOADED';
+        auditEvent.details = `Document ${data.type} re-uploaded`;
+        currentTrail.push(auditEvent);
+
         return await prisma.tenantDocument.update({
             where: { id: existing.id },
             data: {
@@ -29,6 +49,7 @@ export async function uploadTenantDocument(data: {
                 verifiedAt: null,
                 verifiedBy: null,
                 uploadedAt: new Date(),
+                auditTrail: JSON.stringify(currentTrail)
             }
         });
     }
@@ -40,6 +61,7 @@ export async function uploadTenantDocument(data: {
             fileData: data.fileData,
             fileName: data.fileName,
             status: 'PENDING',
+            auditTrail: JSON.stringify([auditEvent])
         }
     });
 }
@@ -154,13 +176,33 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
+    const userId = (session as any).userId;
+    const userRole = session.role;
+
+    const existingDoc = await prisma.tenantDocument.findUnique({ where: { id: docId } });
+    if (!existingDoc) throw new Error("Document not found");
+
+    let currentTrail = [];
+    try {
+        currentTrail = JSON.parse(existingDoc.auditTrail || '[]');
+    } catch (e) { }
+
+    currentTrail.push({
+        action: status,
+        timestamp: new Date().toISOString(),
+        performedBy: userId,
+        role: userRole,
+        details: status === 'REJECTED' ? `Rejected: ${note}` : 'Document verified'
+    });
+
     const doc = await prisma.tenantDocument.update({
         where: { id: docId },
         data: {
             status,
             rejectedNote: status === 'REJECTED' ? (note || 'Document rejected') : null,
             verifiedAt: status === 'VERIFIED' ? new Date() : null,
-            verifiedBy: (session as any).userId,
+            verifiedBy: userId,
+            auditTrail: JSON.stringify(currentTrail)
         }
     });
 
@@ -170,10 +212,11 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
             targetId: docId,
             targetType: 'DOCUMENT',
             details: status === 'REJECTED' ? `Rejected: ${note}` : `Document ${doc.type} verified`,
-            performedBy: (session as any).userId
+            performedBy: userId
         }
     });
 
     revalidatePath('/dashboard/owner/verifications');
+    revalidatePath('/dashboard/admin/doc-verification');
     return doc;
 }

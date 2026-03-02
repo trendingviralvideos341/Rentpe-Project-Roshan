@@ -234,6 +234,7 @@ model TenantDocument {
   uploadedAt   DateTime  @default(now())
   verifiedAt   DateTime?
   verifiedBy   String?
+  auditTrail   String    @default("[]")
   booking      Booking   @relation(fields: [bookingId], references: [id])
 }
 
