@@ -176,7 +176,12 @@ export default function OwnerVerificationsPage() {
                                         {selectedBooking.booking.guestName ? selectedBooking.booking.guestName[0] : 'U'}
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">{selectedBooking.booking.guestName}</h2>
+                                        <div className="flex items-center gap-3">
+                                            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">{selectedBooking.booking.guestName}</h2>
+                                            {selectedBooking.docs.length === 4 && selectedBooking.docs.every((d: any) => d.status === "VERIFIED") && (
+                                                <Badge className="bg-emerald-100 text-emerald-600 border-none font-black text-[10px] uppercase px-3 py-1">All Verified</Badge>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-3 mt-2">
                                             <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100/50 text-[10px] font-black uppercase tracking-widest">{selectedBooking.booking.propertyName}</span>
                                             <span className="text-slate-400 font-bold text-[11px] uppercase tracking-tighter">Room {selectedBooking.booking.roomAssigned || "TBD"} • #{selectedBooking.booking.displayId}</span>
@@ -187,7 +192,8 @@ export default function OwnerVerificationsPage() {
                             </div>
 
                             <div className="p-8 pb-20 flex-1 overflow-y-auto">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {/* Responsive grid to prevent squashing */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
                                     {Object.keys(TYPE_LABELS).map((type) => {
                                         const doc = selectedBooking.docs.find((d: any) => d.type === type);
                                         return (
@@ -275,8 +281,16 @@ export default function OwnerVerificationsPage() {
                     70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); }
                     100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
                 }
+                @keyframes pulse-glow-emerald {
+                    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+                    70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                }
                 .animate-pulse-glow {
                     animation: pulse-glow 2s infinite;
+                }
+                .animate-pulse-glow-emerald {
+                    animation: pulse-glow-emerald 2s infinite;
                 }
             `}</style>
         </div>
@@ -291,6 +305,8 @@ const SHORT_LABELS: Record<string, string> = {
 };
 
 function BookingRow({ group, onSelect }: { group: any, onSelect: any }) {
+    const isFullyVerified = group.docs.length === 4 && group.docs.every((d: any) => d.status === "VERIFIED");
+
     return (
         <Card className="border-none shadow-sm hover:shadow-xl transition-all group overflow-hidden bg-white">
             <CardContent className="p-0">
@@ -312,15 +328,15 @@ function BookingRow({ group, onSelect }: { group: any, onSelect: any }) {
                     <div className="flex-1 max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-4 px-0 md:px-10 md:border-x border-slate-50">
                         {Object.keys(SHORT_LABELS).map((type) => {
                             const doc = group.docs.find((d: any) => d.type === type);
-                            let colorClass = "text-slate-300";
+                            let colorClass = "text-slate-400 font-bold";
                             let statusLabel = "Missing";
 
                             if (doc) {
                                 if (doc.status === "VERIFIED") {
-                                    colorClass = "text-emerald-600";
+                                    colorClass = "text-emerald-600 font-black";
                                     statusLabel = "Verified";
                                 } else {
-                                    colorClass = "text-amber-500";
+                                    colorClass = "text-amber-500 font-black";
                                     statusLabel = "Pending";
                                 }
                             }
@@ -329,8 +345,8 @@ function BookingRow({ group, onSelect }: { group: any, onSelect: any }) {
                                 <div key={type} className="flex flex-col items-start">
                                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{SHORT_LABELS[type]}</span>
                                     <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full bg-current ${colorClass}`}></div>
-                                        <span className={`text-[11px] font-black uppercase tracking-tight ${colorClass}`}>{statusLabel}</span>
+                                        <div className={`w-2.5 h-2.5 rounded-full bg-current ${colorClass}`}></div>
+                                        <span className={`text-[11px] uppercase tracking-tight ${colorClass}`}>{statusLabel}</span>
                                     </div>
                                 </div>
                             );
@@ -341,12 +357,14 @@ function BookingRow({ group, onSelect }: { group: any, onSelect: any }) {
                         <Button
                             className={`relative h-14 px-10 font-black text-[12px] tracking-widest rounded-2xl transition-all duration-300 ${group.pendingCount > 0
                                     ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-200 animate-pulse-glow border-b-4 border-amber-700'
-                                    : 'bg-slate-900 hover:bg-black text-white hover:scale-105 active:scale-95'
+                                    : isFullyVerified
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-100 animate-pulse-glow-emerald border-b-4 border-emerald-800'
+                                        : 'bg-slate-900 hover:bg-black text-white hover:scale-105 active:scale-95'
                                 }`}
                             onClick={() => onSelect(group)}
                         >
                             <Shield className="w-5 h-5 mr-3" />
-                            {group.pendingCount > 0 ? 'REVIEW SUBMISSIONS →' : 'VIEW PORTFOLIO'}
+                            {group.pendingCount > 0 ? 'REVIEW SUBMISSIONS →' : isFullyVerified ? 'ALL VERIFIED ✔' : 'VIEW PORTFOLIO'}
                             {group.pendingCount > 0 && (
                                 <span className="absolute -top-3 -right-3 w-8 h-8 bg-red-600 text-[12px] rounded-full flex items-center justify-center border-4 border-white font-black shadow-xl ring-2 ring-red-100">
                                     {group.pendingCount}
@@ -363,12 +381,14 @@ function BookingRow({ group, onSelect }: { group: any, onSelect: any }) {
 function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
     if (!doc) {
         return (
-            <Card className="border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center p-8 rounded-[2rem] opacity-60 h-full">
-                <div className="p-4 bg-white rounded-2xl shadow-inner mb-4">
-                    {TYPE_ICONS[type] || <FileText className="text-slate-300 w-8 h-8" />}
+            <Card className="border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center p-10 rounded-[2.5rem] opacity-70 h-full min-h-[350px]">
+                <div className="p-5 bg-white rounded-3xl shadow-inner mb-6 border border-slate-100">
+                    <div className="text-slate-200">{TYPE_ICONS[type] || <FileText className="w-10 h-10" />}</div>
                 </div>
-                <h4 className="font-black text-xs text-slate-400 uppercase tracking-widest mb-1 text-center">{TYPE_LABELS[type]}</h4>
-                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Not Uploaded</p>
+                <h4 className="font-black text-[11px] text-slate-400 uppercase tracking-[0.2em] mb-2 text-center">{TYPE_LABELS[type]}</h4>
+                <div className="px-5 py-2 bg-white rounded-full border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest text-center">Not Available</p>
+                </div>
             </Card>
         );
     }
@@ -379,107 +399,110 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
     const isReuploadPending = doc.status === "PENDING_REUPLOAD";
 
     return (
-        <Card className={`border shadow-sm rounded-[2rem] overflow-hidden transition-all duration-500 bg-white group hover:shadow-2xl hover:-translate-y-1 ${isVerified ? 'border-emerald-200 shadow-emerald-50' : 'border-slate-100'}`}>
-            <CardContent className="p-0 flex flex-col h-full">
+        <Card className={`border shadow-sm rounded-[2.5rem] overflow-hidden transition-all duration-500 bg-white group hover:shadow-2xl hover:-translate-y-1 ${isVerified ? 'border-emerald-200 shadow-emerald-50' : 'border-slate-100'}`}>
+            <CardContent className="p-0 flex flex-col h-full min-h-[450px]">
                 {/* Header matching user's 2nd image */}
-                <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-white">
-                    <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-2xl transition-colors duration-500 ${isVerified ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white">
+                    <div className="flex items-center gap-5">
+                        <div className={`p-4 rounded-2xl transition-all duration-500 shadow-sm ${isVerified ? 'bg-emerald-50 text-emerald-600 ring-4 ring-emerald-50/50' : 'bg-slate-100 text-slate-500'}`}>
                             {TYPE_ICONS[type]}
                         </div>
                         <div>
-                            <h4 className="font-black text-sm text-slate-800 uppercase tracking-tight leading-none">{TYPE_LABELS[type]}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest opacity-60">Identity Document</p>
+                            <h4 className="font-black text-sm text-slate-800 uppercase tracking-tighter leading-none">{TYPE_LABELS[type]}</h4>
+                            <p className="text-[10px] text-slate-400 font-black mt-2 uppercase tracking-widest opacity-60">Tenant Identity</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Actions row matching user's 2nd image logic (Red/Blue/Black buttons) */}
+                {/* Actions row: Improved button layout */}
                 {!isVerified ? (
-                    <div className="flex items-stretch border-b border-slate-50 h-12">
+                    <div className="flex items-stretch border-b border-slate-50 h-[3.5rem]">
                         <button
                             className="flex-1 bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-2 transition-all group/btn"
+                            title="Reject Document"
                             onClick={onReject}
                         >
-                            <Trash2 className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline group-hover/btn:scale-105">Reject</span>
+                            <Trash2 className="w-5 h-5" />
+                            <span className="text-[11px] font-black uppercase tracking-widest hidden xl:inline group-hover/btn:scale-110">Reject</span>
                         </button>
                         <button
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 transition-all group/btn"
+                            title="Request Re-upload"
                             onClick={onReject}
                         >
-                            <RefreshCcw className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline group-hover/btn:scale-105">Reupload</span>
+                            <RefreshCcw className="w-5 h-5 font-bold" />
+                            <span className="text-[11px] font-black uppercase tracking-widest hidden xl:inline group-hover/btn:scale-110">Resend</span>
                         </button>
                         <button
-                            className="flex-1 bg-slate-800 hover:bg-slate-900 text-white flex items-center justify-center gap-2 transition-all group/btn border-l border-slate-700/30"
+                            className="flex-1 bg-slate-800 hover:bg-slate-900 text-white flex items-center justify-center gap-2 transition-all group/btn border-l border-white/10"
+                            title="View Full Size"
                             onClick={onView}
                         >
-                            <Eye className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline group-hover/btn:scale-105">View</span>
+                            <Eye className="w-5 h-5 font-bold" />
+                            <span className="text-[11px] font-black uppercase tracking-widest hidden xl:inline group-hover/btn:scale-110">View</span>
                         </button>
                         <button
-                            className="flex-[1.8] bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 transition-all group/btn border-l border-emerald-500"
+                            className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-3 transition-all group/btn border-l border-emerald-500 shadow-[inset_0_4px_10px_rgba(0,0,0,0.1)]"
                             onClick={onVerify}
                         >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="text-[11px] font-black uppercase tracking-widest group-hover/btn:translate-x-1">APPROVE</span>
+                            <CheckCircle className="w-5 h-5 font-bold" />
+                            <span className="text-[12px] font-black uppercase tracking-widest group-hover/btn:translate-x-1">APPROVE ID</span>
                         </button>
                     </div>
                 ) : (
-                    <div className="bg-emerald-50 py-3.5 px-6 flex items-center justify-between border-b border-emerald-100">
-                        <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-[0.2em]">
-                            <CheckCircle className="w-4 h-4" />
-                            Verified
+                    <div className="bg-emerald-50 py-4 px-8 flex items-center justify-between border-b border-emerald-100">
+                        <div className="flex items-center gap-3 text-emerald-600 font-black text-[11px] uppercase tracking-[0.2em]">
+                            <CheckCircle className="w-5 h-5" />
+                            Document Verified
                         </div>
-                        <button className="text-[10px] font-black text-emerald-400 hover:text-emerald-700 uppercase tracking-widest transition-colors" onClick={onView}>View Proof</button>
+                        <button className="text-[11px] font-black text-emerald-400 hover:text-emerald-700 uppercase tracking-widest transition-colors" onClick={onView}>View Proof</button>
                     </div>
                 )}
 
                 {/* Image and Status Area */}
-                <div className="p-6 bg-slate-50 flex-1 flex flex-col justify-between gap-6">
-                    <div className="w-full h-48 rounded-2xl overflow-hidden border border-slate-200 bg-white relative group/img cursor-pointer" onClick={onView}>
+                <div className="p-8 bg-slate-50 flex-1 flex flex-col justify-between gap-8">
+                    <div className="w-full aspect-[4/3] rounded-[2rem] overflow-hidden border-2 border-slate-200 bg-white shadow-inner relative group/img cursor-pointer transition-transform duration-500 hover:scale-[1.02]" onClick={onView}>
                         {doc.fileData?.startsWith("data:image") ? (
-                            <img src={doc.fileData} className="w-full h-full object-contain p-2" />
+                            <img src={doc.fileData} className="w-full h-full object-contain p-3" />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                                <FileText className="w-12 h-12 opacity-10" />
-                                <span className="text-[10px] font-black mt-2 uppercase">PDF Document</span>
+                                <FileText className="w-16 h-16 opacity-10 mb-4" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Digital PDF Document</span>
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-indigo-600/5 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                            <div className="bg-white/90 backdrop-blur p-3 rounded-full shadow-xl">
-                                <Eye className="w-5 h-5 text-indigo-600" />
+                        <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="bg-white/95 backdrop-blur-md p-5 rounded-full shadow-2xl scale-75 group-hover/img:scale-100 transition-transform duration-500">
+                                <Eye className="w-8 h-8 text-indigo-600" />
                             </div>
                         </div>
                     </div>
 
                     <div className="flex items-center justify-center">
                         {isPending && (
-                            <div className="bg-amber-100 text-amber-600 px-5 py-2.5 rounded-2xl flex items-center gap-3 shadow-sm border border-amber-200">
-                                <Clock className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Awaiting Approval</span>
+                            <div className="bg-amber-100 text-amber-600 px-8 py-4 rounded-[1.5rem] flex items-center gap-4 shadow-sm border border-amber-200/50">
+                                <Clock className="w-5 h-5 animate-pulse" />
+                                <span className="text-[11px] font-black uppercase tracking-[0.25em]">Pending Review</span>
                             </div>
                         )}
                         {isReuploadPending && (
-                            <div className="bg-rose-100 text-rose-600 px-5 py-2.5 rounded-2xl flex items-center gap-3 border border-rose-200 shadow-sm">
-                                <RefreshCcw className="w-4 h-4 animate-spin-slow" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Re-upload Required</span>
+                            <div className="bg-rose-100 text-rose-600 px-8 py-4 rounded-[1.5rem] flex items-center gap-4 border border-rose-200/50 shadow-sm">
+                                <RefreshCcw className="w-5 h-5 animate-spin-slow" />
+                                <span className="text-[11px] font-black uppercase tracking-[0.25em]">Requesting Reupload</span>
                             </div>
                         )}
                         {isVerified && (
-                            <div className="bg-emerald-100 text-emerald-600 px-5 py-2.5 rounded-2xl flex items-center gap-3 border border-emerald-200 shadow-sm">
-                                <FileCheck className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Access Granted</span>
+                            <div className="bg-emerald-100 text-emerald-600 px-8 py-4 rounded-[1.5rem] flex items-center gap-4 border border-emerald-200/50 shadow-sm animate-in fade-in zoom-in duration-500">
+                                <FileCheck className="w-5 h-5" />
+                                <span className="text-[11px] font-black uppercase tracking-[0.25em]">Access Verified</span>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {isRejected && doc.rejectedNote && (
-                    <div className="px-6 pb-6 mt-[-0.5rem]">
-                        <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 shadow-inner">
-                            <p className="text-[11px] font-bold text-rose-600 italic leading-snug">"{doc.rejectedNote}"</p>
+                    <div className="px-8 pb-8 pt-0">
+                        <div className="p-5 bg-rose-50/50 rounded-2xl border border-rose-100/50 shadow-inner">
+                            <p className="text-[11px] font-bold text-rose-600 italic leading-snug">Note: "{doc.rejectedNote}"</p>
                         </div>
                     </div>
                 )}
@@ -487,6 +510,8 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
         </Card>
     );
 }
+
+// Global styles for smooth animations
 
 // Keeping the original VerificationCard logic but refactored into the above structure for the user's specific request
 // The user explicitly wants a list of customers first.
