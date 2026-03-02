@@ -168,7 +168,11 @@ export default function OwnerVerificationsPage() {
 
             {/* Document Detail Panel (Drill-down) */}
             <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-                <DialogContent className="fixed inset-0 translate-x-0 translate-y-0 max-w-none w-screen h-screen m-0 rounded-none bg-white flex flex-col shadow-none border-none z-[100]">
+                <DialogContent className="!fixed !inset-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !rounded-none bg-white flex flex-col !shadow-none !border-none z-[100] !p-0">
+                    <div className="sr-only">
+                        <DialogTitle>Document Verification Details</DialogTitle>
+                        <DialogDescription>Review and verify tenant uploaded documents</DialogDescription>
+                    </div>
                     {selectedBooking && (
                         <>
                             {/* Pro Header */}
@@ -229,7 +233,7 @@ export default function OwnerVerificationsPage() {
                                     </div>
 
                                     <div className="p-10 flex-1">
-                                        <div className="max-w-4xl mx-auto h-full">
+                                        <div className="w-full h-full">
                                             {Object.keys(TYPE_LABELS).map((type) => (
                                                 <TabsContent key={type} value={type} className="m-0 h-full mt-0 focus-visible:ring-0">
                                                     {(() => {
@@ -458,9 +462,9 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
 
     return (
         <Card className={`border-2 shadow-xl rounded-[2rem] overflow-hidden transition-all duration-700 bg-white group hover:shadow-2xl ${isVerified ? 'border-emerald-200 shadow-emerald-50/50' : 'border-slate-100 shadow-slate-200/50'} h-full flex flex-col`}>
-            <CardContent className="p-0 flex-1 flex flex-col lg:flex-row">
-                {/* Left: Huge Preview Area (Now 60% wide for clear viewing) */}
-                <div className="w-full lg:w-[60%] relative bg-slate-900 overflow-hidden cursor-zoom-in group/img" onClick={onView}>
+            <CardContent className="p-0 flex-1 flex flex-col">
+                {/* Top: Massive Preview Area (Now full width) */}
+                <div className="w-full relative bg-slate-900 overflow-hidden cursor-zoom-in group/img" onClick={onView}>
                     {doc.fileData?.startsWith("data:image") ? (
                         <img src={doc.fileData} className="w-full h-full object-contain p-2 group-hover/img:scale-105 transition-all duration-700" title="Click for Full Resolution" />
                     ) : (
@@ -478,8 +482,8 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
                     </div>
                 </div>
 
-                {/* Right: Compact Info and Actions */}
-                <div className="flex-1 p-6 flex flex-col justify-between bg-white border-l border-slate-50">
+                {/* Bottom: Compact Info and Actions */}
+                <div className="flex-1 p-6 flex flex-col justify-between bg-white">
                     <div>
                         {/* Header info removed as requested - showing only photo and buttons */}
                         {isRejected && doc.rejectedNote && (
