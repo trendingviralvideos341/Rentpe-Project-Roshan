@@ -360,7 +360,9 @@ export default function OwnerVerificationsPage() {
 
 function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
     const { booking, docs, overallStatus } = group;
-    const isVerified = overallStatus === "VERIFIED";
+    const verifiedDocs = docs.filter((d: any) => d.status === "VERIFIED");
+    const verifiedPercentage = Math.round((verifiedDocs.length / 4) * 100);
+    const isFullyVerified = verifiedPercentage === 100;
 
     const getStatusDetails = (type: string) => {
         const doc = docs.find((d: any) => d.type === type);
@@ -373,16 +375,16 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
     const docTypes = ['ID_PROOF', 'ADDRESS_PROOF', 'COLLEGE_COMPANY', 'SELFIE'];
 
     return (
-        <Card className="border-none shadow-md hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white rounded-2xl border-l-4 border-slate-100 hover:border-indigo-500">
+        <Card className="border-none shadow-md hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white rounded-2xl border-l-4 border-slate-100 hover:border-indigo-500 transform hover:-translate-y-1">
             <CardContent className="p-5">
                 <div className="flex flex-wrap items-center justify-between gap-6">
                     <div className="flex items-center gap-6 flex-1 min-w-[400px]">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-xl font-black text-slate-400 shadow-inner group-hover:scale-110 transition-transform">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-xl font-black text-slate-400 shadow-inner group-hover:scale-110 transition-transform group-hover:text-indigo-500 group-hover:border-indigo-100">
                             {booking?.guestName ? booking.guestName[0].toUpperCase() : 'U'}
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 truncate">
-                                <h3 className="font-black text-slate-900 text-base tracking-tight uppercase truncate">{booking?.guestName}</h3>
+                                <h3 className="font-black text-slate-900 text-base tracking-tight uppercase truncate group-hover:text-indigo-600 transition-colors">{booking?.guestName}</h3>
                                 <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">#{booking?.displayId}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1">
@@ -402,7 +404,7 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
                                 const config = TYPE_CONFIG[type];
                                 return (
                                     <div key={type} className="flex flex-col items-center gap-1.5 group/dot cursor-help relative" title={`${config.label}: ${status.label}`}>
-                                        <div className={`w-8 h-8 rounded-xl ${status.color} flex items-center justify-center shadow-sm transition-transform hover:scale-110`}>
+                                        <div className={`w-8 h-8 rounded-xl ${status.color} flex items-center justify-center shadow-sm transition-all hover:scale-110 hover:shadow-md`}>
                                             {status.icon}
                                         </div>
                                         <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{config.label.split(' ')[0]}</span>
@@ -412,27 +414,40 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-4 shrink-0">
                         <Button
                             variant="outline"
-                            className="h-11 px-6 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-[11px] tracking-widest hover:bg-slate-50 transition-all flex items-center gap-3"
+                            className="h-11 px-6 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-[11px] tracking-widest hover:bg-slate-50 transition-all hover:border-indigo-200 hover:text-indigo-600 flex items-center gap-3 group/btn shadow-sm active:scale-95"
                             onClick={onViewPortfolio}
                         >
-                            <Eye className="w-4 h-4" /> View Portfolio
+                            <FileText className="w-4 h-4 group-hover/btn:rotate-12 transition-transform" /> View Documents
                         </Button>
 
-                        {!isVerified ? (
-                            <Button
-                                className={`h-11 px-8 ${overallStatus === 'REJECTED' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-black uppercase text-[11px] tracking-widest rounded-xl shadow-lg transition-all flex items-center gap-3`}
-                                onClick={onViewPortfolio}
-                            >
-                                <Shield className="w-4 h-4" /> Review Submissions
-                            </Button>
-                        ) : (
-                            <Badge className="h-11 px-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] bg-emerald-50 text-emerald-600 border-2 border-emerald-100">
-                                Fully Verified
-                            </Badge>
-                        )}
+                        <div className="flex items-center gap-3">
+                            {isFullyVerified ? (
+                                <Badge className="h-11 px-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] bg-emerald-500 text-white border-none shadow-lg shadow-emerald-100 animate-in zoom-in duration-500">
+                                    100% Verified
+                                </Badge>
+                            ) : (
+                                <Badge className={`h-11 px-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg animate-in zoom-in duration-500 flex items-center gap-2 border-none ${verifiedPercentage >= 75 ? 'bg-indigo-600 text-white shadow-indigo-100' :
+                                        verifiedPercentage >= 50 ? 'bg-indigo-500 text-white shadow-indigo-100' :
+                                            verifiedPercentage >= 25 ? 'bg-indigo-400 text-white shadow-indigo-100' :
+                                                'bg-slate-400 text-white shadow-slate-100'
+                                    }`}>
+                                    <Shield className="w-3.5 h-3.5" /> {verifiedPercentage}% Verified
+                                </Badge>
+                            )}
+
+                            {!isFullyVerified && (
+                                <Button
+                                    className={`h-11 w-11 p-0 rounded-xl ${overallStatus === 'REJECTED' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white shadow-lg transition-all active:scale-90 flex items-center justify-center`}
+                                    title="Review & Verify Submissions"
+                                    onClick={onViewPortfolio}
+                                >
+                                    <ShieldCheck className="w-5 h-5" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </CardContent>
