@@ -168,7 +168,7 @@ export default function OwnerVerificationsPage() {
 
             {/* Document Detail Panel (Drill-down) */}
             <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-                <DialogContent className="max-w-[100vw] w-full h-[100vh] overflow-hidden p-0 border-none rounded-none bg-slate-50 flex flex-col shadow-none">
+                <DialogContent className="fixed inset-0 translate-x-0 translate-y-0 max-w-none w-screen h-screen m-0 rounded-none bg-white flex flex-col shadow-none border-none z-[100]">
                     {selectedBooking && (
                         <>
                             {/* Pro Header */}
@@ -480,25 +480,8 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
 
                 {/* Right: Compact Info and Actions */}
                 <div className="flex-1 p-6 flex flex-col justify-between bg-white border-l border-slate-50">
-                    <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-3 rounded-xl ${isVerified ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                    {TYPE_ICONS[type]}
-                                </div>
-                                <div>
-                                    <h4 className="font-black text-lg text-slate-900 tracking-tight uppercase leading-none">{TYPE_LABELS[type]}</h4>
-                                    <Badge className="bg-slate-50 text-slate-400 border-none font-bold text-[8px] uppercase px-2 py-0.5 mt-2">ID: {doc.id.slice(-8)}</Badge>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                {isVerified && <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-100 font-black text-[8px] uppercase px-2 py-1 rounded-md">VERIFIED ✓</Badge>}
-                                {isPending && <Badge className="bg-orange-50 text-orange-600 border border-orange-100 font-black text-[8px] uppercase px-2 py-1 rounded-md">AWAITING REVIEW</Badge>}
-                            </div>
-                        </div>
-
-                        {/* Review Points and extra info removed as requested */}
-
+                    <div>
+                        {/* Header info removed as requested - showing only photo and buttons */}
                         {isRejected && doc.rejectedNote && (
                             <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
                                 <p className="text-[10px] font-bold text-rose-700 leading-relaxed italic">"{doc.rejectedNote}"</p>
@@ -548,7 +531,7 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
                     )}
                 </div>
             </CardContent>
-        </Card >
+        </Card>
     );
 }
 
