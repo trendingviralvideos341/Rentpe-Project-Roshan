@@ -338,13 +338,13 @@ export default function OwnerVerificationsPage() {
                             </div>
                         )}
                     </div>
-                    <div className="p-8 bg-slate-900/50 backdrop-blur-xl border-t border-white/5 flex justify-center sticky bottom-0">
+                    <div className="p-10 bg-slate-900/80 backdrop-blur-2xl border-t border-white/10 flex justify-center sticky bottom-0">
                         <Button
-                            variant="outline"
-                            className="bg-white/5 text-white border-white/10 hover:bg-white/10 hover:text-white font-black uppercase tracking-[0.2em] text-[10px] h-14 px-12 rounded-2xl transition-all shadow-2xl active:scale-95"
+                            variant="default"
+                            className="bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white font-black uppercase tracking-[0.3em] text-[12px] h-16 px-16 rounded-[2rem] transition-all shadow-[0_20px_40px_rgba(79,70,229,0.3)] hover:shadow-[0_25px_50px_rgba(79,70,229,0.4)] hover:-translate-y-1 active:scale-95 border-t border-white/20"
                             onClick={() => setPreviewDoc(null)}
                         >
-                            Close Experience
+                            CLOSE
                         </Button>
                     </div>
                 </DialogContent>
