@@ -168,7 +168,7 @@ export default function OwnerVerificationsPage() {
 
             {/* Document Detail Panel (Drill-down) */}
             <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-                <DialogContent className="max-w-[98vw] w-full h-[98vh] overflow-hidden p-0 border-none rounded-none md:rounded-[3rem] bg-slate-50 flex flex-col shadow-2xl">
+                <DialogContent className="max-w-[100vw] w-full h-[100vh] overflow-hidden p-0 border-none rounded-none bg-slate-50 flex flex-col shadow-none">
                     {selectedBooking && (
                         <>
                             {/* Pro Header */}
@@ -497,20 +497,7 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
                             </div>
                         </div>
 
-                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                            <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Info className="w-3.5 h-3.5" />
-                                Review Points
-                            </h5>
-                            <ul className="space-y-2">
-                                {['Clear Name Matching', 'Check Expiry/Validity', 'Visual authenticity'].map(check => (
-                                    <li key={check} className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-                                        <div className="w-1 h-1 rounded-full bg-indigo-300"></div>
-                                        {check}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                        {/* Review Points and extra info removed as requested */}
 
                         {isRejected && doc.rejectedNote && (
                             <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
