@@ -615,12 +615,12 @@ export default function PropertyManagePage() {
                                     { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' },
                                     { key: 'livePhotoUrl', label: 'Live Photo Capture', desc: 'Real-time Identity Check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'border-cyan-200 hover:border-cyan-400', isLive: true }
                                 ].map((cat) => (
-                                    <div key={cat.key} className={`border - 2 ${cat.borderHover} transition - all rounded - xl p - 4 flex flex - col justify - between shadow - sm bg - white`}>
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className={`p - 2 ${cat.bgClass} rounded - lg ${cat.colorClass} `}>{cat.icon}</div>
+                                    <div key={cat.key} className={`border-2 ${cat.borderHover} transition-all rounded-xl p-5 flex flex-col h-full shadow-sm bg-white overflow-hidden`}>
+                                        <div className="flex items-center gap-4 mb-5 pb-3 border-b border-slate-50">
+                                            <div className={`p-3 ${cat.bgClass} rounded-xl ${cat.colorClass} shadow-inner`}>{cat.icon}</div>
                                             <div>
-                                                <h4 className="font-bold text-sm tracking-tight">{cat.label}</h4>
-                                                <p className="text-[10px] text-muted-foreground uppercase">{cat.desc}</p>
+                                                <h4 className="font-bold text-base tracking-tight text-slate-800">{cat.label}</h4>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">{cat.desc}</p>
                                             </div>
                                         </div>
 
@@ -634,29 +634,29 @@ export default function PropertyManagePage() {
                                                         for (let i = 0; i < 4; i++) {
                                                             if (photos[i]) {
                                                                 const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
-                                                                const isDocVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key} -${i} `);
-                                                                const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key} -${i}]`);
+                                                                const isDocVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key}-${i}`);
+                                                                const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
 
                                                                 slots.push(
-                                                                    <div key={`photo - ${i} `} className={`relative h - 24 rounded - md border shadow - sm group / img ${isReuploadRequired ? 'border-red-500 border-2 ring-2 ring-red-200 bg-red-50' : 'bg-white'} `}>
-                                                                        <div className="w-full h-16 rounded-t-md overflow-hidden">
-                                                                            <img src={img} className="w-full h-full object-cover" />
+                                                                    <div key={`photo-${i}`} className={`relative h-32 rounded-lg border shadow-sm group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-4 ring-red-100 bg-red-50' : 'bg-white'} overflow-hidden`}>
+                                                                        <div className="w-full h-24 overflow-hidden bg-slate-100">
+                                                                            <img src={img} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
                                                                         </div>
                                                                         {/* Delete, Reupload, View Buttons - Bottom Row */}
-                                                                        <div className="flex w-full mt-auto h-8 rounded-b-md overflow-hidden">
+                                                                        <div className="flex w-full mt-auto h-8 divide-x divide-white/20">
                                                                             {!isDocVerified && (
                                                                                 <>
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
-                                                                                        className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
+                                                                                        className="flex-1 bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center group/btn"
                                                                                         title="Delete Document"
                                                                                     >
                                                                                         <Trash2 className="w-3 h-3 mr-1" />
                                                                                         <span className="text-[9px] font-bold">Delete</span>
                                                                                     </button>
                                                                                     <label
-                                                                                        className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
+                                                                                        className="flex-1 cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center justify-center"
                                                                                         title="Reupload Document"
                                                                                     >
                                                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key, i)} />
@@ -668,7 +668,7 @@ export default function PropertyManagePage() {
                                                                             <a
                                                                                 href={img}
                                                                                 target="_blank"
-                                                                                className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-all flex items-center justify-center"
+                                                                                className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-colors flex items-center justify-center"
                                                                                 title="View Full Size"
                                                                                 onClick={(e) => e.stopPropagation()}
                                                                             >
@@ -677,22 +677,22 @@ export default function PropertyManagePage() {
                                                                             </a>
                                                                         </div>
 
-                                                                        {/* Status Badge - Top Right floating over image */}
-                                                                        <div className="absolute top-0 right-0 z-[10]">
+                                                                        {/* Status Badge - Top Right */}
+                                                                        <div className="absolute top-0 right-0">
                                                                             {isDocVerified ? (
-                                                                                <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Verified">
-                                                                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                                                                    <span className="text-[10px] font-bold">Verified</span>
+                                                                                <div className="bg-green-600 text-white px-2 py-0.5 rounded-bl-lg shadow-md flex items-center border-l border-b border-white/20" title="Verified">
+                                                                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Verified</span>
                                                                                 </div>
                                                                             ) : isReuploadRequired ? (
-                                                                                <div className="bg-red-600 animate-pulse text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Reupload Required">
-                                                                                    <AlertCircle className="w-4 h-4 mr-1" />
-                                                                                    <span className="text-[10px] font-bold">Reupload</span>
+                                                                                <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-bl-lg shadow-md flex items-center border-l border-b border-white/20" title="Reupload Required">
+                                                                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
                                                                                 </div>
                                                                             ) : (
-                                                                                <div className="bg-amber-500 text-white p-1.5 rounded-bl-md shadow-xl flex items-center justify-center border-l border-b border-white/40" title="Pending Approval">
-                                                                                    <AlertCircle className="w-4 h-4 mr-1" />
-                                                                                    <span className="text-[10px] font-bold">Pending</span>
+                                                                                <div className="bg-amber-500 text-white px-2 py-0.5 rounded-bl-lg shadow-md flex items-center border-l border-b border-white/20" title="Pending Approval">
+                                                                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
                                                                                 </div>
                                                                             )}
                                                                         </div>
@@ -700,10 +700,12 @@ export default function PropertyManagePage() {
                                                                 );
                                                             } else {
                                                                 slots.push(
-                                                                    <label key={`slot - ${i} `} className={`cursor - pointer border - 2 border - dashed ${cat.borderHover} rounded - md flex flex - col items - center justify - center h - 20 ${cat.bgClass} transition - all hover: scale - [1.02] active: scale - 95 group / slot`}>
+                                                                    <label key={`slot-${i}`} className={`cursor-pointer border-2 border-dashed ${cat.borderHover} rounded-lg flex flex-col items-center justify-center h-32 ${cat.bgClass} transition-all hover:bg-opacity-50 hover:scale-[1.02] active:scale-95 group/slot shadow-sm`}>
                                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                        <Plus className={`w - 4 h - 4 ${cat.colorClass} opacity - 60 group - hover / slot: opacity - 100 group - hover / slot: scale - 110 transition - all`} />
-                                                                        <span className={`text - [8px] font - bold uppercase mt - 1 ${cat.colorClass} `}>Add Photo</span>
+                                                                        <div className={`p-2 rounded-full ${cat.bgClass} mb-2 group-hover/slot:scale-110 transition-transform`}>
+                                                                            <Plus className={`w-5 h-5 ${cat.colorClass}`} />
+                                                                        </div>
+                                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${cat.colorClass}`}>Add Photo</span>
                                                                     </label>
                                                                 );
                                                             }
@@ -723,9 +725,9 @@ export default function PropertyManagePage() {
                                                             })()}
                                                         </span>
                                                     </div>
-                                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                                        <div className="h-full bg-indigo-500 transition-all duration-500" style={{
-                                                            width: `${Math.min(100, (JSON.parse(property[cat.key] || '[]').reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}% `
+                                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                                        <div className={`h-full ${cat.colorClass.replace('text-', 'bg-')} transition-all duration-700 ease-out`} style={{
+                                                            width: `${Math.min(100, (JSON.parse(property[cat.key] || '[]').reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}%`
                                                         }} />
                                                     </div>
                                                 </div>
@@ -737,7 +739,7 @@ export default function PropertyManagePage() {
 
                                                         const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
                                                         // Check if ALL uploaded photos in this array are verified
-                                                        const allVerified = photos.length > 0 && photos.every((_: any, idx: number) => verifiedDocs.includes(`${cat.key} -${idx} `));
+                                                        const allVerified = photos.length > 0 && photos.every((_: any, idx: number) => verifiedDocs.includes(`${cat.key}-${idx}`));
 
                                                         if (getReuploadNote(cat.key)) {
                                                             return (
@@ -781,37 +783,37 @@ export default function PropertyManagePage() {
                                                         }
                                                     </div>
                                                     {/* Delete, Reupload, View Buttons - Bottom Row */}
-                                                    <div className="flex w-full mt-auto h-8 rounded-b-md overflow-hidden">
+                                                    <div className="flex w-full mt-auto h-10 divide-x divide-white/20">
                                                         {!(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) && (
                                                             <>
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key); }}
-                                                                    className="flex-1 bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center border-r border-white/20 group/btn"
+                                                                    className="flex-1 bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center group/btn font-bold"
                                                                     title="Delete Document"
                                                                 >
-                                                                    <Trash2 className="w-3 h-3 mr-1" />
-                                                                    <span className="text-[9px] font-bold">Delete</span>
+                                                                    <Trash2 className="w-4 h-4 mr-1.5" />
+                                                                    <span className="text-[11px] uppercase tracking-wider">Delete</span>
                                                                 </button>
                                                                 <label
-                                                                    className="flex-1 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 transition-all flex items-center justify-center border-r border-white/20"
+                                                                    className="flex-1 cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center justify-center font-bold"
                                                                     title="Reupload Document"
                                                                 >
                                                                     <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                    <RefreshCcw className="w-3 h-3 mr-1" />
-                                                                    <span className="text-[9px] font-bold">Reupload</span>
+                                                                    <RefreshCcw className="w-4 h-4 mr-1.5" />
+                                                                    <span className="text-[11px] uppercase tracking-wider">Reupload</span>
                                                                 </label>
                                                             </>
                                                         )}
                                                         <a
                                                             href={property[cat.key]}
                                                             target="_blank"
-                                                            className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-all flex items-center justify-center"
+                                                            className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-colors flex items-center justify-center font-bold"
                                                             title="View Full Size"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            <Eye className="w-3 h-3 mr-1" />
-                                                            <span className="text-[9px] font-bold">View</span>
+                                                            <Eye className="w-4 h-4 mr-1.5" />
+                                                            <span className="text-[11px] uppercase tracking-wider">View</span>
                                                         </a>
                                                     </div>
 
@@ -858,18 +860,22 @@ export default function PropertyManagePage() {
                                         ) : (
                                             <div className="mt-2 text-center h-full flex flex-col justify-end">
                                                 {cat.isLive ? (
-                                                    <div onClick={() => startCapture()} className={`cursor - pointer w - full h - full border - 2 border - dashed ${cat.borderHover} rounded - lg flex flex - col items - center justify - center py - 5 ${cat.bgClass} transition - all hover: shadow - md hover: scale - [1.02] active: scale - 95 group / live`}>
-                                                        <Camera className={`w - 6 h - 6 ${cat.colorClass} mb - 2 opacity - 60 group - hover: opacity - 100 transition - all group - hover: -translate - y - 1 duration - 300`} />
-                                                        <p className={`text - xs font - bold ${cat.colorClass} `}>Capture Live Photo</p>
-                                                        <p className="text-[9px] text-muted-foreground mt-0.5 opacity-70">Identity verification required</p>
+                                                    <div onClick={() => startCapture()} className={`cursor-pointer w-full border-2 border-dashed ${cat.borderHover} rounded-xl flex flex-col items-center justify-center py-10 ${cat.bgClass} transition-all hover:shadow-lg hover:scale-[1.02] active:scale-95 group/live shadow-sm`}>
+                                                        <div className={`p-4 rounded-full ${cat.bgClass} mb-3 group-hover/live:bg-white transition-colors shadow-inner`}>
+                                                            <Camera className={`w-8 h-8 ${cat.colorClass} group-hover/live:scale-110 transition-transform duration-300`} />
+                                                        </div>
+                                                        <p className={`text-sm font-bold ${cat.colorClass}`}>Capture Live Photo</p>
+                                                        <p className="text-[10px] text-muted-foreground mt-1 font-medium italic opacity-70">Requires camera access</p>
                                                     </div>
                                                 ) : (
                                                     <label className="cursor-pointer block w-full group h-full">
                                                         <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                        <div className={`w - full h - full border - 2 border - dashed ${cat.borderHover} rounded - lg flex flex - col items - center justify - center py - 5 ${cat.bgClass} transition - all hover: shadow - md hover: scale - [1.02] active: scale - 95`}>
-                                                            <Upload className={`w - 6 h - 6 ${cat.colorClass} mb - 2 opacity - 60 group - hover: opacity - 100 transition - all group - hover: -translate - y - 1 duration - 300`} />
-                                                            <p className={`text - xs font - bold ${cat.colorClass} `}>Upload {cat.label}</p>
-                                                            <p className="text-[9px] text-muted-foreground mt-0.5 opacity-70">5.00 MB Available</p>
+                                                        <div className={`w-full border-2 border-dashed ${cat.borderHover} rounded-xl flex flex-col items-center justify-center py-10 ${cat.bgClass} transition-all hover:shadow-lg hover:scale-[1.02] active:scale-95 group shadow-sm`}>
+                                                            <div className={`p-4 rounded-full ${cat.bgClass} mb-3 group-hover:bg-white transition-colors shadow-inner`}>
+                                                                <Upload className={`w-8 h-8 ${cat.colorClass} group-hover:scale-110 transition-transform duration-300`} />
+                                                            </div>
+                                                            <p className={`text-sm font-bold ${cat.colorClass}`}>Upload {cat.label}</p>
+                                                            <p className="text-[10px] text-muted-foreground mt-1 font-medium opacity-70">5.00 MB Maximum Size</p>
                                                         </div>
                                                     </label>
                                                 )}
