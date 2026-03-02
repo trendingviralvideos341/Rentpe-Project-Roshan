@@ -147,8 +147,25 @@ export default function OwnerVerificationsPage() {
             ) : (
                 <div className="space-y-12">
                     {['PENDING', 'VERIFIED', 'REJECTED'].map((status) => {
-                        const docsInStatus = filteredDocs.filter(d => d.status === status);
-                        if (docsInStatus.length === 0) return null;
+                        // Group by booking ID within each section based on high-priority status
+                        const groupedByBooking: Record<string, { booking: any, docs: any[], overallStatus: string }> = {};
+
+                        filteredDocs.forEach(doc => {
+                            const bid = doc.booking?.id || 'unknown';
+                            if (!groupedByBooking[bid]) {
+                                groupedByBooking[bid] = { booking: doc.booking, docs: [], overallStatus: 'VERIFIED' };
+                            }
+                            groupedByBooking[bid].docs.push(doc);
+                        });
+
+                        // Calculate overall status for each group: Rejected > Pending > Verified
+                        Object.values(groupedByBooking).forEach(group => {
+                            if (group.docs.some(d => d.status === 'REJECTED')) group.overallStatus = 'REJECTED';
+                            else if (group.docs.some(d => d.status === 'PENDING')) group.overallStatus = 'PENDING';
+                        });
+
+                        const groupsInStatus = Object.values(groupedByBooking).filter(g => g.overallStatus === status);
+                        if (groupsInStatus.length === 0) return null;
 
                         const STATUS_MAP: any = {
                             PENDING: { label: "PENDING DOCUMENTS", color: "text-red-600", bg: "bg-red-500", icon: <Clock className="w-4 h-4" /> },
@@ -158,29 +175,23 @@ export default function OwnerVerificationsPage() {
                         const config = STATUS_MAP[status];
 
                         return (
-                            <div key={status} className="space-y-4">
-                                <div className="flex items-center gap-3 px-1">
-                                    <div className={`p-1.5 ${config.bg} text-white rounded-lg shadow-sm animate-pulse-subtle`}>
+                            <div key={status} className="animate-in fade-in slide-in-from-bottom-5 duration-500">
+                                <div className="flex items-center gap-3 mb-6 px-2">
+                                    <div className={`p-2 rounded-lg ${config.bg} text-white shadow-lg shadow-indigo-100`}>
                                         {config.icon}
                                     </div>
-                                    <h2 className={`font-black text-sm ${config.color} uppercase tracking-[0.15em] leading-none`}>
-                                        {config.label}
-                                        <span className="ml-3 text-[10px] opacity-60 font-black">({docsInStatus.length})</span>
+                                    <h2 className={`text-sm font-black tracking-[0.2em] uppercase ${config.color}`}>
+                                        {config.label} ({groupsInStatus.length})
                                     </h2>
                                 </div>
-                                <div className="space-y-3">
-                                    {docsInStatus.map((doc) => (
+                                <div className="space-y-4">
+                                    {groupsInStatus.map((group: any) => (
                                         <DocumentRowCard
-                                            key={doc.id}
-                                            doc={doc}
-                                            onViewPortfolio={() => {
-                                                // Find all docs for this booking to show the 2x2 grid
-                                                const guestDocs = docs.filter(d => d.booking?.id === doc.booking?.id);
-                                                setSelectedBooking({ booking: doc.booking, docs: guestDocs });
-                                            }}
-                                            onVerify={() => handleVerifyUpdate(doc.id, 'VERIFIED')}
-                                            onReject={() => setRejectTarget(doc.id)}
-                                            onZoom={() => setPreviewDoc(doc)}
+                                            key={group.booking.id}
+                                            group={group}
+                                            onViewPortfolio={() => setSelectedBooking({ booking: group.booking, docs: group.docs })}
+                                            onVerifyAll={() => {/* Future optimization: verify all */ }}
+                                            onZoom={(doc: any) => setPreviewDoc(doc)}
                                         />
                                     ))}
                                 </div>
@@ -347,78 +358,79 @@ export default function OwnerVerificationsPage() {
     );
 }
 
-function DocumentRowCard({ doc, onViewPortfolio, onVerify, onReject, onZoom }: any) {
-    const isVerified = doc.status === "VERIFIED";
-    const isPending = doc.status === "PENDING";
-    const config = TYPE_CONFIG[doc.type] || { label: doc.type, icon: <FileText className="w-4 h-4" />, colorClass: 'text-slate-600', bgClass: 'bg-slate-50' };
+function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
+    const { booking, docs, overallStatus } = group;
+    const isVerified = overallStatus === "VERIFIED";
+
+    const getStatusDetails = (type: string) => {
+        const doc = docs.find((d: any) => d.type === type);
+        if (!doc) return { color: 'bg-slate-100', label: 'Missing', icon: <div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> };
+        if (doc.status === 'VERIFIED') return { color: 'bg-emerald-500', label: 'Verified', icon: <CheckCircle className="w-2.5 h-2.5 text-white" /> };
+        if (doc.status === 'REJECTED') return { color: 'bg-rose-500', label: 'Rejected', icon: <XCircle className="w-2.5 h-2.5 text-white" /> };
+        return { color: 'bg-amber-500', label: 'Pending', icon: <Clock className="w-2.5 h-2.5 text-white" /> };
+    };
+
+    const docTypes = ['ID_PROOF', 'ADDRESS_PROOF', 'COLLEGE_COMPANY', 'SELFIE'];
 
     return (
         <Card className="border-none shadow-md hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white rounded-2xl border-l-4 border-slate-100 hover:border-indigo-500">
-            <CardContent className="p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1 min-w-[300px]">
-                        <div className={`p-3 rounded-xl ${config.bgClass} ${config.colorClass} shadow-inner shrink-0 cursor-pointer hover:scale-110 transition-transform`} onClick={onZoom}>
-                            {config.icon}
+            <CardContent className="p-5">
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                    <div className="flex items-center gap-6 flex-1 min-w-[400px]">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-xl font-black text-slate-400 shadow-inner group-hover:scale-110 transition-transform">
+                            {booking?.guestName ? booking.guestName[0].toUpperCase() : 'U'}
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 truncate">
-                                <h3 className="font-black text-slate-900 text-sm tracking-tight uppercase truncate">{doc.booking?.guestName}</h3>
-                                <span className="text-[9px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">#{doc.booking?.displayId}</span>
+                                <h3 className="font-black text-slate-900 text-base tracking-tight uppercase truncate">{booking?.guestName}</h3>
+                                <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">#{booking?.displayId}</span>
                             </div>
-                            <p className={`text-[11px] font-black mt-1 uppercase tracking-tight ${config.colorClass}`}>
-                                {config.label}
-                            </p>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1">
-                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                                    <MapPin className="w-3 h-3 opacity-50" /> {doc.booking?.propertyName}
+                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                                    <MapPin className="w-3.5 h-3.5 opacity-50" /> {booking?.propertyName}
                                 </span>
-                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                                    <Mail className="w-3 h-3 opacity-50" /> {doc.booking?.guestEmail}
-                                </span>
-                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                                    <Phone className="w-3 h-3 opacity-50" /> {doc.booking?.guestPhone}
+                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                                    <Phone className="w-3.5 h-3.5 opacity-50" /> {booking?.guestPhone}
                                 </span>
                             </div>
-                            {doc.rejectedNote && (
-                                <p className="text-[10px] text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100 mt-2 font-bold italic flex items-start gap-2">
-                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                    Reason: "{doc.rejectedNote}"
-                                </p>
-                            )}
+                        </div>
+
+                        {/* Status Summary Dots */}
+                        <div className="flex items-center gap-3 px-6 border-x border-slate-100">
+                            {docTypes.map(type => {
+                                const status = getStatusDetails(type);
+                                const config = TYPE_CONFIG[type];
+                                return (
+                                    <div key={type} className="flex flex-col items-center gap-1.5 group/dot cursor-help relative" title={`${config.label}: ${status.label}`}>
+                                        <div className={`w-8 h-8 rounded-xl ${status.color} flex items-center justify-center shadow-sm transition-transform hover:scale-110`}>
+                                            {status.icon}
+                                        </div>
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{config.label.split(' ')[0]}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                         <Button
                             variant="outline"
-                            size="sm"
-                            className="h-9 rounded-xl border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all"
+                            className="h-11 px-6 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-[11px] tracking-widest hover:bg-slate-50 transition-all flex items-center gap-3"
                             onClick={onViewPortfolio}
                         >
-                            <Eye className="w-3.5 h-3.5 mr-2" /> View Portfolio
+                            <Eye className="w-4 h-4" /> View Portfolio
                         </Button>
 
-                        {isPending ? (
-                            <>
-                                <Button
-                                    size="sm"
-                                    className="h-9 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-lg shadow-emerald-100 transition-all"
-                                    onClick={onVerify}
-                                >
-                                    <ShieldCheck className="w-3.5 h-3.5 mr-2" /> Verify
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 px-5 border-rose-200 text-rose-600 hover:bg-rose-50 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all"
-                                    onClick={onReject}
-                                >
-                                    <XCircle className="w-3.5 h-3.5 mr-2" /> Reject
-                                </Button>
-                            </>
+                        {!isVerified ? (
+                            <Button
+                                className={`h-11 px-8 ${overallStatus === 'REJECTED' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-black uppercase text-[11px] tracking-widest rounded-xl shadow-lg transition-all flex items-center gap-3`}
+                                onClick={onViewPortfolio}
+                            >
+                                <Shield className="w-4 h-4" /> Review Submissions
+                            </Button>
                         ) : (
-                            <Badge className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border-2 ${isVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
-                                {doc.status}
+                            <Badge className="h-11 px-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] bg-emerald-50 text-emerald-600 border-2 border-emerald-100">
+                                Fully Verified
                             </Badge>
                         )}
                     </div>
