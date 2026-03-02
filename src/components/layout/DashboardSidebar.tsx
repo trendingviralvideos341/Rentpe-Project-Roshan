@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { getPendingBookingsCount } from "@/actions/bookings";
 import { getPendingPropertiesCount } from "@/actions/admin";
 import { getPendingOwnerActionCount } from "@/actions/properties";
+import { getPendingDocumentsCount } from "@/actions/documents";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
     const pathname = usePathname();
     const [pendingCount, setPendingCount] = useState(0);
     const [pendingPropCount, setPendingPropCount] = useState(0);
+    const [pendingDocCount, setPendingDocCount] = useState(0);
 
     useEffect(() => {
         if (role === "owner") {
@@ -26,6 +28,8 @@ export default function DashboardSidebar({ role }: SidebarProps) {
                 setPendingCount(count);
                 const propCount = await getPendingOwnerActionCount();
                 setPendingPropCount(propCount);
+                const docCount = await getPendingDocumentsCount();
+                setPendingDocCount(docCount);
             };
             checkBookings();
             const interval = setInterval(checkBookings, 5000);
@@ -48,7 +52,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
         { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
         { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
         { href: "/dashboard/owner/tenants", label: "Tenants", icon: Calendar },
-        { href: "/dashboard/owner/verifications", label: "Customer Doc Verifications", icon: FileCheck },
+        { href: "/dashboard/owner/verifications", label: "Customer Doc Verifications", icon: FileCheck, badge: pendingDocCount },
         { href: "/dashboard/owner/staff", label: "My Staff", icon: UserPlus },
         { href: "/dashboard/owner/food-menu", label: "Food Menu", icon: Utensils },
         { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },

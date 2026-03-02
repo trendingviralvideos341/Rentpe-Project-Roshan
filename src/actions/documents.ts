@@ -86,7 +86,9 @@ export async function getPendingDocuments() {
                         guestEmail: true,
                         roomAssigned: true,
                         occupancy: true,
-                        amount: true
+                        amount: true,
+                        paymentMethod: true,
+                        paidAt: true
                     }
                 }
             },
@@ -107,11 +109,42 @@ export async function getPendingDocuments() {
                     guestEmail: true,
                     roomAssigned: true,
                     occupancy: true,
-                    amount: true
+                    amount: true,
+                    paymentMethod: true,
+                    paidAt: true
                 }
             }
         },
         orderBy: { uploadedAt: 'desc' }
+    });
+}
+
+export async function getPendingDocumentsCount() {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) return 0;
+
+    const userId = (session as any).userId;
+
+    if (session.role === 'OWNER') {
+        const properties = await prisma.property.findMany({
+            where: { ownerId: userId },
+            select: { name: true }
+        });
+        const propertyNames = properties.map((p: any) => p.name);
+
+        const bookings = await prisma.booking.findMany({
+            where: { propertyName: { in: propertyNames } },
+            select: { id: true }
+        });
+        const bookingIds = bookings.map((b: any) => b.id);
+
+        return await prisma.tenantDocument.count({
+            where: { bookingId: { in: bookingIds }, status: 'PENDING' }
+        });
+    }
+
+    return await prisma.tenantDocument.count({
+        where: { status: 'PENDING' }
     });
 }
 
