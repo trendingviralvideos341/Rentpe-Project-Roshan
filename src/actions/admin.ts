@@ -32,6 +32,12 @@ export async function getAdminStats() {
             { name: "Co-living", value: Math.floor(totalProperties * 0.1) },
         ];
 
+        // Always fetch fresh user data from DB — never trust stale JWT
+        const adminUser = await prisma.user.findUnique({
+            where: { id: (session as any).userId as string },
+            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true }
+        });
+
         return {
             totalUsers,
             totalBookings,
@@ -41,12 +47,13 @@ export async function getAdminStats() {
             monthlyGrowth,
             propertyDistribution,
             user: {
-                id: session.userId,
-                name: (session as any).name,
-                email: session.email,
-                role: session.role,
-                phone: (session as any).phone || "+91 88888 88888",
-                createdAt: (session as any).createdAt || new Date().toISOString(),
+                id: adminUser?.id || (session as any).userId,
+                name: adminUser?.name || 'Admin',
+                email: adminUser?.email || (session.email as string),
+                role: adminUser?.role || session.role,
+                phone: adminUser?.phone || null,
+                createdAt: adminUser?.createdAt?.toISOString() || new Date().toISOString(),
+                displayId: adminUser?.displayId || null,
             }
         };
     } catch (e) {
