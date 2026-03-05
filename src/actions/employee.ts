@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, encryptPassword } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 // ── Helpers ──────────────────────────────────────────────
@@ -16,6 +16,40 @@ function appendAudit(trailJson: string, action: string, actorId: string, actorNa
     const trail = JSON.parse(trailJson || "[]");
     trail.push({ action, actorId, actorName, note: note || "", timestamp: new Date().toISOString() });
     return JSON.stringify(trail);
+}
+
+async function autoProvisionAdminUser(emp: any, sessionUserId: string) {
+    const existingUser = await prisma.user.findUnique({ where: { email: emp.email } });
+    if (!existingUser) {
+        const hashedPassword = await encryptPassword("Rentpe@123");
+
+        // Count existing admins for ID generation
+        const count = await prisma.user.count({ where: { role: 'ADMIN' } });
+        const seq = String(count + 1).padStart(6, '0');
+        const displayId = `ADM-${seq}`;
+
+        await prisma.user.create({
+            data: {
+                name: emp.name,
+                email: emp.email,
+                passwordHash: hashedPassword,
+                role: "ADMIN",
+                roles: "ADMIN",
+                isAdmin: true,
+                displayId,
+            }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                action: 'ADMIN_PROVISIONED',
+                targetId: emp.id,
+                targetType: 'EMPLOYEE',
+                details: `Auto-provisioned login account (Rentpe@123)`,
+                performedBy: sessionUserId
+            }
+        });
+    }
 }
 
 // ── GET ──────────────────────────────────────────────────
@@ -113,6 +147,10 @@ export async function updateEmployeeStatus(id: string, status: 'ACTIVE' | 'SUSPE
     if (status === 'TERMINATED') updateData.terminatedReason = reason;
     if (status === 'REJECTED') updateData.rejectedReason = reason;
 
+    if (status === 'ACTIVE') {
+        await autoProvisionAdminUser(existing, (session as any).userId);
+    }
+
     const emp = await prisma.employee.update({ where: { id }, data: updateData });
 
     await prisma.auditLog.create({
@@ -137,6 +175,8 @@ export async function activateEmployee(id: string) {
     if (!existing) throw new Error("Employee not found");
 
     const auditTrail = appendAudit(existing.auditTrail, "ACTIVATED", (session as any).userId, (session as any).name || "Admin", "Employee activated");
+
+    await autoProvisionAdminUser(existing, (session as any).userId);
 
     const emp = await prisma.employee.update({
         where: { id },

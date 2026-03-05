@@ -13,9 +13,11 @@ import { LogoutButton } from "@/components/layout/LogoutButton";
 
 interface SidebarProps {
     role: "owner" | "admin" | "student" | "onboarder" | "verifier";
+    permissions?: string[];
 }
 
-export default function DashboardSidebar({ role }: SidebarProps) {
+export default function DashboardSidebar(props: SidebarProps) {
+    const { role } = props;
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [pendingCount, setPendingCount] = useState(0);
@@ -72,20 +74,20 @@ export default function DashboardSidebar({ role }: SidebarProps) {
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin?tab=profile", label: "My Profile", icon: Shield },
-        { href: "/dashboard/admin/users", label: "User Management", icon: Users },
-        { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount },
-        { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar },
-        { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
-        { href: "/dashboard/admin/tenants", label: "Tenants", icon: Users },
-        { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck },
-        { href: "/dashboard/admin/team", label: "Team & Roles", icon: Shield },
-        { href: "/dashboard/admin/employees", label: "Employees", icon: UserCheck },
-        { href: "/dashboard/admin/transactions", label: "All Transactions", icon: CreditCard },
-        { href: "/dashboard/admin/audit-log", label: "Audit Log", icon: ClipboardList },
-        { href: "/dashboard/admin/tickets", label: "Resolutions", icon: Ticket },
-        { href: "/dashboard/admin/platform-fees", label: "Platform Fees", icon: Percent },
-        { href: "/dashboard/admin/data-management", label: "Data Management", icon: Trash2 },
-        { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
+        { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
+        { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
+        { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
+        { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },
+        { href: "/dashboard/admin/tenants", label: "Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
+        { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck, reqPerm: ["super_admin", "sub_admin", "verifier"] },
+        { href: "/dashboard/admin/team", label: "Team & Roles", icon: Shield, reqPerm: ["super_admin"] },
+        { href: "/dashboard/admin/employees", label: "Employees", icon: UserCheck, reqPerm: ["super_admin", "hr_admin"] },
+        { href: "/dashboard/admin/transactions", label: "All Transactions", icon: CreditCard, reqPerm: ["super_admin", "finance_admin"] },
+        { href: "/dashboard/admin/audit-log", label: "Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "security_audit"] },
+        { href: "/dashboard/admin/tickets", label: "Resolutions", icon: Ticket, reqPerm: ["super_admin", "sub_admin", "support"] },
+        { href: "/dashboard/admin/platform-fees", label: "Platform Fees", icon: Percent, reqPerm: ["super_admin", "finance_admin"] },
+        { href: "/dashboard/admin/data-management", label: "Data Management", icon: Trash2, reqPerm: ["super_admin"] },
+        { href: "/dashboard/admin/settings", label: "Settings", icon: Settings, reqPerm: ["super_admin"] },
     ];
 
     const studentLinks = [
@@ -96,32 +98,29 @@ export default function DashboardSidebar({ role }: SidebarProps) {
         { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
     ];
 
-    const onboarderLinks = [
-        { href: "/dashboard/onboarder", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/onboarder/queue", label: "Pending Queue", icon: ClipboardList },
-        { href: "/dashboard/onboarder/new", label: "New Field Visit", icon: UserPlus },
-        { href: "/dashboard/onboarder/submissions", label: "My Submissions", icon: FileCheck },
-    ];
-
-    const verifierLinks = [
-        { href: "/dashboard/verifier", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/verifier/reviews", label: "Review Queue", icon: Search },
-    ];
-
     const panelNames: Record<string, string> = {
         owner: "Owner Panel",
         admin: "Admin Panel",
         student: "Student Dashboard",
-        onboarder: "Onboarding Team",
-        verifier: "Verification Team",
     };
 
-    const linkMap: Record<string, typeof ownerLinks> = {
+    // Filter Admin Links based on RBAC Permissions
+    let filteredAdminLinks = adminLinks;
+    const perms = props.permissions || [];
+    const isSuperAdmin = perms.includes("super_admin") || perms.includes("sub_admin");
+
+    if (!isSuperAdmin) {
+        filteredAdminLinks = adminLinks.filter(link => {
+            if (!link.reqPerm) return true; // Overview and Profile have no reqPerm, always show
+            // If the link has required permissions, check if the user has any of them
+            return link.reqPerm.some(p => perms.includes(p));
+        });
+    }
+
+    const linkMap: Record<string, any[]> = {
         owner: ownerLinks,
-        admin: adminLinks,
+        admin: filteredAdminLinks,
         student: studentLinks,
-        onboarder: onboarderLinks,
-        verifier: verifierLinks,
     };
 
     const links = linkMap[role] || studentLinks;

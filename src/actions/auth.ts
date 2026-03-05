@@ -124,6 +124,17 @@ export async function login(formData: FormData) {
         });
 
         // Create Session
+        let permissions: string[] = [];
+        if (user.role === 'ADMIN') {
+            const emp = await prisma.employee.findUnique({
+                where: { email: user.email },
+                select: { permissions: true, status: true }
+            });
+            if (emp && emp.status === 'ACTIVE') {
+                try { permissions = JSON.parse(emp.permissions || "[]"); } catch { }
+            }
+        }
+
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         const token = await signJWT({
             userId: user.id,
@@ -131,6 +142,7 @@ export async function login(formData: FormData) {
             role: user.role,
             roles: user.roles,
             name: user.name,
+            permissions,
             expiresAt,
         });
 
@@ -202,6 +214,17 @@ export async function switchRole(targetRole: string) {
     });
 
     // Issue a fresh JWT with the new active role
+    let permissions: string[] = [];
+    if (targetRole === 'ADMIN') {
+        const emp = await prisma.employee.findUnique({
+            where: { email: user.email },
+            select: { permissions: true, status: true }
+        });
+        if (emp && emp.status === 'ACTIVE') {
+            try { permissions = JSON.parse(emp.permissions || "[]"); } catch { }
+        }
+    }
+
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const token = await signJWT({
         userId: user.id,
@@ -209,6 +232,7 @@ export async function switchRole(targetRole: string) {
         role: targetRole,
         roles: user.roles,
         name: user.name,
+        permissions,
         expiresAt,
     });
 
