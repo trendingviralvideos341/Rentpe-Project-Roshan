@@ -21,10 +21,9 @@ export async function getPlatformSettings() {
 // ── Update settings (admin only) ─────────────────────
 export async function updatePlatformSettings(data: {
     feesEnabled?: boolean;
-    customerFeeFlat?: number;
-    customerFeePercent?: number;
-    ownerFeeFlat?: number;
-    ownerFeePercent?: number;
+    studentRentFeeFlat?: number;
+    ownerRentFeeFlat?: number;
+    ownerOnboardingFeeFlat?: number;
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -86,14 +85,12 @@ export async function calculateFees(amountStr: string, userId?: string, property
         }
     }
 
-    // Customer fee: max(flat, percent%) added ON TOP
-    const customerFeeByPercent = (grossAmount * settings.customerFeePercent) / 100;
-    const customerFee = exemptCustomer ? 0 : Math.max(settings.customerFeeFlat, customerFeeByPercent);
+    // Customer fee: flat rate (₹9 by default)
+    const customerFee = exemptCustomer ? 0 : settings.studentRentFeeFlat;
     const totalCharged = grossAmount + customerFee;
 
-    // Owner fee: max(flat, percent%) deducted FROM received amount
-    const ownerFeeByPercent = (grossAmount * settings.ownerFeePercent) / 100;
-    const ownerFee = exemptOwner ? 0 : Math.max(settings.ownerFeeFlat, ownerFeeByPercent);
+    // Owner fee: flat rate (₹9 by default) deducted FROM received amount
+    const ownerFee = exemptOwner ? 0 : settings.ownerRentFeeFlat;
     const ownerNet = grossAmount - ownerFee;
 
     const platformEarned = customerFee + ownerFee;
@@ -235,4 +232,18 @@ export async function removeFeeExemption(id: string) {
     });
 
     revalidatePath('/dashboard/admin/platform-fees');
+}
+
+// ── P8: Owner Razorpay Account Linking (DUMMY) ──
+export async function updateOwnerRazorpayAccount(accountId: string | null) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    await prisma.user.update({
+        where: { id: (session as any).userId },
+        data: { razorpayAccountId: accountId }
+    });
+
+    revalidatePath('/dashboard/owner/settings/payment');
+    return { success: true };
 }

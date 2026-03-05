@@ -16,26 +16,53 @@ export async function createRazorpayOrder(bookingId: string) {
 
     if (!booking) throw new Error("Booking not found");
     if (booking.userId !== (session as any).userId) throw new Error("Unauthorized");
-
-    // Amount in paise (multiply by 100)
-    // Clean currency symbol if present
-    const amountStr = booking.amount.replace(/[^0-9]/g, "");
-    const amount = parseInt(amountStr) * 100;
-
-    const options = {
-        amount: amount,
-        currency: "INR",
-        receipt: `receipt_${booking.id.slice(0, 5)}`,
-    };
-
     try {
+        // ── DUMMY RAZORPAY ROUTE INTEGRATION ──
+        // In a real app, we fetch global platform fees and transfer to owner account
+        const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+        const studentFee = (settings?.feesEnabled && settings?.studentRentFeeFlat) || 0;
+        const ownerFee = (settings?.feesEnabled && settings?.ownerRentFeeFlat) || 0;
+
+        // Fetch property owner's razorpay account
+        const room = await prisma.room.findUnique({
+            where: { id: booking.roomId! },
+            include: { property: { include: { owner: true } } }
+        });
+        const ownerAccountId = room?.property.owner.razorpayAccountId;
+
+        const totalAmountStr = booking.amount.replace(/[^0-9]/g, "");
+        const rentAmount = parseInt(totalAmountStr);
+        const finalCharge = (rentAmount + studentFee) * 100; // Total student pays in paise
+
+        const options: any = {
+            amount: finalCharge,
+            currency: "INR",
+            receipt: `receipt_${booking.id.slice(0, 5)}`,
+        };
+
+        // If owner has a linked account, add transfer
+        if (ownerAccountId) {
+            options.transfers = [
+                {
+                    account: ownerAccountId,
+                    amount: (rentAmount - ownerFee) * 100, // Amount transferred to owner in paise
+                    currency: "INR",
+                    notes: {
+                        booking_id: booking.id,
+                        type: "rent_split"
+                    },
+                    on_linked_account_payout: "immediately"
+                }
+            ];
+        }
+
         const order = await razorpay.orders.create(options);
 
         // Record the attempt in Payment table
         await prisma.payment.create({
             data: {
                 bookingId: booking.id,
-                amount: parseInt(amountStr),
+                amount: rentAmount + studentFee,
                 method: "ONLINE",
                 status: "PENDING",
                 razorpayOrderId: order.id,
@@ -46,7 +73,8 @@ export async function createRazorpayOrder(bookingId: string) {
             id: order.id,
             amount: order.amount,
             currency: order.currency,
-            key: process.env.RAZORPAY_KEY_ID
+            key: process.env.RAZORPAY_KEY_ID,
+            isDummyRoute: true // Flag for UI to show dummy route used
         };
     } catch (error) {
         console.error("Razorpay Order Error:", error);

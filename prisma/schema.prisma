@@ -20,6 +20,7 @@ model User {
   updatedAt        DateTime          @updatedAt
   displayId        String?           @unique
   deletedAt        DateTime?
+  razorpayAccountId String?
   actionNotes      ActionNote[]      @relation("TargetUser")
   auditLogs        AuditLog[]        @relation("PerformedBy")
   bookings         Booking[]
@@ -274,10 +275,9 @@ model OwnerStaff {
 model PlatformSettings {
   id                    String   @id @default("singleton")
   feesEnabled           Boolean  @default(false)
-  customerFeeFlat       Float    @default(10)
-  customerFeePercent    Float    @default(0.09)
-  ownerFeeFlat          Float    @default(10)
-  ownerFeePercent       Float    @default(0.10)
+  studentRentFeeFlat    Float    @default(9)
+  ownerRentFeeFlat      Float    @default(9)
+  ownerOnboardingFeeFlat Float   @default(99)
   platformWalletBalance Float    @default(0)
   updatedAt             DateTime @updatedAt
 }

@@ -26,10 +26,9 @@ export default function PlatformFeesPage() {
 
     // Local editable state
     const [feesEnabled, setFeesEnabled] = useState(false);
-    const [custFlat, setCustFlat] = useState(10);
-    const [custPct, setCustPct] = useState(0.09);
-    const [ownerFlat, setOwnerFlat] = useState(10);
-    const [ownerPct, setOwnerPct] = useState(0.10);
+    const [studentRentFeeFlat, setStudentRentFeeFlat] = useState(9);
+    const [ownerRentFeeFlat, setOwnerRentFeeFlat] = useState(9);
+    const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
     const [exemptions, setExemptions] = useState<any[]>([]);
     const [exPG, setExPG] = useState("");
     const [exUserId, setExUserId] = useState("");
@@ -51,10 +50,9 @@ export default function PlatformFeesPage() {
             ]);
             setSettings(s);
             setFeesEnabled(s.feesEnabled);
-            setCustFlat(s.customerFeeFlat);
-            setCustPct(s.customerFeePercent);
-            setOwnerFlat(s.ownerFeeFlat);
-            setOwnerPct(s.ownerFeePercent);
+            setStudentRentFeeFlat(s.studentRentFeeFlat);
+            setOwnerRentFeeFlat(s.ownerRentFeeFlat);
+            setOwnerOnboardingFeeFlat(s.ownerOnboardingFeeFlat);
             setFees(f);
             setChangeLogs(l);
             setExemptions(ex);
@@ -70,7 +68,7 @@ export default function PlatformFeesPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updatePlatformSettings({ feesEnabled, customerFeeFlat: custFlat, customerFeePercent: custPct, ownerFeeFlat: ownerFlat, ownerFeePercent: ownerPct });
+            await updatePlatformSettings({ feesEnabled, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat });
             await fetchAll();
             alert("✅ Platform fee settings saved successfully.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
@@ -78,9 +76,9 @@ export default function PlatformFeesPage() {
     };
 
     // Live preview calculations
-    const customerFee = feesEnabled ? Math.round(Math.max(custFlat, (previewAmount * custPct) / 100) * 100) / 100 : 0;
+    const customerFee = feesEnabled ? studentRentFeeFlat : 0;
     const totalCharged = previewAmount + customerFee;
-    const ownerFee = feesEnabled ? Math.round(Math.max(ownerFlat, (previewAmount * ownerPct) / 100) * 100) / 100 : 0;
+    const ownerFee = feesEnabled ? ownerRentFeeFlat : 0;
     const ownerNet = previewAmount - ownerFee;
     const platformEarned = customerFee + ownerFee;
 
@@ -183,29 +181,37 @@ export default function PlatformFeesPage() {
                     </Card>
 
                     {/* Fee Configuration */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {[
-                            { label: "👤 Customer (Student) Fee", desc: "Added ON TOP of rent.", color: "blue", flat: custFlat, pct: custPct, setFlat: setCustFlat, setPct: setCustPct },
-                            { label: "🏠 Owner Fee", desc: "Deducted FROM rent received.", color: "orange", flat: ownerFlat, pct: ownerPct, setFlat: setOwnerFlat, setPct: setOwnerPct },
-                        ].map(({ label, desc, color, flat, pct, setFlat, setPct }) => (
-                            <Card key={label} className={`border-${color}-200`}>
-                                <CardContent className="p-5 space-y-3">
-                                    <h3 className={`font-bold text-${color}-800`}>{label}</h3>
-                                    <p className="text-xs text-muted-foreground">{desc}</p>
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
-                                        <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={flat} min={0} step={1} onChange={e => setFlat(parseFloat(e.target.value) || 0)} />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-muted-foreground">Percentage (%)</label>
-                                        <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={pct} min={0} step={0.01} onChange={e => setPct(parseFloat(e.target.value) || 0)} />
-                                    </div>
-                                    <p className={`text-xs text-${color}-700 bg-${color}-50 p-2 rounded`}>
-                                        Formula: <strong>max(₹{flat}, {pct}% of rent)</strong>
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="border-blue-200">
+                            <CardContent className="p-5 space-y-3">
+                                <h3 className="font-bold text-blue-800">👤 Customer (Student) Rent Fee</h3>
+                                <p className="text-xs text-muted-foreground">Added ON TOP of monthly rent payment.</p>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={studentRentFeeFlat} min={0} step={1} onChange={e => setStudentRentFeeFlat(parseFloat(e.target.value) || 0)} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-orange-200">
+                            <CardContent className="p-5 space-y-3">
+                                <h3 className="font-bold text-orange-800">🏠 Owner Rent Fee</h3>
+                                <p className="text-xs text-muted-foreground">Deducted FROM the rent the owner receives.</p>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerRentFeeFlat} min={0} step={1} onChange={e => setOwnerRentFeeFlat(parseFloat(e.target.value) || 0)} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-green-200">
+                            <CardContent className="p-5 space-y-3">
+                                <h3 className="font-bold text-green-800">🚀 Owner Onboarding Fee</h3>
+                                <p className="text-xs text-muted-foreground">Paid once per property activation.</p>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerOnboardingFeeFlat} min={0} step={1} onChange={e => setOwnerOnboardingFeeFlat(parseFloat(e.target.value) || 0)} />
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Live Preview */}

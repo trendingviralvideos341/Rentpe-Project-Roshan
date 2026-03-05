@@ -63,6 +63,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
         { href: "/dashboard/owner/food-menu", label: "Food Menu", icon: Utensils },
         { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },
         { href: "/dashboard/owner/payments", label: "Payments", icon: CreditCard },
+        { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: CreditCard },
         { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList },
     ];
 

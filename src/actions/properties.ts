@@ -291,3 +291,42 @@ export async function requestDocumentReupload(propertyId: string, docType: strin
         return { success: false, error: "Failed to request reupload" };
     }
 }
+
+// ── P8: Owner Onboarding Fee Payment Simulation ──
+import { revalidatePath } from "next/cache";
+
+export async function payOnboardingFee(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({
+        where: { id: propertyId, ownerId: (session as any).userId },
+        select: { status: true, name: true }
+    });
+
+    if (!property || property.status !== 'PAYMENT_PENDING') {
+        throw new Error("Property is not awaiting payment.");
+    }
+
+    // 1. Mark as LIVE
+    await prisma.property.update({
+        where: { id: propertyId },
+        data: { status: 'LIVE' }
+    });
+
+    // 2. Add to Audit Log
+    await prisma.auditLog.create({
+        data: {
+            action: 'ONBOARDING_FEE_PAID',
+            targetId: propertyId,
+            targetType: 'PROPERTY',
+            details: `Owner paid onboarding fee for property ${property.name}. Status is now LIVE.`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+
+    return { success: true };
+}

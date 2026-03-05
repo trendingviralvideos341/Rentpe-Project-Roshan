@@ -490,7 +490,9 @@ export async function approveProperty(propertyId: string, approved: boolean, not
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const status = approved ? 'LIVE' : 'REJECTED';
+    const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+    const isFeeEnabled = settings?.feesEnabled && (settings?.ownerOnboardingFeeFlat > 0);
+    const status = approved ? (isFeeEnabled ? 'PAYMENT_PENDING' : 'LIVE') : 'REJECTED';
 
     const property = await prisma.property.update({
         where: { id: propertyId },
@@ -503,7 +505,9 @@ export async function approveProperty(propertyId: string, approved: boolean, not
                 userId: property.ownerId,
                 type: approved ? "PROPERTY_APPROVED" : "PROPERTY_REJECTED",
                 message: approved
-                    ? `Your property "${property.name}" is now LIVE! ${notes ? `Admin notes: ${notes}` : ""}`
+                    ? (isFeeEnabled
+                        ? `Your property "${property.name}" was verified! Please pay the onboarding fee to push it LIVE.`
+                        : `Your property "${property.name}" is now LIVE! ${notes ? `Admin notes: ${notes}` : ""}`)
                     : `Action Required: Your property "${property.name}" was rejected. Admin Note: ${notes}`
             }
         });

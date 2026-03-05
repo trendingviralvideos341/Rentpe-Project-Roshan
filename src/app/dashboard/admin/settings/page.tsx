@@ -83,12 +83,16 @@ export default function AdminSettingsPage() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b">
-                                    <span className="text-sm text-muted-foreground">Customer Fee</span>
-                                    <span className="text-sm font-mono">₹{settings.customerFeeFlat} flat + {(settings.customerFeePercent * 100).toFixed(1)}%</span>
+                                    <span className="text-sm text-muted-foreground">Customer (Student) Fee</span>
+                                    <span className="text-sm font-mono text-blue-700 font-bold">₹{settings.studentRentFeeFlat || 9} flat / rent</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b">
-                                    <span className="text-sm text-muted-foreground">Owner Fee</span>
-                                    <span className="text-sm font-mono">₹{settings.ownerFeeFlat} flat + {(settings.ownerFeePercent * 100).toFixed(1)}%</span>
+                                    <span className="text-sm text-muted-foreground">Owner Rent Fee</span>
+                                    <span className="text-sm font-mono text-orange-700 font-bold">₹{settings.ownerRentFeeFlat || 9} flat / rent</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b">
+                                    <span className="text-sm text-muted-foreground">Owner Onboarding Fee</span>
+                                    <span className="text-sm font-mono text-green-700 font-bold">₹{settings.ownerOnboardingFeeFlat || 99} once / PG</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2">
                                     <span className="text-sm text-muted-foreground">Wallet Balance</span>
