@@ -286,13 +286,16 @@ export default function StudentDashboardPage() {
                                         <CardHeader className="pb-2">
                                             <div className="flex justify-between items-start flex-wrap gap-2">
                                                 <div>
+                                                    <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                                                        <Building2 className="h-3 w-3" /> Property
+                                                    </div>
                                                     <CardTitle className="flex items-center gap-2">
                                                         {booking.propertyName}
-                                                        {booking.guestName && (
-                                                            <span className="text-xs font-normal text-muted-foreground">({booking.guestName})</span>
-                                                        )}
                                                     </CardTitle>
-                                                    <CardDescription>
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-2">
+                                                        <User className="h-3 w-3" /> Guest: <span className="text-foreground font-bold">{booking.guestName}</span>
+                                                    </div>
+                                                    <CardDescription className="mt-1">
                                                         Ref: {booking.displayId} • {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                                                     </CardDescription>
                                                 </div>
@@ -558,7 +561,7 @@ export default function StudentDashboardPage() {
                                     <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg flex items-center justify-between">
                                         <div>
                                             <div className="text-[10px] font-bold text-green-700 uppercase">Account Status</div>
-                                            <div className="text-sm font-bold text-green-800">Verified Tenant</div>
+                                            <div className="text-sm font-bold text-green-800">Verified {bookings[0]?.user?.role || "Tenant"}</div>
                                         </div>
                                         <CheckCircle className="h-6 w-6 text-green-600" />
                                     </div>

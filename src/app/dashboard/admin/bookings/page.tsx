@@ -8,7 +8,7 @@ import {
     Users, Search, RefreshCcw, Calendar, Building2,
     CreditCard, Tag, User, Mail, Phone, Clock
 } from "lucide-react";
-import { getBookings } from "@/actions/bookings";
+import { getAdminBookings } from "@/actions/bookings";
 
 const STATUS_COLORS: Record<string, string> = {
     'PENDING_APPROVAL': 'bg-amber-100 text-amber-700 border-amber-200',
@@ -33,7 +33,7 @@ export default function AdminBookingsPage() {
     const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await getBookings();
+            const data = await getAdminBookings();
             setBookings(data);
         } catch (e) {
             console.error(e);

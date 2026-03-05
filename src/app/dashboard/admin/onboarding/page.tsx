@@ -8,7 +8,7 @@ import {
     ClipboardCheck, Search, RefreshCcw, Building2,
     User, Mail, Phone, Calendar, ArrowRight, CheckCircle2, Clock
 } from "lucide-react";
-import { getBookings } from "@/actions/bookings";
+import { getAdminBookings } from "@/actions/bookings";
 
 const ONBOARDING_STATUS_COLORS: Record<string, string> = {
     'APPROVED_PAYMENT_PENDING': 'bg-blue-100 text-blue-700 border-blue-200',
@@ -25,9 +25,9 @@ export default function AdminOnboardingPage() {
     const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await getBookings();
+            const data = await getAdminBookings();
             // Filter only those that are past the initial approval stage or onboarding
-            const onboardingStatuses = ['APPROVED_PAYMENT_PENDING', 'PAID', 'PAID_COMPLETING_ONBOARDING'];
+            const onboardingStatuses = ['APPROVED_PAYMENT_PENDING', 'PAID', 'PAID_COMPLETING_ONBOARDING', 'PAID_CONFIRMED'];
             setBookings(data.filter(b => onboardingStatuses.includes(b.status)));
         } catch (e) {
             console.error(e);

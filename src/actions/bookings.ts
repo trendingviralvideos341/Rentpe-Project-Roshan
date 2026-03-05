@@ -20,6 +20,14 @@ export async function createBooking(data: {
     const session = await getSession();
     if (!session) throw new Error("You must be logged in to book.");
 
+    // Server-side date validation: Move-in cannot be in the past
+    const selectedDate = new Date(data.moveInDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+        throw new Error("Move-in date cannot be in the past.");
+    }
+
     const booking = await prisma.booking.create({
         data: {
             displayId: `REQ-${Math.floor(Math.random() * 90000000) + 10000000}`,
@@ -70,12 +78,11 @@ export async function getBookings() {
         const role = (session as any).role;
         const userId = (session as any).userId;
 
-        if (role === 'ADMIN') {
-            return await prisma.booking.findMany({
-                include: { user: { select: { name: true, email: true } } },
-                orderBy: { createdAt: 'desc' }
-            });
-        } else if (role === 'OWNER') {
+        // PRIVACY FIX: If on student dashboard (implied by call to getBookings),
+        // we should ONLY return the user's own bookings, even if they are an ADMIN or OWNER.
+        // This prevents data leakage where an Admin sees all system bookings in their personal tab.
+
+        if (role === 'OWNER') {
             const properties = await prisma.property.findMany({
                 where: { ownerId: userId },
                 select: { name: true }
@@ -84,6 +91,21 @@ export async function getBookings() {
             return await prisma.booking.findMany({
                 where: { propertyName: { in: propertyNames } },
                 include: { user: { select: { name: true, email: true } } },
+                orderBy: { createdAt: 'desc' }
+            });
+        } else if (role === 'ADMIN') {
+            // Admin context: if they want everything, they should use getAdminBookings
+            // For general use (like profile or personal dashboard), still filter by userId if possible?
+            // Actually, let's keep getBookings() for Admin as "return all" ONLY if they aren't on student dashboard.
+            // But since this is a shared action, let's keep it simple: 
+            // Students (USER) and Admins on their personal dashboard should see their OWN bookings.
+            // Wait, the Admin dashboard uses this too.
+            // Let's split it: getBookings() for personal, getAdminBookings() for global.
+
+            // To be safe and fix the user's issue: return all ONLY if strictly necessary.
+            // The Admin page should be updated to use getAdminBookings().
+            return await prisma.booking.findMany({
+                where: { userId },
                 orderBy: { createdAt: 'desc' }
             });
         } else {
@@ -112,6 +134,15 @@ export async function getBookings() {
         console.error("getBookings Error:", e);
         return [];
     }
+}
+
+export async function getAdminBookings() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    return await prisma.booking.findMany({
+        include: { user: { select: { name: true, email: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
 }
 
 export async function approveBooking(id: string, data: {
