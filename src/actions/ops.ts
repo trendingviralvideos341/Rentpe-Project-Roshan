@@ -74,14 +74,67 @@ export async function getOwnerTickets() {
 
     return prisma.ticket.findMany({
         where: { propertyId: { in: propertyIds } },
-        include: { user: { select: { name: true } } },
+        include: { user: { select: { name: true } }, property: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+export async function getStudentTickets() {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    return prisma.ticket.findMany({
+        where: { userId: (session as any).userId },
+        include: { property: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+export async function createStudentTicket(data: {
+    category: string;
+    description: string;
+    priority?: string;
+    propertyId?: string;
+}) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const count = await prisma.ticket.count();
+    const displayId = `TKT-${String(count + 1).padStart(4, '0')}`;
+
+    const ticket = await prisma.ticket.create({
+        data: {
+            displayId,
+            userId: (session as any).userId,
+            propertyId: data.propertyId || null,
+            category: data.category,
+            description: data.description,
+            priority: data.priority || 'MEDIUM',
+            status: 'OPEN',
+            replies: '[]',
+        }
+    });
+
+    revalidatePath('/dashboard/student/tickets');
+    return ticket;
+}
+
+export async function getAllTickets() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return prisma.ticket.findMany({
+        include: {
+            user: { select: { name: true, email: true } },
+            property: { select: { name: true } }
+        },
         orderBy: { createdAt: 'desc' }
     });
 }
 
 export async function resolveTicket(id: string, notes?: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const ticket = await prisma.ticket.update({
         where: { id },
@@ -99,6 +152,7 @@ export async function resolveTicket(id: string, notes?: string) {
     });
 
     revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/admin/tickets');
     return ticket;
 }
 
@@ -123,5 +177,8 @@ export async function replyToTicket(id: string, message: string) {
     });
 
     revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/student/tickets');
+    revalidatePath('/dashboard/admin/tickets');
     return updated;
 }
+

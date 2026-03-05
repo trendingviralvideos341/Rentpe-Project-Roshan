@@ -1,9 +1,24 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ShieldCheck, Utensils, Users, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function Home() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push("/search");
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
@@ -18,25 +33,30 @@ export default function Home() {
             </p>
 
             {/* Search Box */}
-            <div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-lg border max-w-xl mx-auto flex items-center mt-8">
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
+              className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-lg border max-w-xl mx-auto flex items-center mt-8"
+            >
               <div className="pl-4 text-muted-foreground">
                 <Search className="h-5 w-5" />
               </div>
               <Input
                 className="border-0 shadow-none focus-visible:ring-0 bg-transparent text-lg"
                 placeholder="Enter city, locality, or college..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <Button size="lg" className="rounded-full px-8">
+              <Button type="submit" size="lg" className="rounded-full px-8">
                 Search
               </Button>
-            </div>
+            </form>
 
             <div className="pt-4 flex justify-center space-x-4 text-sm text-muted-foreground">
               <span>Popular:</span>
-              <Link href="/search?city=delhi" className="hover:text-primary underline">Delhi</Link>
-              <Link href="/search?city=bangalore" className="hover:text-primary underline">Bangalore</Link>
-              <Link href="/search?city=kota" className="hover:text-primary underline">Kota</Link>
-              <Link href="/search?city=pune" className="hover:text-primary underline">Pune</Link>
+              <Link href="/search?q=delhi" className="hover:text-primary underline">Delhi</Link>
+              <Link href="/search?q=bangalore" className="hover:text-primary underline">Bangalore</Link>
+              <Link href="/search?q=kota" className="hover:text-primary underline">Kota</Link>
+              <Link href="/search?q=pune" className="hover:text-primary underline">Pune</Link>
             </div>
           </div>
         </div>
@@ -87,7 +107,7 @@ export default function Home() {
                 <Link href="/list-property">List Your Property <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/owner-benefits">Learn More</Link>
+                <Link href="/search">Explore PGs</Link>
               </Button>
             </div>
           </div>
@@ -108,3 +128,4 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
     </div>
   );
 }
+

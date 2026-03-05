@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/actions/notifications";
 
 export async function uploadTenantDocument(data: {
     bookingId: string;
@@ -215,6 +216,17 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
             performedBy: userId
         }
     });
+
+    // Notify the student about doc verification result
+    try {
+        const booking = await prisma.booking.findUnique({ where: { id: existingDoc.bookingId } });
+        if (booking) {
+            const msg = status === 'VERIFIED'
+                ? `Your ${doc.type} document has been verified!`
+                : `Your ${doc.type} document was rejected. ${note || 'Please re-upload.'}`;
+            await createNotification(booking.userId, 'DOCUMENT', msg);
+        }
+    } catch (e) { }
 
     revalidatePath('/dashboard/owner/verifications');
     revalidatePath('/dashboard/admin/doc-verification');

@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/actions/notifications";
 
 export async function createBooking(data: {
     roomId?: string,
@@ -47,6 +48,14 @@ export async function createBooking(data: {
             performedBy: (session as any).userId
         }
     });
+
+    // Notify owner about new booking
+    try {
+        const property = await prisma.property.findFirst({ where: { name: data.propertyName } });
+        if (property) {
+            await createNotification(property.ownerId, 'BOOKING', `New booking request for ${data.propertyName} by ${data.guestName}`);
+        }
+    } catch (e) { }
 
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
@@ -185,6 +194,13 @@ export async function approveBooking(id: string, data: {
         }
     });
 
+    // Notify student about approval
+    try {
+        if (booking.userId) {
+            await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} has been approved! Room: ${data.roomAssigned || 'TBD'}`);
+        }
+    } catch (e) { }
+
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');
     revalidatePath('/dashboard/student');
@@ -222,6 +238,13 @@ export async function rejectBooking(id: string, reason?: string) {
             performedBy: (session as any).userId
         }
     });
+
+    // Notify student about rejection
+    try {
+        if (booking.userId) {
+            await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} was rejected. ${reason || ''}`);
+        }
+    } catch (e) { }
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck, Menu, X } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount } from "@/actions/bookings";
@@ -20,6 +20,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
     const [pendingCount, setPendingCount] = useState(0);
     const [pendingPropCount, setPendingPropCount] = useState(0);
     const [pendingDocCount, setPendingDocCount] = useState(0);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
         if (role === "owner") {
@@ -46,6 +47,11 @@ export default function DashboardSidebar({ role }: SidebarProps) {
         }
     }, [role]);
 
+    // Close mobile drawer on route change
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [pathname]);
+
     const ownerLinks = [
         { href: "/dashboard/owner", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
@@ -64,7 +70,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users },
         { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount },
-        { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Users },
+        { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar },
         { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
         { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck },
         { href: "/dashboard/admin/team", label: "Team & Roles", icon: Shield },
@@ -114,14 +120,14 @@ export default function DashboardSidebar({ role }: SidebarProps) {
 
     const links = linkMap[role] || studentLinks;
 
-    return (
-        <aside className="w-64 bg-card border-r h-full flex flex-col hidden md:flex sticky top-16">
+    const navContent = (
+        <>
             <div className="p-6">
                 <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
                     {panelNames[role] || "Dashboard"}
                 </h2>
             </div>
-            <nav className="flex-1 px-4 space-y-2">
+            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
                 {links.map((link) => {
                     const Icon = link.icon;
                     const isActive = pathname === link.href;
@@ -151,6 +157,50 @@ export default function DashboardSidebar({ role }: SidebarProps) {
             <div className="p-4 border-t">
                 <LogoutButton />
             </div>
-        </aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Desktop Sidebar */}
+            <aside className="w-64 bg-card border-r h-full flex-col hidden md:flex sticky top-16">
+                {navContent}
+            </aside>
+
+            {/* Mobile Hamburger Button */}
+            <button
+                onClick={() => setMobileOpen(true)}
+                className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                aria-label="Open menu"
+            >
+                <Menu className="w-6 h-6" />
+            </button>
+
+            {/* Mobile Drawer Overlay */}
+            {mobileOpen && (
+                <div className="md:hidden fixed inset-0 z-50 flex">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setMobileOpen(false)}
+                    />
+
+                    {/* Drawer */}
+                    <aside className="relative w-72 max-w-[85vw] bg-card h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
+                        <div className="absolute top-4 right-4">
+                            <button
+                                onClick={() => setMobileOpen(false)}
+                                className="p-2 rounded-full hover:bg-muted transition-colors"
+                                aria-label="Close menu"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        {navContent}
+                    </aside>
+                </div>
+            )}
+        </>
     );
 }
+

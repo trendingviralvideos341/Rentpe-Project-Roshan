@@ -6,6 +6,7 @@ import { Menu, Home } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import NotificationBell from '@/components/layout/NotificationBell';
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -49,6 +50,7 @@ const Navbar = ({ session }: { session: any }) => {
                             <span className="text-sm font-medium text-muted-foreground hidden sm:inline-block">
                                 Welcome, <strong>{userRole}</strong>
                             </span>
+                            <NotificationBell />
                             <Link href={dashboardHref}>
                                 <button className="px-4 py-2 text-sm font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors">
                                     Dashboard
