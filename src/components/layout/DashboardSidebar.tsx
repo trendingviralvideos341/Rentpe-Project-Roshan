@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck, Menu, X, User, TrendingUp } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 export default function DashboardSidebar({ role }: SidebarProps) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [pendingCount, setPendingCount] = useState(0);
     const [pendingPropCount, setPendingPropCount] = useState(0);
     const [pendingDocCount, setPendingDocCount] = useState(0);
@@ -134,7 +135,15 @@ export default function DashboardSidebar({ role }: SidebarProps) {
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
                 {links.map((link) => {
                     const Icon = link.icon;
-                    const isActive = pathname === link.href;
+                    // Improved active state logic to handle query params
+                    const linkPath = link.href.split('?')[0];
+                    const linkTab = link.href.includes('tab=') ? link.href.split('tab=')[1] : null;
+                    const currentTab = searchParams.get('tab') || 'overview';
+
+                    const isActive = pathname === linkPath && (
+                        linkTab ? currentTab === linkTab : currentTab === 'overview'
+                    );
+
                     const badge = (link as any).badge;
                     return (
                         <Link

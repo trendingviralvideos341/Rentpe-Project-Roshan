@@ -51,11 +51,18 @@ const Navbar = ({ session }: { session: any }) => {
                                 Welcome, <strong>{session?.name || session?.user?.name || userRole}</strong>
                             </span>
                             <NotificationBell />
-                            <Link href={dashboardHref}>
-                                <button className="px-4 py-2 text-sm font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors">
-                                    Dashboard
-                                </button>
-                            </Link>
+                            <div className="flex items-center gap-2">
+                                <Link href={dashboardHref + "?tab=profile"}>
+                                    <button className="px-4 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity shadow-sm">
+                                        My Profile
+                                    </button>
+                                </Link>
+                                <Link href={dashboardHref}>
+                                    <button className="px-4 py-2 text-sm font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors">
+                                        Dashboard
+                                    </button>
+                                </Link>
+                            </div>
                         </div>
                     ) : (
                         <>
@@ -86,9 +93,14 @@ const Navbar = ({ session }: { session: any }) => {
                     <Link href="/list-property" className="block text-sm font-medium hover:text-primary" onClick={() => setIsOpen(false)}>List Property</Link>
                     <div className="pt-4 border-t flex flex-col space-y-2">
                         {isLoggedIn ? (
-                            <Link href={dashboardHref} className="w-full text-center px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold" onClick={() => setIsOpen(false)}>
-                                Dashboard
-                            </Link>
+                            <div className="flex flex-col space-y-2">
+                                <Link href={dashboardHref + "?tab=profile"} className="w-full text-center px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg font-bold shadow-sm" onClick={() => setIsOpen(false)}>
+                                    My Profile
+                                </Link>
+                                <Link href={dashboardHref} className="w-full text-center px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold" onClick={() => setIsOpen(false)}>
+                                    Dashboard
+                                </Link>
+                            </div>
                         ) : (
                             <>
                                 <Link href="/login" className="w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg font-semibold" onClick={() => setIsOpen(false)}>
