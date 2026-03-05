@@ -16,12 +16,30 @@ export async function getAdminStats() {
             prisma.property.count()
         ]);
 
+        // Generate realistic mock data for charts
+        const monthlyGrowth = [
+            { name: "Oct", users: Math.floor(totalUsers * 0.4), bookings: Math.floor(totalBookings * 0.3) },
+            { name: "Nov", users: Math.floor(totalUsers * 0.5), bookings: Math.floor(totalBookings * 0.5) },
+            { name: "Dec", users: Math.floor(totalUsers * 0.65), bookings: Math.floor(totalBookings * 0.6) },
+            { name: "Jan", users: Math.floor(totalUsers * 0.8), bookings: Math.floor(totalBookings * 0.75) },
+            { name: "Feb", users: Math.floor(totalUsers * 0.9), bookings: Math.floor(totalBookings * 0.9) },
+            { name: "Mar", users: totalUsers, bookings: totalBookings },
+        ];
+
+        const propertyDistribution = [
+            { name: "PGs / Hostels", value: Math.floor(totalProperties * 0.6) },
+            { name: "Flats", value: Math.floor(totalProperties * 0.3) },
+            { name: "Co-living", value: Math.floor(totalProperties * 0.1) },
+        ];
+
         return {
             totalUsers,
             totalBookings,
             openTickets,
             totalProperties,
-            systemHealth: "98%"
+            systemHealth: "98%",
+            monthlyGrowth,
+            propertyDistribution
         };
     } catch (e) {
         console.error("getAdminStats Error:", e);
@@ -30,7 +48,9 @@ export async function getAdminStats() {
             totalBookings: 0,
             openTickets: 0,
             totalProperties: 0,
-            systemHealth: "N/A"
+            systemHealth: "N/A",
+            monthlyGrowth: [],
+            propertyDistribution: []
         };
     }
 }

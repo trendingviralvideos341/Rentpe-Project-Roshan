@@ -1,0 +1,70 @@
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 9.0s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/12) ...
+  Generating static pages using 11 workers (3/12) 
+  Generating static pages using 11 workers (6/12) 
+  Generating static pages using 11 workers (9/12) 
+✓ Generating static pages using 11 workers (12/12) in 788.3ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /api/upload
+├ ƒ /booking/requested
+├ ƒ /bookings
+├ ƒ /dashboard/admin
+├ ƒ /dashboard/admin/audit-log
+├ ƒ /dashboard/admin/bookings
+├ ƒ /dashboard/admin/data-management
+├ ƒ /dashboard/admin/doc-verification
+├ ƒ /dashboard/admin/employees
+├ ƒ /dashboard/admin/onboarding
+├ ƒ /dashboard/admin/platform-fees
+├ ƒ /dashboard/admin/property-approval
+├ ƒ /dashboard/admin/settings
+├ ƒ /dashboard/admin/team
+├ ƒ /dashboard/admin/tickets
+├ ƒ /dashboard/admin/transactions
+├ ƒ /dashboard/admin/users
+├ ƒ /dashboard/onboarder
+├ ƒ /dashboard/onboarder/new
+├ ƒ /dashboard/onboarder/queue
+├ ƒ /dashboard/onboarder/submissions
+├ ƒ /dashboard/owner
+├ ƒ /dashboard/owner/activity-log
+├ ƒ /dashboard/owner/bookings
+├ ƒ /dashboard/owner/food-menu
+├ ƒ /dashboard/owner/onboarding
+├ ƒ /dashboard/owner/payments
+├ ƒ /dashboard/owner/properties
+├ ƒ /dashboard/owner/properties/[id]
+├ ƒ /dashboard/owner/properties/new
+├ ƒ /dashboard/owner/rooms
+├ ƒ /dashboard/owner/staff
+├ ƒ /dashboard/owner/tenants
+├ ƒ /dashboard/owner/tickets
+├ ƒ /dashboard/owner/verifications
+├ ƒ /dashboard/student
+├ ƒ /dashboard/student/documents
+├ ƒ /dashboard/student/tickets
+├ ƒ /dashboard/verifier
+├ ƒ /dashboard/verifier/reviews
+├ ƒ /list-property
+├ ƒ /login
+├ ƒ /property/[id]
+├ ƒ /search
+├ ƒ /secure/payment
+└ ƒ /signup
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+

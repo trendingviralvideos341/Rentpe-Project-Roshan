@@ -123,3 +123,68 @@ export async function verifyPayment(data: {
     revalidatePath("/dashboard/owner/bookings");
     return { success: true };
 }
+
+export async function getStudentPaymentHistory() {
+    try {
+        const session = await getSession();
+        if (!session || (session as any).role !== 'USER') {
+            throw new Error("Unauthorized");
+        }
+
+        const userId = (session as any).userId;
+        const email = (session as any).email;
+
+        // 1. Get initial booking payments
+        const bookingPayments = await prisma.payment.findMany({
+            where: {
+                booking: { userId },
+                status: 'VERIFIED'
+            },
+            include: {
+                booking: { select: { propertyName: true } }
+            },
+            orderBy: { date: 'desc' }
+        });
+
+        // 2. Get monthly rent records
+        let rentRecords: any[] = [];
+        if (email) {
+            const tenants = await prisma.tenant.findMany({
+                where: { email },
+                include: {
+                    rentRecords: { where: { paid: true } },
+                    property: { select: { name: true } }
+                }
+            });
+
+            rentRecords = tenants.flatMap(t =>
+                t.rentRecords.map(r => ({
+                    id: r.id,
+                    amount: parseFloat(r.amount.replace(/[^0-9.]/g, '')),
+                    date: r.paidOn ? new Date(r.paidOn) : r.createdAt,
+                    type: "MONTHLY_RENT",
+                    description: `Rent for ${r.month} (${t.property.name})`,
+                    status: "SUCCESS"
+                }))
+            );
+        }
+
+        // Format booking payments
+        const formattedBookingPayments = bookingPayments.map(p => ({
+            id: p.id,
+            amount: p.amount,
+            date: p.date,
+            type: "INITIAL_BOOKING",
+            description: `Booking advance for ${p.booking.propertyName}`,
+            status: "SUCCESS" // Since we filtered by VERIFIED
+        }));
+
+        // Combine and sort
+        const combined = [...formattedBookingPayments, ...rentRecords].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+        return combined;
+    } catch (e) {
+        console.error("getStudentPaymentHistory Error:", e);
+        return [];
+    }
+}
