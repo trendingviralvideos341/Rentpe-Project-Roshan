@@ -62,23 +62,10 @@ async function updateOrInsertMeal(propertyId: string, day: string, mealType: str
 }
 
 // --- Support Tickets ---
-export async function getOwnerTickets() {
-    const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+import { OWNER_CATEGORIES, ADMIN_CATEGORIES, OWNER_TO_ADMIN_CATEGORIES, determineTargetTeam } from '@/lib/ticket-categories';
 
-    const properties = await prisma.property.findMany({
-        where: { ownerId: (session as any).userId },
-        select: { id: true }
-    });
-    const propertyIds = properties.map(p => p.id);
 
-    return prisma.ticket.findMany({
-        where: { propertyId: { in: propertyIds } },
-        include: { user: { select: { name: true } }, property: { select: { name: true } } },
-        orderBy: { createdAt: 'desc' }
-    });
-}
-
+// Student: get own tickets
 export async function getStudentTickets() {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
@@ -90,6 +77,7 @@ export async function getStudentTickets() {
     });
 }
 
+// Student: create a ticket
 export async function createStudentTicket(data: {
     category: string;
     description: string;
@@ -101,8 +89,9 @@ export async function createStudentTicket(data: {
 
     const count = await prisma.ticket.count();
     const displayId = `TKT-${String(count + 1).padStart(4, '0')}`;
+    const targetTeam = determineTargetTeam(data.category);
 
-    const ticket = await prisma.ticket.create({
+    const ticket = await (prisma.ticket as any).create({
         data: {
             displayId,
             userId: (session as any).userId,
@@ -112,13 +101,91 @@ export async function createStudentTicket(data: {
             priority: data.priority || 'MEDIUM',
             status: 'OPEN',
             replies: '[]',
+            targetTeam,
+            raisedByRole: 'USER'
         }
     });
 
     revalidatePath('/dashboard/student/tickets');
+    revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/admin/tickets');
     return ticket;
 }
 
+// Owner: get tickets routed to them (from students) + their own tickets to admin
+export async function getOwnerTickets() {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const properties = await prisma.property.findMany({
+        where: { ownerId: (session as any).userId },
+        select: { id: true }
+    });
+    const propertyIds = properties.map(p => p.id);
+
+    // Get student tickets routed to OWNER for this owner's properties
+    const studentTickets = await (prisma.ticket as any).findMany({
+        where: {
+            propertyId: { in: propertyIds },
+            targetTeam: 'OWNER',
+            raisedByRole: 'USER',
+        },
+        include: { user: { select: { name: true } }, property: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    return studentTickets;
+}
+
+// Owner: get tickets they raised to Admin
+export async function getOwnerRaisedTickets() {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    return (prisma.ticket as any).findMany({
+        where: {
+            userId: (session as any).userId,
+            raisedByRole: 'OWNER',
+        },
+        include: { property: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+// Owner: create a ticket to admin
+export async function createOwnerTicket(data: {
+    category: string;
+    description: string;
+    priority?: string;
+    propertyId?: string;
+}) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const count = await prisma.ticket.count();
+    const displayId = `TKT-${String(count + 1).padStart(4, '0')}`;
+
+    const ticket = await (prisma.ticket as any).create({
+        data: {
+            displayId,
+            userId: (session as any).userId,
+            propertyId: data.propertyId || null,
+            category: data.category,
+            description: data.description,
+            priority: data.priority || 'MEDIUM',
+            status: 'OPEN',
+            replies: '[]',
+            targetTeam: 'ADMIN',
+            raisedByRole: 'OWNER'
+        }
+    });
+
+    revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/admin/tickets');
+    return ticket;
+}
+
+// Admin: get ALL tickets (full visibility)
 export async function getAllTickets() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -146,7 +213,32 @@ export async function resolveTicket(id: string, notes?: string) {
             action: 'TICKET_RESOLVED',
             targetId: id,
             targetType: 'TICKET',
-            details: notes || `Ticket #${id.slice(0, 8)} resolved`,
+            details: notes || `Ticket #${id.slice(0, 8)} resolved by ${session.role}`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/admin/tickets');
+    revalidatePath('/dashboard/student/tickets');
+    return ticket;
+}
+
+export async function escalateTicketToAdmin(id: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const ticket = await (prisma.ticket as any).update({
+        where: { id },
+        data: { targetTeam: 'ADMIN', status: 'ESCALATED' }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'TICKET_ESCALATED',
+            targetId: id,
+            targetType: 'TICKET',
+            details: `Ticket escalated to Admin by Owner`,
             performedBy: (session as any).userId
         }
     });
@@ -181,4 +273,5 @@ export async function replyToTicket(id: string, message: string) {
     revalidatePath('/dashboard/admin/tickets');
     return updated;
 }
+
 

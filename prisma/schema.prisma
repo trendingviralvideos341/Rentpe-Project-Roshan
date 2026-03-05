@@ -174,20 +174,22 @@ model FoodMenu {
 }
 
 model Ticket {
-  id          String    @id @default(uuid())
-  displayId   String    @unique
-  userId      String
-  propertyId  String?
-  category    String
-  status      String    @default("OPEN")
-  priority    String    @default("MEDIUM")
-  assignedTo  String?
-  description String
-  replies     String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  property    Property? @relation(fields: [propertyId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
+  id           String    @id @default(uuid())
+  displayId    String    @unique
+  userId       String
+  propertyId   String?
+  category     String
+  status       String    @default("OPEN")
+  priority     String    @default("MEDIUM")
+  assignedTo   String?
+  targetTeam   String    @default("ADMIN")
+  raisedByRole String    @default("USER")
+  description  String
+  replies      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  property     Property? @relation(fields: [propertyId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 }
 
 model Notification {

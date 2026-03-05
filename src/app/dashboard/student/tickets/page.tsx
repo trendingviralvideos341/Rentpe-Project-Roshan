@@ -5,46 +5,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 import { getStudentTickets, createStudentTicket, replyToTicket } from "@/actions/ops";
-import { MessageSquare, CheckCircle, Clock, AlertCircle, Plus, Send } from "lucide-react";
-
-const CATEGORIES = ["Maintenance", "Food Quality", "Cleanliness", "Roommate Issue", "WiFi / Internet", "Water / Electricity", "Security", "Other"];
+import { OWNER_CATEGORIES, ADMIN_CATEGORIES } from "@/lib/ticket-categories";
+import { CheckCircle, Clock, AlertCircle, Plus, Send, Building, Shield } from "lucide-react";
 
 export default function StudentTicketsPage() {
     const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
-    const [category, setCategory] = useState("Maintenance");
+    const [category, setCategory] = useState("");
     const [description, setDescription] = useState("");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
 
+    const categories = { owner: OWNER_CATEGORIES, admin: ADMIN_CATEGORIES };
+    const allCategories = [...categories.owner, ...categories.admin];
+
     const fetchTickets = async () => {
         setLoading(true);
-        try {
-            const data = await getStudentTickets();
-            setTickets(data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
+        try { setTickets(await getStudentTickets()); } catch (e) { console.error(e); }
+        finally { setLoading(false); }
     };
 
     useEffect(() => { fetchTickets(); }, []);
 
     const handleCreate = async () => {
-        if (!description.trim()) return;
+        if (!description.trim() || !category) return;
         setCreating(true);
         try {
             await createStudentTicket({ category, description: description.trim() });
-            setDescription("");
-            setShowCreate(false);
+            setDescription(""); setCategory(""); setShowCreate(false);
             fetchTickets();
-        } catch (error) {
-            alert("Failed to create ticket.");
-        } finally {
-            setCreating(false);
-        }
+        } catch (e) { alert("Failed to create ticket."); }
+        finally { setCreating(false); }
     };
 
     const handleReply = async (id: string) => {
@@ -54,9 +46,12 @@ export default function StudentTicketsPage() {
             await replyToTicket(id, message);
             setReplyText(prev => ({ ...prev, [id]: "" }));
             fetchTickets();
-        } catch (error) {
-            alert("Failed to send reply.");
-        }
+        } catch (e) { alert("Failed to send reply."); }
+    };
+
+    const getRoutingLabel = (cat: string) => {
+        if (categories.owner.includes(cat)) return { label: "→ Owner", icon: Building, color: "text-orange-600 bg-orange-100" };
+        return { label: "→ RentPe Admin", icon: Shield, color: "text-blue-600 bg-blue-100" };
     };
 
     if (loading) return <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>;
@@ -66,7 +61,7 @@ export default function StudentTicketsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold">Support Tickets</h1>
-                    <p className="text-muted-foreground">Raise issues or track your existing requests.</p>
+                    <p className="text-muted-foreground">Raise issues and track your requests.</p>
                 </div>
                 <Button onClick={() => setShowCreate(!showCreate)}>
                     <Plus className="h-4 w-4 mr-2" /> New Ticket
@@ -77,22 +72,54 @@ export default function StudentTicketsPage() {
             {showCreate && (
                 <Card className="border-primary/30 bg-primary/5">
                     <CardHeader>
-                        <CardTitle className="text-lg">Create New Ticket</CardTitle>
-                        <CardDescription>Describe your issue and we'll get back to you.</CardDescription>
+                        <CardTitle className="text-lg">Raise a New Ticket</CardTitle>
+                        <CardDescription>Select a category — your ticket will be automatically routed to the right team.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium mb-1 block">Category</label>
-                            <select
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                            >
-                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <label className="text-sm font-medium mb-2 block">What's your issue about?</label>
+
+                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                <Building className="h-3 w-3" /> <strong>Property Issues</strong> — goes to your PG Owner
+                            </p>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {categories.owner.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setCategory(c)}
+                                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${category === c ? 'bg-orange-600 text-white border-orange-600' : 'hover:bg-orange-50 border-orange-200 text-orange-700'
+                                            }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                <Shield className="h-3 w-3" /> <strong>Platform Issues</strong> — goes directly to RentPe Admin
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {categories.admin.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setCategory(c)}
+                                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${category === c ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-50 border-blue-200 text-blue-700'
+                                            }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
+                        {category && (
+                            <div className="p-2 rounded bg-muted text-xs flex items-center gap-2">
+                                {(() => { const r = getRoutingLabel(category); return <><r.icon className="h-4 w-4" /><span>This ticket will be sent to <strong>{r.label.replace('→ ', '')}</strong></span></>; })()}
+                            </div>
+                        )}
+
                         <div>
-                            <label className="text-sm font-medium mb-1 block">Description</label>
+                            <label className="text-sm font-medium mb-1 block">Describe your issue</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -102,7 +129,7 @@ export default function StudentTicketsPage() {
                             />
                         </div>
                         <div className="flex gap-2">
-                            <Button onClick={handleCreate} disabled={creating || !description.trim()}>
+                            <Button onClick={handleCreate} disabled={creating || !description.trim() || !category}>
                                 {creating ? "Submitting..." : "Submit Ticket"}
                             </Button>
                             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
@@ -115,22 +142,25 @@ export default function StudentTicketsPage() {
             <div className="grid gap-4">
                 {tickets.map((ticket) => {
                     const replies = JSON.parse(ticket.replies || "[]");
+                    const routing = getRoutingLabel(ticket.category);
                     return (
                         <Card key={ticket.id} className={ticket.status === 'RESOLVED' ? 'opacity-70' : ''}>
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <CardTitle className="text-lg">{ticket.category}</CardTitle>
                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ticket.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                                                    ticket.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                ticket.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                    ticket.status === 'ESCALATED' ? 'bg-purple-100 text-purple-800' :
                                                         'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {ticket.status}
+                                                }`}>{ticket.status}</span>
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${routing.color}`}>
+                                                {routing.label}
                                             </span>
                                         </div>
                                         <CardDescription className="text-xs">
-                                            Ticket ID: <span className="font-mono">{ticket.displayId}</span> •
+                                            <span className="font-mono">{ticket.displayId}</span> •
                                             {ticket.property?.name && ` Property: ${ticket.property.name} •`}
                                             {new Date(ticket.createdAt).toLocaleDateString()}
                                         </CardDescription>
@@ -149,7 +179,10 @@ export default function StudentTicketsPage() {
                                     <div className="space-y-3 mb-4">
                                         <p className="text-xs font-bold uppercase text-muted-foreground">Conversation</p>
                                         {replies.map((r: any, idx: number) => (
-                                            <div key={idx} className={`p-2 rounded text-xs ${r.sender === 'USER' ? 'bg-primary/5 border-l-2 border-primary ml-4' : 'bg-muted border-l-2 border-muted-foreground mr-4'}`}>
+                                            <div key={idx} className={`p-2 rounded text-xs ${r.sender === 'USER' ? 'bg-primary/5 border-l-2 border-primary ml-4' :
+                                                r.sender === 'OWNER' ? 'bg-orange-50 border-l-2 border-orange-400 mr-4' :
+                                                    'bg-blue-50 border-l-2 border-blue-400 mr-4'
+                                                }`}>
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="font-bold">{r.sender === 'USER' ? 'You' : r.sender === 'OWNER' ? 'Owner' : 'Admin'}</span>
                                                     <span className="opacity-60">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
