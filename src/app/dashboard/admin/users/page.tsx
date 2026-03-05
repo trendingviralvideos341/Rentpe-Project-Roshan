@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye } from "lucide-react";
 import { getUsers, updateUserStatus } from "@/actions/admin";
+import { impersonateUser } from "@/actions/admin-auth";
 
 // ── Block/Unblock Modal ──────────────────────────────────
 function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reason: string) => void; onCancel: () => void }) {
@@ -77,6 +78,19 @@ export default function AdminUsersPage() {
         } finally {
             setProcessing(false);
             setBlockTarget(null);
+        }
+    }
+
+    async function handleImpersonate(userId: string) {
+        if (!confirm("Are you sure you want to login as this user?")) return;
+        setProcessing(true);
+        try {
+            const url = await impersonateUser(userId);
+            window.location.href = url;
+        } catch (e: any) {
+            alert(e.message || "Failed to impersonate");
+        } finally {
+            setProcessing(false);
         }
     }
 
@@ -248,15 +262,21 @@ export default function AdminUsersPage() {
                                                     )}
                                                 </td>
                                                 <td className="p-4">
-                                                    {user.status === "BANNED" ? (
-                                                        <Button size="sm" variant="outline" className="h-8 text-xs border-green-300 text-green-700 hover:bg-green-50" disabled={processing} onClick={() => setBlockTarget(user)}>
-                                                            <CheckCircle className="h-3 w-3 mr-1" /> Unblock
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button size="sm" variant="outline" className="h-8 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-50" disabled={processing} onClick={() => handleImpersonate(user.id)}>
+                                                            <Eye className="h-3 w-3 mr-1" /> Login As...
                                                         </Button>
-                                                    ) : (
-                                                        <Button size="sm" variant="destructive" className="h-8 text-xs" disabled={processing} onClick={() => setBlockTarget(user)}>
-                                                            <Ban className="h-3 w-3 mr-1" /> Block
-                                                        </Button>
-                                                    )}
+
+                                                        {user.status === "BANNED" ? (
+                                                            <Button size="sm" variant="outline" className="h-8 text-[11px] border-green-300 text-green-700 hover:bg-green-50" disabled={processing} onClick={() => setBlockTarget(user)}>
+                                                                <CheckCircle className="h-3 w-3 mr-1" /> Unblock
+                                                            </Button>
+                                                        ) : (
+                                                            <Button size="sm" variant="destructive" className="h-8 text-[11px]" disabled={processing} onClick={() => setBlockTarget(user)}>
+                                                                <Ban className="h-3 w-3 mr-1" /> Block
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
