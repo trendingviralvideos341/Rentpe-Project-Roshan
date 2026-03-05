@@ -86,6 +86,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
 
     const studentLinks = [
         { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard },
+        { href: "/dashboard/student?tab=profile", label: "My Profile", icon: Users },
         { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
         { href: "/search", label: "Find PG", icon: Building },
         { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },

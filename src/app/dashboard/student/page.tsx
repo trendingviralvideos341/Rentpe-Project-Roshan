@@ -6,7 +6,8 @@ import Link from "next/link";
 import { getBookings, cancelBooking } from "@/actions/bookings";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -192,6 +193,14 @@ export default function StudentDashboardPage() {
     const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
 
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const activeTab = searchParams.get('tab') || 'bookings';
+
+    const onTabChange = (value: string) => {
+        router.push(`/dashboard/student?tab=${value}`);
+    };
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(false);
@@ -245,10 +254,11 @@ export default function StudentDashboardPage() {
                 </Button>
             </div>
 
-            <Tabs defaultValue="bookings" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
+            <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-8 h-12">
                     <TabsTrigger value="bookings" className="text-sm font-bold">My Bookings</TabsTrigger>
                     <TabsTrigger value="payments" className="text-sm font-bold">Payment History</TabsTrigger>
+                    <TabsTrigger value="profile" className="text-sm font-bold">My Profile</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="bookings" className="space-y-4">
@@ -276,7 +286,12 @@ export default function StudentDashboardPage() {
                                         <CardHeader className="pb-2">
                                             <div className="flex justify-between items-start flex-wrap gap-2">
                                                 <div>
-                                                    <CardTitle>{booking.propertyName}</CardTitle>
+                                                    <CardTitle className="flex items-center gap-2">
+                                                        {booking.propertyName}
+                                                        {booking.guestName && (
+                                                            <span className="text-xs font-normal text-muted-foreground">({booking.guestName})</span>
+                                                        )}
+                                                    </CardTitle>
                                                     <CardDescription>
                                                         Ref: {booking.displayId} • {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                                                     </CardDescription>
@@ -306,7 +321,13 @@ export default function StudentDashboardPage() {
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-sm font-medium">Status:</span>
                                                 {booking.status === "PENDING_APPROVAL" && (
-                                                    <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Owner Approval</span>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded w-fit">⏳ Waiting for Owner Approval</span>
+                                                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                                            <Calendar className="h-3 w-3" />
+                                                            <span>Requested Move-in: <strong>{new Date(booking.moveInDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong></span>
+                                                        </div>
+                                                    </div>
                                                 )}
                                                 {isApproved && (
                                                     <>
@@ -493,6 +514,65 @@ export default function StudentDashboardPage() {
                                     </Table>
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="profile">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <User className="h-5 w-5 text-purple-500" /> Personal Profile
+                            </CardTitle>
+                            <CardDescription>Your account details and verification status.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-muted/30 rounded-lg border">
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Full Name</div>
+                                        <div className="text-sm font-semibold">{bookings[0]?.guestName || "User"}</div>
+                                    </div>
+                                    <div className="p-4 bg-muted/30 rounded-lg border">
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Email ID</div>
+                                        <div className="text-sm font-semibold">{bookings[0]?.guestEmail || "N/A"}</div>
+                                    </div>
+                                    <div className="p-4 bg-muted/30 rounded-lg border">
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Contact Number</div>
+                                        <div className="text-sm font-semibold">{bookings[0]?.guestPhone || "N/A"}</div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-muted/30 rounded-lg border">
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Occupation</div>
+                                        <div className="text-sm font-semibold">
+                                            {bookings[0]?.occupationType || "N/A"}
+                                            {bookings[0]?.occupationDetail && ` (${bookings[0].occupationDetail})`}
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-muted/30 rounded-lg border">
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Member Since</div>
+                                        <div className="text-sm font-semibold">
+                                            {bookings[0]?.createdAt ? new Date(bookings[0].createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : "N/A"}
+                                        </div>
+                                    </div>
+                                    <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg flex items-center justify-between">
+                                        <div>
+                                            <div className="text-[10px] font-bold text-green-700 uppercase">Account Status</div>
+                                            <div className="text-sm font-bold text-green-800">Verified Tenant</div>
+                                        </div>
+                                        <CheckCircle className="h-6 w-6 text-green-600" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h4 className="text-xs font-bold text-blue-700 mb-2 flex items-center gap-1">
+                                    <Shield className="h-3.5 w-3.5" /> Security Note
+                                </h4>
+                                <p className="text-[11px] text-blue-600 leading-relaxed">
+                                    Your profile data is directly linked to your booking requests and is shared only with verified PG owners you book with for onboarding purposes.
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>

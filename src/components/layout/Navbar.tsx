@@ -48,7 +48,7 @@ const Navbar = ({ session }: { session: any }) => {
                     {isLoggedIn ? (
                         <div className="flex items-center gap-3">
                             <span className="text-sm font-medium text-muted-foreground hidden sm:inline-block">
-                                Welcome, <strong>{userRole}</strong>
+                                Welcome, <strong>{session?.name || session?.user?.name || userRole}</strong>
                             </span>
                             <NotificationBell />
                             <Link href={dashboardHref}>
