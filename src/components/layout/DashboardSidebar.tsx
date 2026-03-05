@@ -76,6 +76,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
         { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount },
         { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar },
         { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
+        { href: "/dashboard/admin/tenants", label: "Tenants", icon: Users },
         { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck },
         { href: "/dashboard/admin/team", label: "Team & Roles", icon: Shield },
         { href: "/dashboard/admin/employees", label: "Employees", icon: UserCheck },

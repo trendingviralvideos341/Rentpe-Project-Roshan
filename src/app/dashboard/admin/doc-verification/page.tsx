@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +29,7 @@ const TYPE_ICONS: Record<string, any> = {
     SELFIE: <CheckCircle className="w-4 h-4" />,
 };
 
-export default function AdminDocVerificationPage() {
+export default function OwnerVerificationsPage() {
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -39,7 +39,7 @@ export default function AdminDocVerificationPage() {
     const [previewDoc, setPreviewDoc] = useState<any>(null);
     const { toast } = useToast();
 
-    const fetchDocs = useCallback(async () => {
+    const fetchDocs = async () => {
         setLoading(true);
         try {
             const data = await getPendingDocuments();
@@ -49,9 +49,9 @@ export default function AdminDocVerificationPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    };
 
-    useEffect(() => { fetchDocs(); }, [fetchDocs]);
+    useEffect(() => { fetchDocs(); }, []);
 
     const filteredDocs = docs.filter(doc => {
         const query = search.toLowerCase();
@@ -67,7 +67,7 @@ export default function AdminDocVerificationPage() {
             await verifyDocument(docId, status, note);
             toast({
                 title: status === 'VERIFIED' ? "Document Verified" : "Reupload Requested",
-                description: status === 'VERIFIED' ? "Verification complete." : "User notified for reupload.",
+                description: status === 'VERIFIED' ? "Verification complete." : "Tenant notified for reupload.",
             });
             if (status === 'REJECTED') {
                 setRejectTarget(null);
@@ -95,18 +95,18 @@ export default function AdminDocVerificationPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border shadow-sm">
                 <div>
                     <h1 className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-3">
-                        <div className="p-2 bg-primary rounded-xl text-white">
+                        <div className="p-2 bg-indigo-600 rounded-xl text-white">
                             <Shield className="w-6 h-6" />
                         </div>
-                        Customer Doc Verification
+                        Owner Verification Center
                     </h1>
-                    <p className="text-slate-500 mt-1 font-bold text-xs uppercase tracking-tight">Detailed review of all documents uploaded by customers</p>
+                    <p className="text-slate-500 mt-1 font-bold text-xs uppercase tracking-tight">Status-based review of student identity documents</p>
                 </div>
                 {docs.length > 0 && (
                     <div className="flex items-center gap-6">
                         <div className="text-right">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Pending</p>
-                            <p className="text-xl font-black text-primary leading-none">{docs.filter(d => d.status === "PENDING").length}</p>
+                            <p className="text-xl font-black text-indigo-600 leading-none">{docs.filter(d => d.status === "PENDING").length}</p>
                         </div>
                         <Button variant="outline" size="sm" onClick={fetchDocs} disabled={loading} className="rounded-xl border-slate-200 font-bold uppercase text-[10px] tracking-widest">
                             <RefreshCcw className={`w-3 h-3 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
@@ -147,6 +147,7 @@ export default function AdminDocVerificationPage() {
             ) : (
                 <div className="space-y-12">
                     {['PENDING', 'VERIFIED', 'REJECTED'].map((status) => {
+                        // Group by booking ID within each section based on high-priority status
                         const groupedByBooking: Record<string, { booking: any, docs: any[], overallStatus: string }> = {};
 
                         filteredDocs.forEach(doc => {
@@ -157,6 +158,7 @@ export default function AdminDocVerificationPage() {
                             groupedByBooking[bid].docs.push(doc);
                         });
 
+                        // Calculate overall status for each group: Rejected > Pending > Verified
                         Object.values(groupedByBooking).forEach(group => {
                             if (group.docs.some(d => d.status === 'REJECTED')) group.overallStatus = 'REJECTED';
                             else if (group.docs.some(d => d.status === 'PENDING')) group.overallStatus = 'PENDING';
@@ -188,6 +190,7 @@ export default function AdminDocVerificationPage() {
                                             key={group.booking.id}
                                             group={group}
                                             onViewPortfolio={() => setSelectedBooking({ booking: group.booking, docs: group.docs })}
+                                            onVerifyAll={() => {/* Future optimization: verify all */ }}
                                             onZoom={(doc: any) => setPreviewDoc(doc)}
                                         />
                                     ))}
@@ -203,10 +206,11 @@ export default function AdminDocVerificationPage() {
                 <DialogContent className="!fixed !inset-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !rounded-none bg-white flex flex-col !shadow-none !border-none z-[100] !p-0">
                     <div className="sr-only">
                         <DialogTitle>Document Verification Details</DialogTitle>
-                        <DialogDescription>Review and verify user uploaded documents</DialogDescription>
+                        <DialogDescription>Review and verify tenant uploaded documents</DialogDescription>
                     </div>
                     {selectedBooking && (
                         <>
+                            {/* Pro Header */}
                             <div className="p-8 bg-white border-b border-slate-100 flex justify-between items-center sticky top-0 z-20 shadow-sm">
                                 <div className="flex items-center gap-8">
                                     <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-indigo-600 to-violet-700 text-white flex items-center justify-center text-3xl font-black shadow-2xl shadow-indigo-200 uppercase transform -rotate-3 transition-transform duration-700 group-hover:rotate-0">
@@ -214,7 +218,7 @@ export default function AdminDocVerificationPage() {
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-4">
-                                            <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">{selectedBooking.booking.guestName}</h2>
+                                            <h2 className="text-3xl font-black text-slate-910 tracking-tighter uppercase leading-none">{selectedBooking.booking.guestName}</h2>
                                             {selectedBooking.docs.length === 4 && selectedBooking.docs.every((d: any) => d.status === "VERIFIED") && (
                                                 <div className="bg-emerald-500 text-white font-black text-[10px] uppercase px-4 py-1.5 rounded-full shadow-lg shadow-emerald-100 border-2 border-emerald-400 animate-bounce-subtle">
                                                     Fully Verified ✔
@@ -243,7 +247,7 @@ export default function AdminDocVerificationPage() {
                                 <div className="p-8 flex-1 overflow-y-auto">
                                     <div className="w-full h-full">
                                         <div id="unique-verification-grid" className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto">
-                                            {Object.keys(TYPE_CONFIG).map((type) => {
+                                            {Object.keys(TYPE_LABELS).map((type) => {
                                                 const doc = selectedBooking.docs.find((d: any) => d.type === type);
                                                 return (
                                                     <DocumentDetailCard
@@ -274,7 +278,7 @@ export default function AdminDocVerificationPage() {
                             Request Re-upload
                         </DialogTitle>
                         <DialogDescription className="font-bold text-xs">
-                            Explain precisely why this document is being rejected. The user will be prompted to re-upload.
+                            Explain precisely why this document is being rejected. The student will be prompted to re-upload.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
@@ -459,6 +463,7 @@ export default function AdminDocVerificationPage() {
                 .animate-pulse-glow { animation: pulse-glow 2s infinite; }
                 .animate-pulse-glow-emerald { animation: pulse-glow-emerald 2s infinite; }
                 .animate-bounce-subtle { animation: bounce-subtle 3s infinite ease-in-out; }
+                .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
             `}</style>
         </div>
     );
@@ -503,6 +508,7 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
                             </div>
                         </div>
 
+                        {/* Status Summary Dots */}
                         <div className="flex items-center gap-3 px-6 border-x border-slate-100">
                             {docTypes.map(type => {
                                 const status = getStatusDetails(type);
@@ -580,7 +586,7 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
             {doc ? (
                 <div className="relative group/doc h-64 sm:h-80 rounded-[1.5rem] overflow-hidden border-2 border-slate-100 bg-slate-950 shadow-inner">
                     {doc.fileData?.startsWith("data:image") ? (
-                        <img src={doc.fileData} className="w-full h-full object-contain p-2 group-hover/doc:scale-105 transition-all duration-700" alt="Document Preview" />
+                        <img src={doc.fileData} className="w-full h-full object-contain p-2 group-hover/doc:scale-105 transition-all duration-700" title="Click for Full Resolution" />
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
                             <FileText className="w-16 h-16 opacity-20 mb-4" />
@@ -588,6 +594,7 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
                         </div>
                     )}
 
+                    {/* Admin Overlays exactly as per Image 2 logic */}
                     <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-slate-200 flex opacity-0 group-hover/doc:opacity-100 transition-all duration-300 divide-x shadow-2xl translate-y-2 group-hover/doc:translate-y-0">
                         {!isVerified && (
                             <>
@@ -633,3 +640,8 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
         </div>
     );
 }
+
+// Global styles for smooth animations
+
+// Keeping the original VerificationCard logic but refactored into the above structure for the user's specific request
+// The user explicitly wants a list of customers first.

@@ -6,11 +6,13 @@ import { revalidatePath } from "next/cache";
 
 export async function getTenants() {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
     const userId = (session as any).userId;
 
+    const whereClause = session.role === 'ADMIN' ? {} : { property: { ownerId: userId } };
+
     const tenants = await prisma.tenant.findMany({
-        where: { property: { ownerId: userId } },
+        where: whereClause,
         include: {
             property: { select: { name: true } },
             rentRecords: { orderBy: { createdAt: 'desc' } }
@@ -32,7 +34,7 @@ export async function getTenants() {
 
 export async function markRentAsPaid(recordId: string, note?: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     const record = await prisma.rentRecord.update({
@@ -70,7 +72,7 @@ export async function markRentAsPaid(recordId: string, note?: string) {
 
 export async function markRentAsUnpaid(recordId: string, note?: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const record = await prisma.rentRecord.update({
         where: { id: recordId },
@@ -106,7 +108,7 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
 
 export async function blockTenant(tenantId: string, note: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
     const tenant = await prisma.tenant.update({
@@ -140,7 +142,7 @@ export async function blockTenant(tenantId: string, note: string) {
 
 export async function unblockTenant(tenantId: string, note: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
