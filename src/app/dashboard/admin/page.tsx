@@ -217,7 +217,7 @@ export default function AdminDashboard() {
                                     <Shield className="h-12 w-12 text-white" />
                                 </div>
                                 <div className="text-center md:text-left">
-                                    <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Admin User"}</h2>
+                                    <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || 'Unknown User'}</h2>
                                     <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
                                         <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/30 uppercase tracking-widest">
                                             Platform Administrator
@@ -240,7 +240,7 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Email Address</p>
-                                                <p className="text-sm font-bold text-blue-900">{stats.user?.email || "admin@rentpe.com"}</p>
+                                                <p className="text-sm font-bold text-blue-900">{stats.user?.email || 'Not set'}</p>
                                             </div>
                                         </div>
 
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Phone Number</p>
-                                                <p className="text-sm font-bold text-blue-900">{stats.user?.phone || "+91 88888 88888"}</p>
+                                                <p className="text-sm font-bold text-blue-900">{stats.user?.phone || 'Not set'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -265,7 +265,7 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Admin Since</p>
-                                                <p className="text-sm font-bold text-blue-900">{stats.user?.createdAt ? new Date(stats.user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : "January 2024"}</p>
+                                                <p className="text-sm font-bold text-blue-900">{stats.user?.createdAt ? new Date(stats.user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : 'N/A'}</p>
                                             </div>
                                         </div>
 
