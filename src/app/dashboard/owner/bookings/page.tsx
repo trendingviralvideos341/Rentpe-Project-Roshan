@@ -7,6 +7,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { getBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
+import { toast } from "sonner";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -43,31 +44,33 @@ function BookingDetail({ booking, rooms, onRefresh }: { booking: any; rooms: any
     }, [tab]);
 
     const handleVerify = async (docId: string) => {
-        try { await verifyDocument(docId, "VERIFIED"); fetchDocs(); }
-        catch { alert("Failed to verify."); }
+        try { await verifyDocument(docId, "VERIFIED"); fetchDocs(); toast.success("Document Verified"); }
+        catch { toast.error("Failed to verify."); }
     };
 
     const handleReject = async (docId: string) => {
-        if (!rejectNote.trim()) { alert("Enter rejection reason."); return; }
+        if (!rejectNote.trim()) { toast.error("Enter rejection reason."); return; }
         try {
             await verifyDocument(docId, "REJECTED", rejectNote);
             setRejectTarget(null); setRejectNote(""); fetchDocs();
-        } catch { alert("Failed to reject."); }
+            toast.success("Document Rejected");
+        } catch { toast.error("Failed to reject."); }
     };
 
     // Owner uploads doc on behalf (admin upload mode)
     const handleOwnerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > MAX_FILE_SIZE) { alert("File exceeds 5MB limit."); return; }
+        if (file.size > MAX_FILE_SIZE) { toast.error("File exceeds 5MB limit."); return; }
         const reader = new FileReader();
         reader.onload = async (ev) => {
             const base64 = ev.target?.result as string;
             try {
                 const { uploadTenantDocument } = await import("@/actions/documents");
                 await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: base64, fileName: file.name });
+                toast.success("Document uploaded successfully.");
                 fetchDocs();
-            } catch { alert("Upload failed."); }
+            } catch { toast.error("Upload failed."); }
         };
         reader.readAsDataURL(file);
         e.target.value = "";
@@ -313,8 +316,9 @@ export default function BookingsPage() {
         if (!confirm(`Approve booking for ${booking.guestName} at ${booking.propertyName}? \n\nRoom allocation and detailed onboarding can be done in the Onboarding section after approval.`)) return;
         try {
             await approveBooking(booking.id, {});
+            toast.success("Booking Approved successfully.");
             fetchData();
-        } catch { alert("Approval failed. Please try again."); }
+        } catch { toast.error("Approval failed. Please try again."); }
     };
 
     const handleReject = async (bookingId: string) => {
@@ -322,16 +326,18 @@ export default function BookingsPage() {
         if (!reason) return;
         try {
             await rejectBookingAction(bookingId, reason);
+            toast.success("Booking Rejected.");
             fetchData();
-        } catch { alert("Rejection failed."); }
+        } catch { toast.error("Rejection failed."); }
     };
 
     const handleMarkCashPaid = async (bookingId: string) => {
         if (!confirm("Confirm: Mark this booking as PAID via Cash? This will also create the Tenant record.")) return;
         try {
             await markBookingPaid(bookingId, "CASH");
+            toast.success("Booking marked as Paid and Tenant created.");
             fetchData();
-        } catch { alert("Failed to mark as paid."); }
+        } catch { toast.error("Failed to mark as paid."); }
     };
 
     const pendingCount = bookings.filter(b => b.status === "PENDING_APPROVAL").length;

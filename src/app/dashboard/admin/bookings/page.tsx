@@ -9,6 +9,7 @@ import {
     CreditCard, Tag, User, Mail, Phone, Clock
 } from "lucide-react";
 import { getAdminBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid } from "@/actions/bookings";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
     'PENDING_APPROVAL': 'bg-amber-100 text-amber-700 border-amber-200',
@@ -50,8 +51,9 @@ export default function AdminBookingsPage() {
         if (!confirm(`[ADMIN OVERRIDE] Approve booking for ${booking.guestName} at ${booking.propertyName}?`)) return;
         try {
             await approveBooking(booking.id, {});
+            toast.success("Booking Approved successfully.");
             fetchBookings();
-        } catch { alert("Approval failed. Please try again."); }
+        } catch { toast.error("Approval failed. Please try again."); }
     };
 
     const handleReject = async (bookingId: string) => {
@@ -59,16 +61,18 @@ export default function AdminBookingsPage() {
         if (!reason) return;
         try {
             await rejectBookingAction(bookingId, reason);
+            toast.success("Booking Rejected.");
             fetchBookings();
-        } catch { alert("Rejection failed."); }
+        } catch { toast.error("Rejection failed."); }
     };
 
     const handleMarkCashPaid = async (bookingId: string) => {
         if (!confirm("[ADMIN OVERRIDE] Confirm: Mark this booking as PAID via Cash? This will also create the Tenant record.")) return;
         try {
             await markBookingPaid(bookingId, "CASH");
+            toast.success("Booking marked as Paid and Tenant created.");
             fetchBookings();
-        } catch { alert("Failed to mark as paid."); }
+        } catch { toast.error("Failed to mark as paid."); }
     };
 
     const filtered = bookings.filter(b => {

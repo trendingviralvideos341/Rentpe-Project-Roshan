@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SessionGuard from "@/components/layout/SessionGuard";
 import SessionSync from "@/components/layout/SessionSync";
+import { Toaster } from 'sonner';
 import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
@@ -57,11 +58,6 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        {/* 
-          SessionSync: On every page load, writes current userId+role to localStorage.
-          This fires the native 'storage' event in ALL other open tabs instantly —
-          allowing SessionGuard to detect cross-tab user/role changes immediately.
-        */}
         <SessionSync userId={activeUserId} role={activeRole} />
         <SessionGuard />
         <Navbar session={freshSession} />
@@ -69,6 +65,7 @@ export default async function RootLayout({
           {children}
         </main>
         <Footer />
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );
