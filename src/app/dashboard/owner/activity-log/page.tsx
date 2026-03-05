@@ -3,9 +3,10 @@
 import { useState, useEffect, Fragment } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, RefreshCcw, ChevronDown, ChevronUp, User, Users } from "lucide-react";
 import { getOwnerActivityLog } from "@/actions/activity";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const actionLabels: Record<string, { label: string; color: string; icon: string }> = {
     BOOKING_APPROVED: { label: "Booking Approved", color: "bg-green-100 text-green-800 border-green-200", icon: "✅" },
@@ -27,6 +28,7 @@ export default function OwnerActivityLogPage() {
     const [search, setSearch] = useState("");
     const [filterAction, setFilterAction] = useState("ALL");
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState("owner");
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -90,126 +92,156 @@ export default function OwnerActivityLogPage() {
                 ))}
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-4 items-center">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-10" placeholder="Search by target ID, notes, or action..." value={search} onChange={e => setSearch(e.target.value)} />
-                </div>
-                <select className="border rounded-md p-2 bg-background text-sm min-w-[200px]" value={filterAction} onChange={e => setFilterAction(e.target.value)}>
-                    <option value="ALL">All Actions ({logs.length})</option>
-                    {uniqueActions.map(a => {
-                        const info = actionLabels[a];
-                        return (
-                            <option key={a} value={a}>
-                                {info ? `${info.icon} ${info.label}` : a} ({logs.filter(l => l.action === a).length})
-                            </option>
-                        );
-                    })}
-                </select>
-            </div>
+            {/* Tabs */}
+            <Tabs defaultValue="owner" value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+                <TabsList className="grid w-full max-w-md grid-cols-2 bg-muted p-1">
+                    <TabsTrigger value="owner" className="data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 font-semibold">
+                        <User className="w-4 h-4 mr-2" /> My Actions
+                    </TabsTrigger>
+                    <TabsTrigger value="staff" className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-600 font-semibold">
+                        <Users className="w-4 h-4 mr-2" /> Staff Actions
+                    </TabsTrigger>
+                </TabsList>
 
-            {/* Log Table */}
-            <Card>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted border-b">
-                                <tr>
-                                    <th className="p-4 text-left font-medium w-40">When</th>
-                                    <th className="p-4 text-left font-medium w-48">Action</th>
-                                    <th className="p-4 text-left font-medium">Target</th>
-                                    <th className="p-4 text-left font-medium">Notes / Reason</th>
-                                    <th className="p-4 w-10"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {loading ? (
-                                    <tr><td colSpan={5} className="p-8 text-center animate-pulse">Loading activity log...</td></tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No activity found. Actions you take will appear here.</td></tr>
-                                ) : (
-                                    filtered.map((log) => {
-                                        const info = actionLabels[log.action] || { label: log.action, color: "bg-gray-100 text-gray-800 border-gray-200", icon: "📌" };
-                                        const isExpanded = expandedRows.has(log.id);
-                                        const hasDetails = log.details && log.details.length > 0;
-                                        return (
-                                            <Fragment key={log.id}>
-                                                <tr
-                                                    key={log.id}
-                                                    className={`hover:bg-muted/5 cursor-pointer ${isExpanded ? "bg-muted/10" : ""}`}
-                                                    onClick={() => hasDetails && toggleRow(log.id)}
-                                                >
-                                                    <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">
-                                                        <div className="font-medium text-foreground">
-                                                            {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                        </div>
-                                                        <div>
-                                                            {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${info.color}`}>
-                                                            {info.icon} {info.label}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <div className="text-xs font-medium uppercase text-muted-foreground">{log.targetType || "SYSTEM"}</div>
-                                                        <div className="font-mono text-xs text-foreground truncate max-w-[120px]" title={log.targetId}>{log.targetId || "N/A"}</div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        {hasDetails ? (
-                                                            <p className="text-sm text-foreground line-clamp-2">{log.details}</p>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground italic">No notes recorded</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-4 text-muted-foreground">
-                                                        {hasDetails && (isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
-                                                    </td>
-                                                </tr>
-                                                {isExpanded && (
-                                                    <tr key={`${log.id}-expanded`} className="bg-amber-50/50 border-b border-amber-100">
-                                                        <td colSpan={5} className="px-6 py-4">
-                                                            <div className="flex gap-6">
-                                                                <div className="flex-1">
-                                                                    <div className="text-xs font-bold uppercase text-amber-700 mb-1">📝 Full Notes / Reason</div>
-                                                                    <p className="text-sm text-foreground bg-white border border-amber-200 rounded-lg p-3 leading-relaxed">
-                                                                        {log.details}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="text-xs space-y-2 min-w-[180px]">
-                                                                    <div>
-                                                                        <span className="font-bold text-muted-foreground uppercase">Action Type</span>
-                                                                        <div className="mt-0.5 font-medium">{info.icon} {info.label}</div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="font-bold text-muted-foreground uppercase">Target ID</span>
-                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.targetId || "N/A"}</div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="font-bold text-muted-foreground uppercase">Exact Time</span>
-                                                                        <div className="text-[10px] mt-0.5">{new Date(log.timestamp).toLocaleString('en-IN')}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </Fragment>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                <div className="flex gap-4 items-center">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input className="pl-10" placeholder="Search by target ID, notes, or action..." value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-                    {filtered.length > 0 && (
-                        <div className="p-4 border-t text-xs text-muted-foreground text-center">
-                            Showing {filtered.length} of {logs.length} activity entries. Click any row to expand full notes.
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    <select className="border rounded-md p-2 bg-background text-sm min-w-[200px]" value={filterAction} onChange={e => setFilterAction(e.target.value)}>
+                        <option value="ALL">All Actions ({logs.length})</option>
+                        {uniqueActions.map(a => {
+                            const info = actionLabels[a];
+                            return (
+                                <option key={a} value={a}>
+                                    {info ? `${info.icon} ${info.label}` : a} ({logs.filter(l => l.action === a).length})
+                                </option>
+                            );
+                        })}
+                    </select>
+                </div>
+
+                {["owner", "staff"].map(tabValue => {
+                    const activeLogs = filtered.filter(l => {
+                        // The Owner has a User record (l.performer exists). 
+                        // Staff only have OwnerStaff records (l.performer is null, and performedBy is their displayId e.g., STAFF-XXX)
+                        if (tabValue === "owner") return l.performer !== null;
+                        return l.performer === null;
+                    });
+
+                    return (
+                        <TabsContent key={tabValue} value={tabValue}>
+
+                            {/* Log Table */}
+                            <Card>
+                                <CardContent className="p-0">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-muted border-b">
+                                                <tr>
+                                                    <th className="p-4 text-left font-medium w-40">When</th>
+                                                    <th className="p-4 text-left font-medium w-48">Action</th>
+                                                    <th className="p-4 text-left font-medium">Target</th>
+                                                    <th className="p-4 text-left font-medium">Notes / Reason</th>
+                                                    <th className="p-4 w-10"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {loading ? (
+                                                    <tr><td colSpan={5} className="p-8 text-center animate-pulse">Loading activity log...</td></tr>
+                                                ) : activeLogs.length === 0 ? (
+                                                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No activity found in this tab. Actions will appear here.</td></tr>
+                                                ) : (
+                                                    activeLogs.map((log) => {
+                                                        const info = actionLabels[log.action] || { label: log.action, color: "bg-gray-100 text-gray-800 border-gray-200", icon: "📌" };
+                                                        const isExpanded = expandedRows.has(log.id);
+                                                        const hasDetails = log.details && log.details.length > 0;
+                                                        return (
+                                                            <Fragment key={log.id}>
+                                                                <tr
+                                                                    key={log.id}
+                                                                    className={`hover:bg-muted/5 cursor-pointer ${isExpanded ? "bg-muted/10" : ""}`}
+                                                                    onClick={() => hasDetails && toggleRow(log.id)}
+                                                                >
+                                                                    <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">
+                                                                        <div className="font-medium text-foreground">
+                                                                            {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                        </div>
+                                                                        <div>
+                                                                            {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="p-4">
+                                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${info.color}`}>
+                                                                            {info.icon} {info.label}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="p-4">
+                                                                        <div className="text-xs font-medium uppercase text-muted-foreground">{log.targetType || "SYSTEM"}</div>
+                                                                        <div className="font-mono text-xs text-foreground truncate max-w-[120px]" title={log.targetId}>{log.targetId || "N/A"}</div>
+                                                                    </td>
+                                                                    <td className="p-4">
+                                                                        {tabValue === "staff" && (
+                                                                            <div className="text-[10px] font-bold text-blue-600 mb-1">
+                                                                                By: {log.performedBy}
+                                                                            </div>
+                                                                        )}
+                                                                        {hasDetails ? (
+                                                                            <p className="text-sm text-foreground line-clamp-2">{log.details}</p>
+                                                                        ) : (
+                                                                            <span className="text-xs text-muted-foreground italic">No notes recorded</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="p-4 text-muted-foreground">
+                                                                        {hasDetails && (isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
+                                                                    </td>
+                                                                </tr>
+                                                                {isExpanded && (
+                                                                    <tr key={`${log.id}-expanded`} className="bg-amber-50/50 border-b border-amber-100">
+                                                                        <td colSpan={5} className="px-6 py-4">
+                                                                            <div className="flex gap-6">
+                                                                                <div className="flex-1">
+                                                                                    <div className="text-xs font-bold uppercase text-amber-700 mb-1">📝 Full Notes / Reason</div>
+                                                                                    <p className="text-sm text-foreground bg-white border border-amber-200 rounded-lg p-3 leading-relaxed">
+                                                                                        {log.details}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div className="text-xs space-y-2 min-w-[180px]">
+                                                                                    <div>
+                                                                                        <span className="font-bold text-muted-foreground uppercase">Action Type</span>
+                                                                                        <div className="mt-0.5 font-medium">{info.icon} {info.label}</div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <span className="font-bold text-muted-foreground uppercase">Target ID</span>
+                                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.targetId || "N/A"}</div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <span className="font-bold text-muted-foreground uppercase">Exact Time</span>
+                                                                                        <div className="text-[10px] mt-0.5">{new Date(log.timestamp).toLocaleString('en-IN')}</div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </Fragment>
+                                                        );
+                                                    })
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {activeLogs.length > 0 && (
+                                        <div className="p-4 border-t text-xs text-muted-foreground text-center">
+                                            Showing {activeLogs.length} activity entries in this tab. Click any row to expand full notes.
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    )
+                })}
+            </Tabs>
         </div>
     );
 }

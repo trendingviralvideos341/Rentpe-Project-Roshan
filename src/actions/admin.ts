@@ -77,7 +77,16 @@ export async function getAuditLogs() {
 
         return await prisma.auditLog.findMany({
             orderBy: { timestamp: 'desc' },
-            take: 100
+            take: 200,
+            include: {
+                performer: {
+                    select: {
+                        name: true,
+                        role: true,
+                        displayId: true
+                    }
+                }
+            }
         });
     } catch (e) {
         console.error("getAuditLogs Error:", e);
