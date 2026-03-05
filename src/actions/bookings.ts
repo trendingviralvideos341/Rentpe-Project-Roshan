@@ -145,7 +145,7 @@ export async function approveBooking(id: string, data: {
     pendingAmount?: string,
 }) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const existingBooking = await prisma.booking.findUnique({ where: { id } });
 
@@ -222,7 +222,7 @@ export async function approveBooking(id: string, data: {
 
 export async function rejectBooking(id: string, reason?: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const existingBooking = await prisma.booking.findUnique({ where: { id } });
 
@@ -267,7 +267,7 @@ export async function rejectBooking(id: string, reason?: string) {
 
 export async function updateBookingStatus(id: string, status: string) {
     const session = await getSession();
-    if (!session) throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const booking = await prisma.booking.update({
         where: { id },
@@ -281,7 +281,7 @@ export async function updateBookingStatus(id: string, status: string) {
 
 export async function markBookingPaid(id: string, method: string) {
     const session = await getSession();
-    if (!session) throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     // 1. Mark booking as PAID
     const booking = await prisma.booking.update({
@@ -432,7 +432,8 @@ export async function cancelBooking(id: string) {
 
     const booking = await prisma.booking.findUnique({ where: { id } });
     if (!booking) throw new Error("Booking not found");
-    if (booking.userId !== (session as any).userId) throw new Error("Unauthorized");
+    // Admins can cancel any booking, otherwise only the booking creator can cancel
+    if (session.role !== 'ADMIN' && booking.userId !== (session as any).userId) throw new Error("Unauthorized");
     if (booking.status !== 'PENDING_APPROVAL') throw new Error("Only pending bookings can be cancelled.");
 
     const updated = await prisma.booking.update({

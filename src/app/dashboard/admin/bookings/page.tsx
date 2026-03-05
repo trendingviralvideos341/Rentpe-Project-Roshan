@@ -8,7 +8,7 @@ import {
     Users, Search, RefreshCcw, Calendar, Building2,
     CreditCard, Tag, User, Mail, Phone, Clock
 } from "lucide-react";
-import { getAdminBookings } from "@/actions/bookings";
+import { getAdminBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid } from "@/actions/bookings";
 
 const STATUS_COLORS: Record<string, string> = {
     'PENDING_APPROVAL': 'bg-amber-100 text-amber-700 border-amber-200',
@@ -45,6 +45,31 @@ export default function AdminBookingsPage() {
     useEffect(() => {
         fetchBookings();
     }, [fetchBookings]);
+
+    const handleApprove = async (booking: any) => {
+        if (!confirm(`[ADMIN OVERRIDE] Approve booking for ${booking.guestName} at ${booking.propertyName}?`)) return;
+        try {
+            await approveBooking(booking.id, {});
+            fetchBookings();
+        } catch { alert("Approval failed. Please try again."); }
+    };
+
+    const handleReject = async (bookingId: string) => {
+        const reason = prompt("[ADMIN OVERRIDE] Reason for rejecting this booking:");
+        if (!reason) return;
+        try {
+            await rejectBookingAction(bookingId, reason);
+            fetchBookings();
+        } catch { alert("Rejection failed."); }
+    };
+
+    const handleMarkCashPaid = async (bookingId: string) => {
+        if (!confirm("[ADMIN OVERRIDE] Confirm: Mark this booking as PAID via Cash? This will also create the Tenant record.")) return;
+        try {
+            await markBookingPaid(bookingId, "CASH");
+            fetchBookings();
+        } catch { alert("Failed to mark as paid."); }
+    };
 
     const filtered = bookings.filter(b => {
         const matchesSearch =
@@ -136,6 +161,21 @@ export default function AdminBookingsPage() {
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[booking.status] || 'bg-muted'}`}>
                                                 {booking.status.replace(/_/g, ' ')}
                                             </span>
+
+                                            <div className="flex gap-2 mt-1">
+                                                {booking.status === "PENDING_APPROVAL" && (
+                                                    <>
+                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px]" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                                        <Button size="sm" variant="destructive" className="h-7 text-[10px]" onClick={() => handleReject(booking.id)}>Reject</Button>
+                                                    </>
+                                                )}
+                                                {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
+                                                    <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
+                                                        ✅ Mark Cash Paid
+                                                    </Button>
+                                                )}
+                                            </div>
+
                                             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                                 <Clock className="h-2.5 w-2.5" /> {new Date(booking.createdAt).toLocaleDateString()}
                                             </span>
