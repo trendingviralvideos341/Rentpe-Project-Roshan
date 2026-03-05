@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck, Menu, X } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck, Menu, X, User, TrendingUp } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount } from "@/actions/bookings";
@@ -54,6 +54,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
 
     const ownerLinks = [
         { href: "/dashboard/owner", label: "Overview", icon: LayoutDashboard },
+        { href: "/dashboard/owner?tab=profile", label: "My Profile", icon: User },
         { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
         { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
         { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
@@ -69,6 +70,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
 
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
+        { href: "/dashboard/admin?tab=profile", label: "My Profile", icon: Shield },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users },
         { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount },
         { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar },
@@ -86,7 +88,7 @@ export default function DashboardSidebar({ role }: SidebarProps) {
 
     const studentLinks = [
         { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard },
-        { href: "/dashboard/student?tab=profile", label: "My Profile", icon: Users },
+        { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
         { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
         { href: "/search", label: "Find PG", icon: Building },
         { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },

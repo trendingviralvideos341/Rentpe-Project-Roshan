@@ -58,6 +58,7 @@ model Property {
   foodMenu    FoodMenu[]
   owner       User       @relation(fields: [ownerId], references: [id])
   rooms       Room[]
+  bookings    Booking[]
   tenants     Tenant[]
   tickets     Ticket[]
 }
@@ -81,6 +82,7 @@ model Booking {
   id               String           @id @default(uuid())
   displayId        String           @unique
   userId           String
+  propertyId       String?
   roomId           String?
   propertyName     String
   occupancy        String
@@ -108,6 +110,7 @@ model Booking {
   pendingAmount    String?
   room             Room?            @relation(fields: [roomId], references: [id])
   user             User             @relation(fields: [userId], references: [id])
+  property         Property?        @relation(fields: [propertyId], references: [id])
   payments         Payment[]
   platformFee      PlatformFee?
   documents        TenantDocument[]

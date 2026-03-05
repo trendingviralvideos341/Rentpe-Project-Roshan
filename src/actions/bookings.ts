@@ -16,6 +16,7 @@ export async function createBooking(data: {
     guestPhone?: string,
     occupationType?: string,
     occupationDetail?: string,
+    propertyId?: string,
 }) {
     const session = await getSession();
     if (!session) throw new Error("You must be logged in to book.");
@@ -44,6 +45,7 @@ export async function createBooking(data: {
             guestPhone: data.guestPhone,
             occupationType: data.occupationType,
             occupationDetail: data.occupationDetail,
+            propertyId: data.propertyId,
         }
     });
 
@@ -73,61 +75,41 @@ export async function createBooking(data: {
 export async function getBookings() {
     try {
         const session = await getSession();
-        if (!session) throw new Error("Unauthorized");
-
-        const role = (session as any).role;
+        if (!session) return [];
         const userId = (session as any).userId;
-
-        // PRIVACY FIX: If on student dashboard (implied by call to getBookings),
-        // we should ONLY return the user's own bookings, even if they are an ADMIN or OWNER.
-        // This prevents data leakage where an Admin sees all system bookings in their personal tab.
+        const role = session.role;
 
         if (role === 'OWNER') {
-            const properties = await prisma.property.findMany({
+            const ownerProperties = await prisma.property.findMany({
                 where: { ownerId: userId },
-                select: { name: true }
+                select: { id: true }
             });
-            const propertyNames = properties.map(p => p.name);
+            const propertyIds = ownerProperties.map(p => p.id);
             return await prisma.booking.findMany({
-                where: { propertyName: { in: propertyNames } },
-                include: { user: { select: { name: true, email: true } } },
-                orderBy: { createdAt: 'desc' }
-            });
-        } else if (role === 'ADMIN') {
-            // Admin context: if they want everything, they should use getAdminBookings
-            // For general use (like profile or personal dashboard), still filter by userId if possible?
-            // Actually, let's keep getBookings() for Admin as "return all" ONLY if they aren't on student dashboard.
-            // But since this is a shared action, let's keep it simple: 
-            // Students (USER) and Admins on their personal dashboard should see their OWN bookings.
-            // Wait, the Admin dashboard uses this too.
-            // Let's split it: getBookings() for personal, getAdminBookings() for global.
-
-            // To be safe and fix the user's issue: return all ONLY if strictly necessary.
-            // The Admin page should be updated to use getAdminBookings().
-            return await prisma.booking.findMany({
-                where: { userId },
-                orderBy: { createdAt: 'desc' }
+                where: { propertyId: { in: propertyIds } },
+                orderBy: { createdAt: 'desc' },
+                include: { user: { select: { name: true, email: true } } }
             });
         } else {
-            // Student: fetch bookings and also look up owner info from the property
             const bookings = await prisma.booking.findMany({
                 where: { userId },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    property: {
+                        include: {
+                            owner: { select: { name: true, email: true, phone: true } }
+                        }
+                    }
+                }
             });
-            // Enrich with owner details by matching propertyName
-            const propertyNames = [...new Set(bookings.map(b => b.propertyName))];
-            const properties = await prisma.property.findMany({
-                where: { name: { in: propertyNames } },
-                include: { owner: { select: { name: true, email: true, phone: true } } }
-            });
-            const propMap = new Map(properties.map(p => [p.name, p]));
+
             return bookings.map(b => ({
                 ...b,
-                ownerName: propMap.get(b.propertyName)?.owner?.name || propMap.get(b.propertyName)?.ownerName || null,
-                ownerEmail: propMap.get(b.propertyName)?.owner?.email || null,
-                ownerPhone: (propMap.get(b.propertyName)?.owner as any)?.phone || null,
-                propertyAddress: propMap.get(b.propertyName)?.address || null,
-                propertyCity: propMap.get(b.propertyName)?.city || null,
+                ownerName: b.property?.owner?.name || null,
+                ownerEmail: b.property?.owner?.email || null,
+                ownerPhone: b.property?.owner?.phone || null,
+                propertyAddress: b.property?.address || null,
+                propertyCity: b.property?.city || null,
             }));
         }
     } catch (e) {
@@ -424,16 +406,15 @@ export async function getPendingBookingsCount() {
         const session = await getSession();
         if (!session || session.role !== 'OWNER') return 0;
 
-        const userId = (session as any).userId;
-        const properties = await prisma.property.findMany({
+        const ownerProperties = await prisma.property.findMany({
             where: { ownerId: userId },
-            select: { name: true }
+            select: { id: true }
         });
-        const propertyNames = properties.map(p => p.name);
+        const propertyIds = ownerProperties.map(p => p.id);
 
         return await prisma.booking.count({
             where: {
-                propertyName: { in: propertyNames },
+                propertyId: { in: propertyIds },
                 status: 'PENDING_APPROVAL'
             }
         });

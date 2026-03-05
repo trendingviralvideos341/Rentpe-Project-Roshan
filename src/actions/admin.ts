@@ -39,7 +39,15 @@ export async function getAdminStats() {
             totalProperties,
             systemHealth: "98%",
             monthlyGrowth,
-            propertyDistribution
+            propertyDistribution,
+            user: {
+                id: session.userId,
+                name: (session as any).name,
+                email: session.email,
+                role: session.role,
+                phone: (session as any).phone || "+91 88888 88888",
+                createdAt: (session as any).createdAt || new Date().toISOString(),
+            }
         };
     } catch (e) {
         console.error("getAdminStats Error:", e);

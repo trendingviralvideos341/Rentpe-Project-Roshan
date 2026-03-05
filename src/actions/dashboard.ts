@@ -61,7 +61,15 @@ export async function getOwnerDashboardStats() {
             totalRevenue,
             recentActivity,
             revenueHistory,
-            occupancyStats
+            occupancyStats,
+            user: {
+                id: userId,
+                name: (session as any).name,
+                email: session.email,
+                role: session.role,
+                phone: (session as any).phone || "+91 99999 99999",
+                createdAt: (session as any).createdAt || new Date().toISOString(),
+            }
         };
     } catch (e: any) {
         console.error("getOwnerDashboardStats Error:", e);
