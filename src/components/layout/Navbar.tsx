@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Menu, Home } from 'lucide-react';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Menu, Home, ArrowLeftRight, Loader2 } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { switchRole } from '@/actions/auth';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import NotificationBell from '@/components/layout/NotificationBell';
@@ -14,12 +15,27 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
 
 const Navbar = ({ session }: { session: any }) => {
     const pathname = usePathname();
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     const isOwner = session?.role === "OWNER";
     const isAdmin = session?.role === "ADMIN";
     const userRole = isOwner ? "Owner" : isAdmin ? "Admin" : session ? "Student" : null;
     const isLoggedIn = !!session;
+
+    const rolesList = session?.roles?.split(',') || [];
+    const hasMultipleRoles = rolesList.length > 1;
+
+    const handleSwitch = (target: string) => {
+        startTransition(async () => {
+            try {
+                await switchRole(target);
+            } catch (err) {
+                console.error("Switch failed", err);
+            }
+        });
+    };
 
     const dashboardHref = userRole === 'Owner' ? "/dashboard/owner" : userRole === 'Admin' ? "/dashboard/admin" : "/dashboard/student";
 
@@ -47,6 +63,20 @@ const Navbar = ({ session }: { session: any }) => {
                 <div className="hidden md:flex items-center space-x-3">
                     {isLoggedIn ? (
                         <div className="flex items-center gap-3">
+                            {hasMultipleRoles && (
+                                <button
+                                    onClick={() => handleSwitch(isOwner ? "USER" : "OWNER")}
+                                    disabled={isPending}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all disabled:opacity-50"
+                                >
+                                    {isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <ArrowLeftRight className="h-3 w-3" />
+                                    )}
+                                    Switch to {isOwner ? "Student" : "Owner"}
+                                </button>
+                            )}
                             <span className="text-sm font-medium text-muted-foreground hidden sm:inline-block">
                                 Welcome, <strong>{session?.name || session?.user?.name || userRole}</strong>
                             </span>
@@ -94,6 +124,20 @@ const Navbar = ({ session }: { session: any }) => {
                     <div className="pt-4 border-t flex flex-col space-y-2">
                         {isLoggedIn ? (
                             <div className="flex flex-col space-y-2">
+                                {hasMultipleRoles && (
+                                    <button
+                                        onClick={() => handleSwitch(isOwner ? "USER" : "OWNER")}
+                                        disabled={isPending}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mb-2"
+                                    >
+                                        {isPending ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <ArrowLeftRight className="h-4 w-4" />
+                                        )}
+                                        Switch to {isOwner ? "Student" : "Owner"} Mode
+                                    </button>
+                                )}
                                 <Link href={dashboardHref + "?tab=profile"} className="w-full text-center px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg font-bold shadow-sm" onClick={() => setIsOpen(false)}>
                                     My Profile
                                 </Link>

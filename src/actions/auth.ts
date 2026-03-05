@@ -4,7 +4,7 @@ import { z } from 'zod';
 import prisma from "@/lib/prisma";
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { encryptPassword, comparePassword, signJWT } from '@/lib/auth';
+import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
 
 const SignupSchema = z.object({
     firstName: z.string().min(2),
@@ -52,12 +52,18 @@ export async function signup(formData: FormData) {
         const prefix = prefixMap[roleUp] || 'USR';
         const displayId = `${prefix}-${seq}`;
 
+        const isOwner = roleUp === "OWNER";
+        const isStudent = roleUp === "USER";
+
         await prisma.user.create({
             data: {
                 name: `${firstName} ${lastName}`,
                 email,
                 passwordHash: hashedPassword,
-                role: role.toUpperCase(),
+                role: roleUp,
+                roles: roleUp,          // comma-separated for future multi-role
+                isStudent,
+                isOwner,
                 displayId,
             }
         });
@@ -68,7 +74,6 @@ export async function signup(formData: FormData) {
 
     redirect('/login');
 }
-
 
 export async function login(formData: FormData) {
     const data = Object.fromEntries(formData.entries());
@@ -85,9 +90,26 @@ export async function login(formData: FormData) {
     const { email, password } = validated.data;
 
     try {
-        const user = await prisma.user.findUnique({ where: { email } });
+        // Fetch all needed fields explicitly
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+                id: true,
+                email: true,
+                passwordHash: true,
+                role: true,
+                roles: true,
+                name: true,
+                status: true,
+            }
+        });
+
         if (!user) {
             return { error: 'Invalid credentials' };
+        }
+
+        if (user.status === 'BANNED' || user.status === 'INACTIVE') {
+            return { error: 'Your account has been suspended. Please contact support.' };
         }
 
         const isMatch = await comparePassword(password, user.passwordHash);
@@ -95,12 +117,20 @@ export async function login(formData: FormData) {
             return { error: 'Invalid credentials' };
         }
 
+        // Update last login timestamp
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() }
+        });
+
         // Create Session
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         const token = await signJWT({
             userId: user.id,
             email: user.email,
             role: user.role,
+            roles: user.roles,
+            name: user.name,
             expiresAt,
         });
 
@@ -113,7 +143,7 @@ export async function login(formData: FormData) {
             path: '/',
         });
 
-        // Redirect based on role
+        // Redirect based on active role
         if (user.role === 'ADMIN') {
             redirect('/dashboard/admin');
         } else if (user.role === 'OWNER') {
@@ -126,7 +156,6 @@ export async function login(formData: FormData) {
             redirect('/');
         }
     } catch (e: any) {
-        // Handle redirect "error" which is actually a Next.js control flow mechanism
         if (e.message === 'NEXT_REDIRECT') throw e;
         console.error("Login Error:", e);
         return { error: 'Something went wrong. Please try again.' };
@@ -136,6 +165,100 @@ export async function login(formData: FormData) {
 export async function logout() {
     const cookieStore = await cookies();
     cookieStore.delete('rentpe_session');
-    // Do NOT call redirect() here — it throws and prevents client router.push from firing.
-    // The LogoutButton component handles the redirect via router.push('/login').
+    // Do NOT call redirect() here — LogoutButton handles client-side redirect.
+}
+
+export async function switchRole(targetRole: string) {
+    const session = await getSession();
+    if (!session || !session.userId) {
+        throw new Error("Unauthorized");
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId as string },
+        select: {
+            id: true,
+            email: true,
+            role: true,
+            roles: true,
+            name: true,
+        }
+    });
+
+    if (!user) {
+        throw new Error("User not found");
+    }
+
+    // Verify the target role is in the user's allowed roles list
+    const allowedRoles = user.roles.split(',').map(r => r.trim());
+    if (!allowedRoles.includes(targetRole) && user.role !== targetRole) {
+        throw new Error("You do not have permission for this role");
+    }
+
+    // Update active role in DB
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { role: targetRole }
+    });
+
+    // Issue a fresh JWT with the new active role
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const token = await signJWT({
+        userId: user.id,
+        email: user.email,
+        role: targetRole,
+        roles: user.roles,
+        name: user.name,
+        expiresAt,
+    });
+
+    const cookieStore = await cookies();
+    cookieStore.set('rentpe_session', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        expires: expiresAt,
+        sameSite: 'lax',
+        path: '/',
+    });
+
+    // Redirect to the new dashboard
+    if (targetRole === 'ADMIN') {
+        redirect('/dashboard/admin');
+    } else if (targetRole === 'OWNER') {
+        redirect('/dashboard/owner');
+    } else if (targetRole === 'ONBOARDER') {
+        redirect('/dashboard/onboarder');
+    } else if (targetRole === 'VERIFIER') {
+        redirect('/dashboard/verifier');
+    } else {
+        redirect('/dashboard/student');
+    }
+}
+
+export async function checkSessionIntegrity() {
+    try {
+        const session = await getSession();
+        if (!session || !session.userId) return { status: 'unauthenticated' };
+
+        const user = await prisma.user.findUnique({
+            where: { id: session.userId as string },
+            select: { role: true, email: true }
+        });
+
+        if (!user) return { status: 'unauthenticated' };
+
+        // If session role and DB role don't match — another tab re-logged in
+        const sessionRole = session.role as string;
+        if (sessionRole !== user.role) {
+            return {
+                status: 'mismatch',
+                currentRole: user.role,
+                sessionRole,
+            };
+        }
+
+        return { status: 'ok', role: user.role };
+    } catch {
+        return { status: 'error' };
+    }
 }

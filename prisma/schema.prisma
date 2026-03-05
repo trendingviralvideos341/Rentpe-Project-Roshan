@@ -12,9 +12,17 @@ model User {
   email            String            @unique
   passwordHash     String
   role             String            @default("USER")
+  roles            String            @default("USER") // Comma-separated list of assigned roles
+  isStudent        Boolean           @default(false)
+  isOwner          Boolean           @default(false)
+  isAdmin          Boolean           @default(false)
+  isOnboarder      Boolean           @default(false)
+  isVerifier       Boolean           @default(false)
   name             String?
   phone            String?
   status           String            @default("ACTIVE")
+  lastLoginAt      DateTime?         @default(now())
+  lastLoginIp      String?
   bannedReason     String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt

@@ -29,7 +29,7 @@ export async function createBooking(data: {
         throw new Error("Move-in date cannot be in the past.");
     }
 
-    const booking = await prisma.booking.create({
+    const booking = await (prisma.booking as any).create({
         data: {
             displayId: `REQ-${Math.floor(Math.random() * 90000000) + 10000000}`,
             userId: (session as any).userId,
@@ -85,13 +85,13 @@ export async function getBookings() {
                 select: { id: true }
             });
             const propertyIds = ownerProperties.map(p => p.id);
-            return await prisma.booking.findMany({
+            return await (prisma.booking as any).findMany({
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
                 include: { user: { select: { name: true, email: true } } }
             });
         } else {
-            const bookings = await prisma.booking.findMany({
+            const bookings: any[] = await (prisma.booking as any).findMany({
                 where: { userId },
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -103,7 +103,7 @@ export async function getBookings() {
                 }
             });
 
-            return bookings.map(b => ({
+            return bookings.map((b: any) => ({
                 ...b,
                 ownerName: b.property?.owner?.name || null,
                 ownerEmail: b.property?.owner?.email || null,
@@ -406,13 +406,15 @@ export async function getPendingBookingsCount() {
         const session = await getSession();
         if (!session || session.role !== 'OWNER') return 0;
 
+        const userId = (session as any).userId as string;
+
         const ownerProperties = await prisma.property.findMany({
             where: { ownerId: userId },
             select: { id: true }
         });
         const propertyIds = ownerProperties.map(p => p.id);
 
-        return await prisma.booking.count({
+        return await (prisma.booking as any).count({
             where: {
                 propertyId: { in: propertyIds },
                 status: 'PENDING_APPROVAL'
