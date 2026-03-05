@@ -107,7 +107,11 @@ export default function DashboardSidebar(props: SidebarProps) {
     // Filter Admin Links based on RBAC Permissions
     let filteredAdminLinks = adminLinks;
     const perms = props.permissions || [];
-    const isSuperAdmin = perms.includes("super_admin") || perms.includes("sub_admin");
+    // If the user is the founding ADMIN (no specific granular permissions assigned yet) or explicitly has super_admin
+    const isSuperAdmin =
+        perms.includes("super_admin") ||
+        perms.includes("sub_admin") ||
+        (role === "admin" && perms.length === 0);
 
     if (!isSuperAdmin) {
         filteredAdminLinks = adminLinks.filter(link => {
