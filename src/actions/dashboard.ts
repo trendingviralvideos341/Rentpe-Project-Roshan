@@ -55,6 +55,12 @@ export async function getOwnerDashboardStats() {
             { name: "Vacant Beds", value: Math.max(0, (propertyCount * 20) - tenantCount) }, // Assumption 20 beds/prop
         ];
 
+        // Always fetch fresh user data from DB — never trust stale JWT name
+        const ownerUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true }
+        });
+
         return {
             propertyCount,
             tenantCount,
@@ -63,12 +69,13 @@ export async function getOwnerDashboardStats() {
             revenueHistory,
             occupancyStats,
             user: {
-                id: userId,
-                name: (session as any).name,
-                email: session.email,
-                role: session.role,
-                phone: (session as any).phone || "+91 99999 99999",
-                createdAt: (session as any).createdAt || new Date().toISOString(),
+                id: ownerUser?.id || userId,
+                name: ownerUser?.name || 'Owner',
+                email: ownerUser?.email || (session.email as string),
+                role: ownerUser?.role || session.role,
+                phone: ownerUser?.phone || null,
+                createdAt: ownerUser?.createdAt?.toISOString() || new Date().toISOString(),
+                displayId: ownerUser?.displayId || null,
             }
         };
     } catch (e: any) {
