@@ -295,7 +295,7 @@ export default function BookingsPage() {
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "PAID" | "REJECTED">("ALL");
+    const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "PAID" | "REJECTED" | "CANCELLED">("ALL");
 
     const fetchData = async () => {
         setLoading(true);
@@ -347,6 +347,7 @@ export default function BookingsPage() {
         if (activeTab === "APPROVED") return b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED";
         if (activeTab === "PAID") return b.status === "PAID" || b.status === "CASH_PAID";
         if (activeTab === "REJECTED") return b.status === "REJECTED";
+        if (activeTab === "CANCELLED") return b.status === "CANCELLED";
         return true;
     });
 
@@ -373,7 +374,7 @@ export default function BookingsPage() {
 
             {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
-                {(["ALL", "PENDING", "APPROVED", "PAID", "REJECTED"] as const).map(t => (
+                {(["ALL", "PENDING", "APPROVED", "PAID", "REJECTED", "CANCELLED"] as const).map(t => (
                     <Button
                         key={t}
                         size="sm"
@@ -383,14 +384,16 @@ export default function BookingsPage() {
                                 : t === "APPROVED" ? "bg-amber-500 hover:bg-amber-600 text-white"
                                     : t === "PAID" ? "bg-green-600 hover:bg-green-700 text-white"
                                         : t === "REJECTED" ? "bg-gray-600 hover:bg-gray-700 text-white"
-                                            : "bg-purple-600 hover:bg-purple-700 text-white"
+                                            : t === "CANCELLED" ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                                : "bg-purple-600 hover:bg-purple-700 text-white"
                             : "bg-white border hover:bg-muted text-foreground"}
                     >
                         {t === "ALL" ? `📋 All (${bookings.length})`
                             : t === "PENDING" ? `🔴 New (${bookings.filter(b => b.status === "PENDING_APPROVAL").length})`
                                 : t === "APPROVED" ? `⏳ Approved (${bookings.filter(b => b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED").length})`
                                     : t === "PAID" ? `✅ Paid (${bookings.filter(b => b.status === "PAID" || b.status === "CASH_PAID").length})`
-                                        : `❌ Rejected (${bookings.filter(b => b.status === "REJECTED").length})`}
+                                        : t === "REJECTED" ? `❌ Rejected (${bookings.filter(b => b.status === "REJECTED").length})`
+                                            : `🚫 Cancelled (${bookings.filter(b => b.status === "CANCELLED").length})`}
                     </Button>
                 ))}
             </div>
@@ -451,7 +454,8 @@ export default function BookingsPage() {
                                                         {booking.paymentMethod && <div className="text-[10px] text-muted-foreground mt-1">via {booking.paymentMethod}</div>}
                                                     </div>
                                                 )}
-                                                {booking.status === "REJECTED" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-800">REJECTED</span>}
+                                                {booking.status === "REJECTED" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-800">❌ REJECTED</span>}
+                                                {booking.status === "CANCELLED" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">🚫 Cancelled by User</span>}
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-col gap-1">

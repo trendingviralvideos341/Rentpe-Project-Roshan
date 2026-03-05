@@ -163,7 +163,7 @@ export default function AdminBookingsPage() {
 
                                         <div className="flex flex-col items-end gap-2">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[booking.status] || 'bg-muted'}`}>
-                                                {booking.status.replace(/_/g, ' ')}
+                                                {booking.status === 'CANCELLED' ? '🚫 Cancelled by User' : booking.status.replace(/_/g, ' ')}
                                             </span>
 
                                             <div className="flex gap-2 mt-1">
