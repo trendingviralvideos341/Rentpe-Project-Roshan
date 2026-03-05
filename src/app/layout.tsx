@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SessionGuard from "@/components/layout/SessionGuard";
+import SessionSync from "@/components/layout/SessionSync";
 import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
@@ -31,13 +32,18 @@ export default async function RootLayout({
 
   // Always fetch the REAL name and role from the database — never trust stale JWT for display
   let freshSession = session;
+  let activeUserId: string | null = null;
+  let activeRole: string | null = null;
+
   if (session && (session as any).userId) {
+    activeUserId = (session as any).userId;
     try {
       const dbUser = await prisma.user.findUnique({
-        where: { id: (session as any).userId },
+        where: { id: activeUserId! },
         select: { name: true, email: true, role: true }
       });
       if (dbUser) {
+        activeRole = dbUser.role;
         // Merge fresh DB data over stale JWT values
         freshSession = { ...session, name: dbUser.name, role: dbUser.role } as any;
       }
@@ -51,6 +57,12 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
+        {/* 
+          SessionSync: On every page load, writes current userId+role to localStorage.
+          This fires the native 'storage' event in ALL other open tabs instantly —
+          allowing SessionGuard to detect cross-tab user/role changes immediately.
+        */}
+        <SessionSync userId={activeUserId} role={activeRole} />
         <SessionGuard />
         <Navbar session={freshSession} />
         <main className="flex-1">
