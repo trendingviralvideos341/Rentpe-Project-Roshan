@@ -134,7 +134,7 @@ export default function OwnerActivityLogPage() {
                                         const isExpanded = expandedRows.has(log.id);
                                         const hasDetails = log.details && log.details.length > 0;
                                         return (
-                                            <>
+                                            <Fragment key={log.id}>
                                                 <tr
                                                     key={log.id}
                                                     className={`hover:bg-muted/5 cursor-pointer ${isExpanded ? "bg-muted/10" : ""}`}
@@ -196,7 +196,7 @@ export default function OwnerActivityLogPage() {
                                                         </td>
                                                     </tr>
                                                 )}
-                                            </>
+                                            </Fragment>
                                         );
                                     })
                                 )}
