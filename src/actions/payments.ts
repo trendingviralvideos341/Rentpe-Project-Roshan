@@ -56,7 +56,18 @@ export async function createRazorpayOrder(bookingId: string) {
             ];
         }
 
-        const order = await razorpay.orders.create(options);
+        let order: any;
+
+        // Mock the Razorpay API if no real credentials are provided
+        if ((process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder') === 'rzp_test_placeholder') {
+            order = {
+                id: `order_mock_${Math.random().toString(36).substring(2, 9)}`,
+                amount: finalCharge,
+                currency: "INR"
+            };
+        } else {
+            order = await razorpay.orders.create(options);
+        }
 
         // Record the attempt in Payment table
         await prisma.payment.create({
