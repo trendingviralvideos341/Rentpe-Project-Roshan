@@ -52,7 +52,7 @@ function PaymentPortal() {
             // Online payment via Razorpay
             const order = await createRazorpayOrder(booking.id);
 
-            if (!(window as any).Razorpay) {
+            if (order.isDummyRoute || !(window as any).Razorpay) {
                 // Simulate success
                 await new Promise(r => setTimeout(r, 1500));
                 await verifyPayment({
