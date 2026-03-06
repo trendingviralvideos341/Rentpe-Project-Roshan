@@ -77,13 +77,13 @@ export default function OwnerDashboard() {
                 <TabsList className="flex flex-wrap h-auto w-full max-w-md mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
                     <TabsTrigger
                         value="overview"
-                        className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-600 hover:text-purple-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <TrendingUp className="h-4 w-4 mr-2" /> Overview
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
-                        className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-600 hover:text-purple-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <User className="h-4 w-4 mr-2" /> My Profile
                     </TabsTrigger>
