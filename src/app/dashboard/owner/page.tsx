@@ -74,16 +74,16 @@ export default function OwnerDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
+                <TabsList className="flex flex-wrap h-auto w-full max-w-md mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
                     <TabsTrigger
                         value="overview"
-                        className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm"
+                        className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <TrendingUp className="h-4 w-4 mr-2" /> Overview
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
-                        className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm"
+                        className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <User className="h-4 w-4 mr-2" /> My Profile
                     </TabsTrigger>
