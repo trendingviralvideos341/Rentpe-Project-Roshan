@@ -458,7 +458,7 @@ export default function PropertyDetailPage() {
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium">Preferred Move-in Date <span className="text-red-500">*</span></label>
                                 <Input type="date" required value={formData.moveInDate}
-                                    min={new Date().toISOString().split('T')[0]}
+                                    min={new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0]}
                                     className={fieldErrors.moveInDate ? "border-red-500 ring-1 ring-red-200" : ""}
                                     onChange={e => {
                                         setFormData(p => ({ ...p, moveInDate: e.target.value }));

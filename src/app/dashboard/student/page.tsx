@@ -302,6 +302,7 @@ export default function StudentDashboardPage() {
     const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
     const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
     const [signingBooking, setSigningBooking] = useState<any>(null);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     const searchParams = useSearchParams();
     const router = useRouter();
