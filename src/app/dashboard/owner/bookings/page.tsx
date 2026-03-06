@@ -21,8 +21,8 @@ const TYPE_LABELS: Record<string, string> = {
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 
 // Per-booking expandable section with Onboarding + Documents tabs
-function BookingDetail({ booking, rooms, onRefresh }: { booking: any; rooms: any[]; onRefresh: () => void }) {
-    const [tab, setTab] = useState<"onboarding" | "documents">("onboarding");
+function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }: { booking: any; rooms: any[]; onRefresh: () => void; defaultTab?: "onboarding" | "documents" }) {
+    const [tab, setTab] = useState<"onboarding" | "documents">(defaultTab);
     const [docs, setDocs] = useState<any[]>([]);
     const [docsLoading, setDocsLoading] = useState(false);
     const [rejectTarget, setRejectTarget] = useState<string | null>(null);
@@ -295,6 +295,7 @@ export default function BookingsPage() {
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
+    const [expandedTab, setExpandedTab] = useState<"onboarding" | "documents">("onboarding");
     const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "PAID" | "REJECTED" | "CANCELLED">("ALL");
 
     const fetchData = async () => {
@@ -487,7 +488,7 @@ export default function BookingsPage() {
                                                             </>
                                                         )}
                                                         {booking.status === "APPROVED_KYC_PENDING" && (
-                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 font-bold" onClick={() => setExpandedBooking(booking.id)}>
+                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 font-bold" onClick={() => { setExpandedTab("documents"); setExpandedBooking(booking.id); }}>
                                                                 📎 Verify KYC
                                                             </Button>
                                                         )}
@@ -504,7 +505,7 @@ export default function BookingsPage() {
                                                         {/* Expand/collapse detail rows */}
                                                         <Button
                                                             variant="outline" size="sm" className="h-8 w-8 p-0"
-                                                            onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
+                                                            onClick={() => { setExpandedTab("onboarding"); setExpandedBooking(expandedBooking === booking.id ? null : booking.id); }}
                                                         >
                                                             {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                                         </Button>
@@ -519,7 +520,7 @@ export default function BookingsPage() {
                                         </tr>
                                         {/* Expandable detail row */}
                                         {expandedBooking === booking.id && (
-                                            <BookingDetail key={`detail-${booking.id}`} booking={booking} rooms={rooms} onRefresh={fetchData} />
+                                            <BookingDetail key={`detail-${booking.id}-${expandedTab}`} booking={booking} rooms={rooms} onRefresh={fetchData} defaultTab={expandedTab} />
                                         )}
                                     </React.Fragment>
                                 ))}
