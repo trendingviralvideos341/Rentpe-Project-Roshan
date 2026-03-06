@@ -32,13 +32,44 @@ export default async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/login', req.nextUrl));
     }
 
-    // 3. Redirect to dashboard if trying to access auth pages while logged in
+    // 3. Strict Role-Based Access Control (RBAC) on Dashboards
+    if (isProtectedRoute && session) {
+        const role = (session as any).role;
+        const isImpersonating = !!(session as any).impersonatorId;
+
+        // Block Admins/Owners from wandering into student dashboard, unless they are using 'God Mode' (impersonating a student)
+        if (path.startsWith('/dashboard/student') && role !== 'USER') {
+            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/owner', req.nextUrl));
+        }
+
+        // Block Students/Admins from Owner dashboard (unless impersonating)
+        if (path.startsWith('/dashboard/owner') && role !== 'OWNER') {
+            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/student', req.nextUrl));
+        }
+
+        // Block non-Admins from Admin dashboard (strict)
+        if (path.startsWith('/dashboard/admin') && role !== 'ADMIN') {
+            return NextResponse.redirect(new URL(role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student', req.nextUrl));
+        }
+
+        // Legacy staff routes redirection
+        if (path.startsWith('/dashboard/onboarder') && role !== 'ONBOARDER') {
+            return NextResponse.redirect(new URL('/', req.nextUrl));
+        }
+        if (path.startsWith('/dashboard/verifier') && role !== 'VERIFIER') {
+            return NextResponse.redirect(new URL('/', req.nextUrl));
+        }
+    }
+
+    // 4. Redirect to dashboard if trying to access auth pages while logged in
     if (isPublicRoute && session && (path === '/login' || path === '/signup')) {
         const role = (session as any).role;
         if (role === 'ADMIN') {
             return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
         } else if (role === 'OWNER') {
             return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+        } else {
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
     }
 
