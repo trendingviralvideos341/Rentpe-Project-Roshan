@@ -7,8 +7,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createBooking } from "@/actions/bookings";
 import { getPropertyById } from "@/actions/properties";
+import { getReviewsForProperty } from "@/actions/reviews";
 import { Input } from "@/components/ui/input";
 import { validateEmail, validatePhone, validateName } from "@/lib/validators";
+import { formatDistanceToNow } from "date-fns";
 
 import { ImageCarousel } from "@/components/ImageCarousel";
 
@@ -24,6 +26,7 @@ export default function PropertyDetailPage() {
     const id = params.id as string;
     const router = useRouter();
     const [property, setProperty] = useState<any>(null);
+    const [reviews, setReviews] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
 
@@ -63,6 +66,10 @@ export default function PropertyDetailPage() {
                         amenities: JSON.parse(data.amenities || "[]"),
                         images: allImages
                     });
+
+                    // Fetch associated reviews
+                    const reviewData = await getReviewsForProperty(id);
+                    setReviews(reviewData || []);
                 }
             } catch (error) {
                 console.error(error);
@@ -70,6 +77,7 @@ export default function PropertyDetailPage() {
                 setLoading(false);
             }
         };
+        fetchProperty();
         fetchProperty();
     }, [id]);
 
@@ -150,9 +158,12 @@ export default function PropertyDetailPage() {
                             </div>
                             <div className="flex flex-col items-end">
                                 <div className="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold">
-                                    <Star className="h-4 w-4 mr-1 fill-green-800" /> 4.5
+                                    <Star className="h-4 w-4 mr-1 fill-green-800" /> {property.averageRating > 0 ? property.averageRating : "New"}
                                 </div>
-                                <span className="text-sm text-muted-foreground mt-1">Managed by {property.owner?.name || "Verified Owner"}</span>
+                                <span className="text-sm text-muted-foreground mt-1 text-right">
+                                    {property.reviewCount > 0 ? `(${property.reviewCount} Verified Reviews)` : "No reviews yet"}<br />
+                                    Managed by {property.owner?.name || "Verified Owner"}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -257,6 +268,51 @@ export default function PropertyDetailPage() {
                                 </div>
                             </CardContent>
                         </Card>
+                    </div>
+
+                    {/* Verified Reviews Section */}
+                    <div className="mt-8 pt-8 border-t">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold flex items-center">
+                                <Star className="h-6 w-6 mr-2 fill-yellow-400 text-yellow-500" />
+                                {property.averageRating > 0 ? property.averageRating : "0.0"} <span className="text-lg text-muted-foreground font-normal ml-2">({property.reviewCount} Reviews)</span>
+                            </h2>
+                        </div>
+
+                        <div className="space-y-6">
+                            {reviews.length === 0 ? (
+                                <p className="text-muted-foreground text-center py-6 bg-slate-50 rounded-xl">No reviews yet. Be the first to book and rate your experience!</p>
+                            ) : (
+                                reviews.map((review) => (
+                                    <div key={review.id} className="bg-white p-5 rounded-xl border shadow-sm">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <div className="font-bold text-gray-900">{review.tenant.name}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Stayed in {review.tenant.roomType} • {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                                                </div>
+                                            </div>
+                                            <div className="flex">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star
+                                                        key={i}
+                                                        className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-500" : "fill-transparent text-gray-300"}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {review.comment && (
+                                            <p className="text-gray-700 leading-relaxed text-sm">{review.comment}</p>
+                                        )}
+                                        <div className="mt-3 flex gap-2">
+                                            <span className="text-[10px] font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-full flex items-center">
+                                                <Shield className="h-3 w-3 mr-1" /> Verified Tenant
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
 

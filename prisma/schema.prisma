@@ -59,6 +59,8 @@ model Property {
   bathroomPhoto String?
   livePhotoUrl  String?
   verifiedDocs  String    @default("[]")
+  averageRating Float     @default(0)
+  reviewCount   Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt   DateTime   @updatedAt
   ownerName   String?
@@ -69,6 +71,7 @@ model Property {
   bookings    Booking[]
   tenants     Tenant[]
   tickets     Ticket[]
+  reviews     Review[]
 }
 
 model Room {
@@ -150,6 +153,24 @@ model Tenant {
   rentRecords      RentRecord[]
   room             Room         @relation(fields: [roomId], references: [id])
   property         Property     @relation(fields: [propertyId], references: [id])
+  reviews          Review[]
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  propertyId   String
+  tenantId     String
+  rating       Int      // 1 to 5
+  comment      String?
+  status       String   @default("PUBLISHED") // PUBLISHED, HIDDEN, FLAGGED
+  adminNotes   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  property     Property @relation(fields: [propertyId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([propertyId, tenantId]) // A tenant can only review a property once
 }
 
 model RentRecord {

@@ -76,8 +76,13 @@ export async function getBookings() {
     try {
         const session = await getSession();
         if (!session) return [];
+
         const userId = (session as any).userId;
         const role = session.role;
+
+        // Security Patch: If the JWT is malformed or lacks a userId, reject the query.
+        // Prisma natively interprets `undefined` as a query bypass, causing accidental data leaks.
+        if (!userId) return [];
 
         if (role === 'OWNER') {
             const ownerProperties = await prisma.property.findMany({
@@ -103,14 +108,29 @@ export async function getBookings() {
                 }
             });
 
-            return bookings.map((b: any) => ({
-                ...b,
-                ownerName: b.property?.owner?.name || null,
-                ownerEmail: b.property?.owner?.email || null,
-                ownerPhone: b.property?.owner?.phone || null,
-                propertyAddress: b.property?.address || null,
-                propertyCity: b.property?.city || null,
-            }));
+            // Fetch tenant records for the user to match with bookings
+            const userEmail = (session as any).email;
+            const tenants = userEmail ? await prisma.tenant.findMany({
+                where: { email: userEmail }
+            }) : [];
+
+            return bookings.map((b: any) => {
+                // Link tenant record by propertyId and roomId if possible
+                const matchingTenant = tenants.find(t =>
+                    t.propertyId === b.propertyId &&
+                    t.roomId === b.roomId
+                );
+
+                return {
+                    ...b,
+                    tenantId: matchingTenant?.id || null, // Pass real tenantId for reviews
+                    ownerName: b.property?.owner?.name || null,
+                    ownerEmail: b.property?.owner?.email || null,
+                    ownerPhone: b.property?.owner?.phone || null,
+                    propertyAddress: b.property?.address || null,
+                    propertyCity: b.property?.city || null,
+                };
+            });
         }
     } catch (e) {
         console.error("getBookings Error:", e);

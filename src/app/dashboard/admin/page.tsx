@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminStats } from "@/actions/admin";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { User, Activity, Users, CreditCard, Ticket, Building2, RefreshCcw } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-
+import { Shield, Mail, Phone, Calendar, CheckCircle, MessageSquareWarning, ArrowRight, EyeOff, Check, User, Activity, Users, CreditCard, Ticket, Building2, RefreshCcw, Star } from "lucide-react";
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Shield, Mail, Phone, Calendar, CheckCircle } from "lucide-react";
+import { getFlaggedReviews, updateReviewStatus } from "@/actions/reviews";
+import { formatDistanceToNow } from "date-fns";
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<any>(null);
@@ -20,6 +20,8 @@ export default function AdminDashboard() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const activeTab = searchParams.get("tab") || "overview";
+    const [flaggedReviews, setFlaggedReviews] = useState<any[]>([]);
+    const [reviewsLoading, setReviewsLoading] = useState(false);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -43,6 +45,34 @@ export default function AdminDashboard() {
         const params = new URLSearchParams(searchParams.toString());
         params.set("tab", value);
         router.push(`?${params.toString()}`);
+    };
+
+    const fetchFlaggedReviews = useCallback(async () => {
+        setReviewsLoading(true);
+        try {
+            const data = await getFlaggedReviews();
+            setFlaggedReviews(data || []);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setReviewsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === "reviews") {
+            fetchFlaggedReviews();
+        }
+    }, [activeTab, fetchFlaggedReviews]);
+
+    const handleReviewAction = async (id: string, action: "PUBLISHED" | "HIDDEN") => {
+        try {
+            await updateReviewStatus(id, action);
+            await fetchFlaggedReviews(); // Refresh
+        } catch (error) {
+            console.error("Failed to update status:", error);
+            alert("Failed to moderate review.");
+        }
     };
 
     if (loading) return <div className="p-20 text-center animate-pulse">Loading platform statistics...</div>;
@@ -81,6 +111,12 @@ export default function AdminDashboard() {
                         className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-blue-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <User className="h-4 w-4 mr-2" /> My Profile
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="reviews"
+                        className="flex-1 rounded-xl data-[state=active]:bg-red-600 data-[state=active]:text-white text-slate-600 hover:text-red-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                    >
+                        <MessageSquareWarning className="h-4 w-4 mr-2" /> Moderation {flaggedReviews.length > 0 && <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">{flaggedReviews.length}</span>}
                     </TabsTrigger>
                 </TabsList>
 
@@ -286,6 +322,82 @@ export default function AdminDashboard() {
                             </div>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Reviews Moderation Tab */}
+                <TabsContent value="reviews" className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                    <div className="flex justify-between items-center bg-red-50 p-6 rounded-2xl border border-red-100">
+                        <div>
+                            <h2 className="text-xl font-bold text-red-900 flex items-center"><MessageSquareWarning className="mr-2 h-5 w-5" /> Pending Review Moderations</h2>
+                            <p className="text-red-700 text-sm mt-1">Tenant reviews that have been flagged by Property Owners as inappropriate or defamatory.</p>
+                        </div>
+                        <Button variant="outline" onClick={fetchFlaggedReviews} disabled={reviewsLoading} className="bg-white border-red-200 text-red-700 hover:bg-red-50">
+                            <RefreshCcw className={`h-4 w-4 mr-2 ${reviewsLoading ? "animate-spin" : ""}`} /> Refresh Queue
+                        </Button>
+                    </div>
+
+                    {flaggedReviews.length === 0 ? (
+                        <div className="text-center py-20 bg-slate-50 rounded-2xl border shadow-sm">
+                            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-slate-800">No Pending Moderations</h3>
+                            <p className="text-slate-500 mt-2">The platform review queue is clear! All flagged reports have been closed.</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-6">
+                            {flaggedReviews.map((review: any) => (
+                                <Card key={review.id} className="border-red-200 shadow-sm overflow-hidden">
+                                    <div className="bg-red-50 p-3 flex justify-between items-center text-xs font-semibold text-red-800 border-b border-red-100">
+                                        <span>FLAGGED FOR REVIEW</span>
+                                        <span>{formatDistanceToNow(new Date(review.updatedAt), { addSuffix: true })}</span>
+                                    </div>
+                                    <div className="p-6 md:flex justify-between gap-8">
+                                        <div className="flex-1 space-y-4">
+                                            <div>
+                                                <h4 className="text-lg font-bold text-slate-900">{review.property.name}</h4>
+                                                <p className="text-sm text-muted-foreground">{review.property.city}</p>
+                                            </div>
+
+                                            <div className="bg-slate-50 p-4 rounded-xl border">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="font-bold text-slate-800">{review.tenant.name}</span>
+                                                    <span className="text-xs text-slate-500">wrote:</span>
+                                                    <span className="ml-auto flex shrink-0">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <Star key={i} className={`h-3 w-3 ${i < review.rating ? "fill-yellow-400 text-yellow-500" : "fill-transparent text-gray-300"}`} />
+                                                        ))}
+                                                    </span>
+                                                </div>
+                                                <p className="text-slate-700 italic">"{review.comment}"</p>
+                                            </div>
+
+                                            <div>
+                                                <h5 className="text-xs font-bold uppercase text-red-600 tracking-wider mb-1">Owner's Reason for Flagging:</h5>
+                                                <p className="text-sm text-slate-800 bg-red-100/50 p-3 rounded-lg">{review.flagReason}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0 w-full md:w-48 mt-6 md:mt-0 flex flex-col justify-center space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-xs font-bold text-center text-slate-500 uppercase tracking-widest mb-2">Admin Actions</p>
+                                            <Button
+                                                onClick={() => handleReviewAction(review.id, "HIDDEN")}
+                                                variant="destructive"
+                                                className="w-full"
+                                            >
+                                                <EyeOff className="mr-2 h-4 w-4" /> Remove Review
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleReviewAction(review.id, "PUBLISHED")}
+                                                variant="outline"
+                                                className="w-full text-green-700 border-green-200 hover:bg-green-50"
+                                            >
+                                                <Check className="mr-2 h-4 w-4" /> Restore & Unflag
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>

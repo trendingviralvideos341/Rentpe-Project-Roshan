@@ -7,13 +7,13 @@ import { getBookings, cancelBooking } from "@/actions/bookings";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2 } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
+import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { generateInvoicePDF } from "@/utils/invoiceGenerator";
-import { Download } from "lucide-react";
 
 const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
@@ -192,6 +192,7 @@ export default function StudentDashboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
+    const [reviewBooking, setReviewBooking] = useState<any>(null);
     const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
 
@@ -462,9 +463,18 @@ export default function StudentDashboardPage() {
                                                         </Button>
                                                     )}
                                                     {isPaid && (
-                                                        <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
-                                                            <FileText className="h-4 w-4 mr-2" /> View Receipt
-                                                        </Button>
+                                                        <>
+                                                            <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
+                                                                <FileText className="h-4 w-4 mr-2" /> View Receipt
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => setReviewBooking(booking)}
+                                                                className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-bold border border-yellow-300"
+                                                            >
+                                                                <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" /> Share your experience
+                                                            </Button>
+                                                        </>
                                                     )}
                                                     {isApproved && booking.paymentMethod !== "CASH" ? (
                                                         <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-md" asChild>
@@ -617,6 +627,15 @@ export default function StudentDashboardPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Models rendering at the DOM root level */}
+            {reviewBooking && (
+                <SubmitReviewModal
+                    booking={reviewBooking}
+                    isOpen={!!reviewBooking}
+                    onClose={() => setReviewBooking(null)}
+                />
+            )}
         </div>
     );
 }

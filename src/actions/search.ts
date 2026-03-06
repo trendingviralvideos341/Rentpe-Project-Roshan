@@ -43,14 +43,15 @@ export async function searchProperties(query?: string, filters?: {
     });
 
     // Map min price and aggregate ratings (mocked for now as schema doesn't have rating)
-    const results = properties.map(p => {
-        const prices = p.rooms.map(r => r.price);
+    const results = properties.map((p: any) => {
+        const prices = p.rooms.map((r: any) => r.price);
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
         return {
             ...p,
+            rating: p.averageRating || 0,
+            reviewCount: p.reviewCount || 0,
             minPrice,
-            rating: 4.5, // Placeholder
             amenities: JSON.parse(p.amenities || "[]"),
             image: JSON.parse(p.images || "[]")[0] || "",
             buildingPhotos: p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [],
