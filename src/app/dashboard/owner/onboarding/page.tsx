@@ -222,10 +222,12 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const rejectedDocs = docs.filter(d => d.status === "REJECTED");
 
     const statusBadge = booking.status === "PAID"
-        ? <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded">✅ PAID</span>
+        ? <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded">✅ PAID (RESERVED)</span>
         : booking.status === "CASH_PAID"
             ? <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded">💵 PAID (Cash)</span>
-            : <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">⏳ Awaiting Payment</span>;
+            : booking.status === "APPROVED_KYC_PENDING"
+                ? <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded">📝 KYC PENDING</span>
+                : <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">⏳ Awaiting Payment</span>;
 
     return (
         <Card className={`border-l-4 ${booking.status === "PAID" || booking.status === "CASH_PAID" ? "border-l-green-500" : "border-l-amber-500"}`}>
@@ -770,8 +772,11 @@ export default function OnboardingPage() {
             const [b, r, p] = await Promise.all([getBookings(), getAvailableRooms(), getProperties()]);
             // Only show bookings that have been accepted and NOT yet fully paid (staying in onboarding)
             const onboardingBookings = b.filter((bk: any) =>
+                bk.status === "APPROVED_KYC_PENDING" ||
                 bk.status === "APPROVED_PAYMENT_PENDING" ||
-                bk.status === "APPROVED"
+                bk.status === "APPROVED" ||
+                bk.status === "PAID" ||
+                bk.status === "CASH_PAID"
             );
             setBookings(onboardingBookings);
             setRooms(r);
@@ -788,7 +793,7 @@ export default function OnboardingPage() {
         return true;
     });
 
-    const awaitingPayment = bookings.filter(b => b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED").length;
+    const awaitingPayment = bookings.filter(b => b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED" || b.status === "APPROVED_KYC_PENDING").length;
     const paidCount = bookings.filter(b => b.status === "PAID" || b.status === "CASH_PAID").length;
 
     if (loading) return <div className="p-12 text-center animate-pulse text-muted-foreground">Loading onboarding data...</div>;

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, UploadCloud } from "lucide-react";
 import React, { useEffect, useState, useRef } from "react";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid } from "@/actions/bookings";
+import { getBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid, checkInBooking } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { toast } from "sonner";
@@ -312,6 +312,17 @@ export default function BookingsPage() {
 
     useEffect(() => { fetchData(); }, []);
 
+    const handleCheckIn = async (bookingId: string) => {
+        if (!confirm("Confirm Check-in: Has the student formally moved in? \n\nThis will activate their tenancy and start the billing cycle.")) return;
+        try {
+            await checkInBooking(bookingId);
+            toast.success("Student Checked-in successfully. Tenancy is now ACTIVE.");
+            fetchData();
+        } catch (e: any) {
+            toast.error(e.message || "Check-in failed.");
+        }
+    };
+
     const handleApprove = async (booking: any) => {
         if (!confirm(`Approve booking for ${booking.guestName} at ${booking.propertyName}? \n\nRoom allocation and detailed onboarding can be done in the Onboarding section after approval.`)) return;
         try {
@@ -344,7 +355,7 @@ export default function BookingsPage() {
 
     const filteredBookings = bookings.filter(b => {
         if (activeTab === "PENDING") return b.status === "PENDING_APPROVAL";
-        if (activeTab === "APPROVED") return b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED";
+        if (activeTab === "APPROVED") return b.status === "APPROVED_KYC_PENDING" || b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED";
         if (activeTab === "PAID") return b.status === "PAID" || b.status === "CASH_PAID";
         if (activeTab === "REJECTED") return b.status === "REJECTED";
         if (activeTab === "CANCELLED") return b.status === "CANCELLED";
@@ -390,7 +401,7 @@ export default function BookingsPage() {
                     >
                         {t === "ALL" ? `📋 All (${bookings.length})`
                             : t === "PENDING" ? `🔴 New (${bookings.filter(b => b.status === "PENDING_APPROVAL").length})`
-                                : t === "APPROVED" ? `⏳ Approved (${bookings.filter(b => b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED").length})`
+                                : t === "APPROVED" ? `⏳ Onboarding (${bookings.filter(b => b.status === "APPROVED_KYC_PENDING" || b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED").length})`
                                     : t === "PAID" ? `✅ Paid (${bookings.filter(b => b.status === "PAID" || b.status === "CASH_PAID").length})`
                                         : t === "REJECTED" ? `❌ Rejected (${bookings.filter(b => b.status === "REJECTED").length})`
                                             : `🚫 Cancelled (${bookings.filter(b => b.status === "CANCELLED").length})`}
@@ -440,18 +451,27 @@ export default function BookingsPage() {
                                             </td>
                                             <td className="p-4">
                                                 {booking.status === "PENDING_APPROVAL" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-red-100 text-red-800">🔴 NEW</span>}
+                                                {booking.status === "APPROVED_KYC_PENDING" && (
+                                                    <span className="px-2 py-1 rounded text-[10px] font-bold bg-blue-100 text-blue-800">📝 KYC PENDING</span>
+                                                )}
                                                 {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && (
                                                     <div className="space-y-1">
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800">⏳ APPROVED — AWAITING PAYMENT</span>
+                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-amber-100 text-amber-800">⏳ AWAITING PAYMENT</span>
                                                         {booking.paymentMethod === "CASH" && (
                                                             <div className="text-[10px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded border border-orange-200">💵 Cash Pending</div>
                                                         )}
                                                     </div>
                                                 )}
-                                                {booking.status === "PAID" && (
+                                                {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
                                                     <div>
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-green-100 text-green-800">✅ PAID</span>
-                                                        {booking.paymentMethod && <div className="text-[10px] text-muted-foreground mt-1">via {booking.paymentMethod}</div>}
+                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🅿️ PAID (RESERVED)</span>
+                                                        <div className="text-[10px] text-muted-foreground mt-1">Awaiting Check-in</div>
+                                                    </div>
+                                                )}
+                                                {booking.status === "CHECKED_IN" && (
+                                                    <div>
+                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-green-100 text-green-800">🏠 CHECKED-IN</span>
+                                                        <div className="text-[10px] text-muted-foreground mt-1">Tenancy Active</div>
                                                     </div>
                                                 )}
                                                 {booking.status === "REJECTED" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-800">❌ REJECTED</span>}
@@ -466,8 +486,20 @@ export default function BookingsPage() {
                                                                 <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => handleReject(booking.id)}>Reject</Button>
                                                             </>
                                                         )}
+                                                        {booking.status === "APPROVED_KYC_PENDING" && (
+                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 font-bold" onClick={() => setExpandedBooking(booking.id)}>
+                                                                📎 Verify KYC
+                                                            </Button>
+                                                        )}
                                                         {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && (
-                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => window.location.href = '/dashboard/owner/onboarding'}>📋 Onboarding</Button>
+                                                            <Button size="sm" variant="outline" className="h-8 text-xs border-amber-500 text-amber-700" onClick={() => setExpandedBooking(booking.id)}>
+                                                                ⏳ Payment Wait
+                                                            </Button>
+                                                        )}
+                                                        {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
+                                                            <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
+                                                                🚀 Confirm Check-in
+                                                            </Button>
                                                         )}
                                                         {/* Expand/collapse detail rows */}
                                                         <Button
@@ -479,7 +511,7 @@ export default function BookingsPage() {
                                                     </div>
                                                     {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
                                                         <Button size="sm" className="h-8 text-xs bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
-                                                            ✅ Mark Cash Paid → Create Tenant
+                                                            ✅ Mark Cash Paid
                                                         </Button>
                                                     )}
                                                 </div>

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getBookings, cancelBooking } from "@/actions/bookings";
+import { getBookings, cancelBooking, signAgreement } from "@/actions/bookings";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,6 +23,112 @@ const TYPE_LABELS: Record<string, string> = {
 };
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+// ── Alert Banner ──
+function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' | 'warning' | 'info'; message: string; actionLabel?: string; onAction?: () => void }) {
+    const bgColor = type === 'error' ? 'bg-red-50 border-red-200' : type === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
+    const textColor = type === 'error' ? 'text-red-800' : type === 'warning' ? 'text-amber-800' : 'text-blue-800';
+    const Icon = type === 'error' ? AlertTriangle : type === 'warning' ? AlertTriangle : Shield;
+
+    return (
+        <div className={`flex items-center justify-between p-4 rounded-lg border shadow-sm mb-4 animate-in fade-in slide-in-from-top-2 duration-500 ${bgColor} ${textColor}`}>
+            <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${type === 'error' ? 'bg-red-100' : type === 'warning' ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                    <p className="text-sm font-bold">Action Required</p>
+                    <p className="text-xs opacity-90">{message}</p>
+                </div>
+            </div>
+            {actionLabel && (
+                <Button size="sm" onClick={onAction} className={`${type === 'error' ? 'bg-red-600 hover:bg-red-700' : type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold ml-4 shrink-0`}>
+                    {actionLabel}
+                </Button>
+            )}
+        </div>
+    );
+}
+
+// ── Agreement Modal ──
+function AgreementModal({ booking, isOpen, onClose, onSigned }: { booking: any; isOpen: boolean; onClose: () => void; onSigned: () => void }) {
+    const [signing, setSigning] = useState(false);
+    const [agreed, setAgreed] = useState(false);
+
+    if (!isOpen || !booking) return null;
+
+    const handleSign = async () => {
+        if (!agreed) return;
+        setSigning(true);
+        try {
+            const { signAgreement } = await import("@/actions/bookings");
+            await signAgreement(booking.id);
+            onSigned();
+            onClose();
+        } catch (e: any) {
+            alert(e.message || "Failed to sign agreement.");
+        } finally {
+            setSigning(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                <CardHeader className="bg-slate-900 text-white p-6">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-blue-400" /> Digital Occupancy Agreement
+                    </CardTitle>
+                    <CardDescription className="text-slate-300">Booking ID: {booking.displayId} • {booking.propertyName}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div className="prose prose-sm max-w-none text-slate-700">
+                        <h4 className="font-bold text-slate-900 border-b pb-2">1. Terms of Occupancy</h4>
+                        <p>This agreement confirms your stay at <strong>{booking.propertyName}</strong> starting from <strong>{new Date(booking.moveInDate).toLocaleDateString('en-IN')}</strong>. Your allocated bed/room category is <strong>{booking.occupancy}</strong>.</p>
+
+                        <h4 className="font-bold text-slate-900 border-b pb-2 mt-4">2. Payment & Dues</h4>
+                        <p>The monthly rent is <strong>{booking.amount}</strong>. Rent must be paid by the 5th of every month. Late payments may incur a penalty of ₹100/day.</p>
+
+                        <h4 className="font-bold text-slate-900 border-b pb-2 mt-4">3. House Rules</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>Maintenance of hygiene in common areas is mandatory.</li>
+                            <li>Guests are allowed only during visiting hours (10 AM - 8 PM).</li>
+                            <li>Noise levels must be kept low after 10 PM.</li>
+                            <li>Illegal substances or activities are strictly prohibited.</li>
+                        </ul>
+
+                        <h4 className="font-bold text-slate-900 border-b pb-2 mt-4">4. Verification & Check-in</h4>
+                        <p>Formal check-in is subject to physical verification of original documents (Aadhaar, Student ID/Work ID). Reservation is confirmed only after this digital signature.</p>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                                checked={agreed}
+                                onChange={e => setAgreed(e.target.checked)}
+                            />
+                            <span className="text-sm font-medium text-blue-900">
+                                I, <strong>{booking.guestName}</strong>, hereby agree to the terms and conditions mentioned above and confirm my reservation for {booking.propertyName}. I understand that this is a legally binding digital signature.
+                            </span>
+                        </label>
+                    </div>
+                </CardContent>
+                <div className="p-6 bg-slate-50 border-t flex gap-3">
+                    <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+                    <Button
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11"
+                        disabled={!agreed || signing}
+                        onClick={handleSign}
+                    >
+                        {signing ? "Processing..." : "✍️ Sign Agreement Digitally"}
+                    </Button>
+                </div>
+            </Card>
+        </div>
+    );
+}
 
 function DocumentSection({ booking }: { booking: any }) {
     const [docs, setDocs] = useState<any[]>([]);
@@ -194,7 +300,8 @@ export default function StudentDashboardPage() {
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
     const [reviewBooking, setReviewBooking] = useState<any>(null);
     const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
-    const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
+    const [signingBooking, setSigningBooking] = useState<any>(null);
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -300,12 +407,31 @@ export default function StudentDashboardPage() {
                         </Card>
                     ) : (
                         <div className="space-y-4">
+                            {/* Actionable Alerts Unified Banner */}
+                            {bookings.some((b: any) => (b.status === "APPROVED_KYC_PENDING") || (b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED") || ((b.status === "PAID" || b.status === "CASH_PAID") && !b.agreementSigned)) && (
+                                <div className="space-y-3 mb-6">
+                                    {bookings.map((booking: any) => {
+                                        const isKyc = booking.status === "APPROVED_KYC_PENDING";
+                                        const isPay = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED";
+                                        const isAgre = (booking.status === "PAID" || booking.status === "CASH_PAID") && !booking.agreementSigned;
+
+                                        if (isKyc) return <AlertBanner key={`alert-kyc-${booking.id}`} type="warning" message={`Pending Docs: Please upload KYC for ${booking.propertyName} to proceed.`} actionLabel="Upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
+                                        if (isPay) return <AlertBanner key={`alert-pay-${booking.id}`} type="error" message={`Payment Due: KYC Verified! Pay ₹${booking.amount} to reserve ${booking.propertyName}.`} actionLabel="Pay Now" onAction={() => window.location.href = `/dashboard/student/pay/${booking.id}`} />;
+                                        if (isAgre) return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Sign Agreement: Reservation confirmed for ${booking.propertyName}. Please sign to check-in.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
+                                        return null;
+                                    })}
+                                </div>
+                            )}
+
                             {bookings.map((booking: any) => {
-                                const isApproved = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED";
-                                const isPaid = booking.status === "PAID" || booking.status === "CASH_PAID";
+                                const isKycPending = booking.status === "APPROVED_KYC_PENDING";
+                                const isPaymentPending = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED";
+                                const isApproved = isKycPending || isPaymentPending;
+                                const isCheckedIn = booking.status === "CHECKED_IN";
+                                const isPaid = (booking.status === "PAID" || booking.status === "CASH_PAID") && !isCheckedIn;
                                 const isCancelled = booking.status === "CANCELLED";
-                                const isCashPending = booking.status === "CASH_PENDING";
-                                const showDocs = isApproved || isPaid;
+                                const isCashPending = booking.paymentMethod === "CASH" && (booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED");
+                                const showDocs = isKycPending || isPaymentPending || isPaid || isCheckedIn;
                                 const hasPendingAmount = isPaid && booking.pendingAmount && parseFloat(booking.pendingAmount) > 0;
 
                                 return (
@@ -349,64 +475,112 @@ export default function StudentDashboardPage() {
 
                                             {/* ── Status ── */}
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-sm font-medium">Status:</span>
+                                                <span className="text-sm font-medium">Stage:</span>
                                                 {booking.status === "PENDING_APPROVAL" && (
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded w-fit">⏳ Waiting for Owner Approval</span>
-                                                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                                            <Calendar className="h-3 w-3" />
-                                                            <span>Requested Move-in: <strong>{new Date(booking.moveInDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong></span>
-                                                        </div>
-                                                    </div>
+                                                    <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>
                                                 )}
-                                                {isApproved && (
-                                                    <>
-                                                        <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">✅ Booking Accepted</span>
-                                                        <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">🔄 Onboarding Pending</span>
-                                                    </>
+                                                {isKycPending && (
+                                                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">📝 Step 1: KYC Verification</span>
                                                 )}
-                                                {booking.status === "PAID" && (
-                                                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">✨ Paid &amp; Confirmed</span>
+                                                {isPaymentPending && (
+                                                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Step 2: Payment Pending</span>
                                                 )}
-                                                {booking.status === "CASH_PAID" && (
-                                                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">💵 Paid (Cash)</span>
+                                                {isPaid && !booking.agreementSigned && (
+                                                    <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Step 3: Sign Agreement</span>
                                                 )}
-                                                {isCashPending && (
-                                                    <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">💵 Waiting Cash — Pending</span>
+                                                {isPaid && booking.agreementSigned && (
+                                                    <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Step 4: Ready for Move-in</span>
                                                 )}
-                                                {booking.status === "REJECTED" && (
-                                                    <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">❌ Rejected by Owner</span>
+                                                {isCheckedIn && (
+                                                    <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Home: Checked-in & Active</span>
                                                 )}
                                                 {isCancelled && (
-                                                    <span className="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded">🚫 Cancelled by You</span>
+                                                    <span className="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded">🚫 Cancelled</span>
                                                 )}
                                             </div>
 
-                                            {/* ── Booking Accepted — Contact OWNER (not student's own details) ── */}
-                                            {isApproved && (
-                                                <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4">
-                                                    <div className="text-blue-700 font-bold text-sm mb-2">📞 Contact Property Owner for Onboarding</div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                                                        {[
-                                                            ["👤 Owner Name", booking.ownerName || "—"],
-                                                            ["📧 Owner Email", booking.ownerEmail || "—"],
-                                                            ["📱 Owner Phone", booking.ownerPhone || "—"],
-                                                            ["📍 Property", `${booking.propertyName}${booking.propertyCity ? `, ${booking.propertyCity}` : ""}`],
-                                                        ].map(([label, val]) => (
-                                                            <div key={label} className="bg-white border border-blue-200 rounded p-2">
-                                                                <div className="text-[10px] font-bold text-blue-400 uppercase">{label}</div>
-                                                                <div className="text-sm font-semibold text-blue-900">{val}</div>
+                                            {/* ── Professional Flow Checklist ── */}
+                                            {!isCancelled && booking.status !== "REJECTED" && !isCheckedIn && (
+                                                <div className="bg-slate-50 border rounded-xl p-4 shadow-inner">
+                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Onboarding Checklist</p>
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${booking.status !== "PENDING_APPROVAL" ? "bg-green-500 text-white" : "bg-blue-500 text-white animate-pulse"}`}>
+                                                                {booking.status !== "PENDING_APPROVAL" ? "✓" : "1"}
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="mt-2 text-xs text-blue-600 font-medium">
-                                                        Please contact the property owner to complete the onboarding process and finalize your move-in.
+                                                            <div className="text-sm">
+                                                                <p className={`font-bold ${booking.status !== "PENDING_APPROVAL" ? "text-green-700" : "text-blue-700"}`}>Booking Approval</p>
+                                                                <p className="text-[11px] text-muted-foreground">Owner reviews your request and room availability.</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${isPaymentPending || isPaid || isCheckedIn ? "bg-green-500 text-white" : isKycPending ? "bg-blue-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}>
+                                                                {isPaymentPending || isPaid || isCheckedIn ? "✓" : "2"}
+                                                            </div>
+                                                            <div className="text-sm">
+                                                                <p className={`font-bold ${isPaymentPending || isPaid || isCheckedIn ? "text-green-700" : isKycPending ? "text-blue-700" : "text-slate-400"}`}>KYC Documentation</p>
+                                                                <p className="text-[11px] text-muted-foreground">Upload your ID proof and Student/Work verification docs.</p>
+                                                                {isKycPending && (
+                                                                    <Button size="sm" variant="outline" onClick={() => setExpandedDocs(booking.id)} className="mt-2 h-7 text-[10px] border-blue-300 text-blue-600 hover:bg-blue-50">
+                                                                        📎 Upload Documents Now
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${isPaid || isCheckedIn ? "bg-green-500 text-white" : isPaymentPending ? "bg-blue-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}>
+                                                                {isPaid || isCheckedIn ? "✓" : "3"}
+                                                            </div>
+                                                            <div className="text-sm">
+                                                                <p className={`font-bold ${isPaid || isCheckedIn ? "text-green-700" : isPaymentPending ? "text-blue-700" : "text-slate-400"}`}>Payment & Reservation</p>
+                                                                <p className="text-[11px] text-muted-foreground">Secure your room by paying the reservation amount.</p>
+                                                                {isPaymentPending && (
+                                                                    <Button size="sm" className="mt-2 h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md" asChild>
+                                                                        <Link href={`/secure/payment?id=${booking.id}`}>💳 Complete Payment</Link>
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${booking.agreementSigned || isCheckedIn ? "bg-green-500 text-white" : isPaid && !booking.agreementSigned ? "bg-blue-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}>
+                                                                {booking.agreementSigned || isCheckedIn ? "✓" : "4"}
+                                                            </div>
+                                                            <div className="text-sm">
+                                                                <p className={`font-bold ${booking.agreementSigned || isCheckedIn ? "text-green-700" : isPaid && !booking.agreementSigned ? "text-blue-700" : "text-slate-400"}`}>Rental Agreement</p>
+                                                                <p className="text-[11px] text-muted-foreground">Review and sign your digital occupancy agreement.</p>
+                                                                {isPaid && !booking.agreementSigned && (
+                                                                    <Button size="sm" variant="outline" className="mt-2 h-7 text-[10px] border-blue-400 text-blue-700 hover:bg-blue-50 font-bold" onClick={() => setSigningBooking(booking)}>
+                                                                        ✍️ Sign Agreement
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${isCheckedIn ? "bg-green-500 text-white" : isPaid && booking.agreementSigned ? "bg-amber-500 text-white animate-bounce" : "bg-slate-200 text-slate-400"}`}>
+                                                                {isCheckedIn ? "✓" : "5"}
+                                                            </div>
+                                                            <div className="text-sm">
+                                                                <p className={`font-bold ${isCheckedIn ? "text-green-700" : isPaid && booking.agreementSigned ? "text-amber-700" : "text-slate-400"}`}>Physical Check-in</p>
+                                                                <p className="text-[11px] text-muted-foreground">Arrive at the PG on your move-in date to collect keys.</p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
 
+                                            <AgreementModal
+                                                booking={signingBooking}
+                                                isOpen={!!signingBooking && signingBooking.id === booking.id}
+                                                onClose={() => setSigningBooking(null)}
+                                                onSigned={() => { loadData(); }}
+                                            />
+
                                             {/* ── Room Allocation Details ── */}
-                                            {(isApproved || isPaid) && (
+                                            {(isApproved || isPaid || isCheckedIn) && (
                                                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3">
                                                     <p className="text-xs font-bold text-purple-700 mb-2">📋 Allocation Details</p>
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
@@ -463,6 +637,11 @@ export default function StudentDashboardPage() {
                                                         </Button>
                                                     )}
                                                     {isPaid && (
+                                                        <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
+                                                            <FileText className="h-4 w-4 mr-2" /> View Receipt
+                                                        </Button>
+                                                    )}
+                                                    {isCheckedIn && (
                                                         <>
                                                             <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
                                                                 <FileText className="h-4 w-4 mr-2" /> View Receipt
@@ -472,16 +651,14 @@ export default function StudentDashboardPage() {
                                                                 onClick={() => setReviewBooking(booking)}
                                                                 className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-bold border border-yellow-300"
                                                             >
-                                                                <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" /> Share your experience
+                                                                <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" /> Share Experience
                                                             </Button>
                                                         </>
                                                     )}
-                                                    {isApproved && booking.paymentMethod !== "CASH" ? (
-                                                        <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-md" asChild>
-                                                            <Link href={`/secure/payment?id=${booking.id}`}>💳 Pay Now</Link>
+                                                    {isPaid && booking.agreementSigned && (
+                                                        <Button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold shadow-lg" asChild>
+                                                            <Link href={`/dashboard/student/ready-to-move`}>🏃 Ready to Move-in</Link>
                                                         </Button>
-                                                    ) : (!isPaid && booking.status !== "REJECTED" && !isApproved && !isCashPending && !isCancelled) && (
-                                                        <Button variant="outline" disabled>Pay Now</Button>
                                                     )}
                                                 </div>
                                             </div>
@@ -629,13 +806,15 @@ export default function StudentDashboardPage() {
             </Tabs>
 
             {/* Models rendering at the DOM root level */}
-            {reviewBooking && (
-                <SubmitReviewModal
-                    booking={reviewBooking}
-                    isOpen={!!reviewBooking}
-                    onClose={() => setReviewBooking(null)}
-                />
-            )}
-        </div>
+            {
+                reviewBooking && (
+                    <SubmitReviewModal
+                        booking={reviewBooking}
+                        isOpen={!!reviewBooking}
+                        onClose={() => setReviewBooking(null)}
+                    />
+                )
+            }
+        </div >
     );
 }

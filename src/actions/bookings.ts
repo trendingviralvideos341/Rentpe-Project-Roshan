@@ -108,22 +108,10 @@ export async function getBookings() {
                 }
             });
 
-            // Fetch tenant records for the user to match with bookings
-            const userEmail = (session as any).email;
-            const tenants = userEmail ? await prisma.tenant.findMany({
-                where: { email: userEmail }
-            }) : [];
-
             return bookings.map((b: any) => {
-                // Link tenant record by propertyId and roomId if possible
-                const matchingTenant = tenants.find(t =>
-                    t.propertyId === b.propertyId &&
-                    t.roomId === b.roomId
-                );
-
                 return {
                     ...b,
-                    tenantId: matchingTenant?.id || null, // Pass real tenantId for reviews
+                    tenantId: b.tenantId || null, // Direct link from schema
                     ownerName: b.property?.owner?.name || null,
                     ownerEmail: b.property?.owner?.email || null,
                     ownerPhone: b.property?.owner?.phone || null,
@@ -172,7 +160,7 @@ export async function approveBooking(id: string, data: {
     const booking = await (prisma as any).booking.update({
         where: { id },
         data: {
-            status: 'APPROVED_PAYMENT_PENDING',
+            status: 'APPROVED_KYC_PENDING',
             roomId: data.roomId,
             amount: data.amount,
             occupancy: data.occupancy,
@@ -324,80 +312,111 @@ export async function markBookingPaid(id: string, method: string) {
         }
     });
 
-    // 2. ── CRITICAL: Create Tenant record from booking data ──────────────
-    // Only create if not already exists (idempotent)
-    const existingTenant = await prisma.tenant.findFirst({
-        where: {
-            roomId: booking.roomId || '',
-            name: booking.guestName,
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/student');
+    return booking;
+}
+
+export async function checkInBooking(id: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    // 1. Fetch booking
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: { documents: true }
+    });
+
+    if (!booking) throw new Error("Booking not found");
+    if (booking.status !== 'PAID' && booking.status !== 'CASH_PAID') {
+        throw new Error("Booking must be paid before check-in.");
+    }
+
+    // 2. Check documents (Industry Standard: All mandatory docs MUST be verified)
+    const verifiedDocs = booking.documents.filter(d => d.status === 'VERIFIED');
+    if (verifiedDocs.length < 2) {
+        throw new Error("KYC Incomplete: At least ID and Address Proof must be verified before check-in.");
+    }
+
+    // 3. Check Agreement
+    if (!booking.agreementSigned) {
+        throw new Error("Agreement Pending: Digital agreement must be signed by the student before check-in.");
+    }
+
+    // 4. Update booking status to CHECKED_IN
+    const updatedBooking = await (prisma as any).booking.update({
+        where: { id },
+        data: {
+            status: 'CHECKED_IN',
+            onboardingDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         }
     });
 
-    if (!existingTenant && booking.roomId) {
-        // Re-fetch booking with all fields (including new ones)
-        const fullBooking = await (prisma as any).booking.findUnique({ where: { id } }) as any;
-        // Get room + property info
-        const room = await prisma.room.findUnique({
-            where: { id: booking.roomId },
-            include: { property: true }
+    // 5. Create Tenant record
+    const room = await prisma.room.findUnique({
+        where: { id: booking.roomId! },
+        include: { property: true }
+    });
+
+    if (room) {
+        const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+        const tenantDisplayId = `TNT-${Math.floor(Math.random() * 900000) + 100000}`;
+
+        const tenant = await (prisma as any).tenant.create({
+            data: {
+                displayId: tenantDisplayId,
+                name: booking.guestName,
+                phone: booking.guestPhone || '',
+                email: booking.guestEmail || null,
+                address: booking.guestAddress || null,
+                city: booking.guestCity || null,
+                pincode: booking.guestPincode || null,
+                country: booking.guestCountry || 'India',
+                occupationType: booking.occupationType || null,
+                occupationDetail: booking.occupationDetail || null,
+                propertyId: room.propertyId,
+                roomId: booking.roomId!,
+                roomNumber: room.roomNumber,
+                roomType: room.type,
+                rent: booking.amount,
+                startDate: updatedBooking.onboardingDate,
+                status: 'ACTIVE',
+            }
         });
 
-        if (room && fullBooking) {
-            const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-            const tenantDisplayId = `TNT-${Math.floor(Math.random() * 900000) + 100000}`;
+        // 5. Link Tenant back to Booking for robust review system
+        await (prisma as any).booking.update({
+            where: { id: booking.id },
+            data: { tenantId: tenant.id }
+        });
 
-            const tenant = await (prisma as any).tenant.create({
-                data: {
-                    displayId: tenantDisplayId,
-                    name: fullBooking.guestName,
-                    phone: fullBooking.guestPhone || '',
-                    email: fullBooking.guestEmail || null,
-                    address: fullBooking.guestAddress || null,
-                    city: fullBooking.guestCity || null,
-                    pincode: fullBooking.guestPincode || null,
-                    country: fullBooking.guestCountry || 'India',
-                    occupationType: fullBooking.occupationType || null,
-                    occupationDetail: fullBooking.occupationDetail || null,
-                    propertyId: room.propertyId,
-                    roomId: booking.roomId,
-                    roomNumber: room.roomNumber,
-                    roomType: room.type,
-                    rent: fullBooking.amount,
-                    startDate: fullBooking.onboardingDate || fullBooking.moveInDate,
-                    status: 'ACTIVE',
-                }
-            });
+        // 6. Create initial rent record
+        await prisma.rentRecord.create({
+            data: {
+                tenantId: tenant.id,
+                month: currentMonth,
+                amount: booking.amount,
+                paid: true,
+                paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            }
+        });
 
-            // Create initial rent record for current month
-            await prisma.rentRecord.create({
-                data: {
-                    tenantId: tenant.id,
-                    month: currentMonth,
-                    amount: booking.amount,
-                    paid: true,
-                    paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                }
-            });
-
-            // Log tenant creation
-            await prisma.auditLog.create({
-                data: {
-                    action: 'TENANT_CREATED',
-                    targetId: tenant.id,
-                    targetType: 'TENANT',
-                    details: `Tenant ${booking.guestName} (${tenantDisplayId}) created from booking ${booking.displayId} after ${method} payment`,
-                    performedBy: (session as any).userId
-                }
-            });
-        }
+        // 7. Log check-in
+        await prisma.auditLog.create({
+            data: {
+                action: 'TENANT_CHECKED_IN',
+                targetId: tenant.id,
+                targetType: 'TENANT',
+                details: `Tenant ${booking.guestName} formally checked-in from booking ${booking.displayId}`,
+                performedBy: (session as any).userId
+            }
+        });
     }
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/tenants');
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/admin');
     revalidatePath('/dashboard/student');
-    return booking;
+    return updatedBooking;
 }
 
 export async function getBookingById(id: string) {
@@ -486,4 +505,77 @@ export async function cancelBooking(id: string) {
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');
     return updated;
+}
+
+export async function signAgreement(id: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: { user: true }
+    });
+    if (!booking) throw new Error("Booking not found");
+    if (booking.userId !== (session as any).userId) throw new Error("Unauthorized to sign this agreement");
+
+    if (booking.status !== 'PAID' && booking.status !== 'CASH_PAID') {
+        throw new Error("Agreement can only be signed after payment/reservation is confirmed.");
+    }
+
+    const updated = await prisma.booking.update({
+        where: { id },
+        data: { agreementSigned: true }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'AGREEEMENT_SIGNED',
+            targetId: id,
+            targetType: 'BOOKING',
+            details: `Digital Agreement signed by ${(booking as any).guestName}. IP tracked for legal compliance.`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/student');
+    revalidatePath('/dashboard/owner/bookings');
+    return updated;
+}
+
+export async function getStudentPendingActionsCount() {
+    const session = await getSession();
+    if (!session) return 0;
+
+    const userId = (session as any).userId;
+    const bookings = await prisma.booking.findMany({
+        where: { userId },
+        include: { documents: true }
+    });
+
+    let count = 0;
+    for (const b of bookings) {
+        // 1. KYC pending (no docs or rejected docs)
+        if (b.status === 'APPROVED_KYC_PENDING') {
+            const hasVerified = b.documents.filter(d => d.status === 'VERIFIED').length >= 2;
+            if (!hasVerified) count++;
+        }
+        // 2. Payment pending
+        if (b.status === 'APPROVED_PAYMENT_PENDING') count++;
+        // 3. Agreement pending
+        if ((b.status === 'PAID' || b.status === 'CASH_PAID') && !b.agreementSigned) count++;
+    }
+
+    return count;
+}
+
+export async function getAdminAlertCounts() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') return { bookings: 0, verifications: 0 };
+
+    const [pendingBookings, pendingDocs] = await Promise.all([
+        prisma.booking.count({ where: { status: 'PENDING_APPROVAL' } }),
+        prisma.tenantDocument.count({ where: { status: 'PENDING' } })
+    ]);
+
+    return { bookings: pendingBookings, verifications: pendingDocs };
 }

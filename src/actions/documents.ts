@@ -207,6 +207,22 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
         }
     });
 
+    // If verified, check if booking can move to PAYMENT_PENDING
+    if (status === 'VERIFIED') {
+        const allDocs = await prisma.tenantDocument.findMany({
+            where: { bookingId: existingDoc.bookingId }
+        });
+        const verifiedCount = allDocs.filter(d => d.status === 'VERIFIED').length;
+
+        // Industry Standard: If 2 or more docs (ID + Address/Student) are verified, move to Payment
+        if (verifiedCount >= 2) {
+            await prisma.booking.update({
+                where: { id: existingDoc.bookingId },
+                data: { status: 'APPROVED_PAYMENT_PENDING' }
+            });
+        }
+    }
+
     await prisma.auditLog.create({
         data: {
             action: status === 'VERIFIED' ? 'DOCUMENT_VERIFIED' : 'DOCUMENT_REJECTED',

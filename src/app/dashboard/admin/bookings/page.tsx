@@ -8,13 +8,16 @@ import {
     Users, Search, RefreshCcw, Calendar, Building2,
     CreditCard, Tag, User, Mail, Phone, Clock
 } from "lucide-react";
-import { getAdminBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid } from "@/actions/bookings";
+import { getAdminBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid, checkInBooking } from "@/actions/bookings";
 import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
-    'PENDING_APPROVAL': 'bg-amber-100 text-amber-700 border-amber-200',
-    'APPROVED_PAYMENT_PENDING': 'bg-blue-100 text-blue-700 border-blue-200',
-    'PAID': 'bg-green-100 text-green-700 border-green-200',
+    'PENDING_APPROVAL': 'bg-red-50 text-red-700 border-red-200',
+    'APPROVED_KYC_PENDING': 'bg-blue-50 text-blue-700 border-blue-200',
+    'APPROVED_PAYMENT_PENDING': 'bg-amber-50 text-amber-700 border-amber-200',
+    'PAID': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    'CASH_PAID': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    'CHECKED_IN': 'bg-green-50 text-green-700 border-green-200 font-bold',
     'REJECTED': 'bg-red-100 text-red-700 border-red-200',
     'CANCELLED': 'bg-gray-100 text-gray-700 border-gray-200',
 };
@@ -67,12 +70,23 @@ export default function AdminBookingsPage() {
     };
 
     const handleMarkCashPaid = async (bookingId: string) => {
-        if (!confirm("[ADMIN OVERRIDE] Confirm: Mark this booking as PAID via Cash? This will also create the Tenant record.")) return;
+        if (!confirm("[ADMIN OVERRIDE] Confirm: Mark this booking as PAID via Cash? (Reservation will be confirmed)")) return;
         try {
             await markBookingPaid(bookingId, "CASH");
-            toast.success("Booking marked as Paid and Tenant created.");
+            toast.success("Booking marked as Paid. Reservation confirmed.");
             fetchBookings();
         } catch { toast.error("Failed to mark as paid."); }
+    };
+
+    const handleCheckIn = async (bookingId: string) => {
+        if (!confirm("[ADMIN OVERRIDE] Confirm Check-in: Has the student formally moved in? This creates the Tenant record and starts billing.")) return;
+        try {
+            await checkInBooking(bookingId);
+            toast.success("Student Checked-in successfully.");
+            fetchBookings();
+        } catch (e: any) {
+            toast.error(e.message || "Check-in failed.");
+        }
     };
 
     const filtered = bookings.filter(b => {
@@ -113,8 +127,10 @@ export default function AdminBookingsPage() {
                 >
                     <option value="ALL">All Statuses</option>
                     <option value="PENDING_APPROVAL">Pending Approval</option>
+                    <option value="APPROVED_KYC_PENDING">KYC Verification</option>
                     <option value="APPROVED_PAYMENT_PENDING">Awaiting Payment</option>
-                    <option value="PAID">Paid</option>
+                    <option value="PAID">Paid (Reserved)</option>
+                    <option value="CHECKED_IN">Checked-in</option>
                     <option value="REJECTED">Rejected</option>
                     <option value="CANCELLED">Cancelled</option>
                 </select>
@@ -163,7 +179,10 @@ export default function AdminBookingsPage() {
 
                                         <div className="flex flex-col items-end gap-2">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[booking.status] || 'bg-muted'}`}>
-                                                {booking.status === 'CANCELLED' ? '🚫 Cancelled by User' : booking.status.replace(/_/g, ' ')}
+                                                {booking.status === 'CANCELLED' ? '🚫 Cancelled by User' :
+                                                    booking.status === 'APPROVED_KYC_PENDING' ? '📝 KYC PENDING' :
+                                                        booking.status === 'APPROVED_PAYMENT_PENDING' ? '⏳ AWAITING PAYMENT' :
+                                                            booking.status.replace(/_/g, ' ')}
                                             </span>
 
                                             <div className="flex gap-2 mt-1">
@@ -176,6 +195,11 @@ export default function AdminBookingsPage() {
                                                 {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
                                                     <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
                                                         ✅ Mark Cash Paid
+                                                    </Button>
+                                                )}
+                                                {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
+                                                    <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
+                                                        🚀 Confirm Check-in
                                                     </Button>
                                                 )}
                                             </div>

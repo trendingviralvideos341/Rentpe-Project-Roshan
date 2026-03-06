@@ -110,6 +110,7 @@ model Booking {
   amount           String
   roomAssigned     String?
   agreementSigned  Boolean          @default(false)
+  tenantId         String?          @unique
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?

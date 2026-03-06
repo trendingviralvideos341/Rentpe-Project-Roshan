@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck, Menu, X, User, TrendingUp } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { getPendingBookingsCount } from "@/actions/bookings";
+import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
 import { getPendingPropertiesCount } from "@/actions/admin";
 import { getPendingOwnerActionCount } from "@/actions/properties";
 import { getPendingDocumentsCount } from "@/actions/documents";
@@ -23,11 +23,13 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [pendingCount, setPendingCount] = useState(0);
     const [pendingPropCount, setPendingPropCount] = useState(0);
     const [pendingDocCount, setPendingDocCount] = useState(0);
+    const [studentAlertCount, setStudentAlertCount] = useState(0);
+    const [adminAlerts, setAdminAlerts] = useState({ bookings: 0, verifications: 0 });
     const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
         if (role === "owner") {
-            const checkBookings = async () => {
+            const checkOwner = async () => {
                 const count = await getPendingBookingsCount();
                 setPendingCount(count);
                 const propCount = await getPendingOwnerActionCount();
@@ -35,17 +37,28 @@ export default function DashboardSidebar(props: SidebarProps) {
                 const docCount = await getPendingDocumentsCount();
                 setPendingDocCount(docCount);
             };
-            checkBookings();
-            const interval = setInterval(checkBookings, 5000);
+            checkOwner();
+            const interval = setInterval(checkOwner, 5000);
             return () => clearInterval(interval);
         }
         if (role === "admin") {
-            const checkProps = async () => {
-                const count = await getPendingPropertiesCount();
-                setPendingPropCount(count);
+            const checkAdmin = async () => {
+                const propCount = await getPendingPropertiesCount();
+                setPendingPropCount(propCount);
+                const alerts = await getAdminAlertCounts();
+                setAdminAlerts(alerts);
             };
-            checkProps();
-            const interval = setInterval(checkProps, 5000);
+            checkAdmin();
+            const interval = setInterval(checkAdmin, 5000);
+            return () => clearInterval(interval);
+        }
+        if (role === "student") {
+            const checkStudent = async () => {
+                const count = await getStudentPendingActionsCount();
+                setStudentAlertCount(count);
+            };
+            checkStudent();
+            const interval = setInterval(checkStudent, 5000);
             return () => clearInterval(interval);
         }
     }, [role]);
@@ -61,14 +74,14 @@ export default function DashboardSidebar(props: SidebarProps) {
         { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
         { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
         { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
-        { href: "/dashboard/owner/tenants", label: "Tenants", icon: Calendar },
-        { href: "/dashboard/owner/verifications", label: "Customer Doc Verifications", icon: FileCheck, badge: pendingDocCount },
-        { href: "/dashboard/owner/staff", label: "My Staff", icon: UserPlus },
-        { href: "/dashboard/owner/food-menu", label: "Food Menu", icon: Utensils },
+        { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount },
+        { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar },
+        { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard },
+        { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils },
+        { href: "/dashboard/owner/staff", label: "Management Team", icon: UserPlus },
         { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },
-        { href: "/dashboard/owner/payments", label: "Payments", icon: CreditCard },
-        { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: CreditCard },
         { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList },
+        { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings },
     ];
 
     const adminLinks = [
@@ -76,22 +89,22 @@ export default function DashboardSidebar(props: SidebarProps) {
         { href: "/dashboard/admin?tab=profile", label: "My Profile", icon: Shield },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
         { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
-        { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
+        { href: "/dashboard/admin/bookings", label: "Platform Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
         { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },
-        { href: "/dashboard/admin/tenants", label: "Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
-        { href: "/dashboard/admin/doc-verification", label: "Customer Doc Verification", icon: FileCheck, reqPerm: ["super_admin", "sub_admin", "verifier"] },
-        { href: "/dashboard/admin/team", label: "Team & Roles", icon: Shield, reqPerm: ["super_admin"] },
-        { href: "/dashboard/admin/employees", label: "Employees", icon: UserCheck, reqPerm: ["super_admin", "hr_admin"] },
-        { href: "/dashboard/admin/transactions", label: "All Transactions", icon: CreditCard, reqPerm: ["super_admin", "finance_admin"] },
-        { href: "/dashboard/admin/audit-log", label: "Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "security_audit"] },
-        { href: "/dashboard/admin/tickets", label: "Resolutions", icon: Ticket, reqPerm: ["super_admin", "sub_admin", "support"] },
-        { href: "/dashboard/admin/platform-fees", label: "Platform Fees", icon: Percent, reqPerm: ["super_admin", "finance_admin"] },
-        { href: "/dashboard/admin/data-management", label: "Data Management", icon: Trash2, reqPerm: ["super_admin"] },
-        { href: "/dashboard/admin/settings", label: "Settings", icon: Settings, reqPerm: ["super_admin"] },
+        { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "sub_admin", "verifier"] },
+        { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
+        { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "finance_admin"] },
+        { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
+        { href: "/dashboard/admin/employees", label: "Employee Hub", icon: UserCheck, reqPerm: ["super_admin", "hr_admin"] },
+        { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "sub_admin", "support"] },
+        { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Percent, reqPerm: ["super_admin", "finance_admin"] },
+        { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "security_audit"] },
+        { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
+        { href: "/dashboard/admin/settings", label: "Platform Settings", icon: Settings, reqPerm: ["super_admin"] },
     ];
 
     const studentLinks = [
-        { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard },
+        { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
         { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
         { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
         { href: "/search", label: "Find PG", icon: Building },

@@ -123,30 +123,6 @@ export async function verifyPayment(data: {
         }
     });
 
-    // Create Tenant record since payment is done
-    const booking = await prisma.booking.findUnique({
-        where: { id: payment.bookingId },
-        include: { room: true }
-    });
-
-    if (booking) {
-        await prisma.tenant.create({
-            data: {
-                displayId: `TNT-${Math.floor(Math.random() * 900) + 100}`,
-                name: booking.guestName,
-                phone: (session as any).phone as string || "TBD",
-                email: (session as any).email,
-                propertyId: booking.room!.propertyId,
-                roomId: booking.roomId!,
-                roomNumber: booking.room!.roomNumber,
-                roomType: booking.room!.type,
-                rent: booking.amount,
-                startDate: booking.moveInDate,
-                status: "ACTIVE"
-            }
-        });
-    }
-
     revalidatePath("/dashboard/student");
     revalidatePath("/dashboard/owner/bookings");
     return { success: true };
