@@ -12,6 +12,8 @@ import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { generateInvoicePDF } from "@/utils/invoiceGenerator";
+import { Download } from "lucide-react";
 
 const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
@@ -231,6 +233,24 @@ export default function StudentDashboardPage() {
             alert(e.message || "Failed to cancel booking.");
         } finally {
             setCancellingId(null);
+        }
+    };
+
+    const handleDownloadReceipt = (payment: any) => {
+        try {
+            const userName = bookings[0]?.guestName || "User";
+            generateInvoicePDF({
+                invoiceId: payment.id || Math.random().toString(36).substring(2, 10).toUpperCase(),
+                date: new Date(payment.date).toLocaleDateString("en-IN"),
+                description: payment.description,
+                month: new Date(payment.date).toLocaleString("en-IN", { month: 'long', year: 'numeric' }),
+                amount: payment.amount,
+                tenantName: userName,
+                paymentMethod: "Online / Validated",
+            });
+        } catch (e: any) {
+            console.error("PDF GEN ERROR:", e);
+            alert("Failed to generate PDF. Please try again.");
         }
     };
 
@@ -513,9 +533,20 @@ export default function StudentDashboardPage() {
                                                     </TableCell>
                                                     <TableCell className="text-right font-bold">₹{p.amount.toLocaleString('en-IN')}</TableCell>
                                                     <TableCell className="text-center">
-                                                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded">
+                                                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded block w-fit mx-auto">
                                                             {p.status}
                                                         </span>
+                                                        {p.status === 'PAID' && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="mt-1 h-6 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                                onClick={() => handleDownloadReceipt(p)}
+                                                            >
+                                                                <Download className="h-3 w-3 mr-1" />
+                                                                Receipt
+                                                            </Button>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             ))}

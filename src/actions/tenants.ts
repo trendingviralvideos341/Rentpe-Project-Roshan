@@ -178,3 +178,43 @@ export const vacateTenant = blockTenant;
 export async function unvacateTenant(tenantId: string) {
     return unblockTenant(tenantId, "Restored by owner");
 }
+
+export async function generateNextRentRecord(tenantId: string, month: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new Error("Tenant not found");
+
+    const existing = await prisma.rentRecord.findFirst({
+        where: { tenantId, month }
+    });
+
+    if (existing) {
+        throw new Error(`Rent invoice for ${month} already exists.`);
+    }
+
+    const record = await prisma.rentRecord.create({
+        data: {
+            tenantId,
+            month,
+            amount: tenant.rent,
+            paid: false,
+        }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'RENT_GENERATED',
+            targetId: tenantId,
+            targetType: 'TENANT',
+            details: `Generated rent invoice for ${month} (₹${tenant.rent})`,
+            performedBy: (session as any).userId
+        }
+    });
+
+    revalidatePath('/dashboard/owner/tenants');
+    revalidatePath('/dashboard/owner/payments');
+    revalidatePath('/dashboard/student');
+    return record;
+}

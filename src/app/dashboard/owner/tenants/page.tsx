@@ -4,8 +4,9 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant } from "@/actions/tenants";
+import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle } from "lucide-react";
+import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
+import { toast } from "sonner";
 
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<any[]>([]);
@@ -20,6 +21,8 @@ export default function TenantsPage() {
     const [payNotes, setPayNotes] = useState<Record<string, string>>({});
     const [showPayNote, setShowPayNote] = useState<Record<string, boolean>>({});
     const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
+    const [showGenerateRent, setShowGenerateRent] = useState<Record<string, boolean>>({});
+    const [generateMonth, setGenerateMonth] = useState<Record<string, string>>({});
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
 
@@ -42,45 +45,61 @@ export default function TenantsPage() {
 
     const handleMarkPaid = async (recordId: string, tenantId: string) => {
         const note = payNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a note before marking as paid."); return; }
+        if (!note) { toast.error("Please enter a note before marking as paid."); return; }
         try {
             await markRentAsPaid(recordId, note);
             setPayNotes(p => ({ ...p, [tenantId]: "" }));
             setShowPayNote(p => ({ ...p, [tenantId]: false }));
+            toast.success("Rent marked as Paid.");
             await fetchTenants();
-        } catch { alert("Failed to mark rent as paid."); }
+        } catch { toast.error("Failed to mark rent as paid."); }
     };
 
     const handleMarkUnpaid = async (recordId: string, tenantId: string) => {
         const note = payNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a note before reversing payment."); return; }
+        if (!note) { toast.error("Please enter a note before reversing payment."); return; }
         if (!confirm("Reverse this payment? This will mark the rent as UNPAID.")) return;
         try {
             await markRentAsUnpaid(recordId, note);
             setPayNotes(p => ({ ...p, [tenantId]: "" }));
             setShowPayNote(p => ({ ...p, [tenantId]: false }));
+            toast.success("Rent reversed to Unpaid.");
             await fetchTenants();
-        } catch { alert("Failed to mark rent as unpaid."); }
+        } catch { toast.error("Failed to mark rent as unpaid."); }
     };
 
     const handleBlock = async (tenantId: string) => {
         const note = blockNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a reason before blocking this tenant."); return; }
+        if (!note) { toast.error("Please enter a reason before blocking this tenant."); return; }
         try {
             await blockTenant(tenantId, note);
             setBlockNotes(p => { const n = { ...p }; delete n[tenantId]; return n; });
+            toast.success("Tenant successfully blocked.");
             await fetchTenants();
-        } catch { alert("Failed to block tenant."); }
+        } catch { toast.error("Failed to block tenant."); }
     };
 
     const handleUnblock = async (tenantId: string) => {
         const note = unblockNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a reason before unblocking this tenant."); return; }
+        if (!note) { toast.error("Please enter a reason before unblocking this tenant."); return; }
         try {
             await unblockTenant(tenantId, note);
             setUnblockNotes(p => { const n = { ...p }; delete n[tenantId]; return n; });
+            toast.success("Tenant unblocked and reactivated.");
             await fetchTenants();
-        } catch { alert("Failed to unblock tenant."); }
+        } catch { toast.error("Failed to unblock tenant."); }
+    };
+
+    const handleGenerateRent = async (tenantId: string) => {
+        const month = generateMonth[tenantId] || currentMonth;
+        try {
+            await generateNextRentRecord(tenantId, month);
+            setShowGenerateRent(p => ({ ...p, [tenantId]: false }));
+            toast.success(`Rent invoice generated for ${month}`);
+            await fetchTenants();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to generate rent.");
+        }
     };
 
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
@@ -310,6 +329,35 @@ export default function TenantsPage() {
                                                             >
                                                                 🚫 Block Tenant
                                                             </Button>
+                                                            <div className="pt-2 border-t mt-2">
+                                                                {showGenerateRent[t.id] ? (
+                                                                    <div className="space-y-1">
+                                                                        <Input
+                                                                            type="month"
+                                                                            className="h-7 text-xs bg-white"
+                                                                            value={generateMonth[t.id] || ""}
+                                                                            onChange={e => {
+                                                                                const d = new Date(e.target.value);
+                                                                                const m = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+                                                                                setGenerateMonth(p => ({ ...p, [t.id]: m }));
+                                                                            }}
+                                                                        />
+                                                                        <div className="flex gap-1 justify-between">
+                                                                            <Button size="sm" className="h-6 text-[10px] bg-blue-600 hover:bg-blue-700 w-full" onClick={() => handleGenerateRent(t.id)}>Generate</Button>
+                                                                            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: false }))}>✕</Button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="h-7 text-[10px] w-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                                                        onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: true }))}
+                                                                    >
+                                                                        <PlusCircle className="mr-1 h-3 w-3" /> Generate Next Rent
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-1">
