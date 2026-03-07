@@ -49,7 +49,7 @@ export async function updatePlatformSettings(data: {
 }
 
 // ── Internal: calculate fees for a given amount ───────
-export async function calculateFees(amountStr: string, userId?: string, propertyName?: string): Promise<{
+export async function calculateFees(amountStr: string, userId?: string, propertyName?: string, ownerId?: string): Promise<{
     feesEnabled: boolean;
     grossAmount: number;
     customerFee: number;
@@ -57,13 +57,14 @@ export async function calculateFees(amountStr: string, userId?: string, property
     ownerNet: number;
     ownerFee: number;
     platformEarned: number;
+    commissionRate: number;
 }> {
     const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
 
     let settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
 
     if (!settings || !settings.feesEnabled) {
-        return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0 };
+        return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0, commissionRate: 0 };
     }
 
     // Check exemptions
@@ -75,7 +76,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
                 OR: [
                     { userId: userId || undefined },
                     { propertyName: propertyName || undefined },
-                    { userId: null, propertyName: null }, // global exemption
+                    { userId: null, propertyName: null },
                 ]
             }
         });
@@ -85,14 +86,22 @@ export async function calculateFees(amountStr: string, userId?: string, property
         }
     }
 
-    // Customer fee: flat rate (₹9 by default)
+    // Customer fee: flat ₹9 (or 0 if exempt)
     const customerFee = exemptCustomer ? 0 : settings.studentRentFeeFlat;
     const totalCharged = grossAmount + customerFee;
 
-    // Owner fee: flat rate (₹9 by default) deducted FROM received amount
-    const ownerFee = exemptOwner ? 0 : settings.ownerRentFeeFlat;
-    const ownerNet = grossAmount - ownerFee;
+    // Per-owner commission override — check owner's commissionRate first
+    let commissionRate = settings.ownerRentFeeFlat; // default flat fee
+    if (ownerId) {
+        const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any });
+        if (owner && (owner as any).commissionRate != null) {
+            // Use percentage-based commission if owner has custom rate
+            commissionRate = Math.round((grossAmount * (owner as any).commissionRate) / 100 * 100) / 100;
+        }
+    }
 
+    const ownerFee = exemptOwner ? 0 : commissionRate;
+    const ownerNet = grossAmount - ownerFee;
     const platformEarned = customerFee + ownerFee;
 
     return {
@@ -103,8 +112,10 @@ export async function calculateFees(amountStr: string, userId?: string, property
         ownerNet: Math.round(ownerNet * 100) / 100,
         ownerFee: Math.round(ownerFee * 100) / 100,
         platformEarned: Math.round(platformEarned * 100) / 100,
+        commissionRate: (ownerId ? (await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any })) as any : null)?.commissionRate ?? settings.ownerRentFeeFlat,
     };
 }
+
 
 // ── Record a platform fee after payment ───────────────
 export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string) {
