@@ -10,7 +10,9 @@ export async function getProperties(ownerId?: string) {
     if (ownerId) {
         where.ownerId = ownerId;
     } else if (session?.role === 'OWNER') {
-        where.ownerId = (session as any).userId;
+        const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
+        // If staff, show parent's properties
+        where.ownerId = user?.parentOwnerId || (session as any).userId;
     }
 
     return prisma.property.findMany({
@@ -74,12 +76,16 @@ export async function createProperty(formData: FormData) {
     const pgLicence = formData.get("pgLicence") as string;
     const roomsJson = formData.get("rooms") as string;
 
+    const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
+
     // Server-side validation
     if (!name?.trim()) throw new Error("Property name is required");
     if (!address?.trim()) throw new Error("Address is required");
     if (!city?.trim()) throw new Error("City is required");
     if (!description?.trim()) throw new Error("Description is required");
-    if (!ownerName?.trim()) throw new Error("Building owner name is required");
+
+    // Auto-fill owner info from profile if not in form
+    const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
     // Create property and rooms in a transaction
     const property = await prisma.$transaction(async (tx) => {
@@ -91,9 +97,9 @@ export async function createProperty(formData: FormData) {
                 description,
                 amenities: amenities || "[]",
                 images: images || "[]",
-                ownerName: ownerName || null,
+                ownerName: finalOwnerName,
                 pgLicence: pgLicence || null,
-                ownerId: (session as any).userId,
+                ownerId: user?.parentOwnerId || (session as any).userId, // Link to parent if staff creating
                 status: "PENDING_APPROVAL",
             }
         });
@@ -117,6 +123,59 @@ export async function createProperty(formData: FormData) {
     });
 
     return property;
+}
+
+/**
+ * Update Property Information
+ * Critical changes (Rent, Amenities, Images) trigger internal re-verification status
+ */
+export async function updateProperty(propertyId: string, data: {
+    name?: string;
+    address?: string;
+    description?: string;
+    amenities?: string;
+    images?: string;
+    propertyType?: string;
+    genderType?: string;
+}) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const userId = (session as any).userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const ownerId = user?.parentOwnerId || userId;
+
+    const existing = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!existing || existing.ownerId !== ownerId) throw new Error("Property not found or unauthorized");
+
+    // Logic: if price or images or amenities changed, we might want to flag for re-approval
+    // For now, any update sets status back to PENDING_APPROVAL if it was LIVE
+    const needsReapproval = data.images || data.amenities || data.name;
+    const newStatus = (existing.status === 'LIVE' && needsReapproval) ? 'PENDING_APPROVAL' : existing.status;
+
+    const updated = await prisma.property.update({
+        where: { id: propertyId },
+        data: {
+            ...data,
+            status: newStatus as any
+        }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'PROPERTY_UPDATED',
+            targetId: propertyId,
+            targetType: 'PROPERTY',
+            details: `Fields updated: ${Object.keys(data).join(', ')}. Status: ${newStatus}`,
+            performedBy: userId
+        }
+    });
+
+    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+
+    return updated;
 }
 
 export async function savePropertyDocuments(propertyId: string, docs: {

@@ -59,6 +59,11 @@ model User {
   sentMessages     Message[]         @relation("SentMessages")
   receivedMessages Message[]         @relation("ReceivedMessages")
   sessions         UserSession[]
+  // Team Management: staff sub-accounts
+  parentOwnerId    String?
+  parentOwner      User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
+  staffMembers     User[]            @relation("OwnerToStaff")
+  staffPermissions String            @default("[]") // JSON array: ["BOOKING_APPROVAL", "INQUIRY_RESPONSE", "VIEW_FINANCE"]
 }
 
 model Property {

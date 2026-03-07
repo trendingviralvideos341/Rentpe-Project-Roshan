@@ -33,6 +33,7 @@ export async function getStudentProfile() {
 /** Update student profile */
 export async function updateStudentProfile(data: {
     name?: string;
+    email?: string; // Sensitive field
     phone?: string;
     profilePhoto?: string;
     dateOfBirth?: string;
@@ -45,10 +46,28 @@ export async function updateStudentProfile(data: {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
+    const userId = (session as any).userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
     if (data.name && data.name.trim().length < 2) throw new Error("Name must be at least 2 characters");
 
-    const updated = await (prisma as any).user.update({
-        where: { id: (session as any).userId },
+    // Sensitive field protection: Email change requires a different flow (SIMULATED)
+    if (data.email && data.email !== user?.email) {
+        // In a real app, this triggers an OTP flow. Here we log it and reject direct update.
+        await prisma.auditLog.create({
+            data: {
+                action: 'SENSITIVE_UPDATE_ATTEMPT',
+                targetId: userId,
+                targetType: 'USER',
+                details: `Attempted email change to ${data.email}. Direct update blocked.`,
+                performedBy: userId
+            }
+        });
+        throw new Error("Email change requires OTP verification. Please contact support.");
+    }
+
+    const updated = await (prisma.user as any).update({
+        where: { id: userId },
         data: {
             name: data.name?.trim(),
             phone: data.phone?.trim(),
@@ -64,6 +83,29 @@ export async function updateStudentProfile(data: {
 
     revalidatePath('/dashboard/student/profile');
     return { success: true };
+}
+
+/** Get KYC issues (rejected docs) */
+export async function getStudentKycIssues() {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+
+    const bookings = await prisma.booking.findMany({
+        where: { userId },
+        select: { id: true, propertyName: true }
+    });
+    const bookingIds = bookings.map(b => b.id);
+
+    const rejectedDocs = await prisma.tenantDocument.findMany({
+        where: { bookingId: { in: bookingIds }, status: 'REJECTED' },
+        select: { id: true, type: true, rejectedNote: true, bookingId: true }
+    });
+
+    return rejectedDocs.map(doc => ({
+        ...doc,
+        propertyName: bookings.find(b => b.id === doc.bookingId)?.propertyName
+    }));
 }
 
 /** Update notification preferences */

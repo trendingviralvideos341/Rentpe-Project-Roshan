@@ -21,6 +21,14 @@ export async function createBooking(data: {
     const session = await getSession();
     if (!session) throw new Error("You must be logged in to book.");
 
+    const userId = (session as any).userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    // Auto-fill from profile if not provided
+    const guestName = data.guestName || user?.name || "Anonymous";
+    const guestEmail = data.guestEmail || user?.email;
+    const guestPhone = data.guestPhone || user?.phone;
+
     // Server-side date validation: Move-in cannot be in the past
     const selectedDate = new Date(data.moveInDate);
     const today = new Date();
@@ -36,13 +44,13 @@ export async function createBooking(data: {
             roomId: data.roomId,
             propertyName: data.propertyName,
             occupancy: data.occupancy,
-            guestName: data.guestName,
+            guestName,
             moveInDate: data.moveInDate,
             amount: data.amount,
             status: 'PENDING_APPROVAL',
             paymentStatus: 'UNPAID',
-            guestEmail: data.guestEmail,
-            guestPhone: data.guestPhone,
+            guestEmail,
+            guestPhone,
             occupationType: data.occupationType,
             occupationDetail: data.occupationDetail,
             propertyId: data.propertyId,
