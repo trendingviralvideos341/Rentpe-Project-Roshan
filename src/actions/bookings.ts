@@ -11,7 +11,7 @@ export async function createBooking(data: {
     occupancy: string,
     guestName: string,
     moveInDate: string,
-    amount: string,
+    amount: number,
     guestEmail?: string,
     guestPhone?: string,
     occupationType?: string,
@@ -145,7 +145,7 @@ export async function getAdminBookings() {
 
 export async function approveBooking(id: string, data: {
     roomId?: string,
-    amount?: string,
+    amount?: number,
     occupancy?: string,
     roomAssigned?: string,
     guestName?: string,
@@ -158,7 +158,7 @@ export async function approveBooking(id: string, data: {
     occupationType?: string,
     occupationDetail?: string,
     onboardingDate?: string,
-    pendingAmount?: string,
+    pendingAmount?: number,
 }) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");

@@ -23,7 +23,7 @@ export async function createBillingProfile(tenantId: string) {
     const existing = await prisma.billingProfile.findUnique({ where: { tenantId } });
     if (existing) return existing;
 
-    const rentAmount = parseFloat(tenant.rent.replace(/[^0-9.]/g, ''));
+    const rentAmount = tenant.rent;
     const depositAmount = rentAmount; // Standard: 1 Month Rent as Deposit
 
     return await prisma.$transaction(async (tx) => {

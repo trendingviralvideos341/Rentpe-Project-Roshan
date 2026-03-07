@@ -130,7 +130,7 @@ export async function getOwnerRevenueDashboard(months: number = 6) {
         const key = `${b.createdAt.getFullYear()}-${String(b.createdAt.getMonth() + 1).padStart(2, '0')}`;
         const label = b.createdAt.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
         if (!monthlyMap[key]) monthlyMap[key] = { month: label, gross: 0, refunds: 0, net: 0, bookings: 0 };
-        monthlyMap[key].gross += parseFloat(b.amount || '0');
+        monthlyMap[key].gross += (b as any).amount || 0;
         monthlyMap[key].bookings++;
     }
     for (const r of refunds) {
@@ -144,13 +144,13 @@ export async function getOwnerRevenueDashboard(months: number = 6) {
     // Per-property revenue
     const perProperty = propertyIds.map(p => {
         const propBookings = confirmedBookings.filter((b: any) => b.propertyId === p.id);
-        const gross = propBookings.reduce((sum: number, b: any) => sum + parseFloat(b.amount || '0'), 0);
+        const gross = propBookings.reduce((sum: number, b: any) => sum + (b.amount || 0), 0);
         const propRefunds = refunds.filter((r: any) => propBookings.find((b: any) => b.id === r.bookingId)).reduce((sum: number, r: any) => sum + r.amount, 0);
         return { propertyId: p.id, propertyName: p.name, gross, refunds: propRefunds, net: Math.round((gross - propRefunds) * 100) / 100, bookings: propBookings.length };
     });
 
     // Totals
-    const lifetimeGross = confirmedBookings.reduce((sum: number, b: any) => sum + parseFloat(b.amount || '0'), 0);
+    const lifetimeGross = confirmedBookings.reduce((sum: number, b: any) => sum + (b.amount || 0), 0);
     const lifetimeRefunds = refunds.reduce((sum: number, r: any) => sum + r.amount, 0);
 
     return {
@@ -409,7 +409,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
     const report = bookings.map((b: any) => {
         const refund = refunds.find((r: any) => r.bookingId === b.id);
         const isRevenue = ['BOOKING_CONFIRMED','CHECKED_IN','PAID','CASH_PAID'].includes(b.status);
-        const gross = isRevenue ? parseFloat(b.amount || '0') : 0;
+        const gross = isRevenue ? (b.amount || 0) : 0;
         const refundAmount = refund?.status === 'PROCESSED' ? refund.amount : 0;
         return {
             bookingId: b.displayId, property: b.propertyName, roomType: b.roomType,

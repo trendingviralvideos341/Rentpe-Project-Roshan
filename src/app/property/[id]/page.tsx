@@ -110,7 +110,7 @@ export default function PropertyDetailPage() {
                 guestName: `${formData.firstName} ${formData.middleName} ${formData.lastName}`.replace(/\s+/g, ' ').trim(),
                 occupancy,
                 moveInDate: formData.moveInDate,
-                amount: amount,
+                amount: Number(amount.replace(/[^0-9.]/g, '')),
                 guestEmail: formData.email,
                 guestPhone: `+91${formData.phone}`,
                 occupationType: formData.occupationType,

@@ -174,7 +174,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                 occupationType: form.occupationType,
                 occupationDetail: form.occupationDetail,
                 onboardingDate: form.onboardingDate,
-                pendingAmount: hasPending && pendingAmount ? pendingAmount : undefined,
+                pendingAmount: hasPending && pendingAmount ? Number(pendingAmount.replace(/[^0-9.]/g, '')) : undefined,
             });
             setEditing(false);
             setShowPendingPrompt(false);

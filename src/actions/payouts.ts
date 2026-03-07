@@ -164,7 +164,7 @@ export async function calculateOwnerEarnings(ownerId: string, period: string) {
         select: { id: true, amount: true, propertyName: true }
     });
 
-    const grossAmount = confirmedBookings.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0);
+    const grossAmount = confirmedBookings.reduce((sum, b) => sum + (Number((b as any).amount) || 0), 0);
     const commissionAmount = Math.round((grossAmount * commissionRate) / 100 * 100) / 100;
     const netAmount = grossAmount - commissionAmount;
 

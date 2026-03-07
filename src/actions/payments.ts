@@ -21,7 +21,7 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
         const studentFee = (settings?.feesEnabled && settings?.studentRentFeeFlat) || 0;
 
         // Determine amount from invoice, deposit, or booking
-        let baseAmount = parseInt(booking.amount.replace(/[^0-9]/g, ""));
+        let baseAmount = Number(booking.amount);
         
         if (extras?.invoiceId) {
             const invoice = await (prisma.rentInvoice as any).findUnique({ where: { id: extras.invoiceId } });
@@ -185,7 +185,7 @@ export async function getStudentPaymentHistory() {
             rentRecords = tenants.flatMap(t =>
                 t.rentRecords.map(r => ({
                     id: r.id,
-                    amount: parseFloat(r.amount.replace(/[^0-9.]/g, '')),
+                    amount: r.amount,
                     date: r.paidOn ? new Date(r.paidOn) : r.createdAt,
                     type: "MONTHLY_RENT",
                     description: `Rent for ${r.month} (${t.property.name})`,

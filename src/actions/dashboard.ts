@@ -37,8 +37,7 @@ export async function getOwnerDashboardStats() {
         ]);
 
         const totalRevenue = paidRecords.reduce((sum, record) => {
-            const value = parseFloat(record.amount.replace(/[^0-9.]/g, '')) || 0;
-            return sum + value;
+            return sum + (Number((record as any).amount) || 0);
         }, 0);
 
         const revenueHistory = [
