@@ -15,12 +15,16 @@ export const validateEmail = (v: string): string => {
 };
 
 // ── Phone ────────────────────────────────────────────────────────────────────
-// Must start with +91, then a digit 6-9, then exactly 9 more digits
+// Accepts +91 followed by 10 digits OR just 10 digits (6-9 start)
 export const validatePhone = (v: string): string => {
-    if (!v.trim()) return "Phone number is required";
-    if (!/^\+91[6-9]\d{9}$/.test(v.trim()))
-        return "Must be +91 followed by 10 digits (e.g. +919876543210)";
-    return "";
+    const trimmed = v.trim();
+    if (!trimmed) return "Phone number is required";
+
+    // Support either +91XXXXXXXXXX (13 chars) or XXXXXXXXXX (10 chars)
+    if (/^\+91[6-9]\d{9}$/.test(trimmed)) return "";
+    if (/^[6-9]\d{9}$/.test(trimmed)) return "";
+
+    return "Enter a valid 10-digit number (e.g. 9876543210)";
 };
 
 // ── Name ─────────────────────────────────────────────────────────────────────
@@ -57,10 +61,25 @@ export const validatePassword = (v: string): string => {
     return "";
 };
 
-// ── Helpers for phone input — restrict to +91 prefix + max 13 chars ──────────
+// ── Helpers for phone input — Allow flexible input, normalize to +91 for DB ──
 export function normalizePhone(raw: string): string {
-    let v = raw;
-    if (!v.startsWith("+91")) v = "+91" + v.replace(/^\+91/, "");
+    let v = raw.trim().replace(/\s+/g, ""); // Remove spaces
+
+    // If it's exactly 10 digits starting with 6-9, prepend +91
+    if (/^[6-9]\d{9}$/.test(v)) {
+        return "+91" + v;
+    }
+
+    // If it starts with 91 (no +), prepend +
+    if (/^91[6-9]\d{9}$/.test(v)) {
+        return "+" + v;
+    }
+
+    // Otherwise ensure it starts with +91 if intended for Indian numbers
+    if (!v.startsWith("+91") && v.length >= 10) {
+        // Fallback or leave as is if already valid
+    }
+
     if (v.length > 13) v = v.slice(0, 13);
     return v;
 }

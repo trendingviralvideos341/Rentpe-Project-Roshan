@@ -516,6 +516,8 @@ export async function approveProperty(propertyId: string, approved: boolean, not
 
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
     const isFeeEnabled = settings?.feesEnabled && (settings?.ownerOnboardingFeeFlat > 0);
+
+    // Phase 31: Industry Standard - Admin Approves Docs -> Payment Pending -> Live
     const status = approved ? (isFeeEnabled ? 'PAYMENT_PENDING' : 'LIVE') : 'REJECTED';
 
     const property = await prisma.property.update({

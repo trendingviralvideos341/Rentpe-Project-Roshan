@@ -49,6 +49,7 @@ model Property {
   description String?
   amenities   String
   images      String
+  // PENDING_APPROVAL, PAYMENT_PENDING, LIVE, REJECTED, SUSPENDED
   status      String     @default("PENDING_APPROVAL")
   adminNotes  String?
   pgPhotoUrl  String?

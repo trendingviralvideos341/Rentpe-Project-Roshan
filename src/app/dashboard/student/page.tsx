@@ -14,6 +14,9 @@ import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { generateInvoicePDF } from "@/utils/invoiceGenerator";
+import { BookingStepper } from "@/components/booking/BookingStepper";
+import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
+import { toast } from "sonner";
 
 const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
@@ -580,7 +583,14 @@ export default function StudentDashboardPage() {
                                                 onSigned={() => { fetchData(); }}
                                             />
 
-                                            {/* ── Room Allocation Details ── */}
+                                            {/* ── Professional Journey Stepper (Phase 31) ── */}
+                                            {!isCancelled && booking.status !== "REJECTED" && (
+                                                <div className="py-4 border-y border-slate-100 my-4 bg-slate-50/50 rounded-xl px-4">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Booking Progress</p>
+                                                    <BookingStepper status={booking.status} />
+                                                </div>
+                                            )}
+
                                             {(isApproved || isPaid || isCheckedIn) && (
                                                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3">
                                                     <p className="text-xs font-bold text-purple-700 mb-2">📋 Allocation Details</p>
@@ -664,11 +674,14 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             </div>
 
-                                            {/* ── Document Section (expanded) ── */}
+                                            {/* ── Document Section (Phase 31 KYC) ── */}
                                             {expandedDocs === booking.id && showDocs && (
-                                                <div className="border-t pt-3">
-                                                    <div className="text-xs font-bold text-blue-700 uppercase mb-2">📎 Document Verification</div>
-                                                    <DocumentSection booking={booking} />
+                                                <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                                                    <StudentKYCUploader
+                                                        bookingId={booking.id}
+                                                        existingDocs={booking.documents || []}
+                                                        onUploadSuccess={() => fetchData()}
+                                                    />
                                                 </div>
                                             )}
                                         </CardContent>

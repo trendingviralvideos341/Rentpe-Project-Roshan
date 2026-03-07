@@ -12,6 +12,8 @@ import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom, de
 import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus, Trash2, RefreshCcw, Eye, Camera } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
+import { toast } from "sonner";
 
 export default function PropertyManagePage() {
     const params = useParams();
@@ -384,6 +386,7 @@ export default function PropertyManagePage() {
                             ${property.status === 'LIVE' ? 'bg-green-100 text-green-700' : ''}
                             ${property.status === 'REJECTED' ? 'bg-red-100 text-red-700' : ''}
                             ${property.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-700' : ''}
+                            ${property.status === 'PAYMENT_PENDING' ? 'bg-purple-100 text-purple-700 border-purple-200' : ''}
 `}>
                             {property.status.replace('_', ' ')}
                         </Badge>
@@ -452,6 +455,17 @@ export default function PropertyManagePage() {
                         }}>Review Required Changes</Button>
                     </div>
                 </div>
+            )}
+
+            {property.status === 'PAYMENT_PENDING' && (
+                <OwnerPaymentCard
+                    propertyId={propertyId}
+                    propertyName={property.name}
+                    onSuccess={() => {
+                        setProperty({ ...property, status: 'LIVE' });
+                        router.refresh();
+                    }}
+                />
             )}
 
             <Tabs defaultValue="details">
