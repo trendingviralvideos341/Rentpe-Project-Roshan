@@ -277,6 +277,83 @@ model Tenant {
   // Governance & Operations
   disputes            Dispute[]
   attendances         Attendance[]
+
+  // Financial System Integration
+  billingProfile      BillingProfile?
+  settlementRecord    SettlementRecord?
+}
+
+// ── Financial System Models ──
+
+model BillingProfile {
+  id                String           @id @default(uuid())
+  tenantId          String           @unique
+  propertyId        String
+  roomId            String
+  bedId             String?
+  monthlyRent       Float
+  securityDeposit   Float
+  billingDay        Int              @default(1) // Day of month when invoice is generated
+  status            String           @default("ACTIVE") // ACTIVE | CLOSED
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  tenant            Tenant           @relation(fields: [tenantId], references: [id])
+  invoices          RentInvoice[]
+  deposit           SecurityDeposit?
+}
+
+model RentInvoice {
+  id                String           @id @default(uuid())
+  displayId         String           @unique
+  billingProfileId  String
+  tenantId          String
+  propertyId        String
+  month             String           // e.g. "March 2026"
+  amount            Float
+  dueDate           DateTime
+  // PENDING | PAID | OVERDUE | PARTIALLY_PAID | CANCELLED
+  status            String           @default("PENDING")
+  paidAmount        Float            @default(0)
+  paidAt            DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  billingProfile    BillingProfile   @relation(fields: [billingProfileId], references: [id])
+  payments          Payment[]        @relation("InvoicePayments")
+}
+
+model SecurityDeposit {
+  id                String           @id @default(uuid())
+  billingProfileId  String           @unique
+  tenantId          String
+  amount            Float
+  // PENDING | PAID | REFUNDED | PARTIALLY_REFUNDED
+  status            String           @default("PENDING")
+  paidAt            DateTime?
+  refundStatus      String?          // PENDING | PROCESSED
+  refundAmount      Float?
+  deductionAmount   Float?
+  deductionReason   String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  billingProfile    BillingProfile   @relation(fields: [billingProfileId], references: [id])
+  payments          Payment[]        @relation("DepositPayments")
+}
+
+model SettlementRecord {
+  id                String           @id @default(uuid())
+  tenantId          String           @unique
+  finalRentPending  Float
+  utilityCharges    Float            @default(0)
+  damageDeductions  Float            @default(0)
+  depositRefunded   Float
+  settlementDate    DateTime         @default(now())
+  notes             String?
+  createdAt         DateTime         @default(now())
+
+  tenant            Tenant           @relation(fields: [tenantId], references: [id])
 }
 
 // ── Tenant History (Archived stay records) ──
@@ -293,8 +370,6 @@ model TenantHistory {
   totalPaid        Float
   createdAt        DateTime @default(now())
 }
-
-
 
 // ── Operations (Food & Attendance) ──
 
@@ -358,6 +433,8 @@ model RentRecord {
 model Payment {
   id              String   @id @default(uuid())
   bookingId       String
+  invoiceId       String?  // Optional: Link to formal invoice
+  depositId       String?  // Optional: Link to security deposit
   amount          Float
   method          String
   status          String   @default("PENDING")
@@ -366,6 +443,8 @@ model Payment {
   verifiedBy      String?
   date            DateTime @default(now())
   booking         Booking  @relation(fields: [bookingId], references: [id])
+  invoice         RentInvoice? @relation("InvoicePayments", fields: [invoiceId], references: [id])
+  deposit         SecurityDeposit? @relation("DepositPayments", fields: [depositId], references: [id])
 }
 
 model FoodMenu {
