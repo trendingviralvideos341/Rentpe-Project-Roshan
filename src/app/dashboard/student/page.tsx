@@ -412,31 +412,42 @@ export default function StudentDashboardPage() {
                     ) : (
                         <div className="space-y-4">
                             {/* Actionable Alerts Unified Banner */}
-                            {bookings.some((b: any) => (b.status === "APPROVED_KYC_PENDING") || (b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED") || ((b.status === "PAID" || b.status === "CASH_PAID") && !b.agreementSigned)) && (
-                                <div className="space-y-3 mb-6">
-                                    {bookings.map((booking: any) => {
-                                        const isKyc = booking.status === "APPROVED_KYC_PENDING";
-                                        const isPay = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED";
-                                        const isAgre = (booking.status === "PAID" || booking.status === "CASH_PAID") && !booking.agreementSigned;
-
-                                        if (isKyc) return <AlertBanner key={`alert-kyc-${booking.id}`} type="warning" message={`Pending Docs: Please upload KYC for ${booking.propertyName} to proceed.`} actionLabel="Upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
-                                        if (isPay) return <AlertBanner key={`alert-pay-${booking.id}`} type="error" message={`Payment Due: KYC Verified! Pay ₹${booking.amount} to reserve ${booking.propertyName}.`} actionLabel="Pay Now" onAction={() => window.location.href = `/dashboard/student/pay/${booking.id}`} />;
-                                        if (isAgre) return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Sign Agreement: Reservation confirmed for ${booking.propertyName}. Please sign to check-in.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
-                                        return null;
-                                    })}
-                                </div>
-                            )}
+                            {bookings.some((b: any) =>
+                b.status === 'APPROVED_PENDING_TOKEN' ||
+                b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED' ||
+                b.status === 'AGREEMENT_PENDING' ||
+                ((b.status === 'PAID' || b.status === 'CASH_PAID') && !b.agreementSigned)
+            ) && (
+                <div className="space-y-3 mb-6">
+                    {bookings.map((booking: any) => {
+                        if (booking.status === 'APPROVED_PENDING_TOKEN')
+                            return <AlertBanner key={`alert-token-${booking.id}`} type="error" message={`Action Required: Pay ₹${booking.tokenAmount || 1000} token to reserve your room at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' })} />;
+                        if (booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING')
+                            return <AlertBanner key={`alert-kyc-${booking.id}`} type="warning" message={`Upload KYC documents for ${booking.propertyName} to proceed.`} actionLabel="Upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
+                        if (booking.status === 'KYC_FAILED')
+                            return <AlertBanner key={`alert-kycfail-${booking.id}`} type="error" message={`KYC Failed for ${booking.propertyName}. ${booking.kycNotes ? `Reason: ${booking.kycNotes}` : ''} Please re-upload your documents.`} actionLabel="Re-upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
+                        if (booking.status === 'AGREEMENT_PENDING')
+                            return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
+                        if ((booking.status === 'PAID' || booking.status === 'CASH_PAID') && !booking.agreementSigned)
+                            return <AlertBanner key={`alert-paidsign-${booking.id}`} type="info" message={`Sign Agreement: Payment confirmed for ${booking.propertyName}. Please sign to complete.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
+                        return null;
+                    })}
+                </div>
+            )}
 
                             {bookings.map((booking: any) => {
-                                const isKycPending = booking.status === "APPROVED_KYC_PENDING";
-                                const isPaymentPending = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED";
-                                const isApproved = isKycPending || isPaymentPending;
-                                const isCheckedIn = booking.status === "CHECKED_IN";
-                                const isPaid = (booking.status === "PAID" || booking.status === "CASH_PAID") && !isCheckedIn;
-                                const isCancelled = booking.status === "CANCELLED";
-                                const isCashPending = booking.paymentMethod === "CASH" && (booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED");
-                                const showDocs = isKycPending || isPaymentPending || isPaid || isCheckedIn;
-                                const hasPendingAmount = isPaid && booking.pendingAmount && parseFloat(booking.pendingAmount) > 0;
+                                const isTokenPending = booking.status === 'APPROVED_PENDING_TOKEN';
+                                const isRoomReserved = booking.status === 'ROOM_RESERVED';
+                                const isKycPending = booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_FAILED';
+                                const isPaymentPending = booking.status === 'APPROVED_PAYMENT_PENDING' || booking.status === 'APPROVED';
+                                const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
+                                const isApproved = isTokenPending || isRoomReserved || isKycPending || isPaymentPending || isAgreementPending;
+                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED';
+                                const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID') && !isCheckedIn;
+                                const isCancelled = booking.status === 'CANCELLED' || booking.status === 'EXPIRED';
+                                const isCashPending = booking.paymentMethod === 'CASH' && isPaymentPending;
+                                const showDocs = isRoomReserved || isKycPending || isPaymentPending || isPaid || isCheckedIn;
+                                const hasPendingAmount = (isPaid || isPaymentPending) && booking.pendingAmount && parseFloat(booking.pendingAmount) > 0;
 
                                 return (
                                     <Card key={booking.id} className={`${isApproved ? "border-green-400 border-2" : isPaid ? "border-blue-300 border-2" : hasPendingAmount ? "border-red-400 border-2" : isCancelled ? "border-gray-300 opacity-70" : ""}`}>
@@ -587,7 +598,7 @@ export default function StudentDashboardPage() {
                                             {!isCancelled && booking.status !== "REJECTED" && (
                                                 <div className="py-4 border-y border-slate-100 my-4 bg-slate-50/50 rounded-xl px-4">
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Booking Progress</p>
-                                                    <BookingStepper status={booking.status} />
+                                                    <BookingStepper status={booking.status} reservationExpiresAt={booking.reservationExpiresAt} />
                                                 </div>
                                             )}
 
@@ -637,7 +648,32 @@ export default function StudentDashboardPage() {
                                                 </div>
                                                 <div className="flex gap-2">
                                                     {/* Cancel button for pending bookings */}
-                                                    {booking.status === "PENDING_APPROVAL" && (
+                                                    {/* 💳 Pay Token CTA */}
+                                                    {isTokenPending && (
+                                                        <div className="w-full bg-purple-50 border-2 border-purple-400 rounded-xl p-4 text-center">
+                                                            <p className="text-sm font-bold text-purple-800 mb-1">💳 Pay Token to Reserve Your Room</p>
+                                                            <p className="text-xs text-purple-600 mb-3">A token of ₹{booking.tokenAmount || 1000} locks your room for 7 days while you complete KYC.</p>
+                                                            <div className="flex gap-2 justify-center">
+                                                                <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold" size="sm" asChild>
+                                                                    <a href={`/secure/payment?id=${booking.id}&amount=${booking.tokenAmount || 1000}&type=token`}>💳 Pay ₹{booking.tokenAmount || 1000} Token Online</a>
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* ✍️ Sign Agreement CTA */}
+                                                    {isAgreementPending && (
+                                                        <div className="w-full bg-violet-50 border-2 border-violet-400 rounded-xl p-4 text-center">
+                                                            <p className="text-sm font-bold text-violet-800 mb-1">✍️ Please Sign Your Rental Agreement</p>
+                                                            <p className="text-xs text-violet-600 mb-3">Your KYC has been verified! Sign the agreement to confirm your booking.</p>
+                                                            <Button className="bg-violet-600 hover:bg-violet-700 text-white font-bold" size="sm" onClick={() => setSigningBooking(booking)}>
+                                                                ✍️ Sign Agreement Now
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Cancel for pending */}
+                                                    {booking.status === 'PENDING_APPROVAL' && (
                                                         <Button
                                                             size="sm"
                                                             className="bg-red-500 hover:bg-red-600 text-white font-bold"
