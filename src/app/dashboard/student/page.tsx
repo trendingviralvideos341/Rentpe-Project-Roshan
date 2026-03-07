@@ -577,7 +577,7 @@ export default function StudentDashboardPage() {
                                                 booking={signingBooking}
                                                 isOpen={!!signingBooking && signingBooking.id === booking.id}
                                                 onClose={() => setSigningBooking(null)}
-                                                onSigned={() => { loadData(); }}
+                                                onSigned={() => { fetchData(); }}
                                             />
 
                                             {/* ── Room Allocation Details ── */}
