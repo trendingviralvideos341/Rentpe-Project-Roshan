@@ -63,7 +63,11 @@ model User {
   parentOwnerId    String?
   parentOwner      User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
   staffMembers     User[]            @relation("OwnerToStaff")
-  staffPermissions String            @default("[]") // JSON array: ["BOOKING_APPROVAL", "INQUIRY_RESPONSE", "VIEW_FINANCE"]
+  staffPermissions String?           // JSON array of strings
+  
+  // Governance & Security
+  fraudAlerts      FraudAlert[]
+  loginLogs        LoginLog[]
 }
 
 model Property {
@@ -267,6 +271,10 @@ model Tenant {
   room                Room             @relation(fields: [roomId], references: [id])
   property            Property         @relation(fields: [propertyId], references: [id])
   reviews             Review[]
+  
+  // Governance & Operations
+  disputes            Dispute[]
+  attendances         Attendance[]
 }
 
 // ── Tenant History (Archived stay records) ──
@@ -282,6 +290,23 @@ model TenantHistory {
   stayDurationDays Int
   totalPaid        Float
   createdAt        DateTime @default(now())
+}
+
+
+
+// ── Operations (Food & Attendance) ──
+
+model Attendance {
+  id         String   @id @default(uuid())
+  tenantId   String
+  propertyId String
+  date       String   // "YYYY-MM-DD"
+  // PRESENT | ABSENT | LATE | LEAVE
+  status     String   @default("PRESENT")
+  mealType   String   @default("GENERAL") // BREAKFAST | LUNCH | DINNER | GENERAL
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, date, mealType])
 }
 
 // ── Move Out Requests ──
@@ -609,6 +634,7 @@ model OwnerPayout {
 model Dispute {
   id            String    @id @default(uuid())
   displayId     String    @unique
+  tenantId      String?   // New relation to Tenant
   bookingId     String?
   raisedById    String    // userId of student or owner
   raisedByRole  String    @default("USER") // USER | OWNER
@@ -626,6 +652,7 @@ model Dispute {
   adminNotes    String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
 }
 
 // ── Booking Timeline Events (immutable chronological history per booking) ──
@@ -644,6 +671,7 @@ model BookingEvent {
 // ── Fraud Alerts (auto-detected suspicious behaviour) ──
 model FraudAlert {
   id               String   @id @default(uuid())
+  userId           String   // Explicit userId for relation
   type             String   // HIGH_BOOKING_VOLUME | DUPLICATE_CONTACT | RAPID_CANCELLATIONS | RAPID_LISTINGS | SUSPICIOUS_IP
   severity         String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
   targetId         String
@@ -655,6 +683,7 @@ model FraudAlert {
   resolution       String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id])
 }
 
 // ── System Events (operational health log, visible on Admin dashboard) ──
@@ -681,6 +710,7 @@ model LoginLog {
   userAgent  String?
   failReason String?  // WRONG_PASSWORD | ACCOUNT_BANNED | RATE_LIMITED
   createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
 }
 
 // ── Rate Limit Tracker (DB-based, no Redis needed) ──

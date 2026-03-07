@@ -36,6 +36,7 @@ export async function getSuperAdminBusinessSnapshot() {
         totalBookingRequests, totalConfirmedBookings,
         totalCancelledBookings, totalDisputes, resolvedDisputes, openDisputes,
         totalFraudAlerts, openFraudAlerts,
+        totalTickets, todayAttendance,
         settings,
         platformFees,
     ] = await Promise.all([
@@ -58,6 +59,8 @@ export async function getSuperAdminBusinessSnapshot() {
         (prisma as any).dispute.count({ where: { status: { in: ['OPEN','UNDER_REVIEW'] } } }),
         (prisma as any).fraudAlert.count(),
         (prisma as any).fraudAlert.count({ where: { status: 'OPEN' } }),
+        (prisma as any).ticket.count(),
+        (prisma as any).attendance.count({ where: { date: new Date().toISOString().split('T')[0] } }),
         prisma.platformSettings.findUnique({ where: { id: 'singleton' } }),
         (prisma as any).platformFee.aggregate({ _sum: { platformEarned: true } }),
     ]);
@@ -92,6 +95,7 @@ export async function getSuperAdminBusinessSnapshot() {
         },
         disputes: { total: totalDisputes, open: openDisputes, resolved: resolvedDisputes },
         fraud: { total: totalFraudAlerts, open: openFraudAlerts },
+        support: { tickets: totalTickets, attendanceToday: todayAttendance },
     };
 }
 
