@@ -113,21 +113,21 @@ async function main() {
         data: {
             displayId: "TNT-001", name: "Priya Verma", phone: "9876543210", email: "priya@example.com",
             propertyId: property.id, roomId: room2.id, roomNumber: "204", roomType: "Double",
-            rent: "₹15,000", startDate: "01 Jan 2024", status: "ACTIVE", studentId: student2.id
+            rent: 15000, startDate: "01 Jan 2024", status: "ACTIVE", studentId: student2.id
         }
     });
     const tenant2 = await prisma.tenant.create({
         data: {
             displayId: "TNT-002", name: "Amit Rathore", phone: "9123456789", email: "amit.r@example.com",
             propertyId: property.id, roomId: room3.id, roomNumber: "305", roomType: "Triple",
-            rent: "₹12,000", startDate: "15 Jan 2024", status: "ACTIVE", studentId: student1.id // Reusing student1 for demo
+            rent: 12000, startDate: "15 Jan 2024", status: "ACTIVE", studentId: student1.id // Reusing student1 for demo
         }
     });
     const tenant3 = await prisma.tenant.create({
         data: {
             displayId: "TNT-003", name: "Sneha Gupta", phone: "9988776655", email: "sneha@example.com",
             propertyId: property.id, roomId: room1.id, roomNumber: "101", roomType: "Single",
-            rent: "₹18,000", startDate: "01 Feb 2024", status: "ACTIVE", studentId: student3.id
+            rent: 18000, startDate: "01 Feb 2024", status: "ACTIVE", studentId: student3.id
         }
     });
     console.log("✅ 3 Tenants created");
@@ -135,11 +135,11 @@ async function main() {
     // ─── Create Rent Records ─────────────────────────
     await prisma.rentRecord.createMany({
         data: [
-            { tenantId: tenant1.id, month: "Jan 2024", amount: "₹15,000", paid: true, paidOn: "02 Jan 2024" },
-            { tenantId: tenant1.id, month: "Feb 2024", amount: "₹15,000", paid: true, paidOn: "01 Feb 2024" },
-            { tenantId: tenant2.id, month: "Jan 2024", amount: "₹12,000", paid: true, paidOn: "16 Jan 2024" },
-            { tenantId: tenant2.id, month: "Feb 2024", amount: "₹12,000", paid: false },
-            { tenantId: tenant3.id, month: "Feb 2024", amount: "₹18,000", paid: false },
+            { tenantId: tenant1.id, month: "Jan 2024", amount: 15000, paid: true, paidOn: "02 Jan 2024" },
+            { tenantId: tenant1.id, month: "Feb 2024", amount: 15000, paid: true, paidOn: "01 Feb 2024" },
+            { tenantId: tenant2.id, month: "Jan 2024", amount: 12000, paid: true, paidOn: "16 Jan 2024" },
+            { tenantId: tenant2.id, month: "Feb 2024", amount: 12000, paid: false },
+            { tenantId: tenant3.id, month: "Feb 2024", amount: 18000, paid: false },
         ]
     });
     console.log("✅ Rent records created");

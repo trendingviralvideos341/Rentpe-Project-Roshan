@@ -251,7 +251,7 @@ model Tenant {
   email               String?
   roomNumber          String
   roomType            String
-  rent                String
+  rent                Float
   startDate           String           // Move-in date
   expectedMoveOutDate String?
   actualMoveOutDate   String?
@@ -423,7 +423,7 @@ model RentRecord {
   id        String   @id @default(uuid())
   tenantId  String
   month     String
-  amount    String
+  amount    Float
   paid      Boolean  @default(false)
   paidOn    String?
   createdAt DateTime @default(now())

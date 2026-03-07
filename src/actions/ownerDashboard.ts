@@ -210,45 +210,43 @@ export async function getPropertyPerformanceAnalytics() {
 
     const results = [];
     for (const prop of properties) {
-        const propBookings = await prisma.booking.findMany({
-            where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'CANCELLED'] } },
-            select: { id: true, status: true, amount: true, moveInDate: true, createdAt: true, updatedAt: true }
-        });
+        const stats = await prisma.$transaction([
+            prisma.booking.count({ where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'CANCELLED'] } } }),
+            prisma.booking.count({ where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] } } }),
+            prisma.booking.count({ where: { propertyId: prop.id, status: 'CANCELLED' } }),
+            prisma.booking.aggregate({
+                where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] } },
+                _sum: { amount: true }
+            })
+        ]);
 
-        const confirmed = propBookings.filter((b: any) => ['BOOKING_CONFIRMED','CHECKED_IN','PAID','CASH_PAID'].includes(b.status));
-        const cancelled = propBookings.filter((b: any) => b.status === 'CANCELLED');
+        const totalBookings = stats[0];
+        const confirmedCount = stats[1];
+        const cancelledCount = stats[2];
+        const totalRevenue = (stats[3] as any)._sum.amount || 0;
 
-        // Avg booking duration (days between createdAt and updatedAt for confirmed)
-        const durations = confirmed.map((b: any) => Math.abs(new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-        const avgDuration = durations.length ? Math.round(durations.reduce((a: number, d: number) => a + d, 0) / durations.length) : 0;
-
-        // Revenue
-        const totalRevenue = confirmed.reduce((sum: number, b: any) => sum + parseFloat(b.amount || '0'), 0);
+        // Avg Rating
+        const reviews = await (prisma as any).review.findMany({ where: { propertyId: prop.id } });
+        const avgRating = reviews.length > 0 ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length : 0;
 
         // Beds
         const beds = (prop as any).rooms.flatMap((r: any) => r.beds);
         const totalBeds = beds.length;
         const occupiedBeds = beds.filter((b: any) => b.status === 'OCCUPIED').length;
 
-        // Reviews
-        const avgRating = (prop as any).reviews.length > 0
-            ? (prop as any).reviews.reduce((s: number, r: any) => s + r.rating, 0) / (prop as any).reviews.length
-            : 0;
-
         results.push({
             propertyId: prop.id,
             propertyName: prop.name,
             status: prop.status,
-            totalBookings: propBookings.length,
-            confirmedBookings: confirmed.length,
-            cancelledBookings: cancelled.length,
-            cancellationRate: propBookings.length > 0 ? Math.round((cancelled.length / propBookings.length) * 100) : 0,
+            totalBookings,
+            confirmedBookings: confirmedCount,
+            cancelledBookings: cancelledCount,
+            cancellationRate: totalBookings > 0 ? Math.round((cancelledCount / totalBookings) * 100) : 0,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
-            avgBookingDuration: avgDuration,
+            avgRating: Math.round(avgRating * 10) / 10,
             totalBeds, occupiedBeds,
             occupancyRate: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0,
-            avgRating: Math.round(avgRating * 10) / 10,
-            reviewCount: (prop as any).reviews.length,
+            reviewCount: reviews.length,
         });
     }
     return results;
