@@ -13,6 +13,8 @@ model User {
   passwordHash     String
   role             String            @default("USER")
   roles            String            @default("USER") // Comma-separated list of assigned roles
+  // Admin sub-role for RBAC: SUPER_ADMIN | OPERATIONS | SUPPORT | MODERATION | COMPLIANCE
+  adminRole        String?           // null for non-admins
   isStudent        Boolean           @default(false)
   isOwner          Boolean           @default(false)
   isAdmin          Boolean           @default(false)
@@ -544,4 +546,82 @@ model Dispute {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+// ── Booking Timeline Events (immutable chronological history per booking) ──
+model BookingEvent {
+  id              String   @id @default(uuid())
+  bookingId       String
+  eventType       String   // REQUEST_SUBMITTED | OWNER_VIEWED | OWNER_ACCEPTED | BED_ALLOCATED | KYC_UPLOADED | KYC_VERIFIED | BOOKING_CONFIRMED | CANCELLED | etc.
+  title           String
+  description     String?
+  performedBy     String?  // userId (null = SYSTEM)
+  performedByRole String?  // USER | OWNER | ADMIN | SYSTEM
+  metadata        String   @default("{}") // JSON extra context
+  createdAt       DateTime @default(now())
+}
+
+// ── Fraud Alerts (auto-detected suspicious behaviour) ──
+model FraudAlert {
+  id               String   @id @default(uuid())
+  type             String   // HIGH_BOOKING_VOLUME | DUPLICATE_CONTACT | RAPID_CANCELLATIONS | RAPID_LISTINGS | SUSPICIOUS_IP
+  severity         String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  targetId         String
+  targetType       String   // USER | PROPERTY | BOOKING
+  description      String
+  metadata         String   @default("{}")
+  status           String   @default("OPEN") // OPEN | UNDER_INVESTIGATION | RESOLVED | DISMISSED
+  investigatedBy   String?
+  resolution       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ── System Events (operational health log, visible on Admin dashboard) ──
+model SystemEvent {
+  id        String   @id @default(uuid())
+  type      String   // LOGIN_FAILURE | SERVER_ERROR | BOOKING_FAILURE | SUSPICIOUS_ACCESS | RATE_LIMIT_HIT
+  severity  String   @default("INFO") // INFO | WARNING | ERROR | CRITICAL
+  message   String
+  userId    String?
+  ipAddress String?
+  path      String?
+  metadata  String   @default("{}")
+  createdAt DateTime @default(now())
+}
+
+// ── Admin Login Log (security tracking: IP, device, success/fail) ──
+model LoginLog {
+  id         String   @id @default(uuid())
+  userId     String
+  userRole   String
+  adminRole  String?  // sub-role if admin
+  success    Boolean
+  ipAddress  String?
+  userAgent  String?
+  failReason String?  // WRONG_PASSWORD | ACCOUNT_BANNED | RATE_LIMITED
+  createdAt  DateTime @default(now())
+}
+
+// ── Rate Limit Tracker (DB-based, no Redis needed) ──
+model RateLimit {
+  id          String   @id @default(uuid())
+  key         String   @unique  // e.g. "booking:user123" or "login:1.2.3.4"
+  action      String
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+  windowEnd   DateTime
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Admin Permission Overrides (granular RBAC beyond role defaults) ──
+model AdminPermission {
+  id         String   @id @default(uuid())
+  adminId    String
+  permission String   // CANCEL_BOOKING | SUSPEND_PROPERTY | VIEW_KYC | RESOLVE_DISPUTE | MANAGE_PAYOUTS
+  granted    Boolean  @default(true)
+  grantedBy  String?
+  reason     String?
+  createdAt  DateTime @default(now())
+}
+
 
