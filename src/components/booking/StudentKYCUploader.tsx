@@ -22,8 +22,10 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
         { key: 'PAN_BACK', label: 'PAN Card (Back)', desc: 'Back side (Optional)', required: false },
         { key: 'STUDENT_ID', label: 'Student ID / University ID', desc: 'Current academic year only', required: true },
         { key: 'COMPANY_ID', label: 'Company ID / Offer Letter', desc: 'Working professionals only', required: true },
+        { key: 'LIVE_PHOTO', label: 'Live Photo / Selfie', desc: 'Clear selfie or live photo for identity match', required: true },
         { key: 'OTHER', label: 'Others (If Any)', desc: 'Any additional supporting document', required: false },
     ];
+
 
     const handleUpload = async (file: File, type: string) => {
         if (file.size > 5 * 1024 * 1024) return toast.error("File size must be less than 5MB");

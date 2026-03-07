@@ -106,6 +106,10 @@ model Booking {
   guestAddress     String?
   onboardingDate   String?
   moveInDate       String
+  // Status: PENDING_APPROVAL | APPROVED_PENDING_TOKEN | TOKEN_PAID | ROOM_RESERVED
+  //         KYC_PENDING | KYC_VERIFIED | KYC_FAILED | AGREEMENT_PENDING
+  //         BOOKING_CONFIRMED | CHECKED_IN | WAITLISTED | REJECTED | CANCELLED | EXPIRED
+  //         (Legacy: APPROVED_KYC_PENDING, APPROVED_PAYMENT_PENDING, PAID, CASH_PAID)
   status           String           @default("PENDING_APPROVAL")
   paymentStatus    String           @default("UNPAID")
   paymentMethod    String?
@@ -113,7 +117,20 @@ model Booking {
   amount           String
   roomAssigned     String?
   agreementSigned  Boolean          @default(false)
+  agreementSignedAt DateTime?
   tenantId         String?          @unique
+  // Token payment fields
+  tokenAmount      Float?           @default(1000)
+  tokenPaidAt      DateTime?
+  tokenPaymentId   String?
+  reservationExpiresAt DateTime?
+  // KYC fields
+  kycVerifiedAt    DateTime?
+  kycRejectedAt    DateTime?
+  kycNotes         String?
+  // Rejection / cancellation
+  rejectionReason  String?
+  cancelReason     String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?
@@ -129,6 +146,22 @@ model Booking {
   payments         Payment[]
   platformFee      PlatformFee?
   documents        TenantDocument[]
+}
+
+model Waitlist {
+  id           String   @id @default(uuid())
+  userId       String
+  propertyId   String
+  roomType     String?
+  occupancy    String?
+  guestName    String
+  guestPhone   String?
+  guestEmail   String?
+  moveInDate   String?
+  status       String   @default("WAITING") // WAITING | NOTIFIED | CONVERTED | CANCELLED
+  notifiedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Tenant {

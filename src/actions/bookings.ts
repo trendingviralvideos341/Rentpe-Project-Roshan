@@ -160,7 +160,7 @@ export async function approveBooking(id: string, data: {
     const booking = await (prisma as any).booking.update({
         where: { id },
         data: {
-            status: 'APPROVED_KYC_PENDING',
+            status: 'APPROVED_PENDING_TOKEN',
             roomId: data.roomId,
             amount: data.amount,
             occupancy: data.occupancy,
@@ -465,40 +465,39 @@ export async function getPendingBookingsCount() {
     }
 }
 
-export async function cancelBooking(id: string) {
+export async function cancelBooking(id: string, reason?: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
     const booking = await prisma.booking.findUnique({ where: { id } });
     if (!booking) throw new Error("Booking not found");
-    // Admins can cancel any booking, otherwise only the booking creator can cancel
-    if (session.role !== 'ADMIN' && booking.userId !== (session as any).userId) throw new Error("Unauthorized");
-    if (booking.status !== 'PENDING_APPROVAL') throw new Error("Only pending bookings can be cancelled.");
+    if (session.role !== 'ADMIN' && session.role !== 'OWNER' && booking.userId !== (session as any).userId) throw new Error("Unauthorized");
 
-    const updated = await prisma.booking.update({
+    const updated = await (prisma as any).booking.update({
         where: { id },
-        data: { status: 'CANCELLED' }
+        data: { status: 'CANCELLED', cancelReason: reason || 'Cancelled by user' }
     });
 
-    // Return bed if room was assigned
     if (booking.roomId) {
         const room = await prisma.room.findUnique({ where: { id: booking.roomId } });
-        if (room) {
-            await prisma.room.update({
-                where: { id: room.id },
-                data: { availability: room.availability + 1 }
-            });
+        if (room) await prisma.room.update({ where: { id: room.id }, data: { availability: room.availability + 1 } });
+    }
+
+    // Notify waitlisted students when room opens up
+    if (booking.propertyId) {
+        const waitlisted = await (prisma as any).waitlist.findMany({ where: { propertyId: booking.propertyId, status: 'WAITING' } }).catch(() => []);
+        for (const w of waitlisted) {
+            await createNotification(w.userId, 'BOOKING', `A room is now available at your waitlisted property! Log in to book now.`);
+            await (prisma as any).waitlist.update({ where: { id: w.id }, data: { status: 'NOTIFIED', notifiedAt: new Date() } }).catch(() => {});
         }
     }
 
+    if (booking.userId && (session as any).role !== 'USER') {
+        await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} was cancelled. Reason: ${reason || 'Cancelled'}`);
+    }
+
     await prisma.auditLog.create({
-        data: {
-            action: 'BOOKING_CANCELLED',
-            targetId: id,
-            targetType: 'BOOKING',
-            details: `Booking ${booking.displayId} cancelled by student`,
-            performedBy: (session as any).userId
-        }
+        data: { action: 'BOOKING_CANCELLED', targetId: id, targetType: 'BOOKING', details: `Booking ${booking.displayId} cancelled. Reason: ${reason || 'N/A'}`, performedBy: (session as any).userId }
     });
 
     revalidatePath('/dashboard/student');
@@ -511,30 +510,22 @@ export async function signAgreement(id: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    const booking = await prisma.booking.findUnique({
-        where: { id },
-        include: { user: true }
-    });
+    const booking = await prisma.booking.findUnique({ where: { id }, include: { user: true } });
     if (!booking) throw new Error("Booking not found");
     if (booking.userId !== (session as any).userId) throw new Error("Unauthorized to sign this agreement");
 
-    if (booking.status !== 'PAID' && booking.status !== 'CASH_PAID') {
-        throw new Error("Agreement can only be signed after payment/reservation is confirmed.");
-    }
-
-    const updated = await prisma.booking.update({
+    const updated = await (prisma as any).booking.update({
         where: { id },
-        data: { agreementSigned: true }
+        data: { status: 'BOOKING_CONFIRMED', agreementSigned: true, agreementSignedAt: new Date() }
     });
 
+    if (booking.propertyId) {
+        const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
+        if (property) await createNotification(property.ownerId, 'BOOKING', `Agreement signed by ${(booking as any).guestName}. Booking CONFIRMED for ${booking.propertyName}!`);
+    }
+
     await prisma.auditLog.create({
-        data: {
-            action: 'AGREEEMENT_SIGNED',
-            targetId: id,
-            targetType: 'BOOKING',
-            details: `Digital Agreement signed by ${(booking as any).guestName}. IP tracked for legal compliance.`,
-            performedBy: (session as any).userId
-        }
+        data: { action: 'AGREEMENT_SIGNED', targetId: id, targetType: 'BOOKING', details: `Digital agreement signed by ${(booking as any).guestName}.`, performedBy: (session as any).userId }
     });
 
     revalidatePath('/dashboard/student');
@@ -554,17 +545,14 @@ export async function getStudentPendingActionsCount() {
 
     let count = 0;
     for (const b of bookings) {
-        // 1. KYC pending (no docs or rejected docs)
-        if (b.status === 'APPROVED_KYC_PENDING') {
-            const hasVerified = b.documents.filter(d => d.status === 'VERIFIED').length >= 2;
+        if (b.status === 'APPROVED_PENDING_TOKEN') count++;
+        if (b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED') count++;
+        if (b.status === 'AGREEMENT_PENDING') count++;
+        if (b.status === 'ROOM_RESERVED') {
+            const hasVerified = b.documents.filter((d: any) => d.status === 'VERIFIED').length >= 2;
             if (!hasVerified) count++;
         }
-        // 2. Payment pending
-        if (b.status === 'APPROVED_PAYMENT_PENDING') count++;
-        // 3. Agreement pending
-        if ((b.status === 'PAID' || b.status === 'CASH_PAID') && !b.agreementSigned) count++;
     }
-
     return count;
 }
 
@@ -579,3 +567,168 @@ export async function getAdminAlertCounts() {
 
     return { bookings: pendingBookings, verifications: pendingDocs };
 }
+
+// ─────────────────────────────────────────────
+// NEW: PROFESSIONAL BOOKING LIFECYCLE ACTIONS
+// ─────────────────────────────────────────────
+
+/** Student pays token to lock the room */
+export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' | 'CASH' = 'ONLINE', paymentId?: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking) throw new Error("Booking not found");
+    if (booking.status !== 'APPROVED_PENDING_TOKEN') throw new Error("Booking is not in token payment stage");
+
+    const reservationExpiry = new Date();
+    reservationExpiry.setDate(reservationExpiry.getDate() + 7); // 7-day reservation window
+
+    const updated = await (prisma as any).booking.update({
+        where: { id: bookingId },
+        data: {
+            status: 'ROOM_RESERVED',
+            tokenPaidAt: new Date(),
+            tokenPaymentId: paymentId,
+            paymentMethod,
+            reservationExpiresAt: reservationExpiry,
+        }
+    });
+
+    try {
+        if (booking.propertyId) {
+            const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
+            if (property) await createNotification(property.ownerId, 'PAYMENT', `Token payment received for ${booking.propertyName} by ${booking.guestName}. Room is now RESERVED.`);
+        }
+        await createNotification((session as any).userId, 'BOOKING', `Your room at ${booking.propertyName} is now RESERVED! Complete KYC within 7 days to confirm.`);
+    } catch (e) { }
+
+    await prisma.auditLog.create({
+        data: { action: 'TOKEN_PAID', targetId: bookingId, targetType: 'BOOKING', details: `Token paid via ${paymentMethod}. Reservation expires ${reservationExpiry.toDateString()}.`, performedBy: (session as any).userId }
+    });
+
+    revalidatePath('/dashboard/student');
+    revalidatePath('/dashboard/owner/bookings');
+    return updated;
+}
+
+/** Owner marks token as cash paid */
+export async function markTokenCashPaid(bookingId: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const reservationExpiry = new Date();
+    reservationExpiry.setDate(reservationExpiry.getDate() + 7);
+
+    const updated = await (prisma as any).booking.update({
+        where: { id: bookingId },
+        data: { status: 'KYC_PENDING', tokenPaidAt: new Date(), paymentMethod: 'CASH', reservationExpiresAt: reservationExpiry }
+    });
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (booking?.userId) await createNotification(booking.userId, 'BOOKING', `Cash token confirmed for ${booking.propertyName}. Please upload your KYC documents now.`);
+
+    await prisma.auditLog.create({ data: { action: 'TOKEN_CASH_PAID', targetId: bookingId, targetType: 'BOOKING', details: `Cash token marked by owner. Room reserved.`, performedBy: (session as any).userId } });
+
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/student');
+    return updated;
+}
+
+/** Owner/Admin verifies all KYC → moves to AGREEMENT_PENDING */
+export async function verifyKycAndProceed(bookingId: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const updated = await (prisma as any).booking.update({
+        where: { id: bookingId },
+        data: { status: 'AGREEMENT_PENDING', kycVerifiedAt: new Date() }
+    });
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (booking?.userId) await createNotification(booking.userId, 'BOOKING', `KYC verified! Your rental agreement for ${booking.propertyName} is ready to sign.`);
+
+    await prisma.auditLog.create({ data: { action: 'KYC_VERIFIED', targetId: bookingId, targetType: 'BOOKING', details: `All KYC documents verified. Moved to AGREEMENT_PENDING.`, performedBy: (session as any).userId } });
+
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/student');
+    return updated;
+}
+
+/** Owner/Admin marks KYC as failed */
+export async function markKycFailed(bookingId: string, reason: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const updated = await (prisma as any).booking.update({
+        where: { id: bookingId },
+        data: { status: 'KYC_FAILED', kycNotes: reason, kycRejectedAt: new Date() }
+    });
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (booking?.userId) await createNotification(booking.userId, 'BOOKING', `KYC failed for ${booking.propertyName}. Reason: ${reason}. Please re-upload documents.`);
+
+    await prisma.auditLog.create({ data: { action: 'KYC_FAILED', targetId: bookingId, targetType: 'BOOKING', details: `KYC rejected. Reason: ${reason}`, performedBy: (session as any).userId } });
+
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/student');
+    return updated;
+}
+
+
+
+/** Add student to waitlist */
+export async function addToWaitlist(data: { propertyId: string; roomType?: string; guestName: string; guestPhone?: string; guestEmail?: string; moveInDate?: string; }) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const entry = await (prisma as any).waitlist.create({
+        data: { userId: (session as any).userId, ...data, status: 'WAITING' }
+    });
+
+    const property = await prisma.property.findUnique({ where: { id: data.propertyId } });
+    if (property) await createNotification(property.ownerId, 'BOOKING', `${data.guestName} joined the waitlist for ${property.name}.`);
+
+    revalidatePath('/dashboard/student');
+    return entry;
+}
+
+/** Get owner analytics */
+export async function getOwnerAnalytics() {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    const ownerId = (session as any).userId;
+
+    const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true } })).map(p => p.id);
+
+    const [activeTenants, pendingBookings, kycPending, totalBeds, occupiedBeds] = await Promise.all([
+        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
+        prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: 'PENDING_APPROVAL' } }),
+        prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
+        (prisma.room as any).aggregate({ _sum: { availability: true }, where: { propertyId: { in: propertyIds } } }),
+        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
+    ]);
+
+    const totalBedsCount = (totalBeds._sum?.availability || 0) + occupiedBeds;
+    const occupancyRate = totalBedsCount > 0 ? Math.round((occupiedBeds / totalBedsCount) * 100) : 0;
+
+    return { totalProperties: propertyIds.length, activeTenants, pendingBookings, kycPending, occupancyRate, totalBeds: totalBedsCount };
+}
+
+/** Get platform analytics for admin */
+export async function getPlatformAnalytics() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const [totalProperties, liveProperties, totalBookings, kycPending, activeTenants, pendingDocuments] = await Promise.all([
+        prisma.property.count(),
+        prisma.property.count({ where: { status: 'LIVE' } }),
+        prisma.booking.count(),
+        prisma.booking.count({ where: { status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
+        prisma.tenant.count({ where: { status: 'ACTIVE' } }),
+        prisma.tenantDocument.count({ where: { status: 'PENDING' } }),
+    ]);
+
+    return { totalProperties, liveProperties, totalBookings, kycPending, activeTenants, pendingDocuments };
+}
+

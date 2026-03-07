@@ -16,6 +16,15 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 
 const TYPE_LABELS: Record<string, string> = {
+    AADHAAR_FRONT: "Aadhaar (Front)",
+    AADHAAR_BACK: "Aadhaar (Back)",
+    PAN_FRONT: "PAN Card (Front)",
+    PAN_BACK: "PAN Card (Back)",
+    STUDENT_ID: "Student / University ID",
+    COMPANY_ID: "Company ID / Offer Letter",
+    LIVE_PHOTO: "Live Photo",
+    OTHER: "Other Documents",
+    // Legacy types kept for backward compatibility
     ID_PROOF: "Identity Proof",
     ADDRESS_PROOF: "Address Proof",
     COLLEGE_COMPANY: "College / Company ID",
@@ -23,6 +32,15 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_ICONS: Record<string, any> = {
+    AADHAAR_FRONT: <User className="w-4 h-4" />,
+    AADHAAR_BACK: <User className="w-4 h-4" />,
+    PAN_FRONT: <CreditCard className="w-4 h-4" />,
+    PAN_BACK: <CreditCard className="w-4 h-4" />,
+    STUDENT_ID: <Building2 className="w-4 h-4" />,
+    COMPANY_ID: <Building2 className="w-4 h-4" />,
+    LIVE_PHOTO: <Camera className="w-4 h-4" />,
+    OTHER: <FileText className="w-4 h-4" />,
+    // Legacy
     ID_PROOF: <User className="w-4 h-4" />,
     ADDRESS_PROOF: <MapPin className="w-4 h-4" />,
     COLLEGE_COMPANY: <Building2 className="w-4 h-4" />,
@@ -471,19 +489,22 @@ export default function OwnerVerificationsPage() {
 
 function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
     const { booking, docs, overallStatus } = group;
+    const ALL_DOC_TYPES = ['AADHAAR_FRONT', 'AADHAAR_BACK', 'PAN_FRONT', 'STUDENT_ID', 'COMPANY_ID', 'LIVE_PHOTO'];
+    // Use actual uploaded doc types if present, else use default set
+    const uploadedTypes = [...new Set(docs.map((d: any) => d.type))] as string[];
+    const docTypes = uploadedTypes.length > 0 ? uploadedTypes : ALL_DOC_TYPES;
+    const totalDocs = docTypes.length;
     const verifiedDocs = docs.filter((d: any) => d.status === "VERIFIED");
-    const verifiedPercentage = Math.round((verifiedDocs.length / 4) * 100);
+    const verifiedPercentage = totalDocs > 0 ? Math.round((verifiedDocs.length / totalDocs) * 100) : 0;
     const isFullyVerified = verifiedPercentage === 100;
 
     const getStatusDetails = (type: string) => {
         const doc = docs.find((d: any) => d.type === type);
-        if (!doc) return { color: 'bg-slate-100', label: 'Missing', icon: <div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> };
+        if (!doc) return { color: 'bg-slate-200 border-2 border-dashed border-slate-300', label: 'Not Uploaded', icon: <div className="w-1.5 h-1.5 rounded-full bg-slate-400" /> };
         if (doc.status === 'VERIFIED') return { color: 'bg-emerald-500', label: 'Verified', icon: <CheckCircle className="w-2.5 h-2.5 text-white" /> };
         if (doc.status === 'REJECTED') return { color: 'bg-rose-500', label: 'Rejected', icon: <XCircle className="w-2.5 h-2.5 text-white" /> };
-        return { color: 'bg-amber-500', label: 'Pending', icon: <Clock className="w-2.5 h-2.5 text-white" /> };
+        return { color: 'bg-amber-400 animate-pulse', label: 'Pending Review', icon: <Clock className="w-2.5 h-2.5 text-white" /> };
     };
-
-    const docTypes = ['ID_PROOF', 'ADDRESS_PROOF', 'COLLEGE_COMPANY', 'SELFIE'];
 
     return (
         <Card className="border-none shadow-md hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white rounded-2xl border-l-4 border-slate-100 hover:border-indigo-500 transform hover:-translate-y-1">
@@ -557,10 +578,19 @@ function DocumentRowCard({ group, onViewPortfolio, onZoom }: any) {
 }
 
 const TYPE_CONFIG: any = {
+    AADHAAR_FRONT: { label: 'Aadhaar Front', desc: 'Front side of Aadhaar card', icon: <User className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderClass: 'border-blue-200' },
+    AADHAAR_BACK: { label: 'Aadhaar Back', desc: 'Back side of Aadhaar card', icon: <User className="w-5 h-5" />, colorClass: 'text-blue-500', bgClass: 'bg-blue-50', borderClass: 'border-blue-200' },
+    PAN_FRONT: { label: 'PAN Card Front', desc: 'Front side of PAN card', icon: <CreditCard className="w-5 h-5" />, colorClass: 'text-green-600', bgClass: 'bg-green-50', borderClass: 'border-green-200' },
+    PAN_BACK: { label: 'PAN Card Back', desc: 'Back side of PAN card (Optional)', icon: <CreditCard className="w-5 h-5" />, colorClass: 'text-green-500', bgClass: 'bg-green-50', borderClass: 'border-green-200' },
+    STUDENT_ID: { label: 'Student / University ID', desc: 'Current academic year', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' },
+    COMPANY_ID: { label: 'Company ID / Offer Letter', desc: 'For working professionals', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200' },
+    LIVE_PHOTO: { label: 'Live Photo', desc: 'Real-time identity check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
+    OTHER: { label: 'Other Documents', desc: 'Any additional document (Optional)', icon: <FileText className="w-5 h-5" />, colorClass: 'text-slate-600', bgClass: 'bg-slate-50', borderClass: 'border-slate-200' },
+    // Legacy types
     ID_PROOF: { label: 'Identity Proof', desc: 'Aadhaar, PAN or Voter ID', icon: <FileText className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-200' },
     ADDRESS_PROOF: { label: 'Address Proof', desc: 'Electricity Bill or Rent Agreement', icon: <MapPin className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200' },
     COLLEGE_COMPANY: { label: 'College / Work', desc: 'ID Card or Offer Letter', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' },
-    SELFIE: { label: 'Live Selfie', desc: 'Real-time Identity Check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' }
+    SELFIE: { label: 'Live Selfie', desc: 'Real-time Identity Check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
 };
 
 function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {

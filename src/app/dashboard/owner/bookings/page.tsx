@@ -2,23 +2,56 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, UploadCloud } from "lucide-react";
-import React, { useEffect, useState, useRef } from "react";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid, checkInBooking } from "@/actions/bookings";
+import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, AlertCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid, checkInBooking, markTokenCashPaid, verifyKycAndProceed, markKycFailed, cancelBooking } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { toast } from "sonner";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
     ADDRESS_PROOF: "🏠 Address Proof",
     COLLEGE_COMPANY: "🎓 College / Company",
     SELFIE: "📸 Live Selfie",
+    AADHAAR_FRONT: "🪪 Aadhaar Front",
+    AADHAAR_BACK: "🪪 Aadhaar Back",
+    PAN_FRONT: "💳 PAN Front",
+    PAN_BACK: "💳 PAN Back",
+    STUDENT_ID: "🎓 Student ID",
+    COMPANY_ID: "🏢 Company ID",
+    LIVE_PHOTO: "📸 Live Photo",
+    OTHER: "📎 Other",
 };
 
-const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+    PENDING_APPROVAL:       { label: '🔴 New Request',        cls: 'bg-red-100 text-red-700 border-red-300' },
+    WAITLISTED:             { label: '📋 Waitlisted',          cls: 'bg-blue-100 text-blue-700 border-blue-300' },
+    APPROVED_PENDING_TOKEN: { label: '💳 Awaiting Token Pay', cls: 'bg-purple-100 text-purple-700 border-purple-300' },
+    TOKEN_PAID:             { label: '💰 Token Paid',          cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+    ROOM_RESERVED:          { label: '🏠 Room Reserved',       cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+    KYC_PENDING:            { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    KYC_VERIFIED:           { label: '✅ KYC Verified',        cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    KYC_FAILED:             { label: '❌ KYC Failed',          cls: 'bg-rose-100 text-rose-700 border-rose-300' },
+    AGREEMENT_PENDING:      { label: '✍️ Agreement Pending',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    BOOKING_CONFIRMED:      { label: '✅ Confirmed',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    CHECKED_IN:             { label: '🏡 Checked In',          cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    APPROVED_KYC_PENDING:   { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    APPROVED_PAYMENT_PENDING:{ label: '💳 Payment Pending',    cls: 'bg-purple-100 text-purple-700 border-purple-300' },
+    PAID:                   { label: '✅ Paid',                cls: 'bg-green-100 text-green-700 border-green-300' },
+    CASH_PAID:              { label: '✅ Cash Paid',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    REJECTED:               { label: '❌ Rejected',            cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+    CANCELLED:              { label: '🚫 Cancelled',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
+    EXPIRED:                { label: '⏰ Expired',             cls: 'bg-orange-100 text-orange-700 border-orange-300' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+    const badge = STATUS_BADGE[status] || { label: status, cls: 'bg-gray-100 text-gray-600 border-gray-300' };
+    return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${badge.cls}`}>{badge.label}</span>;
+}
+
 
 // Per-booking expandable section with Onboarding + Documents tabs
 function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }: { booking: any; rooms: any[]; onRefresh: () => void; defaultTab?: "onboarding" | "documents" }) {
@@ -27,9 +60,7 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
     const [docsLoading, setDocsLoading] = useState(false);
     const [rejectTarget, setRejectTarget] = useState<string | null>(null);
     const [rejectNote, setRejectNote] = useState("");
-    const [uploadType, setUploadType] = useState("ID_PROOF");
     const [previewDoc, setPreviewDoc] = useState<any>(null);
-    const fileRef = useRef<HTMLInputElement>(null);
 
     const fetchDocs = async () => {
         setDocsLoading(true);
@@ -57,24 +88,6 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
         } catch { toast.error("Failed to reject."); }
     };
 
-    // Owner uploads doc on behalf (admin upload mode)
-    const handleOwnerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > MAX_FILE_SIZE) { toast.error("File exceeds 5MB limit."); return; }
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const base64 = ev.target?.result as string;
-            try {
-                const { uploadTenantDocument } = await import("@/actions/documents");
-                await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: base64, fileName: file.name });
-                toast.success("Document uploaded successfully.");
-                fetchDocs();
-            } catch { toast.error("Upload failed."); }
-        };
-        reader.readAsDataURL(file);
-        e.target.value = "";
-    };
 
     const room = rooms.find(r => booking.roomAssigned?.includes(r.roomNumber));
     const contactInfo = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "PAID" || booking.status === "CASH_PAID";
@@ -239,23 +252,7 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                 <div className="text-center text-sm text-muted-foreground py-4 bg-white border rounded">No documents uploaded yet by student.</div>
                             )}
 
-                            {/* Owner upload tool */}
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <div className="text-xs font-bold text-blue-700 mb-2">📤 Upload Document (on behalf of student — max 5MB)</div>
-                                <div className="flex gap-2 items-center flex-wrap">
-                                    <select
-                                        className="border rounded p-1.5 text-xs bg-white"
-                                        value={uploadType}
-                                        onChange={e => setUploadType(e.target.value)}
-                                    >
-                                        {DOC_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-                                    </select>
-                                    <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleOwnerUpload} />
-                                    <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => fileRef.current?.click()}>
-                                        <UploadCloud className="h-3 w-3 mr-1" /> Upload
-                                    </Button>
-                                </div>
-                            </div>
+
                         </div>
                     )}
 
@@ -297,6 +294,7 @@ export default function BookingsPage() {
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
     const [expandedTab, setExpandedTab] = useState<"onboarding" | "documents">("onboarding");
     const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "PAID" | "REJECTED" | "CANCELLED">("ALL");
+    const router = useRouter();
 
     const fetchData = async () => {
         setLoading(true);
@@ -383,6 +381,22 @@ export default function BookingsPage() {
                     </Button>
                 </div>
             </div>
+
+            {/* 🔴 Red Alert: KYC Pending Bookings */}
+            {bookings.filter(b => b.status === "APPROVED_KYC_PENDING").length > 0 && (
+                <div className="flex items-center gap-3 bg-red-50 border-2 border-red-400 rounded-xl px-5 py-4 animate-pulse-slow shadow-md">
+                    <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+                    <div className="flex-1">
+                        <p className="font-bold text-red-700 text-sm">
+                            🔴 {bookings.filter(b => b.status === "APPROVED_KYC_PENDING").length} Booking{bookings.filter(b => b.status === "APPROVED_KYC_PENDING").length > 1 ? "s" : ""} Awaiting KYC Verification
+                        </p>
+                        <p className="text-red-600 text-xs mt-0.5">Student documents have been submitted and are waiting for your review.</p>
+                    </div>
+                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold shrink-0" onClick={() => router.push('/dashboard/owner/verifications')}>
+                        Verify KYC Now →
+                    </Button>
+                </div>
+            )}
 
             {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
@@ -488,7 +502,7 @@ export default function BookingsPage() {
                                                             </>
                                                         )}
                                                         {booking.status === "APPROVED_KYC_PENDING" && (
-                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 font-bold" onClick={() => { setExpandedTab("documents"); setExpandedBooking(booking.id); }}>
+                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 font-bold" onClick={() => router.push('/dashboard/owner/doc-verification')}>
                                                                 📎 Verify KYC
                                                             </Button>
                                                         )}
