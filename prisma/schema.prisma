@@ -141,12 +141,15 @@ model Bed {
   id                String    @id @default(uuid())
   roomId            String
   bedNumber         String    // e.g. "101-A"
-  // AVAILABLE | TEMP_LOCKED | RESERVED | OCCUPIED
+  // AVAILABLE | RESERVED | OCCUPIED | MAINTENANCE
   status            String    @default("AVAILABLE")
   lockedByBookingId String?
   lockedAt          DateTime?
   lockExpiresAt     DateTime? // 10-min anti-ghost window
   currentBookingId  String?
+  // Link to active tenant
+  tenantId          String?   @unique
+  tenant            Tenant?
   // MAINTENANCE status fields
   maintenanceReason String?
   maintenanceSince  DateTime?
@@ -210,6 +213,7 @@ model Booking {
   payments         Payment[]
   platformFee      PlatformFee?
   documents        TenantDocument[]
+  tenant           Tenant?
 }
 
 model Waitlist {
@@ -229,32 +233,71 @@ model Waitlist {
 }
 
 model Tenant {
-  id               String       @id @default(uuid())
-  displayId        String       @unique
-  name             String
-  phone            String
-  email            String?
-  propertyId       String
-  roomId           String
+  id                  String           @id @default(uuid())
+  displayId           String           @unique
+  studentId           String           // userId from User model
+  bookingId           String?          @unique
+  propertyId          String
+  roomId              String
+  bedId               String?          @unique
+  name                String
+  phone               String
+  email               String?
+  roomNumber          String
+  roomType            String
+  rent                String
+  startDate           String           // Move-in date
+  expectedMoveOutDate String?
+  actualMoveOutDate   String?
+  // UPCOMING_MOVE_IN | ACTIVE_TENANT | MOVE_OUT_SCHEDULED | MOVE_OUT_COMPLETED
+  status              String           @default("UPCOMING_MOVE_IN")
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  vacateNote          String?
+  address             String?
+  city                String?
+  country             String?          @default("India")
+  occupationDetail    String?
+  occupationType      String?
+  pincode             String?
+  booking             Booking?         @relation(fields: [bookingId], references: [id])
+  bed                 Bed?             @relation(fields: [bedId], references: [id])
+  moveOutRequests     MoveOutRequest[]
+  rentRecords         RentRecord[]
+  room                Room             @relation(fields: [roomId], references: [id])
+  property            Property         @relation(fields: [propertyId], references: [id])
+  reviews             Review[]
+}
+
+// ── Tenant History (Archived stay records) ──
+model TenantHistory {
+  id               String   @id @default(uuid())
+  tenantId         String
+  studentId        String
+  propertyName     String
   roomNumber       String
-  roomType         String
-  rent             String
-  startDate        String
-  status           String       @default("ACTIVE")
-  vacatedOn        String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  vacateNote       String?
-  address          String?
-  city             String?
-  country          String?      @default("India")
-  occupationDetail String?
-  occupationType   String?
-  pincode          String?
-  rentRecords      RentRecord[]
-  room             Room         @relation(fields: [roomId], references: [id])
-  property         Property     @relation(fields: [propertyId], references: [id])
-  reviews          Review[]
+  bedNumber        String
+  moveInDate       DateTime
+  moveOutDate      DateTime
+  stayDurationDays Int
+  totalPaid        Float
+  createdAt        DateTime @default(now())
+}
+
+// ── Move Out Requests ──
+model MoveOutRequest {
+  id            String    @id @default(uuid())
+  tenantId      String
+  requestedBy   String    // userId
+  requestedDate String    // Target move-out date
+  reason        String?
+  // PENDING | APPROVED | REJECTED | CANCELLED
+  status        String    @default("PENDING")
+  approvedBy    String?   // admin or owner userId
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
 }
 
 model Review {

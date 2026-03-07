@@ -35,11 +35,13 @@ export async function getOwnerDashboardHome() {
         }
     }
 
-    // Bookings
-    const [pendingRequests, activeBookings, activeTenants] = await Promise.all([
+    // Bookings & Tenant Lifecycle
+    const [pendingRequests, activeBookings, upcomingMoveIns, activeTenants, scheduledMoveOuts] = await Promise.all([
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: 'PENDING_APPROVAL' } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'ROOM_RESERVED', 'KYC_PENDING'] } } }),
-        prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
+        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: 'UPCOMING_MOVE_IN' } }),
+        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE_TENANT' } }),
+        (prisma.tenant as any).count({ where: { propertyId: { in: propertyIds }, status: 'MOVE_OUT_SCHEDULED' } }),
     ]);
 
     // Monthly revenue (current month confirmed bookings, minus refunds)
@@ -69,7 +71,9 @@ export async function getOwnerDashboardHome() {
         occupancyRate,
         pendingRequests,
         activeBookings,
+        upcomingMoveIns,
         activeTenants,
+        scheduledMoveOuts,
         monthlyRevenue: Math.round(monthlyRevenue * 100) / 100,
     };
 }
@@ -185,7 +189,7 @@ export async function getPropertyPerformanceAnalytics() {
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
     const ownerId = (session as any).userId;
 
-    const properties = await prisma.property.findMany({ where: { ownerId }, include: { rooms: { include: { beds: true } }, reviews: true } });
+    const properties = await prisma.property.findMany({ where: { ownerId }, include: { rooms: { include: { beds: true } }, reviews: true } as any });
 
     const results = [];
     for (const prop of properties) {
@@ -379,7 +383,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
     const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true, name: true } }));
     const propIdList = propertyIds.map(p => p.id);
 
-    const bookings = await prisma.booking.findMany({
+    const bookings = await (prisma.booking as any).findMany({
         where: { propertyId: { in: propIdList }, createdAt: { gte: from, lte: to } },
         select: { id: true, displayId: true, propertyName: true, roomType: true, amount: true, status: true, createdAt: true, cancelReason: true }
     });
