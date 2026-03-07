@@ -1,3 +1,5 @@
+'use server';
+
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
