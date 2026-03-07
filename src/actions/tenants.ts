@@ -218,3 +218,60 @@ export async function generateNextRentRecord(tenantId: string, month: string) {
     revalidatePath('/dashboard/student');
     return record;
 }
+
+export async function initiateMoveOut(tenantId: string, deductions: number, note: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        include: { room: true }
+    });
+
+    if (!tenant) throw new Error("Tenant not found");
+    if (tenant.status === 'MOVED_OUT') throw new Error("Tenant already moved out");
+
+    const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+
+    // Transaction to ensure atomicity
+    const [updatedTenant] = await prisma.$transaction([
+        // 1. Update Tenant
+        prisma.tenant.update({
+            where: { id: tenantId },
+            data: {
+                status: 'MOVED_OUT',
+                vacatedOn: timestamp,
+                vacateNote: note
+            }
+        }),
+        // 2. Increment Room Availability
+        prisma.room.update({
+            where: { id: tenant.roomId },
+            data: { availability: { increment: 1 } }
+        }),
+        // 3. Create Note
+        prisma.actionNote.create({
+            data: {
+                targetId: tenantId,
+                targetType: 'TENANT',
+                action: 'MOVED_OUT',
+                reason: `Move-out processed. Deductions: ₹${deductions}. Note: ${note}`,
+                performedBy: (session as any).userId
+            }
+        }),
+        // 4. Audit Log
+        prisma.auditLog.create({
+            data: {
+                action: 'TENANT_MOVE_OUT',
+                targetId: tenantId,
+                targetType: 'TENANT',
+                details: `Move-out finalized with ₹${deductions} deductions. Room ${tenant.roomNumber} vacated.`,
+                performedBy: (session as any).userId
+            }
+        })
+    ]);
+
+    revalidatePath('/dashboard/owner/tenants');
+    revalidatePath('/dashboard/admin/tenants');
+    return updatedTenant;
+}

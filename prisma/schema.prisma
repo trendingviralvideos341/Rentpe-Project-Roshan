@@ -29,6 +29,8 @@ model User {
   displayId        String?           @unique
   deletedAt        DateTime?
   razorpayAccountId String?
+  resetToken       String?
+  resetTokenExpiry DateTime?
   actionNotes      ActionNote[]      @relation("TargetUser")
   auditLogs        AuditLog[]        @relation("PerformedBy")
   bookings         Booking[]

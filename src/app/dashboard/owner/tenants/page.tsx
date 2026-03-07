@@ -5,8 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
+import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord, initiateMoveOut } from "@/actions/tenants";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<any[]>([]);
@@ -23,6 +24,9 @@ export default function TenantsPage() {
     const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
     const [showGenerateRent, setShowGenerateRent] = useState<Record<string, boolean>>({});
     const [generateMonth, setGenerateMonth] = useState<Record<string, string>>({});
+    const [showMoveOut, setShowMoveOut] = useState<Record<string, boolean>>({});
+    const [moveOutDeductions, setMoveOutDeductions] = useState<Record<string, string>>({});
+    const [moveOutNote, setMoveOutNote] = useState<Record<string, string>>({});
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
 
@@ -102,6 +106,21 @@ export default function TenantsPage() {
         }
     };
 
+    const handleMoveOut = async (tenantId: string) => {
+        const deductions = parseFloat(moveOutDeductions[tenantId] || "0");
+        const note = moveOutNote[tenantId]?.trim();
+        if (!note) { toast.error("Please enter a move-out note/settlement summary."); return; }
+
+        try {
+            await initiateMoveOut(tenantId, deductions, note);
+            setShowMoveOut(p => ({ ...p, [tenantId]: false }));
+            toast.success("Move-out processed. Room is now vacant.");
+            await fetchTenants();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to process move-out.");
+        }
+    };
+
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
 
     const filteredTenants = tenants.filter(t => {
@@ -115,8 +134,8 @@ export default function TenantsPage() {
         const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
         const isPaid = latestRent?.paid ?? false;
 
-        if (filterPayment === "BLOCKED") return matchSearch && matchType && matchProperty && t.status === "VACATED";
-        if (filterPayment !== "ALL" && t.status === "VACATED") return false;
+        if (filterPayment === "BLOCKED") return matchSearch && matchType && matchProperty && (t.status === "VACATED" || t.status === "MOVED_OUT");
+        if (filterPayment !== "ALL" && (t.status === "VACATED" || t.status === "MOVED_OUT")) return false;
 
         const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
         return matchSearch && matchType && matchProperty && matchPayment;
@@ -221,12 +240,12 @@ export default function TenantsPage() {
                                 {filteredTenants.map(t => {
                                     const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
                                     const isPaid = latestRent?.paid ?? false;
-                                    const isBlocked = t.status === "VACATED";
+                                    const isBlocked = t.status === "VACATED" || t.status === "MOVED_OUT";
                                     const historyExpanded = expandedHistory.has(t.id);
 
                                     return (
                                         <Fragment key={t.id}>
-                                            <tr className={`border-b hover:bg-muted/5 ${isBlocked ? "bg-red-50/40" : ""}`}>
+                                            <tr className={`border-b hover:bg-muted/5 ${t.status === 'MOVED_OUT' ? "bg-slate-50/60 opactiy-80" : isBlocked ? "bg-red-50/40" : ""}`}>
                                                 <td className="p-4 font-mono text-xs">{t.displayId}</td>
                                                 <td className="p-4">
                                                     <div className={`font-medium ${isBlocked ? "line-through text-red-400" : ""}`}>{t.name}</div>
@@ -239,7 +258,9 @@ export default function TenantsPage() {
 
                                                 {/* Payment Status */}
                                                 <td className="p-4">
-                                                    {isBlocked ? (
+                                                    {t.status === 'MOVED_OUT' ? (
+                                                        <span className="text-xs text-slate-500 font-bold">🏠 Moved Out</span>
+                                                    ) : isBlocked ? (
                                                         <span className="text-xs text-red-500 font-bold">🚫 Blocked</span>
                                                     ) : (
                                                         <div className="space-y-2">
@@ -286,8 +307,8 @@ export default function TenantsPage() {
                                                 {/* Status & History */}
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isBlocked ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
-                                                            {isBlocked ? "🚫 Blocked" : "✅ Active"}
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${t.status === 'MOVED_OUT' ? "bg-slate-100 text-slate-600" : isBlocked ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+                                                            {t.status === 'MOVED_OUT' ? "🏠 Moved Out" : isBlocked ? "🚫 Blocked" : "✅ Active"}
                                                         </span>
                                                         {t.actionNotes?.length > 0 && (
                                                             <button onClick={() => toggleHistory(t.id)} className="text-muted-foreground hover:text-foreground">
@@ -298,9 +319,9 @@ export default function TenantsPage() {
                                                     {historyExpanded && t.actionNotes?.length > 0 && (
                                                         <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
                                                             {t.actionNotes.map((note: any, i: number) => (
-                                                                <div key={i} className={`text-[9px] p-1.5 rounded border ${note.action === 'BLOCKED' ? "bg-red-50 border-red-200 text-red-700" : note.action === 'UNBLOCKED' ? "bg-green-50 border-green-200 text-green-700" : note.action === 'PAYMENT_MARKED_PAID' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                                                                <div key={i} className={`text-[9px] p-1.5 rounded border ${note.action === 'MOVED_OUT' ? "bg-slate-50 border-slate-200 text-slate-700" : note.action === 'BLOCKED' ? "bg-red-50 border-red-200 text-red-700" : note.action === 'UNBLOCKED' ? "bg-green-50 border-green-200 text-green-700" : note.action === 'PAYMENT_MARKED_PAID' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
                                                                     <div className="font-bold uppercase">
-                                                                        {note.action === 'BLOCKED' ? "🚫 Blocked" : note.action === 'UNBLOCKED' ? "✅ Unblocked" : note.action === 'PAYMENT_MARKED_PAID' ? "💰 Paid" : note.action === 'PAYMENT_MARKED_UNPAID' ? "↩ Unpaid" : note.action}
+                                                                        {note.action === 'MOVED_OUT' ? "🏠 Moved Out" : note.action === 'BLOCKED' ? "🚫 Blocked" : note.action === 'UNBLOCKED' ? "✅ Unblocked" : note.action === 'PAYMENT_MARKED_PAID' ? "💰 Paid" : note.action === 'PAYMENT_MARKED_UNPAID' ? "↩ Unpaid" : note.action}
                                                                     </div>
                                                                     <div>Note: {note.reason}</div>
                                                                     <div className="text-[8px] opacity-70">{new Date(note.timestamp).toLocaleString('en-IN')}</div>
@@ -314,6 +335,14 @@ export default function TenantsPage() {
                                                 <td className="p-4">
                                                     {!isBlocked ? (
                                                         <div className="space-y-1">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-7 text-[10px] w-full border-blue-400 text-blue-700 hover:bg-blue-50"
+                                                                onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}
+                                                            >
+                                                                🚪 Move Out & Settlement
+                                                            </Button>
                                                             <Input
                                                                 className="h-7 text-xs w-40"
                                                                 placeholder="Block reason (required)..."
@@ -409,6 +438,77 @@ export default function TenantsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Move Out Dialog */}
+            {filteredTenants.map(t => (
+                <Dialog key={`moveout-${t.id}`} open={!!showMoveOut[t.id]} onOpenChange={(open) => setShowMoveOut(p => ({ ...p, [t.id]: open }))}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <span className="p-2 bg-blue-100 text-blue-700 rounded-lg"><Clock className="h-5 w-5" /></span>
+                                Final Tenancy Settlement
+                            </DialogTitle>
+                            <DialogDescription>
+                                Processing move-out for <strong>{t.name}</strong> from <strong>{t.property?.name}</strong>.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                                    <p className="text-[10px] font-bold text-red-600 uppercase">Unpaid Rent</p>
+                                    <p className="text-xl font-black text-red-900">₹{t.rentRecords.filter((r: any) => !r.paid).reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0).toLocaleString('en-IN')}</p>
+                                </div>
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <p className="text-[10px] font-bold text-blue-600 uppercase">Est. Security Deposit</p>
+                                    <p className="text-xl font-black text-blue-900">₹{parseFloat(t.rent).toLocaleString('en-IN')}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold">Damage Deductions (₹)</label>
+                                <Input
+                                    type="number"
+                                    placeholder="Enter damage amount..."
+                                    value={moveOutDeductions[t.id] || ""}
+                                    onChange={e => setMoveOutDeductions(p => ({ ...p, [t.id]: e.target.value }))}
+                                />
+                                <p className="text-[10px] text-muted-foreground italic">Repairs, painting, or missing items costs.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold">Settlement Summary / Notes</label>
+                                <textarea
+                                    className="w-full min-h-[100px] border rounded-md p-2 text-sm bg-muted/20"
+                                    placeholder="Briefly explain the final settlement details..."
+                                    value={moveOutNote[t.id] || ""}
+                                    onChange={e => setMoveOutNote(p => ({ ...p, [t.id]: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="p-4 bg-slate-900 text-white rounded-xl shadow-inner">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-slate-400">Final Refund Amount:</span>
+                                    <span className="text-lg font-black text-emerald-400">
+                                        ₹{(parseFloat(t.rent) - t.rentRecords.filter((r: any) => !r.paid).reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0) - parseFloat(moveOutDeductions[t.id] || "0")).toLocaleString('en-IN')}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button variant="ghost" onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: false }))}>Cancel</Button>
+                            <Button
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                                disabled={!moveOutNote[t.id]?.trim()}
+                                onClick={() => handleMoveOut(t.id)}
+                            >
+                                Confirm Move-Out & Settlement
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            ))}
         </div>
     );
 }

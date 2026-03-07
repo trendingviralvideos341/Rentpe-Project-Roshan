@@ -68,7 +68,7 @@ export default function LoginPage() {
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label htmlFor="password" className="text-sm font-medium">Password</label>
-                                <Link href="#" className="text-xs text-purple-600 hover:underline">Forgot password?</Link>
+                                <Link href="/forgot-password" className="text-xs text-purple-600 hover:underline">Forgot password?</Link>
                             </div>
                             {/* Password input with monkey toggle */}
                             <div className="relative">
