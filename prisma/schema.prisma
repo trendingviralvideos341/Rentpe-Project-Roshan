@@ -34,6 +34,19 @@ model User {
   commissionRate    Float?           // Per-owner override commission % (null = use platform default)
   resetToken       String?
   resetTokenExpiry DateTime?
+  // Extended student profile
+  profilePhoto     String?   // base64 or URL
+  dateOfBirth      String?   // ISO date string
+  gender           String?   // MALE | FEMALE | OTHER | PREFER_NOT_TO_SAY
+  emergencyContact String?   // JSON: { name, phone, relation }
+  currentAddress   String?
+  college          String?   // College or Workplace
+  bio              String?
+  // Notification preferences (JSON: { bookings: true, kyc: true, messages: true, disputes: true })
+  notifPrefs       String    @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
+  // Account
+  deactivationRequested Boolean @default(false)
+  deactivationReason    String?
   actionNotes      ActionNote[]      @relation("TargetUser")
   auditLogs        AuditLog[]        @relation("PerformedBy")
   bookings         Booking[]
@@ -41,6 +54,10 @@ model User {
   ownerOnboardings OwnerOnboarding[] @relation("OnboardedBy")
   properties       Property[]
   tickets          Ticket[]
+  savedProperties  SavedProperty[]
+  sentMessages     Message[]         @relation("SentMessages")
+  receivedMessages Message[]         @relation("ReceivedMessages")
+  sessions         UserSession[]
 }
 
 model Property {
@@ -95,6 +112,7 @@ model Property {
   tenants     Tenant[]
   tickets     Ticket[]
   reviews     Review[]
+  savedBy     SavedProperty[]
 }
 
 model Room {
@@ -623,5 +641,53 @@ model AdminPermission {
   reason     String?
   createdAt  DateTime @default(now())
 }
+
+// ── Saved Properties (student wishlist / bookmarks) ──
+model SavedProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  note       String?  // Personal note about this property
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId])
+}
+
+// ── Messages (student ↔ owner direct messaging per booking) ──
+model Message {
+  id          String   @id @default(uuid())
+  bookingId   String?  // Optional: linked to a booking
+  propertyId  String?  // Optional: pre-booking enquiry
+  threadId    String   // Groups messages into a conversation
+  senderId    String
+  receiverId  String
+  content     String
+  attachmentData String? // base64 small image/doc
+  attachmentName String?
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  deletedBySender Boolean @default(false)
+  deletedByReceiver Boolean @default(false)
+  createdAt   DateTime @default(now())
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+// ── User Sessions (security tracking — logout all sessions) ──
+model UserSession {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique  // JWT token hash
+  ipAddress   String?
+  userAgent   String?
+  isActive    Boolean  @default(true)
+  lastSeenAt  DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
 
 
