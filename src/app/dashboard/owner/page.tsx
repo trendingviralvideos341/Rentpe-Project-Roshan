@@ -11,10 +11,14 @@ const COLORS = ['#8b5cf6', '#e2e8f0'];
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams, useRouter } from "next/navigation";
-import { User, Shield, Mail, Phone, Calendar, CheckCircle } from "lucide-react";
+import { User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, ListFilter, Activity } from "lucide-react";
+import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
+import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
+import { getOwnerInventory } from "@/actions/dashboard";
 
 export default function OwnerDashboard() {
     const [stats, setStats] = useState<any>(null);
+    const [inventory, setInventory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const searchParams = useSearchParams();
@@ -25,12 +29,17 @@ export default function OwnerDashboard() {
         setLoading(true);
         setError(false);
         try {
-            const data = await getOwnerDashboardStats();
-            if (!data || (data as any).error === "Unauthorized") {
+            const [statsData, inventoryData] = await Promise.all([
+                getOwnerDashboardStats(),
+                getOwnerInventory()
+            ]);
+
+            if (!statsData || (statsData as any).error === "Unauthorized") {
                 window.location.href = "/login";
                 return;
             }
-            setStats(data);
+            setStats(statsData);
+            setInventory(inventoryData);
         } catch (e) {
             console.error(e);
             setError(true);
@@ -74,18 +83,30 @@ export default function OwnerDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full max-w-md mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
+                <TabsList className="flex flex-wrap h-auto w-full max-w-2xl mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
                     <TabsTrigger
                         value="overview"
-                        className="flex-1 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-600 hover:text-purple-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <TrendingUp className="h-4 w-4 mr-2" /> Overview
                     </TabsTrigger>
                     <TabsTrigger
-                        value="profile"
-                        className="flex-1 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-600 hover:text-purple-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        value="inventory"
+                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <User className="h-4 w-4 mr-2" /> My Profile
+                        <Bed className="h-4 w-4 mr-2" /> Inventory
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="ops"
+                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                    >
+                        <Activity className="h-4 w-4 mr-2" /> Operations
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="profile"
+                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                    >
+                        <User className="h-4 w-4 mr-2" /> Profile
                     </TabsTrigger>
                 </TabsList>
 
@@ -222,6 +243,14 @@ export default function OwnerDashboard() {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="inventory" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <InventoryGrid properties={inventory} />
+                </TabsContent>
+
+                <TabsContent value="ops" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <TenantLifecycleManager ownerId={stats.user.id} />
                 </TabsContent>
 
                 <TabsContent value="profile" className="animate-in fade-in slide-in-from-bottom-2 duration-300">

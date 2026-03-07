@@ -42,6 +42,8 @@ model User {
   emergencyContact String?   // JSON: { name, phone, relation }
   currentAddress   String?
   college          String?   // College or Workplace
+  occupationType   String?   // STUDENT | PROFESSIONAL | FREELANCER
+  occupationDetail String?   // Specific college name or company name
   bio              String?
   // Notification preferences (JSON: { bookings: true, kyc: true, messages: true, disputes: true })
   notifPrefs       String    @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")

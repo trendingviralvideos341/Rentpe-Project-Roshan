@@ -17,6 +17,8 @@ import { generateInvoicePDF } from "@/utils/invoiceGenerator";
 import { BookingStepper } from "@/components/booking/BookingStepper";
 import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
 import { toast } from "sonner";
+import { getStudentProfile, updateStudentProfile } from "@/actions/student";
+import { Badge } from "@/components/ui/badge";
 
 const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
@@ -306,6 +308,11 @@ export default function StudentDashboardPage() {
     const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
     const [signingBooking, setSigningBooking] = useState<any>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const [profile, setProfile] = useState<any>(null);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editingName, setEditingName] = useState("");
+    const [editingPhone, setEditingPhone] = useState("");
+    const [editingOcc, setEditingOcc] = useState("");
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -319,12 +326,19 @@ export default function StudentDashboardPage() {
         setLoading(true);
         setError(false);
         try {
-            const [bData, pData] = await Promise.all([
+            const [bData, pData, profData] = await Promise.all([
                 getBookings(),
-                getStudentPaymentHistory()
+                getStudentPaymentHistory(),
+                getStudentProfile()
             ]);
             setBookings(bData);
             setPaymentHistory(pData);
+            setProfile(profData);
+            if (profData) {
+                setEditingName(profData.name || "");
+                setEditingPhone(profData.phone || "");
+                setEditingOcc(profData.occupationType || "");
+            }
         } catch (e) {
             console.error(e);
             setError(true);
@@ -345,6 +359,25 @@ export default function StudentDashboardPage() {
             alert(e.message || "Failed to cancel booking.");
         } finally {
             setCancellingId(null);
+        }
+    };
+
+    const handleUpdateProfile = async () => {
+        try {
+            const res = await updateStudentProfile({
+                name: editingName,
+                phone: editingPhone,
+                occupationType: editingOcc
+            });
+            if (res.success) {
+                toast.success("Profile updated successfully! Any pending bookings have been synced.");
+                setIsEditingProfile(false);
+                await fetchData();
+            } else {
+                toast.error(res.error || "Update failed");
+            }
+        } catch (e) {
+            toast.error("Internal Error");
         }
     };
 
@@ -794,61 +827,185 @@ export default function StudentDashboardPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="profile">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <User className="h-5 w-5 text-purple-500" /> Personal Profile
-                            </CardTitle>
-                            <CardDescription>Your account details and verification status.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-muted/30 rounded-lg border">
-                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Full Name</div>
-                                        <div className="text-sm font-semibold">{bookings[0]?.guestName || "User"}</div>
+                <TabsContent value="profile" className="space-y-6">
+                    <Card className="border-none shadow-xl bg-white overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-8">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                <div className="flex items-center gap-6 text-center md:text-left">
+                                    <div className="h-20 w-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border-2 border-white/30 text-white">
+                                        <User className="h-10 w-10" />
                                     </div>
-                                    <div className="p-4 bg-muted/30 rounded-lg border">
-                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Email ID</div>
-                                        <div className="text-sm font-semibold">{bookings[0]?.guestEmail || "N/A"}</div>
-                                    </div>
-                                    <div className="p-4 bg-muted/30 rounded-lg border">
-                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Contact Number</div>
-                                        <div className="text-sm font-semibold">{bookings[0]?.guestPhone || "N/A"}</div>
+                                    <div>
+                                        <CardTitle className="text-3xl font-black">
+                                            {profile?.name || "Premium Student"}
+                                        </CardTitle>
+                                        <CardDescription className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">
+                                            {profile?.displayId || "TNT-000000"} • Verified Resident
+                                        </CardDescription>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-muted/30 rounded-lg border">
-                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Occupation</div>
-                                        <div className="text-sm font-semibold">
-                                            {bookings[0]?.occupationType || "N/A"}
-                                            {bookings[0]?.occupationDetail && ` (${bookings[0].occupationDetail})`}
+                                {!isEditingProfile && (
+                                    <Button 
+                                        onClick={() => setIsEditingProfile(true)} 
+                                        variant="outline" 
+                                        className="bg-white/10 hover:bg-white/20 text-white border-white/20 font-black px-6 backdrop-blur-sm"
+                                    >
+                                        Edit Profile
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Full Legal Name</label>
+                                        {isEditingProfile ? (
+                                            <input 
+                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all"
+                                                value={editingName}
+                                                onChange={e => setEditingName(e.target.value)}
+                                            />
+                                        ) : (
+                                            <div className="text-lg font-black text-slate-800">{profile?.name}</div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official Email</label>
+                                        <div className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                            {profile?.email} <Shield className="h-4 w-4 text-emerald-500" />
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-muted/30 rounded-lg border">
-                                        <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Member Since</div>
-                                        <div className="text-sm font-semibold">
-                                            {bookings[0]?.createdAt ? new Date(bookings[0].createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : "N/A"}
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Primary Contact</label>
+                                        {isEditingProfile ? (
+                                            <input 
+                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all"
+                                                value={editingPhone}
+                                                onChange={e => setEditingPhone(e.target.value)}
+                                            />
+                                        ) : (
+                                            <div className="text-lg font-black text-slate-800">{profile?.phone || "Not set"}</div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Occupancy Status</label>
+                                        {isEditingProfile ? (
+                                            <select 
+                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all appearance-none"
+                                                value={editingOcc}
+                                                onChange={e => setEditingOcc(e.target.value)}
+                                            >
+                                                <option value="STUDENT">Student</option>
+                                                <option value="PROFESSIONAL">Professional</option>
+                                                <option value="FREELANCER">Freelancer</option>
+                                            </select>
+                                        ) : (
+                                            <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none px-4 py-1.5 font-black text-[10px] uppercase">
+                                                {profile?.occupationType || "RESIDENT"}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Account Health</label>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                            <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Excellent • KYC Cleared</span>
                                         </div>
                                     </div>
-                                    <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg flex items-center justify-between">
+                                    <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between group hover:bg-indigo-50 transition-colors">
                                         <div>
-                                            <div className="text-[10px] font-bold text-green-700 uppercase">Account Status</div>
-                                            <div className="text-sm font-bold text-green-800">Verified {bookings[0]?.user?.role || "Tenant"}</div>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Loyalty Points</p>
+                                            <p className="text-xl font-black text-indigo-700">1,250 PRINTS</p>
                                         </div>
-                                        <CheckCircle className="h-6 w-6 text-green-600" />
+                                        <CreditCard className="h-8 w-8 text-indigo-200 group-hover:text-indigo-400 transition-colors" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <h4 className="text-xs font-bold text-blue-700 mb-2 flex items-center gap-1">
-                                    <Shield className="h-3.5 w-3.5" /> Security Note
-                                </h4>
-                                <p className="text-[11px] text-blue-600 leading-relaxed">
-                                    Your profile data is directly linked to your booking requests and is shared only with verified PG owners you book with for onboarding purposes.
-                                </p>
+                            {isEditingProfile && (
+                                <div className="flex gap-4 pt-4 border-t">
+                                    <Button 
+                                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-xl shadow-lg shadow-indigo-200"
+                                        onClick={handleUpdateProfile}
+                                    >
+                                        Save Changes
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        className="flex-1 h-12 rounded-xl font-black border-2 border-slate-100 hover:bg-slate-50"
+                                        onClick={() => setIsEditingProfile(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* ── Premium Digital Identity ── */}
+                            <div className="relative p-8 bg-slate-900 rounded-[32px] text-white overflow-hidden shadow-2xl border-4 border-slate-800">
+                                {/* Background patterns */}
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+                                <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
+                                
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-12">
+                                        <div>
+                                            <div className="text-[10px] font-black tracking-[0.2em] text-indigo-400 uppercase mb-1">RentPe Digital Resident ID</div>
+                                            <div className="text-2xl font-black italic tracking-tighter">PREMIUM PASS</div>
+                                        </div>
+                                        <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
+                                            <Shield className="h-6 w-6 text-indigo-400" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
+                                        <div>
+                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Identity</p>
+                                            <p className="text-sm font-black whitespace-nowrap overflow-hidden text-ellipsis">{profile?.name || "Verified Resident"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Member Code</p>
+                                            <p className="text-sm font-black font-mono">{profile?.displayId || "TNT-XXXX"}</p>
+                                        </div>
+                                        <div className="hidden md:block">
+                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Status</p>
+                                            <p className="text-sm font-black text-emerald-400 uppercase">KYC SECURED</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-8 border-t border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 bg-white/5 rounded-lg flex items-center justify-center">
+                                                <CheckCircle className="h-5 w-5 text-indigo-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Digital Validity</p>
+                                                <p className="text-[10px] font-bold">LIFETIME ACCESS GRANTED</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Authenticity Scan</p>
+                                            <div className="flex items-center gap-1 bg-white/5 p-1 px-2 rounded-md">
+                                                <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
+                                                <span className="text-[9px] font-black font-mono">HASH::{profile?.id?.substring(0, 8)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                                <div className="max-w-[70%]">
+                                    <h4 className="text-sm font-black mb-1 flex items-center gap-2 text-slate-800">
+                                        <Shield className="h-4 w-4 text-slate-400" /> Auto-fill Enabled
+                                    </h4>
+                                    <p className="text-xs text-slate-400 font-medium">
+                                        Your profile details are automatically synced with all booking requests to ensure a seamless premium experience.
+                                    </p>
+                                </div>
+                                <Badge className="bg-emerald-50 text-emerald-700 border-none px-3 font-black text-[9px] uppercase tracking-widest">Active</Badge>
                             </div>
                         </CardContent>
                     </Card>

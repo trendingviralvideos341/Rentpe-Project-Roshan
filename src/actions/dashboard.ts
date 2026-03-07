@@ -93,3 +93,35 @@ export async function getOwnerDashboardStats() {
         };
     }
 }
+
+export async function getOwnerInventory() {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+        const userId = (session as any).userId;
+
+        const properties = await (prisma.property as any).findMany({
+            where: { ownerId: userId },
+            include: {
+                rooms: {
+                    include: {
+                        beds: {
+                            include: {
+                                tenant: {
+                                    select: { id: true, name: true, displayId: true }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        return properties;
+    } catch (e) {
+        console.error("getOwnerInventory Error:", e);
+        return [];
+    }
+}
