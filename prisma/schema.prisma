@@ -34,6 +34,7 @@ model User {
   commissionRate    Float?           // Per-owner override commission % (null = use platform default)
   resetToken       String?
   resetTokenExpiry DateTime?
+  businessName     String?   // PG Owner business name
   // Extended student profile
   profilePhoto     String?   // base64 or URL
   dateOfBirth      String?   // ISO date string
@@ -141,6 +142,9 @@ model Bed {
   lockedAt          DateTime?
   lockExpiresAt     DateTime? // 10-min anti-ghost window
   currentBookingId  String?
+  // MAINTENANCE status fields
+  maintenanceReason String?
+  maintenanceSince  DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   room              Room      @relation(fields: [roomId], references: [id])
@@ -688,6 +692,27 @@ model UserSession {
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id])
 }
+
+// ── Refund Record (tracks refunds, deducted from owner revenue) ──
+model RefundRecord {
+  id           String   @id @default(uuid())
+  bookingId    String
+  amount       Float
+  reason       String
+  // FULL | PARTIAL | NONE
+  refundType   String   @default("PARTIAL")
+  // PENDING | PROCESSED | REJECTED
+  status       String   @default("PENDING")
+  initiatedBy  String   // USER | OWNER | ADMIN
+  initiatedAt  DateTime @default(now())
+  processedAt  DateTime?
+  processedBy  String?
+  txnReference String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 
 
 
