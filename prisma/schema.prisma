@@ -401,13 +401,24 @@ model OwnerStaff {
 }
 
 model PlatformSettings {
-  id                    String   @id @default("singleton")
-  feesEnabled           Boolean  @default(false)
-  studentRentFeeFlat    Float    @default(9)
-  ownerRentFeeFlat      Float    @default(9)
-  ownerOnboardingFeeFlat Float   @default(99)
-  platformWalletBalance Float    @default(0)
-  updatedAt             DateTime @updatedAt
+  id                       String   @id @default("singleton")
+  feesEnabled              Boolean  @default(false)
+  studentRentFeeFlat       Float    @default(9)
+  ownerRentFeeFlat         Float    @default(9)
+  ownerOnboardingFeeFlat   Float    @default(99)
+  platformWalletBalance    Float    @default(0)
+  // Super Admin: Global commission % (overrides per-owner if no override set)
+  globalCommissionRate     Float    @default(10)   // e.g. 10 = 10%
+  // Business rules config (JSON)
+  kycRequired              Boolean  @default(true)
+  tokenPaymentRequired     Boolean  @default(true)
+  maxBookingsPerStudentDay Int      @default(3)
+  maxListingsPerOwnerDay   Int      @default(3)
+  reservationWindowMins    Int      @default(10)   // anti-ghost lock window
+  // Maintenance mode
+  maintenanceMode          Boolean  @default(false)
+  maintenanceMessage       String?
+  updatedAt                DateTime @updatedAt
 }
 
 model PlatformFee {
