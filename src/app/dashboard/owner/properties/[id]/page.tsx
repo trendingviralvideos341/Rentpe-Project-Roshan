@@ -253,21 +253,25 @@ export default function PropertyManagePage() {
         if (verifiedDocs.includes(docType)) return null;
 
         const lines = property.adminNotes.split('\n');
-        const matches = lines.filter((l: string) => l.startsWith(`[REUPLOAD:${docType} `));
+        // Match both [REUPLOAD:category] and [REUPLOAD:category-index]
+        const matches = lines.filter((l: string) =>
+            l.startsWith(`[REUPLOAD:${docType}]`) || l.startsWith(`[REUPLOAD:${docType}-`)
+        );
 
         if (matches.length > 0) {
             const parsedNotes = matches.map((m: string) => {
                 const tagFull = m.match(/\[REUPLOAD:[a-zA-Z0-9-]+\]/)?.[0] || '';
-                const parts = tagFull.replace('[REUPLOAD:', '').replace(']', '').split('-');
+                const tagContent = tagFull.replace('[REUPLOAD:', '').replace(']', '');
+                const parts = tagContent.split('-');
 
                 // If it's a specific photo in an array, check if that specific photo is verified
                 if (parts[1]) {
-                    const specificDocKey = `${docType} -${parts[1]} `;
+                    const specificDocKey = `${docType}-${parts[1]}`;
                     if (verifiedDocs.includes(specificDocKey)) return null;
                 }
 
-                const index = parts[1] ? `(Photo ${parseInt(parts[1]) + 1}) - ` : '';
-                return `${index}${m.replace(tagFull, '').trim()} `.trim();
+                const indexLabel = parts[1] ? `(Photo ${parseInt(parts[1]) + 1}) - ` : '';
+                return `${indexLabel}${m.replace(tagFull, '').trim()}`.trim();
             }).filter(Boolean);
 
             if (parsedNotes.length > 0) {
@@ -746,7 +750,7 @@ export default function PropertyManagePage() {
                                                                 <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
                                                                     <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
                                                                     <div>
-                                                                        <span className="font-bold block uppercase">Reupload Required:</span>
+                                                                        <span className="font-bold block uppercase text-[8px]">Action Required:</span>
                                                                         {getReuploadNote(cat.key)}
                                                                     </div>
                                                                 </div>
@@ -772,8 +776,8 @@ export default function PropertyManagePage() {
                                             </div>
                                         ) : property[cat.key] ? (
                                             <div className="flex flex-col gap-2 relative group h-full">
-                                                <div className="relative w-full h-36 rounded-md border shadow-sm bg-white">
-                                                    <div className="w-full h-28 rounded-t-md overflow-hidden bg-muted">
+                                                <div className={`relative w-full h-36 rounded-md border shadow-sm overflow-hidden ${property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? 'border-red-500 ring-2 ring-red-100 bg-red-50' : 'bg-white'}`}>
+                                                    <div className="w-full h-26 rounded-t-md overflow-hidden bg-muted">
                                                         {property[cat.key].endsWith(".pdf") ?
                                                             <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 group-hover:bg-slate-100 transition-colors">
                                                                 <FileText className="w-8 h-8 text-slate-400 mb-1" />
@@ -823,6 +827,11 @@ export default function PropertyManagePage() {
                                                             <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-sm border-l border-b border-white/20 flex items-center justify-center" title="Verified">
                                                                 <CheckCircle className="w-3.5 h-3.5 mr-1" />
                                                                 <span className="text-[9px] font-bold">Verified</span>
+                                                            </div>
+                                                        ) : property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
+                                                            <div className="bg-red-600 animate-pulse text-white p-1.5 rounded-bl-md shadow-sm border-l border-b border-white/20 flex items-center justify-center" title="Reupload Required">
+                                                                <AlertCircle className="w-3.5 h-3.5 mr-1" />
+                                                                <span className="text-[9px] font-bold">Reupload</span>
                                                             </div>
                                                         ) : (
                                                             <div className="bg-amber-500 text-white p-1.5 rounded-bl-md shadow-sm border-l border-b border-white/20 flex items-center justify-center" title="Pending Approval">

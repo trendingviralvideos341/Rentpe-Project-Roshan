@@ -225,11 +225,29 @@ export async function initiateMoveOut(tenantId: string, deductions: number, note
 
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        include: { room: true }
+        include: {
+            room: true,
+            rentRecords: { where: { paid: false } }
+        }
     });
 
     if (!tenant) throw new Error("Tenant not found");
     if (tenant.status === 'MOVED_OUT') throw new Error("Tenant already moved out");
+
+    const unpaidRent = tenant.rentRecords.reduce((acc, r) => acc + parseFloat(r.amount), 0);
+    const deposit = parseFloat(tenant.rent); // Assuming rent amount equals deposit as per current UI logic
+    const finalRefund = deposit - unpaidRent - deductions;
+
+    const settlementSummary = `
+Settlement Summary:
+- Security Deposit: ₹${deposit.toLocaleString('en-IN')}
+- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')}
+- Deductions: ₹${deductions.toLocaleString('en-IN')}
+-------------------
+Final Refund: ₹${finalRefund.toLocaleString('en-IN')}
+-------------------
+Note: ${note}
+`.trim();
 
     const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 
@@ -241,7 +259,7 @@ export async function initiateMoveOut(tenantId: string, deductions: number, note
             data: {
                 status: 'MOVED_OUT',
                 vacatedOn: timestamp,
-                vacateNote: note
+                vacateNote: settlementSummary
             }
         }),
         // 2. Increment Room Availability
@@ -255,7 +273,7 @@ export async function initiateMoveOut(tenantId: string, deductions: number, note
                 targetId: tenantId,
                 targetType: 'TENANT',
                 action: 'MOVED_OUT',
-                reason: `Move-out processed. Deductions: ₹${deductions}. Note: ${note}`,
+                reason: settlementSummary,
                 performedBy: (session as any).userId
             }
         }),
@@ -265,7 +283,7 @@ export async function initiateMoveOut(tenantId: string, deductions: number, note
                 action: 'TENANT_MOVE_OUT',
                 targetId: tenantId,
                 targetType: 'TENANT',
-                details: `Move-out finalized with ₹${deductions} deductions. Room ${tenant.roomNumber} vacated.`,
+                details: `Move-out finalized. Refund: ₹${finalRefund}. Unpaid: ₹${unpaidRent}. Ded: ₹${deductions}.`,
                 performedBy: (session as any).userId
             }
         })
