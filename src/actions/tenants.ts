@@ -139,17 +139,41 @@ export async function confirmMoveIn(tenantId: string) {
             });
         }
 
+        // 4. Financial Integration: Create Billing Profile & Generate Initial Deposit Invoice
+        const rentAmount = parseFloat(tenant.rent.replace(/[^0-9.]/g, ''));
+        const profile = await (tx.billingProfile as any).create({
+            data: {
+                tenantId,
+                propertyId: tenant.propertyId,
+                roomId: tenant.roomId,
+                bedId: tenant.bedId,
+                monthlyRent: rentAmount,
+                securityDeposit: rentAmount, // Default to 1 month
+                billingDay: new Date(tenant.startDate).getDate() || 1
+            }
+        });
+
+        await (tx.securityDeposit as any).create({
+            data: {
+                billingProfileId: profile.id,
+                tenantId,
+                amount: rentAmount,
+                status: 'PENDING'
+            }
+        });
+
         await tx.auditLog.create({
             data: {
                 action: 'TENANT_MOVE_IN',
                 targetId: tenantId,
                 targetType: 'TENANT',
-                details: `Tenant ${tenant.name} moved in. Bed status: OCCUPIED.`,
+                details: `Tenant ${tenant.name} moved in. Financial profile initialized.`,
                 performedBy: (session as any).userId
             }
         });
 
         revalidatePath('/dashboard/owner/tenants');
+        revalidatePath('/dashboard/owner/financials');
         return { success: true };
     });
 }
@@ -444,13 +468,20 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
     if (!tenant) throw new Error("Tenant not found");
     if (tenant.status === 'MOVE_OUT_COMPLETED') throw new Error("Tenant already moved out");
 
-    const unpaidRent = tenant.rentRecords.reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0);
-    const deposit = parseFloat(tenant.rent); // Assuming rent amount equals deposit
-    const finalRefund = deposit - unpaidRent - deductions;
+    return await prisma.$transaction(async (tx) => {
+        const moveOutDate = new Date();
+        const moveInDate = new Date(tenant.startDate);
+        const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    const settlementSummary = `
+        // 1. Financial Settlement logic
+        const unpaidRent = tenant.rentRecords.reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0);
+        // We use the rent as deposit here for migration support, but real flow should use deposit table
+        const depositAmount = parseFloat(tenant.rent); 
+        const finalRefund = depositAmount - unpaidRent - deductions;
+
+        const settlementSummary = `
 Settlement Summary:
-- Security Deposit: ₹${deposit.toLocaleString('en-IN')}
+- Security Deposit: ₹${depositAmount.toLocaleString('en-IN')}
 - Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')}
 - Deductions: ₹${deductions.toLocaleString('en-IN')}
 -------------------
@@ -459,12 +490,19 @@ Final Refund: ₹${finalRefund.toLocaleString('en-IN')}
 Note: ${note}
 `.trim();
 
-    return await prisma.$transaction(async (tx) => {
-        const moveOutDate = new Date();
-        const moveInDate = new Date(tenant.startDate);
-        const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
+        // 2. Create formal Settlement Record
+        await (tx.settlementRecord as any).create({
+            data: {
+                tenantId,
+                finalRentPending: unpaidRent,
+                damageDeductions: deductions,
+                depositRefunded: finalRefund > 0 ? finalRefund : 0,
+                notes: note,
+                settlementDate: moveOutDate
+            }
+        });
 
-        // 1. Create History Record
+        // 3. Create History Record
         await (tx.tenantHistory as any).create({
             data: {
                 tenantId: tenant.id,
@@ -475,11 +513,11 @@ Note: ${note}
                 moveInDate: moveInDate,
                 moveOutDate: moveOutDate,
                 stayDurationDays: duration,
-                totalPaid: parseFloat(tenant.rent)
+                totalPaid: parseFloat(tenant.totalPaid || "0") + (depositAmount - (finalRefund > 0 ? finalRefund : 0))
             }
         });
 
-        // 2. Clear Bed
+        // 4. Clear Bed & Close Booking
         if (tenant.bedId) {
             await (tx.bed as any).update({
                 where: { id: tenant.bedId },
@@ -487,7 +525,6 @@ Note: ${note}
             });
         }
 
-        // 3. Close Booking
         if (tenant.bookingId) {
             await tx.booking.update({
                 where: { id: tenant.bookingId },
@@ -495,7 +532,7 @@ Note: ${note}
             });
         }
 
-        // 4. Update Tenant
+        // 5. Update Tenant
         await (tx.tenant as any).update({
             where: { id: tenantId },
             data: { 
@@ -505,24 +542,13 @@ Note: ${note}
             }
         });
 
-        // 5. Create Note
-        await tx.actionNote.create({
-            data: {
-                targetId: tenantId,
-                targetType: 'TENANT',
-                action: 'MOVED_OUT',
-                reason: settlementSummary,
-                performedBy: (session as any).userId
-            }
-        });
-
-        // 6. Audit Log
+        // 6. Log event
         await tx.auditLog.create({
             data: {
                 action: 'TENANT_MOVE_OUT',
                 targetId: tenantId,
                 targetType: 'TENANT',
-                details: `Move-out finalized. Stay duration: ${duration} days. Refund: ₹${finalRefund}.`,
+                details: `Move-out finalized. Settlement: Refund ₹${finalRefund}.`,
                 performedBy: (session as any).userId
             }
         });

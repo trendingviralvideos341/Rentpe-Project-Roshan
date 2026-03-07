@@ -57,6 +57,21 @@ export async function getOwnerDashboardHome() {
     const monthlyRefunded = monthlyRefunds.reduce((sum: number, r: any) => sum + r.amount, 0);
     const monthlyRevenue = monthlyGross - monthlyRefunded;
 
+    // ── FINANCIAL AGGREGATES ──
+    const [unpaidInvoices, depositsHeld] = await Promise.all([
+        (prisma as any).rentInvoice.findMany({
+            where: { propertyId: { in: propertyIds }, status: { not: 'PAID' } },
+            select: { amount: true, paidAmount: true }
+        }),
+        (prisma as any).securityDeposit.findMany({
+            where: { billingProfile: { propertyId: { in: propertyIds } }, status: 'PAID' },
+            select: { amount: true }
+        })
+    ]);
+
+    const totalOutstandingRent = (unpaidInvoices as any[]).reduce((sum, inv) => sum + (inv.amount - (inv.paidAmount || 0)), 0);
+    const totalDepositsHeld = (depositsHeld as any[]).reduce((sum, dep) => sum + dep.amount, 0);
+
     // Occupancy %
     const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
@@ -75,6 +90,8 @@ export async function getOwnerDashboardHome() {
         activeTenants,
         scheduledMoveOuts,
         monthlyRevenue: Math.round(monthlyRevenue * 100) / 100,
+        totalOutstandingRent,
+        totalDepositsHeld,
     };
 }
 
@@ -388,7 +405,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
         select: { id: true, displayId: true, propertyName: true, roomType: true, amount: true, status: true, createdAt: true, cancelReason: true }
     });
 
-    const bookingIds = bookings.map(b => b.id);
+    const bookingIds = bookings.map((b: any) => b.id);
     const refunds = await (prisma as any).refundRecord.findMany({ where: { bookingId: { in: bookingIds } } });
 
     const report = bookings.map((b: any) => {

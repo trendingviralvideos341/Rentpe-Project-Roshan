@@ -187,7 +187,7 @@ model Booking {
   paymentStatus    String           @default("UNPAID")
   paymentMethod    String?
   paidAt           DateTime?
-  amount           String
+  amount           Float
   roomAssigned     String?
   agreementSigned  Boolean          @default(false)
   agreementSignedAt DateTime?
@@ -212,7 +212,7 @@ model Booking {
   guestPincode     String?
   occupationDetail String?
   occupationType   String?
-  pendingAmount    String?
+  pendingAmount    Float?
   room             Room?            @relation(fields: [roomId], references: [id])
   user             User             @relation(fields: [userId], references: [id])
   property         Property?        @relation(fields: [propertyId], references: [id])

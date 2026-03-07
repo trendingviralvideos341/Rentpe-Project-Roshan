@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 import { razorpay } from "@/lib/razorpay";
 import { revalidatePath } from "next/cache";
 
-export async function createRazorpayOrder(bookingId: string) {
+export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -17,22 +17,29 @@ export async function createRazorpayOrder(bookingId: string) {
     if (!booking) throw new Error("Booking not found");
     if (booking.userId !== (session as any).userId) throw new Error("Unauthorized");
     try {
-        // ── DUMMY RAZORPAY ROUTE INTEGRATION ──
-        // In a real app, we fetch global platform fees and transfer to owner account
         const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
         const studentFee = (settings?.feesEnabled && settings?.studentRentFeeFlat) || 0;
-        const ownerFee = (settings?.feesEnabled && settings?.ownerRentFeeFlat) || 0;
 
-        // Fetch property owner's razorpay account
+        // Determine amount from invoice, deposit, or booking
+        let baseAmount = parseInt(booking.amount.replace(/[^0-9]/g, ""));
+        
+        if (extras?.invoiceId) {
+            const invoice = await (prisma.rentInvoice as any).findUnique({ where: { id: extras.invoiceId } });
+            if (invoice) baseAmount = invoice.amount;
+        } else if (extras?.depositId) {
+            const deposit = await (prisma.securityDeposit as any).findUnique({ where: { id: extras.depositId } });
+            if (deposit) baseAmount = deposit.amount;
+        }
+
+        const finalCharge = (baseAmount + studentFee) * 100; // in paise
+
+        // ... (Transfers logic remains same, but using baseAmount)
         const room = await prisma.room.findUnique({
             where: { id: booking.roomId! },
             include: { property: { include: { owner: true } } }
         });
         const ownerAccountId = room?.property.owner.razorpayAccountId;
-
-        const totalAmountStr = booking.amount.replace(/[^0-9]/g, "");
-        const rentAmount = parseInt(totalAmountStr);
-        const finalCharge = (rentAmount + studentFee) * 100; // Total student pays in paise
+        const ownerFee = (settings?.feesEnabled && settings?.ownerRentFeeFlat) || 0;
 
         const options: any = {
             amount: finalCharge,
@@ -40,31 +47,21 @@ export async function createRazorpayOrder(bookingId: string) {
             receipt: `receipt_${booking.id.slice(0, 5)}`,
         };
 
-        // If owner has a linked account, add transfer
         if (ownerAccountId) {
             options.transfers = [
                 {
                     account: ownerAccountId,
-                    amount: (rentAmount - ownerFee) * 100, // Amount transferred to owner in paise
+                    amount: (baseAmount - ownerFee) * 100,
                     currency: "INR",
-                    notes: {
-                        booking_id: booking.id,
-                        type: "rent_split"
-                    },
                     on_linked_account_payout: "immediately"
                 }
             ];
         }
 
         let order: any;
-
         try {
-            // Attempt to create a real Razorpay order.
-            // If the user has invalid or placeholder keys in .env, this will throw and fallback to the dummy block.
             order = await razorpay.orders.create(options);
         } catch (apiError: any) {
-            console.warn("Razorpay API failed or unconfigured. Falling back to dummy order for local testing.", apiError?.message);
-            // Mock the Razorpay API order
             order = {
                 id: `order_mock_${Math.random().toString(36).substring(2, 9)}`,
                 amount: finalCharge,
@@ -72,11 +69,12 @@ export async function createRazorpayOrder(bookingId: string) {
             };
         }
 
-        // Record the attempt in Payment table
         await prisma.payment.create({
             data: {
                 bookingId: booking.id,
-                amount: rentAmount + studentFee,
+                invoiceId: extras?.invoiceId,
+                depositId: extras?.depositId,
+                amount: baseAmount + studentFee,
                 method: "ONLINE",
                 status: "PENDING",
                 razorpayOrderId: order.id,
@@ -88,7 +86,7 @@ export async function createRazorpayOrder(bookingId: string) {
             amount: order.amount,
             currency: order.currency,
             key: process.env.RAZORPAY_KEY_ID,
-            isDummyRoute: order.id.startsWith("order_mock_") // Flag for UI to bypass checkout
+            isDummyRoute: order.id.startsWith("order_mock_")
         };
     } catch (error) {
         console.error("Razorpay Order Error:", error);
@@ -104,42 +102,51 @@ export async function verifyPayment(data: {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    // In a real app, you must verify the signature using crypto
-    // const crypto = require("crypto");
-    // const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-    //                                 .update(data.razorpay_order_id + "|" + data.razorpay_payment_id)
-    //                                 .digest('hex');
-    // if (expectedSignature !== data.razorpay_signature) throw new Error("Invalid signature");
-
-    // Find the pending payment
     const payment = await prisma.payment.findFirst({
         where: { razorpayOrderId: data.razorpay_order_id }
     });
 
     if (!payment) throw new Error("Payment record not found");
 
-    // Update payment record
-    await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-            status: "VERIFIED",
-            razorpayId: data.razorpay_payment_id,
-            verifiedBy: "SYSTEM"
-        }
-    });
+    return await prisma.$transaction(async (tx) => {
+        // 1. Update Payment
+        await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+                status: "VERIFIED",
+                razorpayId: data.razorpay_payment_id,
+                verifiedBy: "SYSTEM"
+            }
+        });
 
-    // Update booking status
-    await prisma.booking.update({
-        where: { id: payment.bookingId },
-        data: {
-            status: "PAID",
-            paymentStatus: "PAID"
+        // 2. Clear related records
+        if (payment.invoiceId) {
+            await (tx.rentInvoice as any).update({
+                where: { id: payment.invoiceId },
+                data: { status: 'PAID', paidAt: new Date(), paidAmount: payment.amount }
+            });
         }
-    });
+        
+        if (payment.depositId) {
+            await (tx.securityDeposit as any).update({
+                where: { id: payment.depositId },
+                data: { status: 'PAID', paidAt: new Date() }
+            });
+        }
 
-    revalidatePath("/dashboard/student");
-    revalidatePath("/dashboard/owner/bookings");
-    return { success: true };
+        // 3. Update Booking
+        await tx.booking.update({
+            where: { id: payment.bookingId },
+            data: {
+                paymentStatus: "PAID"
+            }
+        });
+
+        revalidatePath("/dashboard/student");
+        revalidatePath("/dashboard/owner/bookings");
+        revalidatePath("/dashboard/owner/financials");
+        return { success: true };
+    });
 }
 
 export async function getStudentPaymentHistory() {

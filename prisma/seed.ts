@@ -113,21 +113,21 @@ async function main() {
         data: {
             displayId: "TNT-001", name: "Priya Verma", phone: "9876543210", email: "priya@example.com",
             propertyId: property.id, roomId: room2.id, roomNumber: "204", roomType: "Double",
-            rent: "₹15,000", startDate: "01 Jan 2024", status: "ACTIVE"
+            rent: "₹15,000", startDate: "01 Jan 2024", status: "ACTIVE", studentId: student2.id
         }
     });
     const tenant2 = await prisma.tenant.create({
         data: {
             displayId: "TNT-002", name: "Amit Rathore", phone: "9123456789", email: "amit.r@example.com",
             propertyId: property.id, roomId: room3.id, roomNumber: "305", roomType: "Triple",
-            rent: "₹12,000", startDate: "15 Jan 2024", status: "ACTIVE"
+            rent: "₹12,000", startDate: "15 Jan 2024", status: "ACTIVE", studentId: student1.id // Reusing student1 for demo
         }
     });
     const tenant3 = await prisma.tenant.create({
         data: {
             displayId: "TNT-003", name: "Sneha Gupta", phone: "9988776655", email: "sneha@example.com",
             propertyId: property.id, roomId: room1.id, roomNumber: "101", roomType: "Single",
-            rent: "₹18,000", startDate: "01 Feb 2024", status: "ACTIVE"
+            rent: "₹18,000", startDate: "01 Feb 2024", status: "ACTIVE", studentId: student3.id
         }
     });
     console.log("✅ 3 Tenants created");
@@ -149,7 +149,7 @@ async function main() {
         data: {
             displayId: "REQ-10001001", userId: student1.id, propertyName: property.name,
             occupancy: "Double Occupancy (₹15,000/month)", guestName: "Rahul Sharma",
-            moveInDate: "2024-03-01", status: "PENDING_APPROVAL", paymentStatus: "UNPAID", amount: "₹15,000"
+            moveInDate: "2024-03-01", status: "PENDING_APPROVAL", paymentStatus: "UNPAID", amount: 15000
         }
     });
     await prisma.booking.create({
@@ -157,7 +157,7 @@ async function main() {
             displayId: "REQ-10001002", userId: student2.id, roomId: room2.id,
             propertyName: property.name, occupancy: "Double Occupancy (₹15,000/month)",
             guestName: "Priya Verma", moveInDate: "2024-01-01",
-            status: "PAID", paymentStatus: "PAID", amount: "₹15,000", roomAssigned: "204 (Double)"
+            status: "PAID", paymentStatus: "PAID", amount: 15000, roomAssigned: "204 (Double)"
         }
     });
     console.log("✅ Bookings created");
