@@ -6,9 +6,10 @@ import cloudinary from './cloudinary';
  * @param isPrivate - If true, uploads as 'authenticated' type (not public)
  */
 export async function uploadToCloudinary(base64Data: string, folder: string, isPrivate: boolean = false): Promise<string> {
-  // If no Cloudinary credentials are set in development, return the base64 as-is (Mock mode)
-  if (!process.env.CLOUDINARY_API_KEY && process.env.NODE_ENV === 'development') {
-    console.warn(`[Cloudinary Mock] Uploading to ${folder}... (No API Key found)`);
+  // If no Cloudinary credentials are set OR they are placeholders, return the base64 as-is (Mock mode)
+  const isPlaceholder = process.env.CLOUDINARY_API_KEY?.includes('your_api_key');
+  if ((!process.env.CLOUDINARY_API_KEY || isPlaceholder) && process.env.NODE_ENV === 'development') {
+    console.warn(`[Cloudinary Mock] Uploading to ${folder}... (No valid API Key found)`);
     return base64Data;
   }
 
