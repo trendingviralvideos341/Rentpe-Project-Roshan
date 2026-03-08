@@ -11,14 +11,16 @@ const COLORS = ['#8b5cf6', '#e2e8f0'];
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams, useRouter } from "next/navigation";
-import { User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, ListFilter, Activity, CreditCard } from "lucide-react";
+import { User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, ListFilter, Activity, CreditCard, UserCheck, Lock } from "lucide-react";
 import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
 import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
 import { getOwnerInventory } from "@/actions/dashboard";
+import { getOwnerStaff } from "@/actions/staff";
 
 export default function OwnerDashboard() {
     const [stats, setStats] = useState<any>(null);
     const [inventory, setInventory] = useState<any[]>([]);
+    const [staffTeam, setStaffTeam] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const searchParams = useSearchParams();
@@ -29,9 +31,10 @@ export default function OwnerDashboard() {
         setLoading(true);
         setError(false);
         try {
-            const [statsData, inventoryData] = await Promise.all([
+            const [statsData, inventoryData, staffData] = await Promise.all([
                 getOwnerDashboardStats(),
-                getOwnerInventory()
+                getOwnerInventory(),
+                getOwnerStaff().catch(() => [])
             ]);
 
             if (!statsData || (statsData as any).error === "Unauthorized") {
@@ -40,6 +43,7 @@ export default function OwnerDashboard() {
             }
             setStats(statsData);
             setInventory(inventoryData);
+            setStaffTeam(staffData || []);
         } catch (e) {
             console.error(e);
             setError(true);
@@ -253,15 +257,38 @@ export default function OwnerDashboard() {
                     <TenantLifecycleManager ownerId={stats.user.id} />
                 </TabsContent>
 
-                <TabsContent value="profile" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <TabsContent value="profile" className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                    {/* Owner Profile Card */}
                     <Card className="border-none shadow-xl overflow-hidden bg-gradient-to-br from-white to-blue-50/30">
                         <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-8 text-white">
                             <div className="flex flex-col md:flex-row items-center gap-6">
                                 <div className="h-24 w-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-2xl">
                                     <Building className="h-12 w-12 text-white" />
                                 </div>
-                                <div className="text-center md:text-left">
+                                <div className="text-center md:text-left flex-1">
                                     <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Premium Partner"}</h2>
+                                    <div className="flex flex-col md:flex-row items-center md:justify-start gap-2 mt-2">
+                                        <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/30 uppercase tracking-widest">
+                                            Property Owner
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+                                            <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">Verified Partner</span>
+                                        </div>
+                                    </div>
+                                    {/* Owner Access Chips */}
+                                    <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
+                                        <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Property Management</span>
+                                        <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Tenant Lifecycle</span>
+                                        <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Revenue Tracking</span>
+                                        <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Inventory Control</span>
+                                        <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Ticket Management</span>
+                                        {staffTeam.filter(s => s.status === 'ACTIVE').length > 0 && (
+                                            <span className="text-[10px] font-black bg-emerald-400/20 px-2 py-0.5 rounded border border-emerald-300/30">
+                                                Team: {staffTeam.filter(s => s.status === 'ACTIVE').length} Active Member{staffTeam.filter(s => s.status === 'ACTIVE').length > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -330,9 +357,91 @@ export default function OwnerDashboard() {
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Owner Team Section — Live, updates when staff roles change */}
+                    <Card className="border-none shadow-lg">
+                        <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg font-black flex items-center gap-2">
+                                        <Users className="h-5 w-5 text-blue-600" /> My Team
+                                    </CardTitle>
+                                    <p className="text-xs text-muted-foreground mt-1">All active staff and their system access roles</p>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/owner/staff')} className="text-xs">
+                                    Manage Team
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {staffTeam.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <Users className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                    <p className="text-sm">No team members yet.</p>
+                                    <Button variant="outline" size="sm" className="mt-3" onClick={() => router.push('/dashboard/owner/staff')}>
+                                        Add Staff Member
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {staffTeam.map((member) => {
+                                        const permissions: string[] = (() => { try { return JSON.parse(member.permissions || '[]'); } catch { return []; } })();
+                                        const isActive = member.status === 'ACTIVE';
+                                        return (
+                                            <div key={member.id} className={`p-5 rounded-2xl border transition-all ${
+                                                isActive ? 'bg-white border-blue-100 shadow-sm hover:shadow-md hover:border-blue-300' : 'bg-gray-50 border-gray-100 opacity-60'
+                                            }`}>
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-black text-lg ${
+                                                            isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500'
+                                                        }`}>
+                                                            {member.name?.charAt(0)?.toUpperCase() || '?'}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-slate-800">{member.name}</p>
+                                                            <p className="text-xs text-muted-foreground font-medium">{member.designation}</p>
+                                                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{member.displayId}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 ${
+                                                        isActive ? 'bg-emerald-100 text-emerald-700' :
+                                                        member.status === 'BLOCKED' ? 'bg-red-100 text-red-700' :
+                                                        'bg-gray-100 text-gray-600'
+                                                    }`}>{member.status}</span>
+                                                </div>
+
+                                                {/* Permissions chips */}
+                                                {permissions.length > 0 ? (
+                                                    <div className="mt-4">
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                                            <Lock className="h-3 w-3" /> System Access
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {permissions.map((perm: string) => (
+                                                                <span key={perm} className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                                                    isActive ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-100 text-gray-500 border-gray-200'
+                                                                }`}>
+                                                                    {perm}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <UserCheck className="h-3 w-3" /> No specific permissions assigned
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
