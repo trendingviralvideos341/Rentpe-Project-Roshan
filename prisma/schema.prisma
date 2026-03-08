@@ -481,13 +481,18 @@ model Ticket {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  type      String
-  message   String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  id             String   @id @default(uuid())
+  userId         String
+  type           String   // BOOKING | KYC | PAYMENT | SYSTEM
+  category       String?  // Step in lifecycle e.g. BOOKING_REQUEST
+  message        String
+  isRead         Boolean  @default(false)
+  isPersistent   Boolean  @default(false) // For pop-ups that stay until dismissed
+  targetRole     String   @default("USER") // USER | OWNER | VERIFIER
+  metadata       String?  // JSON for bookingId, actionUrl, etc.
+  recipientEmail String?  // To track email delivery if applicable
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 model AuditLog {

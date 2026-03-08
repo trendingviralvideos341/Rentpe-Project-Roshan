@@ -8,6 +8,7 @@ import SessionSync from "@/components/layout/SessionSync";
 import { Toaster } from 'sonner';
 import { getSession } from "@/lib/auth";
 import { CSPostHogProvider } from "@/components/providers/posthog-provider";
+import NotificationSync from "@/components/layout/NotificationSync";
 import prisma from "@/lib/prisma";
 import { Activity } from "lucide-react";
 
@@ -94,6 +95,7 @@ export default async function RootLayout({
             </div>
           ) : (
             <>
+              <NotificationSync />
               <SessionSync userId={activeUserId} role={activeRole} />
               <SessionGuard />
               <Navbar session={freshSession} />

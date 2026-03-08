@@ -3,8 +3,9 @@
  * Using simple, responsive inline styles for maximum compatibility.
  */
 
-const LOGO_URL = 'https://rentpe.in/logo.png'; // Placeholder for actual logo
 const PRIMARY_COLOR = '#8b5cf6'; // Violet-600
+const SUCCESS_COLOR = '#10b981'; // Emerald-500
+const WARNING_COLOR = '#f59e0b'; // Amber-500
 
 const BaseLayout = (content: string) => `
 <!DOCTYPE html>
@@ -19,7 +20,7 @@ const BaseLayout = (content: string) => `
     .header { text-align: center; margin-bottom: 32px; }
     .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #94a3b8; }
     .button { display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 24px; }
-    .footer-links a { color: #6366f1; text-decoration: none; margin: 0 8px; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -34,76 +35,171 @@ const BaseLayout = (content: string) => `
     <div class="footer">
       <p>© ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd.</p>
       <div class="footer-links">
-        <a href="https://rentpe.in/terms">Terms</a>
-        <a href="https://rentpe.in/privacy">Privacy</a>
-        <a href="https://rentpe.in/contact">Contact Us</a>
+        <a href="https://rentpe.in/terms" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Terms</a>
+        <a href="https://rentpe.in/privacy" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Privacy</a>
+        <a href="https://rentpe.in/contact" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Contact Us</a>
       </div>
-      <p style="margin-top: 16px;">123 Startup Hub, Koramangala, Bangalore - 560034</p>
     </div>
   </div>
 </body>
 </html>
 `;
 
-export const WelcomeTemplate = (name: string) => BaseLayout(`
-  <h2 style="margin-top: 0;">Welcome to RentPe, ${name}! 🚀</h2>
-  <p>We're thrilled to have you join India's smartest PG & Hostel marketplace. Your account is now active and ready to go.</p>
-  <p><strong>What can you do now?</strong></p>
-  <ul>
-    <li>Browse 100% verified premium stays.</li>
-    <li>Book your bed with just a small token.</li>
-    <li>Manage your entire stay from your digital dashboard.</li>
-  </ul>
-  <a href="https://rentpe.in/login" class="button">Go to My Dashboard</a>
-  <p style="margin-top: 24px; font-size: 14px; font-style: italic;">If you have any questions, just reply to this email, or raise a support ticket from your dashboard.</p>
-`);
-
-export const BookingPendingTemplate = (tenantName: string, propertyName: string, bookingId: string) => BaseLayout(`
-  <h2 style="margin-top: 0;">Booking Request Received! 🕒</h2>
-  <p>Hi ${tenantName},</p>
-  <p>Your request to book a bed at <strong>${propertyName}</strong> has been received by the owner.</p>
-  <p><strong>Booking ID:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${bookingId}</code></p>
-  <p>The owner has 48 hours to approve or reject your request. Your booking token is currently locked and will only be processed if the owner approves.</p>
-  <a href="https://rentpe.in/dashboard/student" class="button">Track My Booking</a>
-`);
-
-export const BookingConfirmedTemplate = (tenantName: string, propertyName: string, checkInDate: string) => BaseLayout(`
-  <h2 style="margin-top: 0; color: #10b981;">Booking Confirmed! ✅</h2>
-  <p>Hi ${tenantName},</p>
-  <p>Pack your bags! Your stay at <strong>${propertyName}</strong> has been confirmed by the owner.</p>
-  <p><strong>Check-in Date:</strong> ${checkInDate}</p>
-  <p>Next steps:</p>
-  <ul>
-    <li>Complete your KYC if not already done.</li>
-    <li>Pay your first month's rent via the dashboard.</li>
-    <li>A digital Tenant Agreement will be shared shortly.</li>
-  </ul>
-  <a href="https://rentpe.in/dashboard/student" class="button">Complete Onboarding</a>
-`);
-
-export const KycStatusTemplate = (name: string, status: 'APPROVED' | 'REJECTED', notes?: string) => BaseLayout(`
-  <h2 style="margin-top: 0;">KYC Verification Update</h2>
-  <p>Hi ${name},</p>
-  <p>Your KYC document verification status has been updated.</p>
-  <div style="background: ${status === 'APPROVED' ? '#ecfdf5' : '#fef2f2'}; border: 1px solid ${status === 'APPROVED' ? '#10b981' : '#ef4444'}; padding: 16px; border-radius: 8px; margin: 20px 0;">
-    <p style="margin: 0; font-weight: bold; color: ${status === 'APPROVED' ? '#065f46' : '#991b1b'};">Status: ${status}</p>
-    ${notes ? `<p style="margin-top: 8px; font-size: 14px;"><strong>Note:</strong> ${notes}</p>` : ''}
+export const LifecycleTemplate = (data: {
+  title: string;
+  name: string;
+  status: string;
+  message: string;
+  nextStep: string;
+  actionLabel: string;
+  actionUrl: string;
+  isSuccess?: boolean;
+}) => BaseLayout(`
+  <div class="status-badge" style="background: ${data.isSuccess ? '#ecfdf5' : '#eef2ff'}; color: ${data.isSuccess ? SUCCESS_COLOR : PRIMARY_COLOR};">
+    ${data.status}
   </div>
-  ${status === 'REJECTED' ? '<p>Please log in to re-upload your documents for verification.</p>' : ''}
-  <a href="https://rentpe.in/dashboard" class="button">Go to Dashboard</a>
+  <h2 style="margin-top: 0;">${data.title}</h2>
+  <p>Hi ${data.name},</p>
+  <p>${data.message}</p>
+  <div style="background: #f8fafc; border-left: 4px solid ${PRIMARY_COLOR}; padding: 16px; margin: 24px 0; border-radius: 4px;">
+    <p style="margin: 0; font-weight: bold; color: #1e293b;">Next Step:</p>
+    <p style="margin: 4px 0 0 0; font-size: 14px;">${data.nextStep}</p>
+  </div>
+  <a href="https://rentpe.in${data.actionUrl}" class="button">${data.actionLabel}</a>
 `);
 
-export const InvoiceGeneratedTemplate = (name: string, month: string, amount: number, dueDate: string) => BaseLayout(`
-  <h2 style="margin-top: 0;">New Rent Invoice Generated 📜</h2>
-  <p>Hi ${name},</p>
-  <p>A new rent invoice has been generated for <strong>${month}</strong>.</p>
-  <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin: 24px 0;">
-    <p style="margin: 0; font-size: 14px; color: #64748b;">Amount Due</p>
-    <p style="margin: 4px 0 16px 0; font-size: 28px; font-weight: 800; color: #1e293b;">₹${amount.toLocaleString('en-IN')}</p>
-    <p style="margin: 0; font-size: 14px; color: #64748b;">Due Date</p>
-    <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 600; color: #ef4444;">${dueDate}</p>
+// 1. BOOKING_REQUEST_SENT (Tenant)
+export const BookingRequestSentTemplate = (name: string, propertyName: string) => LifecycleTemplate({
+  title: "Booking Request Received 🕒",
+  name,
+  status: "REQUEST_SENT",
+  message: `Your request for <strong>${propertyName}</strong> has been sent to the owner. We'll notify you as soon as they respond.`,
+  nextStep: "Wait for owner approval (usually within 24 hours).",
+  actionLabel: "Track Booking Status",
+  actionUrl: "/dashboard/student",
+});
+
+// 2. REQUEST_ACCEPTED (Tenant)
+export const RequestAcceptedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
+  title: "Request Accepted! 🎉",
+  name,
+  status: "APPROVED",
+  message: `Great news! The owner of <strong>${propertyName}</strong> has accepted your booking request.`,
+  nextStep: "Pay the token amount to reserve your bed.",
+  actionLabel: "Pay Token Amount",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// 3. ROOM_ALLOCATED (Tenant)
+export const RoomAllocatedTemplate = (name: string, propertyName: string, roomNumber: string) => LifecycleTemplate({
+  title: "Room Allocated 🏠",
+  name,
+  status: "ALLOCATED",
+  message: `You have been assigned <strong>Room ${roomNumber}</strong> at ${propertyName}.`,
+  nextStep: "Review your room details and proceed with onboarding.",
+  actionLabel: "View Room Details",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// 4. ONBOARDING_COMPLETED (Tenant)
+export const OnboardingCompletedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
+  title: "Onboarding Confirmed! ✅",
+  name,
+  status: "ONBOARDED",
+  message: `Your basic onboarding for <strong>${propertyName}</strong> is complete. Your reservation is now fully active.`,
+  nextStep: "Complete your professional KYC verification.",
+  actionLabel: "Upload KYC Docs",
+  actionUrl: "/dashboard/student?tab=kyc",
+  isSuccess: true,
+});
+
+// 5. PAYMENT_COMPLETED (Tenant)
+export const PaymentCompletedTemplate = (name: string, propertyName: string, amount: string) => LifecycleTemplate({
+  title: "Payment Successful 💳",
+  name,
+  status: "PAID",
+  message: `A payment of <strong>₹${amount}</strong> for ${propertyName} has been successfully processed.`,
+  nextStep: "Download your receipt and prepare for move-in.",
+  actionLabel: "Download Receipt",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// 6. AGREEMENT_SIGNED (Tenant)
+export const AgreementSignedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
+  title: "Agreement Signed ✍️",
+  name,
+  status: "SIGNED",
+  message: `Your digital rental agreement for <strong>${propertyName}</strong> has been successfully signed.`,
+  nextStep: "Your move-in details are being finalized.",
+  actionLabel: "View Agreement",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// 7. CHECKIN_CONFIRMED (Tenant)
+export const CheckinConfirmedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
+  title: "Check-in Confirmed! 🎒",
+  name,
+  status: "CHECKED_IN",
+  message: `Welcome home! Your check-in at <strong>${propertyName}</strong> is confirmed.`,
+  nextStep: "Explore your resident dashboard and raise any service requests.",
+  actionLabel: "Explore Dashboard",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// 8. KYC_SUBMITTED (User/Verification Team)
+export const KycSubmittedTemplate = (name: string) => LifecycleTemplate({
+  title: "KYC Under Review 🔍",
+  name,
+  status: "KYC_PENDING",
+  message: `Your KYC documents have been submitted and are now being reviewed by our verification team.`,
+  nextStep: "Verification usually takes 24-48 hours. Stay tuned!",
+  actionLabel: "Check KYC Status",
+  actionUrl: "/dashboard/student",
+});
+
+// 9. OWNER_REVIEWED (Tenant)
+export const OwnerReviewedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
+  title: "Documents Received by Owner 📋",
+  name,
+  status: "DOCS_RECEIVED",
+  message: `The owner of <strong>${propertyName}</strong> has acknowledged receipt of your documents.`,
+  nextStep: "Wait for final verification team approval.",
+  actionLabel: "View Documents",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// 10. KYC_VERIFIED (Tenant)
+export const KycVerifiedTemplate = (name: string) => LifecycleTemplate({
+  title: "KYC Verified! ✅",
+  name,
+  status: "KYC_CLEARED",
+  message: `Congratulations! Your professional KYC verification is complete. You are now a fully verified RentPe resident.`,
+  nextStep: "Your trust score has been upgraded to 'Excellent'.",
+  actionLabel: "My Verified Profile",
+  actionUrl: "/dashboard/student",
+  isSuccess: true,
+});
+
+// OWNER NOTIFICATION TEMPLATE
+export const OwnerNotificationTemplate = (ownerName: string, eventTitle: string, message: string, actionUrl: string, actionLabel: string) => BaseLayout(`
+  <h2 style="margin-top: 0;">Business Update: ${eventTitle}</h2>
+  <p>Hi ${ownerName},</p>
+  <p>${message}</p>
+  <a href="https://rentpe.in${actionUrl}" class="button">${actionLabel}</a>
+`);
+
+// VERIFICATION TEAM TEMPLATE
+export const VerifierNotificationTemplate = (message: string, actionUrl: string) => BaseLayout(`
+  <h2 style="margin-top: 0; color: ${PRIMARY_COLOR};">KYC Action Required</h2>
+  <p>An update requires verification team attention:</p>
+  <div style="background: #fdf2f8; border: 1px solid #fbcfe8; padding: 16px; border-radius: 8px; font-weight: 500;">
+    ${message}
   </div>
-  <p>Please ensure payment is made by the due date to avoid any late fees or service interruptions.</p>
-  <a href="https://rentpe.in/dashboard/student" class="button">Pay Now</a>
-  <p style="margin-top: 24px; font-size: 13px; color: #94a3b8;">You can download the formal PDF receipt from your dashboard after successful payment.</p>
+  <a href="https://rentpe.in${actionUrl}" class="button">Verify Documents</a>
 `);

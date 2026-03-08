@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { createNotification } from "@/actions/notifications";
+import { NotificationService } from "@/lib/notifications";
 import { uploadToCloudinary } from "@/lib/upload";
 
 export async function uploadTenantDocument(data: {
@@ -59,7 +59,7 @@ export async function uploadTenantDocument(data: {
         });
     }
 
-    return await prisma.tenantDocument.create({
+    const doc = await prisma.tenantDocument.create({
         data: {
             bookingId: data.bookingId,
             type: data.type,
@@ -69,6 +69,21 @@ export async function uploadTenantDocument(data: {
             auditTrail: JSON.stringify([auditEvent])
         }
     });
+
+    // Notify about KYC submission
+    try {
+        const booking = await prisma.booking.findUnique({
+            where: { id: data.bookingId },
+            include: { property: true }
+        });
+        if (booking && booking.property) {
+            await NotificationService.onKycSubmitted(booking, booking.property.ownerId);
+        }
+    } catch (e) {
+        console.error("KYC Submission Notification Error:", e);
+    }
+
+    return doc;
 }
 
 export async function getTenantDocuments(bookingId: string) {
@@ -239,14 +254,39 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
 
     // Notify the student about doc verification result
     try {
-        const booking = await prisma.booking.findUnique({ where: { id: existingDoc.bookingId } });
+        const booking = await prisma.booking.findUnique({ 
+            where: { id: existingDoc.bookingId },
+            include: { property: true }
+        });
         if (booking) {
-            const msg = status === 'VERIFIED'
-                ? `Your ${doc.type} document has been verified!`
-                : `Your ${doc.type} document was rejected. ${note || 'Please re-upload.'}`;
-            await createNotification(booking.userId, 'DOCUMENT', msg);
+            if (status === 'VERIFIED') {
+                if (session.role === 'OWNER') {
+                    await NotificationService.onOwnerReviewed(booking);
+                } else if (session.role === 'ADMIN' || session.role === 'VERIFIER') {
+                    // Check if overall KYC is now verified (>= 2 docs)
+                    const allDocs = await prisma.tenantDocument.findMany({
+                        where: { bookingId: booking.id }
+                    });
+                    const verifiedCount = allDocs.filter(d => d.status === 'VERIFIED').length;
+                    if (verifiedCount >= 2 && booking.property) {
+                        await NotificationService.onKycVerified(booking, booking.property.ownerId);
+                    }
+                }
+            } else if (status === 'REJECTED') {
+                await NotificationService.trigger({
+                    bookingId: booking.id,
+                    userId: booking.userId,
+                    type: 'KYC',
+                    category: 'KYC_DOC_REJECTED',
+                    message: `Your ${doc.type} document was rejected. Reason: ${note || 'Please re-upload.'}`,
+                    targetRole: 'USER',
+                    isPersistent: true
+                });
+            }
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error("Doc Verification Notification Error:", e);
+    }
 
     revalidatePath('/dashboard/owner/verifications');
     revalidatePath('/dashboard/admin/doc-verification');

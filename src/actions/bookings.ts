@@ -3,13 +3,8 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { createNotification } from "@/actions/notifications";
+import { NotificationService } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
-import { 
-    BookingPendingTemplate, 
-    BookingConfirmedTemplate, 
-    KycStatusTemplate 
-} from "@/lib/email-templates";
 
 export async function createBooking(data: {
     roomId?: string,
@@ -72,36 +67,18 @@ export async function createBooking(data: {
             performedBy: (session as any).userId
         }
     });
-
-    // Notify owner about new booking
     try {
         const property = await prisma.property.findFirst({ 
             where: { name: data.propertyName },
-            include: { owner: { select: { email: true } } }
+            include: { owner: { select: { id: true, email: true } } }
         });
         
         if (property) {
-            await createNotification(property.ownerId, 'BOOKING', `New booking request for ${data.propertyName} by ${data.guestName}`);
-            
-            // Email to Owner
-            if (property.owner?.email) {
-                sendEmail({
-                    to: property.owner.email,
-                    subject: `New Booking Request: ${data.propertyName}`,
-                    html: `<p>Hi Owner,</p><p>You have a new booking request for <strong>${data.propertyName}</strong> from <strong>${data.guestName}</strong>.</p><p><a href="https://rentpe.in/dashboard/owner/bookings">View request on dashboard</a></p>`
-                }).catch(err => console.error('Failed to email owner:', err));
-            }
+            await NotificationService.onBookingRequest(booking, property.ownerId);
         }
-
-        // Email to Tenant
-        if (guestEmail) {
-            sendEmail({
-                to: guestEmail,
-                subject: `Booking Request Received: ${data.propertyName} 🕒`,
-                html: BookingPendingTemplate(guestName, data.propertyName, booking.displayId)
-            }).catch(err => console.error('Failed to email tenant booking pending:', err));
-        }
-    } catch (e) { }
+    } catch (e) { 
+        console.error("Booking Notification Error:", e);
+    }
 
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
@@ -251,21 +228,26 @@ export async function approveBooking(id: string, data: {
         }
     });
 
-    // Notify student about approval
+    // Notify student about approval and room assignment
     try {
         if (booking.userId) {
-            await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} has been approved! Room: ${data.roomAssigned || 'TBD'}`);
-            
-            const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
-            if (student?.email) {
-                sendEmail({
-                    to: student.email,
-                    subject: `Booking Confirmed: ${booking.propertyName} ✅`,
-                    html: BookingConfirmedTemplate(student.name || 'Student', booking.propertyName, data.onboardingDate || 'TBD')
-                }).catch(err => console.error('Failed to email booking confirmation:', err));
+            await NotificationService.onRequestAccepted(booking);
+            if (data.roomAssigned) {
+                await NotificationService.onRoomAllocated(booking, data.roomAssigned);
+                // Also trigger ONBOARDING_COMPLETED as the user has been assigned a place
+                await NotificationService.trigger({
+                    bookingId: booking.id,
+                    userId: booking.userId,
+                    type: 'BOOKING',
+                    category: 'ONBOARDING_COMPLETED',
+                    message: `Initial onboarding for ${booking.propertyName} is complete! Room assigned. Please proceed to payment to reserve your bed.`,
+                    targetRole: 'USER'
+                });
             }
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error("Approval Notification Error:", e);
+    }
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');
@@ -304,11 +286,17 @@ export async function rejectBooking(id: string, reason?: string) {
             performedBy: (session as any).userId
         }
     });
-
     // Notify student about rejection
     try {
         if (booking.userId) {
-            await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} was rejected. ${reason || ''}`);
+            await NotificationService.trigger({
+                bookingId: booking.id,
+                userId: booking.userId,
+                type: 'BOOKING',
+                category: 'BOOKING_REJECTED',
+                message: `Your booking for ${booking.propertyName} was rejected. ${reason || ''}`,
+                targetRole: 'USER'
+            });
             
             const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
             if (student?.email) {
@@ -319,7 +307,9 @@ export async function rejectBooking(id: string, reason?: string) {
                 }).catch(err => console.error('Failed to email booking rejection:', err));
             }
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error("Booking Rejection Notification Error:", e);
+    }
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');
@@ -368,6 +358,17 @@ export async function markBookingPaid(id: string, method: string) {
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/student');
+
+    // Notify about payment
+    try {
+        const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' } });
+        if (property) {
+            await NotificationService.onPaymentCompleted(booking, booking.amount, property.ownerId);
+        }
+    } catch (e) {
+        console.error("Manual Payment Notification Error:", e);
+    }
+
     return booking;
 }
 
@@ -470,6 +471,17 @@ export async function checkInBooking(id: string) {
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/tenants');
     revalidatePath('/dashboard/student');
+
+    // Notify about check-in
+    try {
+        const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' } });
+        if (property) {
+            await NotificationService.onCheckinConfirmed(updatedBooking, property.ownerId);
+        }
+    } catch (e) {
+        console.error("Check-in Notification Error:", e);
+    }
+
     return updatedBooking;
 }
 
@@ -541,13 +553,27 @@ export async function cancelBooking(id: string, reason?: string) {
     if (booking.propertyId) {
         const waitlisted = await (prisma as any).waitlist.findMany({ where: { propertyId: booking.propertyId, status: 'WAITING' } }).catch(() => []);
         for (const w of waitlisted) {
-            await createNotification(w.userId, 'BOOKING', `A room is now available at your waitlisted property! Log in to book now.`);
+            await NotificationService.trigger({
+                bookingId: booking.id,
+                userId: w.userId,
+                type: 'BOOKING',
+                category: 'WAITLIST_OPEN',
+                message: `A room is now available at your waitlisted property! Log in to book now.`,
+                targetRole: 'USER'
+            });
             await (prisma as any).waitlist.update({ where: { id: w.id }, data: { status: 'NOTIFIED', notifiedAt: new Date() } }).catch(() => {});
         }
     }
 
     if (booking.userId && (session as any).role !== 'USER') {
-        await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} was cancelled. Reason: ${reason || 'Cancelled'}`);
+        await NotificationService.trigger({
+            bookingId: booking.id,
+            userId: booking.userId,
+            type: 'BOOKING',
+            category: 'BOOKING_CANCELLED',
+            message: `Your booking for ${booking.propertyName} was cancelled. Reason: ${reason || 'Cancelled'}`,
+            targetRole: 'USER'
+        });
     }
 
     await prisma.auditLog.create({
@@ -575,7 +601,9 @@ export async function signAgreement(id: string) {
 
     if (booking.propertyId) {
         const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
-        if (property) await createNotification(property.ownerId, 'BOOKING', `Agreement signed by ${(booking as any).guestName}. Booking CONFIRMED for ${booking.propertyName}!`);
+        if (property) {
+            await NotificationService.onAgreementSigned(booking, property.ownerId);
+        }
     }
 
     await prisma.auditLog.create({
@@ -652,10 +680,13 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
     try {
         if (booking.propertyId) {
             const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
-            if (property) await createNotification(property.ownerId, 'PAYMENT', `Token payment received for ${booking.propertyName} by ${booking.guestName}. Room is now RESERVED.`);
+            if (property) {
+                await NotificationService.onPaymentCompleted(booking, booking.tokenAmount || 1000, property.ownerId);
+            }
         }
-        await createNotification((session as any).userId, 'BOOKING', `Your room at ${booking.propertyName} is now RESERVED! Complete KYC within 7 days to confirm.`);
-    } catch (e) { }
+    } catch (e) { 
+        console.error("Token Payment Notification Error:", e);
+    }
 
     await prisma.auditLog.create({
         data: { action: 'TOKEN_PAID', targetId: bookingId, targetType: 'BOOKING', details: `Token paid via ${paymentMethod}. Reservation expires ${reservationExpiry.toDateString()}.`, performedBy: (session as any).userId }
@@ -680,7 +711,17 @@ export async function markTokenCashPaid(bookingId: string) {
     });
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
-    if (booking?.userId) await createNotification(booking.userId, 'BOOKING', `Cash token confirmed for ${booking.propertyName}. Please upload your KYC documents now.`);
+    if (booking?.userId) {
+        await NotificationService.trigger({
+            bookingId: booking.id,
+            userId: booking.userId,
+            type: 'BOOKING',
+            category: 'TOKEN_CASH_CONFIRMED',
+            message: `Cash token confirmed for ${booking.propertyName}. Please upload your KYC documents now.`,
+            targetRole: 'USER',
+            isPersistent: true
+        });
+    }
 
     await prisma.auditLog.create({ data: { action: 'TOKEN_CASH_PAID', targetId: bookingId, targetType: 'BOOKING', details: `Cash token marked by owner. Room reserved.`, performedBy: (session as any).userId } });
 
@@ -701,16 +742,7 @@ export async function verifyKycAndProceed(bookingId: string) {
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
     if (booking?.userId) {
-        await createNotification(booking.userId, 'BOOKING', `KYC verified! Your rental agreement for ${booking.propertyName} is ready to sign.`);
-        
-        const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
-        if (student?.email) {
-            sendEmail({
-                to: student.email,
-                subject: `KYC Verified: ${booking.propertyName} ✅`,
-                html: KycStatusTemplate(student.name || 'there', 'APPROVED')
-            }).catch(err => console.error('Failed to email KYC approval:', err));
-        }
+        await NotificationService.onKycVerified(booking, (session as any).userId);
     }
 
     await prisma.auditLog.create({ data: { action: 'KYC_VERIFIED', targetId: bookingId, targetType: 'BOOKING', details: `All KYC documents verified. Moved to AGREEMENT_PENDING.`, performedBy: (session as any).userId } });
@@ -732,16 +764,15 @@ export async function markKycFailed(bookingId: string, reason: string) {
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
     if (booking?.userId) {
-        await createNotification(booking.userId, 'BOOKING', `KYC failed for ${booking.propertyName}. Reason: ${reason}. Please re-upload documents.`);
-        
-        const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
-        if (student?.email) {
-            sendEmail({
-                to: student.email,
-                subject: `KYC Verification Update: ${booking.propertyName} ⚠️`,
-                html: KycStatusTemplate(student.name || 'there', 'REJECTED', reason)
-            }).catch(err => console.error('Failed to email KYC rejection:', err));
-        }
+        await NotificationService.trigger({
+            bookingId: booking.id,
+            userId: booking.userId,
+            type: 'KYC',
+            category: 'KYC_FAILED',
+            message: `KYC failed for ${booking.propertyName}. Reason: ${reason}. Please re-upload documents.`,
+            targetRole: 'USER',
+            isPersistent: true
+        });
     }
 
     await prisma.auditLog.create({ data: { action: 'KYC_FAILED', targetId: bookingId, targetType: 'BOOKING', details: `KYC rejected. Reason: ${reason}`, performedBy: (session as any).userId } });
@@ -763,7 +794,16 @@ export async function addToWaitlist(data: { propertyId: string; roomType?: strin
     });
 
     const property = await prisma.property.findUnique({ where: { id: data.propertyId } });
-    if (property) await createNotification(property.ownerId, 'BOOKING', `${data.guestName} joined the waitlist for ${property.name}.`);
+    if (property) {
+        await NotificationService.trigger({
+            bookingId: entry.id, // technically not a booking, but using id for reference
+            userId: property.ownerId,
+            type: 'BOOKING',
+            category: 'WAITLIST_JOINED',
+            message: `${data.guestName} joined the waitlist for ${property.name}.`,
+            targetRole: 'OWNER'
+        });
+    }
 
     revalidatePath('/dashboard/student');
     return entry;
