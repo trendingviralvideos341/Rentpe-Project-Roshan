@@ -447,7 +447,7 @@ export async function getCurrentUser() {
             where: { id: session.userId as string },
             select: {
                 id: true, email: true, name: true, role: true, roles: true,
-                twoFactorEnabled: true
+                phone: true, twoFactorEnabled: true
             } as any
         });
 

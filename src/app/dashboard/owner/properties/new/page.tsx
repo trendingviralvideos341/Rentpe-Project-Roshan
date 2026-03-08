@@ -74,7 +74,9 @@ export default function AddPropertyPage() {
             const user = await getCurrentUser();
             if (user) {
                 setOwnerName(user.name || "");
-                setPhone(user.phone || "");
+                let p = user.phone || "";
+                if (p && !p.startsWith("+91")) p = "+91" + p;
+                setPhone(p);
             }
         };
         loadProfile();
@@ -505,14 +507,16 @@ export default function AddPropertyPage() {
                                 <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
                                     readOnly={true}
                                     className={`${inputErr("ownerName")} ${readOnlyCls}`} />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name</p>
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
                             </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(10 digits)</span></label>
-                                <Input placeholder="e.g. 9876543210" value={phone}
+                                <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(+91 Mandatory)</span></label>
+                                <Input placeholder="e.g. +919876543210" value={phone}
                                     readOnly={true}
                                     maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone. Contact Rentpe Support Team to update.</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">
