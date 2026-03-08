@@ -40,12 +40,46 @@ export async function getStudentProfile() {
             }
         });
 
+        // Calculate Real Verification Logic
+        const docs = (lastBooking?.documents || []) as any[];
+        const isKycVerified = docs.some(d => d.type === 'ID_PROOF' && d.status === 'VERIFIED') || 
+                             lastBooking?.status === 'KYC_VERIFIED' || 
+                             lastBooking?.status === 'BOOKING_CONFIRMED' || 
+                             lastBooking?.status === 'CHECKED_IN';
+        
+        const isKycPending = docs.some(d => d.status === 'PENDING') || 
+                            lastBooking?.status === 'KYC_PENDING';
+        
+        const isKycRejected = docs.some(d => d.status === 'REJECTED') || 
+                             lastBooking?.status === 'KYC_FAILED';
+
+        let realKycStatus = 'NOT_STARTED';
+        if (isKycVerified) realKycStatus = 'VERIFIED';
+        else if (isKycRejected) realKycStatus = 'REJECTED';
+        else if (isKycPending) realKycStatus = 'UNDER_REVIEW';
+        else if (docs.length > 0) realKycStatus = 'PENDING';
+
+        let accountHealth = 'ACTION_REQUIRED';
+        if (isKycVerified && lastBooking?.status === 'CHECKED_IN') accountHealth = 'EXCELLENT';
+        else if (isKycVerified || realKycStatus === 'UNDER_REVIEW') accountHealth = 'GOOD';
+
+        let occupancyStatus = 'GUEST';
+        if (lastBooking?.status === 'CHECKED_IN' || lastBooking?.status === 'BOOKING_CONFIRMED') occupancyStatus = 'RESIDENT';
+        else if (lastBooking?.status && ['APPROVED', 'PAID', 'TOKEN_PAID', 'ROOM_RESERVED'].includes(lastBooking.status)) occupancyStatus = 'BOOKED';
+
+        // Stable Pseudo-Hash for ID (UserId + CreatedAt)
+        const hashSeed = `${userId}-${user?.createdAt}`;
+        const realAuthenticityHash = Buffer.from(hashSeed).toString('hex').substring(0, 10).toUpperCase();
+
         return {
             ...(user as any),
-            name: user?.name || (session as any).name || "Verified Resident",
+            name: user?.name || (session as any).name || "Resident",
             email: user?.email || (session as any).email || null,
-            kycStatus: lastBooking?.status.startsWith('KYC') ? lastBooking.status : (lastBooking?.agreementSigned ? 'VERIFIED' : 'PENDING'),
-            documents: lastBooking?.documents || [],
+            kycStatus: realKycStatus,
+            accountHealth,
+            occupationType: occupancyStatus,
+            realAuthenticityHash,
+            documents: docs,
             lastBookingId: lastBooking?.id || null,
             loyaltyPoints: (user as any)?.loyaltyPoints ?? 0,
         };

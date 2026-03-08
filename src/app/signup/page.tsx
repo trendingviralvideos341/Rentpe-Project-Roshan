@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { signup } from "@/actions/auth";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { validateEmail, validateName, validatePhone } from "@/lib/validators";
+import { useRouter } from "next/navigation";
 
 function getStrength(password: string) {
     const checks = {
@@ -51,7 +52,9 @@ const ROLE_OPTIONS = [
 ];
 
 export default function SignupPage() {
+    const router = useRouter();
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     const [firstName, setFirstName] = useState("");
     const [middleName, setMiddleName] = useState("");
@@ -69,6 +72,7 @@ export default function SignupPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        setFieldErrors({});
 
         // Validation
         const fnErr = validateName(firstName);
@@ -91,17 +95,53 @@ export default function SignupPage() {
         }
 
         setLoading(true);
-        const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
-        const formData = new FormData();
-        formData.set("name", fullName);
-        formData.set("email", email);
-        formData.set("password", password);
-        formData.set("phone", `+91${phone}`);
-        formData.set("role", role);
-        formData.set("agreed", agreed ? "true" : "false");
+        try {
+            const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
+            const formData = new FormData();
+            formData.set("name", fullName);
+            formData.set("email", email);
+            formData.set("password", password);
+            formData.set("phone", `+91${phone}`);
+            formData.set("role", role);
+            formData.set("agreed", agreed ? "true" : "false");
 
-        const result = await signup(formData);
-        if (result?.error) { setError(result.error); setLoading(false); }
+            const result = await signup(formData);
+            
+            if (result?.error) {
+                setError(result.error);
+            } else if (result?.success) {
+                setSuccess(true);
+                // Redirect after a short delay so they see the success message
+                setTimeout(() => {
+                    router.push("/login?signup=success");
+                }, 2000);
+            }
+        } catch (err: any) {
+            console.error("Signup error:", err);
+            setError("An unexpected error occurred. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    if (success) {
+        return (
+            <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-muted/30 px-4 py-8">
+                <Card className="w-full max-w-lg shadow-xl border-0 ring-1 ring-border text-center p-8">
+                    <div className="flex flex-col items-center space-y-4">
+                        <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+                            <CheckCircle className="h-12 w-12 text-green-600" />
+                        </div>
+                        <CardTitle className="text-2xl font-bold text-green-700">Registration Successful!</CardTitle>
+                        <CardDescription className="text-lg">
+                            Welcome to RentPe, <strong>{firstName}</strong>! Your account has been created successfully.
+                        </CardDescription>
+                        <p className="text-muted-foreground">Redirecting you to the login page...</p>
+                        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+                    </div>
+                </Card>
+            </div>
+        );
     }
 
     return (
@@ -109,8 +149,8 @@ export default function SignupPage() {
             <Card className="w-full max-w-lg shadow-xl border-0 ring-1 ring-border">
                 <div className="h-2 rounded-t-xl bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600" />
 
-                <CardHeader className="space-y-1 pt-6">
-                    <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+                <CardHeader className="space-y-1 pt-6 text-center">
+                    <CardTitle className="text-3xl font-bold">Create an account</CardTitle>
                     <CardDescription>Enter your details to get started with RentPe</CardDescription>
                 </CardHeader>
 

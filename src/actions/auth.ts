@@ -40,7 +40,8 @@ export async function signup(formData: FormData) {
     });
 
     if (!validated.success) {
-        return { error: 'Invalid data' };
+        const errs = validated.error.flatten().fieldErrors;
+        return { error: `Validation failed: ${JSON.stringify(errs)}` };
     }
 
     const { name, email, password, phone, role, marketingAgreed, dataSharingAgreed } = validated.data;
@@ -96,12 +97,12 @@ export async function signup(formData: FormData) {
             html: WelcomeTemplate(name),
         }).catch(err => console.error('Failed to send welcome email:', err));
 
+        return { success: true };
+
     } catch (e) {
         console.error("Signup Error:", e);
-        return { error: 'Database connection failed. Please try again later.' };
+        return { error: 'Registration failed. Please try again.' };
     }
-
-    redirect('/login');
 }
 
 export async function login(formData: FormData) {

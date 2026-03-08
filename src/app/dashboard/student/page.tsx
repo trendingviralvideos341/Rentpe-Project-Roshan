@@ -813,7 +813,7 @@ export default function StudentDashboardPage() {
                                             {profile?.name || "Premium Student"}
                                         </CardTitle>
                                         <CardDescription className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">
-                                            {profile?.displayId || "TNT-000000"} • Verified Resident
+                                            {profile?.displayId || "TNT-000000"} • {profile?.occupationType === 'RESIDENT' ? 'Verified Resident' : (profile?.occupationType === 'BOOKED' ? 'Future Resident' : 'Guest Member')}
                                         </CardDescription>
                                     </div>
                                 </div>
@@ -847,8 +847,18 @@ export default function StudentDashboardPage() {
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Account Health</label>
                                         <div className="flex items-center gap-3">
-                                            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                            <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Excellent • KYC Cleared</span>
+                                            <div className={`h-3 w-3 rounded-full animate-pulse shadow-md ${
+                                                profile?.accountHealth === 'EXCELLENT' ? 'bg-emerald-500 shadow-emerald-500/50' : 
+                                                profile?.accountHealth === 'GOOD' ? 'bg-indigo-500 shadow-indigo-500/50' : 
+                                                'bg-amber-500 shadow-amber-500/50'
+                                            }`}></div>
+                                            <span className="text-sm font-black text-slate-800 uppercase tracking-wide">
+                                                {profile?.accountHealth || "Action Required"} • {
+                                                    profile?.kycStatus === 'VERIFIED' ? 'KYC Cleared' : 
+                                                    profile?.kycStatus === 'UNDER_REVIEW' ? 'KYC in Review' : 
+                                                    profile?.kycStatus === 'REJECTED' ? 'KYC Rejected' : 'KYC Required'
+                                                }
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between group hover:bg-indigo-50 transition-colors">
@@ -883,8 +893,10 @@ export default function StudentDashboardPage() {
                                 <div className="relative z-10">
                                     <div className="flex justify-between items-start mb-12">
                                         <div>
-                                            <div className="text-[10px] font-black tracking-[0.2em] text-indigo-400 uppercase mb-1">RentPe Digital Resident ID</div>
-                                            <div className="text-2xl font-black italic tracking-tighter">PREMIUM PASS</div>
+                                            <div className="text-[10px] font-black tracking-[0.2em] text-indigo-400 uppercase mb-1">RentPe Digital Identity</div>
+                                            <div className="text-2xl font-black italic tracking-tighter">
+                                                {profile?.accountHealth === 'EXCELLENT' ? 'PREMIUM PASS' : 'BASIC PASS'}
+                                            </div>
                                         </div>
                                         <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
                                             <Shield className="h-6 w-6 text-indigo-400" />
@@ -901,8 +913,14 @@ export default function StudentDashboardPage() {
                                             <p className="text-sm font-black font-mono">{profile?.displayId || "TNT-XXXX"}</p>
                                         </div>
                                         <div className="hidden md:block">
-                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Status</p>
-                                            <p className="text-sm font-black text-emerald-400 uppercase">KYC SECURED</p>
+                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">KYC Status</p>
+                                            <p className={`text-sm font-black uppercase ${
+                                                profile?.kycStatus === 'VERIFIED' ? 'text-emerald-400' : 
+                                                profile?.kycStatus === 'UNDER_REVIEW' ? 'text-indigo-400' : 
+                                                profile?.kycStatus === 'REJECTED' ? 'text-red-400' : 'text-amber-400'
+                                            }`}>
+                                                {profile?.kycStatus?.replace('_', ' ') || 'NOT STARTED'}
+                                            </p>
                                         </div>
                                     </div>
 
@@ -913,14 +931,16 @@ export default function StudentDashboardPage() {
                                             </div>
                                             <div>
                                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Digital Validity</p>
-                                                <p className="text-[10px] font-bold">VERIFIED KYC</p>
+                                                <p className="text-[10px] font-bold">
+                                                    {profile?.kycStatus === 'VERIFIED' ? 'VERIFIED IDENTITY' : 'PENDING VALIDATION'}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Authenticity Scan</p>
                                             <div className="flex items-center gap-1 bg-white/5 p-1 px-2 rounded-md">
-                                                <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
-                                                <span className="text-[9px] font-black font-mono">HASH::{profile?.id?.substring(0, 8)}</span>
+                                                <div className={`h-2 w-2 rounded-full ${profile?.kycStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                                <span className="text-[9px] font-black font-mono">HASH::{profile?.realAuthenticityHash || "0000000000"}</span>
                                             </div>
                                         </div>
                                     </div>
