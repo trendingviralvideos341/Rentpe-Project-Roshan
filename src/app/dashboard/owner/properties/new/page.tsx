@@ -28,6 +28,8 @@ export default function AddPropertyPage() {
     const [description, setDescription] = useState("");
     const [ownerName, setOwnerName] = useState("");
     const [pgLicence, setPgLicence] = useState("");
+    const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
+    const [otherPropertyType, setOtherPropertyType] = useState("");
     const [gender, setGender] = useState<"Boys" | "Girls" | "Co-ed" | "">("");
     const [amenities, setAmenities] = useState<string[]>([]);
     
@@ -308,7 +310,12 @@ export default function AddPropertyPage() {
         // Legal docs (Mandatory)
         if (docs.aadhaarProof.length === 0) errs.aadhaarProof = "Aadhaar proof is mandatory";
         if (docs.panProof.length === 0) errs.panProof = "PAN proof is mandatory";
-        if (docs.pgLicenceUrl.length === 0) errs.pgLicenceUrl = "PG Licence is mandatory";
+        
+        // Conditional Mandatory for PG/Hostel
+        if ((propertyType === "PG" || propertyType === "Hostel") && docs.pgLicenceUrl.length === 0) {
+            errs.pgLicenceUrl = "PG/Hostel Licence is mandatory for selected property type";
+        }
+        
         if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Live Photo is mandatory";
 
         rooms.forEach((room, i) => {
@@ -370,6 +377,7 @@ export default function AddPropertyPage() {
 
             formData.set("ownerName", ownerName);
             formData.set("pgLicence", pgLicence);
+            formData.set("propertyType", propertyType === "Other" ? otherPropertyType : propertyType as string);
             formData.set("phone", phone);
             formData.set("gender", gender);
             formData.set("state", state);
@@ -419,46 +427,90 @@ export default function AddPropertyPage() {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Basic Info */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Basic Information</CardTitle>
-                        <CardDescription>Name, owner, and contact details.</CardDescription>
+                <Card className="border border-purple-100 shadow-xl overflow-hidden">
+                    <CardHeader className="bg-slate-50/50 p-6 border-b">
+                        <CardTitle className="text-xl font-black text-slate-900 flex items-center gap-3">
+                            <Plus className="h-6 w-6 text-purple-600" /> Basic Details
+                        </CardTitle>
+                        <CardDescription className="text-sm text-slate-500 mt-1 font-medium italic">Standardized property identification details.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Property / PG Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
-                            <Input placeholder="e.g. SkyLiv Boys Hostel" value={name}
-                                onChange={e => {
-                                    const v = e.target.value;
-                                    setName(v);
-                                    const err = v.length > 0 ? validateName(v) : "";
-                                    setFieldErr("name", err);
-                                }} className={inputErr("name")} />
-                            {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name}</p>}
+                    <CardContent className="p-6 space-y-8">
+                        {/* Property Type Selection */}
+                        <div className="space-y-4 bg-purple-50/30 p-5 rounded-2xl border-2 border-purple-100">
+                            <label className="text-[11px] font-black text-purple-600 uppercase tracking-widest flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4" /> 1. Select Property Type (Mandatory)
+                            </label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {["PG", "Hostel", "Flat/Apartment", "Other"].map((type) => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => setPropertyType(type as any)}
+                                        className={`p-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all flex flex-col items-center gap-2 ${
+                                            propertyType === type 
+                                            ? "bg-purple-600 border-purple-600 text-white shadow-lg scale-[1.02]" 
+                                            : "bg-white border-slate-100 text-slate-500 hover:border-purple-200 hover:bg-purple-50"
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                            {propertyType === "Other" && (
+                                <div className="mt-3 animate-in fade-in slide-in-from-top-1">
+                                    <Input
+                                        placeholder="Specify property type (e.g. Guest House, Villa...)"
+                                        value={otherPropertyType}
+                                        onChange={(e) => setOtherPropertyType(e.target.value)}
+                                        className="h-10 text-[12px] font-bold border-2 border-purple-200 focus:border-purple-400 bg-white"
+                                    />
+                                    {errors.propertyType && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase italic">{errors.propertyType}</p>}
+                                </div>
+                            )}
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
-                            <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
-                                readOnly={true}
-                                className={`${inputErr("ownerName")} ${readOnlyCls}`} />
-                            <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Property / PG Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
+                                <Input placeholder="e.g. SkyLiv Boys Hostel" value={name}
+                                    onChange={e => {
+                                        const v = e.target.value;
+                                        setName(v);
+                                        const err = v.length > 0 ? validateName(v) : "";
+                                        setFieldErr("name", err);
+                                    }} className={inputErr("name")} />
+                                {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name}</p>}
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
+                                <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
+                                    readOnly={true}
+                                    className={`${inputErr("ownerName")} ${readOnlyCls}`} />
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name</p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(10 digits)</span></label>
+                                <Input placeholder="e.g. 9876543210" value={phone}
+                                    readOnly={true}
+                                    maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">PG/Hostel Licence No. <span className="text-muted-foreground text-xs">(Req: PG/Hostel)</span></label>
+                                <Input placeholder="e.g. GOV-12345-PG" value={pgLicence} onChange={e => setPgLicence(e.target.value)} />
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(10 digits)</span></label>
-                            <Input placeholder="e.g. 9876543210" value={phone}
-                                readOnly={true}
-                                maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
-                            <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
-                        </div>
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-                             <div className="mt-0.5">⚠️</div>
-                             <p className="text-[11px] text-red-800 leading-tight">
-                                <span className="font-bold">CRITICAL:</span> All registered names (Property & Owner) <span className="font-bold underline">must match</span> with the registered profile details for faster verification.
-                             </p>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">PG/Hostel Licence No. <span className="text-muted-foreground text-xs">(optional)</span></label>
-                            <Input placeholder="e.g. GOV-12345-PG" value={pgLicence} onChange={e => setPgLicence(e.target.value)} />
+
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-4 shadow-sm">
+                             <div className="p-2 bg-red-100 rounded-lg">
+                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                             </div>
+                             <div className="flex flex-col">
+                                <p className="text-[11px] text-red-600 font-black uppercase tracking-tight">Data Synchronization Rule</p>
+                                <p className="text-[12px] text-slate-800 mt-1 font-bold">
+                                    All registered names (Property & Owner) must match exactly with profile details for faster verification.
+                                </p>
+                             </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -697,7 +749,13 @@ export default function AddPropertyPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" slotsCount={2} isRequired={true} />
                                 <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" slotsCount={2} isRequired={true} />
-                                <UploadCard label="PG Licence" sub="Operational" category="pgLicenceUrl" slotsCount={2} isRequired={true} />
+                                <UploadCard 
+                                    label="PG/Hostel Licence" 
+                                    sub={propertyType === "Other" ? "Any other legal doc" : "Operational"} 
+                                    category="pgLicenceUrl" 
+                                    slotsCount={2} 
+                                    isRequired={propertyType === "PG" || propertyType === "Hostel"} 
+                                />
                                 <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} isRequired={true} />
                             </div>
                         </div>

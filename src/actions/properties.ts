@@ -76,6 +76,7 @@ export async function createProperty(formData: FormData) {
     const ownerName = formData.get("ownerName") as string;
     const pgLicence = formData.get("pgLicence") as string;
     const roomsJson = formData.get("rooms") as string;
+    const propertyType = formData.get("propertyType") as string;
 
     const buildingPhotos = formData.get("buildingPhotos") as string;
     const commonAreaPhotos = formData.get("commonAreaPhotos") as string;
@@ -158,6 +159,7 @@ export async function createProperty(formData: FormData) {
                 pgLicence: pgLicence || null,
                 ownerId: user?.parentOwnerId || (session as any).userId,
                 status: "PENDING_APPROVAL",
+                propertyType: propertyType || "PG",
                 // Structured Category Mapping
                 buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
                 commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
