@@ -660,7 +660,7 @@ export default function AddPropertyPage() {
                                 <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">1. Property Architecture</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <UploadCard label="Exterior" sub="Entrance/Front" category="exteriorPhotos" isMultiple={true} />
                                 <UploadCard label="Interior" sub="Reception/Decor" category="interiorPhotos" isMultiple={true} />
                                 <UploadCard label="Hall" sub="Shared area" category="hallPhotos" isMultiple={true} />
@@ -675,10 +675,10 @@ export default function AddPropertyPage() {
                                 <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">2. Living Experience</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <UploadCard label="Rooms" sub="Bed & Space" category="roomsPhotos" isMultiple={true} />
                                 <UploadCard label="Washroom" sub="Tile & Fitting" category="washroomPhotos" isMultiple={true} />
-                                <UploadCard label="Amenities" sub="Kitchen/Gym" category="amenitiesPhotos" isMultiple={true} />
+                                <UploadCard label="Other Amenities" sub="Kitchen/Gym (Others Specify)" category="amenitiesPhotos" isMultiple={true} />
                                 <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} />
                             </div>
                         </div>
