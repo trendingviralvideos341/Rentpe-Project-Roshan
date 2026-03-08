@@ -5,12 +5,14 @@ import { getAdminStats } from "@/actions/admin";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Shield, Mail, Phone, Calendar, CheckCircle, MessageSquareWarning, ArrowRight, EyeOff, Check, User, Activity, Users, CreditCard, Ticket, Building2, RefreshCcw, Star } from "lucide-react";
+import { Shield, Mail, Phone, Calendar, CheckCircle, MessageSquareWarning, ArrowRight, EyeOff, Check, User, Activity, Users, CreditCard, Ticket, Building2, RefreshCcw, Star, AlertTriangle } from "lucide-react";
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getFlaggedReviews, updateReviewStatus } from "@/actions/reviews";
+import { getSecurityLogs } from "@/actions/auth";
 import {
     getSuperAdminBusinessSnapshot,
     getPlatformRevenueTrends,
@@ -32,6 +34,8 @@ export default function AdminDashboard() {
     const activeTab = searchParams.get("tab") || "overview";
     const [flaggedReviews, setFlaggedReviews] = useState<any[]>([]);
     const [reviewsLoading, setReviewsLoading] = useState(false);
+    const [securityLogs, setSecurityLogs] = useState<any[]>([]);
+    const [securityLoading, setSecurityLoading] = useState(false);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -102,6 +106,24 @@ export default function AdminDashboard() {
         }
     }, [activeTab, fetchFlaggedReviews]);
 
+    const fetchSecurityLogs = useCallback(async () => {
+        setSecurityLoading(true);
+        try {
+            const data = await getSecurityLogs();
+            setSecurityLogs(data || []);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setSecurityLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === "security") {
+            fetchSecurityLogs();
+        }
+    }, [activeTab, fetchSecurityLogs]);
+
     const handleReviewAction = async (id: string, action: "PUBLISHED" | "HIDDEN") => {
         try {
             await updateReviewStatus(id, action);
@@ -154,6 +176,12 @@ export default function AdminDashboard() {
                         className="flex-1 rounded-xl data-[state=active]:bg-red-600 data-[state=active]:text-white text-slate-600 hover:text-red-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <MessageSquareWarning className="h-4 w-4 mr-2" /> Moderation {flaggedReviews.length > 0 && <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">{flaggedReviews.length}</span>}
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="security"
+                        className="flex-1 rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 hover:text-slate-900 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                    >
+                        <Shield className="h-4 w-4 mr-2" /> Security
                     </TabsTrigger>
                 </TabsList>
 
@@ -356,6 +384,63 @@ export default function AdminDashboard() {
                                             >
                                                 <Check className="mr-2 h-4 w-4" /> Restore & Unflag
                                             </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </TabsContent>
+
+                {/* Security Logs Tab */}
+                <TabsContent value="security" className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                    <div className="flex justify-between items-center bg-slate-900 text-white p-6 rounded-2xl border border-slate-800">
+                        <div>
+                            <h2 className="text-xl font-bold flex items-center"><Shield className="mr-2 h-5 w-5 text-blue-400" /> Security Audit Log</h2>
+                            <p className="text-slate-400 text-sm mt-1">Real-time monitoring of failed login attempts and critical account modifications.</p>
+                        </div>
+                        <Button variant="outline" onClick={fetchSecurityLogs} disabled={securityLoading} className="bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all">
+                            <RefreshCcw className={`h-4 w-4 mr-2 ${securityLoading ? "animate-spin" : ""}`} /> Refresh Audit
+                        </Button>
+                    </div>
+
+                    {securityLogs.length === 0 ? (
+                        <div className="text-center py-20 bg-slate-50 rounded-2xl border shadow-sm">
+                            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-slate-800">System Secure</h3>
+                            <p className="text-slate-500 mt-2">No critical security events or failed login patterns detected recently.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {securityLogs.map((log: any) => (
+                                <Card key={log.id} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="p-5 flex items-start gap-4">
+                                        <div className={`mt-1 p-2 rounded-full shrink-0 ${log.action === 'LOGIN_FAILURE' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            {log.action === 'LOGIN_FAILURE' ? <AlertTriangle className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{log.action.replace(/_/g, ' ')}</h4>
+                                                <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded uppercase">
+                                                    {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-slate-700 mt-1">{log.details}</p>
+                                            <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100">
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase">Target Entity</p>
+                                                    <p className="text-xs font-bold text-slate-900">{log.targetType}: {log.targetId}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase">Event ID</p>
+                                                    <p className="text-xs font-mono text-slate-500">{log.id.slice(-8).toUpperCase()}</p>
+                                                </div>
+                                                <div className="ml-auto">
+                                                    <Badge variant="outline" className={`${log.action === 'LOGIN_FAILURE' ? 'text-red-700 border-red-200 bg-red-50' : 'text-amber-700 border-amber-200 bg-amber-50'}`}>
+                                                        High Priority
+                                                    </Badge>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </Card>

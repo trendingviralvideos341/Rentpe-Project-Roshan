@@ -10,8 +10,7 @@ import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
 
 const SignupSchema = z.object({
-    firstName: z.string().min(2),
-    lastName: z.string().min(2),
+    name: z.string().min(3),
     email: z.string().email(),
     password: z.string().min(6),
     phone: z.string().startsWith("+91").length(13),
@@ -30,8 +29,7 @@ export async function signup(formData: FormData) {
     const data = Object.fromEntries(formData.entries());
 
     const validated = SignupSchema.safeParse({
-        firstName: data.firstName,
-        lastName: data.lastName,
+        name: data.name,
         email: data.email,
         password: data.password,
         phone: data.phone,
@@ -45,7 +43,7 @@ export async function signup(formData: FormData) {
         return { error: 'Invalid data' };
     }
 
-    const { firstName, lastName, email, password, phone, role, marketingAgreed, dataSharingAgreed } = validated.data;
+    const { name, email, password, phone, role, marketingAgreed, dataSharingAgreed } = validated.data;
 
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -68,7 +66,7 @@ export async function signup(formData: FormData) {
 
         const user = await prisma.user.create({
             data: {
-                name: `${firstName} ${lastName}`,
+                name,
                 email,
                 passwordHash: hashedPassword,
                 phone,
@@ -95,7 +93,7 @@ export async function signup(formData: FormData) {
         sendEmail({
             to: email,
             subject: 'Welcome to RentPe! 🚀',
-            html: WelcomeTemplate(`${firstName} ${lastName}`),
+            html: WelcomeTemplate(name),
         }).catch(err => console.error('Failed to send welcome email:', err));
 
     } catch (e) {
@@ -513,4 +511,17 @@ export async function deleteUserAccount() {
         console.error("Account Deletion Error:", e);
         return { error: 'Failed to process account deletion.' };
     }
+}
+
+export async function getSecurityLogs() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return await prisma.auditLog.findMany({
+        where: {
+            action: { in: ['LOGIN_FAILURE', 'ACCOUNT_PURGED'] }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50
+    });
 }

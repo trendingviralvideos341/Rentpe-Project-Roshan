@@ -93,8 +93,7 @@ export default function SignupPage() {
         setLoading(true);
         const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
         const formData = new FormData();
-        formData.set("firstName", fullName);      // full name passed as firstName
-        formData.set("lastName", ".");            // placeholder to satisfy schema
+        formData.set("name", fullName);
         formData.set("email", email);
         formData.set("password", password);
         formData.set("phone", `+91${phone}`);
