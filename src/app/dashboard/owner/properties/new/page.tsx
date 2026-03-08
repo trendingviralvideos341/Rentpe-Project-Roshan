@@ -692,7 +692,7 @@ export default function AddPropertyPage() {
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" isMultiple={true} slotsCount={2} />
-                                <UploadCard label="Owner PAN" sub="Front Copy" category="panProof" isMultiple={true} slotsCount={2} />
+                                <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" isMultiple={true} slotsCount={2} />
                                 <UploadCard label="PG Licence" sub="Operational" category="pgLicenceUrl" isMultiple={true} slotsCount={2} />
                             </div>
                         </div>
