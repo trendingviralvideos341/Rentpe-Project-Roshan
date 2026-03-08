@@ -77,6 +77,15 @@ export async function createProperty(formData: FormData) {
     const pgLicence = formData.get("pgLicence") as string;
     const roomsJson = formData.get("rooms") as string;
 
+    const buildingPhotos = formData.get("buildingPhotos") as string;
+    const commonAreaPhotos = formData.get("commonAreaPhotos") as string;
+    const bathroomPhoto = formData.get("bathroomPhoto") as string;
+    const parkingPhoto = formData.get("parkingPhoto") as string;
+    const aadhaarProof = formData.get("aadhaarProof") as string;
+    const panProof = formData.get("panProof") as string;
+    const pgLicenceUrl = formData.get("pgLicenceUrl") as string;
+    const livePhotoUrl = formData.get("livePhotoUrl") as string;
+
     const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
 
     // Server-side validation
@@ -88,18 +97,38 @@ export async function createProperty(formData: FormData) {
     // Auto-fill owner info from profile if not in form
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
-    // 1. Process Property Images (batch upload)
-    let imageUrls: string[] = [];
-    if (images) {
-        try {
-            const parsedImages = JSON.parse(images);
-            if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                imageUrls = await batchUploadToCloudinary(parsedImages, `properties/${name.replace(/\s+/g, '_')}`);
+    // 1. Process Structured Documents & Photos
+    const folder = `properties/${name.replace(/\s+/g, '_')}_${Date.now()}`;
+    
+    const uploadTasks = async () => {
+        const results: any = {};
+        
+        // Batch uploads
+        if (buildingPhotos) {
+            const parsed = JSON.parse(buildingPhotos);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                results.buildingPhotos = await batchUploadToCloudinary(parsed, `${folder}/building`);
             }
-        } catch (e) {
-            console.error("Image parsing/upload error:", e);
         }
-    }
+        if (commonAreaPhotos) {
+            const parsed = JSON.parse(commonAreaPhotos);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                results.commonAreaPhotos = await batchUploadToCloudinary(parsed, `${folder}/common`);
+            }
+        }
+
+        // Single uploads
+        if (bathroomPhoto?.startsWith('data:')) results.bathroomPhoto = await uploadToCloudinary(bathroomPhoto, folder);
+        if (parkingPhoto?.startsWith('data:')) results.parkingPhoto = await uploadToCloudinary(parkingPhoto, folder);
+        if (aadhaarProof?.startsWith('data:')) results.aadhaarProof = await uploadToCloudinary(aadhaarProof, folder, true);
+        if (panProof?.startsWith('data:')) results.panProof = await uploadToCloudinary(panProof, folder, true);
+        if (pgLicenceUrl?.startsWith('data:')) results.pgLicenceUrl = await uploadToCloudinary(pgLicenceUrl, folder, true);
+        if (livePhotoUrl?.startsWith('data:')) results.livePhotoUrl = await uploadToCloudinary(livePhotoUrl, folder);
+
+        return results;
+    };
+
+    const uploaded = await uploadTasks();
 
     // 2. Create property and rooms in a transaction
     const property = await prisma.$transaction(async (tx) => {
@@ -110,11 +139,20 @@ export async function createProperty(formData: FormData) {
                 city,
                 description,
                 amenities: amenities || "[]",
-                images: JSON.stringify(imageUrls),
+                images: JSON.stringify([...(uploaded.buildingPhotos || []), ...(uploaded.commonAreaPhotos || [])]),
                 ownerName: finalOwnerName,
                 pgLicence: pgLicence || null,
-                ownerId: user?.parentOwnerId || (session as any).userId, // Link to parent if staff creating
+                ownerId: user?.parentOwnerId || (session as any).userId,
                 status: "PENDING_APPROVAL",
+                // Structured fields
+                buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
+                commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
+                bathroomPhoto: uploaded.bathroomPhoto || null,
+                parkingPhoto: uploaded.parkingPhoto || null,
+                aadhaarProof: uploaded.aadhaarProof || null,
+                panProof: uploaded.panProof || null,
+                pgLicenceUrl: uploaded.pgLicenceUrl || null,
+                livePhotoUrl: uploaded.livePhotoUrl || null,
             }
         });
 

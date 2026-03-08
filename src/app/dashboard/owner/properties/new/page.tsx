@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, X, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
@@ -30,9 +30,33 @@ export default function AddPropertyPage() {
     const [pgLicence, setPgLicence] = useState("");
     const [gender, setGender] = useState<"Boys" | "Girls" | "Co-ed" | "">("");
     const [amenities, setAmenities] = useState<string[]>([]);
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    
+    // Structured document state
+    const [docs, setDocs] = useState<{
+        buildingPhotos: File[];
+        commonAreaPhotos: File[];
+        bathroomPhoto: File | null;
+        parkingPhoto: File | null;
+        aadhaarProof: File | null;
+        panProof: File | null;
+        pgLicenceUrl: File | null;
+        livePhotoUrl: File | null;
+    }>({
+        buildingPhotos: [],
+        commonAreaPhotos: [],
+        bathroomPhoto: null,
+        parkingPhoto: null,
+        aadhaarProof: null,
+        panProof: null,
+        pgLicenceUrl: null,
+        livePhotoUrl: null,
+    });
+    
     const [totalSize, setTotalSize] = useState(0);
     const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
+    
+    // Preview modal state
+    const [viewImage, setViewImage] = useState<string | null>(null);
 
     // Pincode auto-fetch
     const [pinFetching, setPinFetching] = useState(false);
@@ -70,28 +94,50 @@ export default function AddPropertyPage() {
         setRooms(updated);
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleDocChange = (category: keyof typeof docs, isMultiple: boolean) => (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        const newFiles = [...selectedFiles];
-        let newTotalSize = totalSize;
+        if (files.length === 0) return;
 
+        let newTotalSize = totalSize;
+        const currentFiles = isMultiple ? (docs[category] as File[]) : (docs[category] ? [docs[category] as File] : []);
+        
+        // If single and already has file, subtract its size before adding new one (reupload)
+        if (!isMultiple && docs[category]) {
+            newTotalSize -= (docs[category] as File).size;
+        }
+
+        const validFiles: File[] = [];
         files.forEach(file => {
             if (newTotalSize + file.size <= MAX_TOTAL_SIZE) {
-                newFiles.push(file);
+                validFiles.push(file);
                 newTotalSize += file.size;
             } else {
-                toast.error(`Cannot add ${file.name}. Total limit 25MB reached.`);
+                toast.error(`Limit 25MB reached. Cannot add ${file.name}`);
             }
         });
 
-        setSelectedFiles(newFiles);
+        if (validFiles.length === 0 && files.length > 0) return;
+
+        setDocs(prev => ({
+            ...prev,
+            [category]: isMultiple ? [...(prev[category] as File[]), ...validFiles] : validFiles[0]
+        }));
         setTotalSize(newTotalSize);
     };
 
-    const removeFile = (index: number) => {
-        const removed = selectedFiles[index];
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-        setTotalSize(prev => prev - removed.size);
+    const removeDoc = (category: keyof typeof docs, index?: number) => {
+        const current = docs[category];
+        if (Array.isArray(current) && index !== undefined) {
+            const removed = current[index];
+            setDocs(prev => ({
+                ...prev,
+                [category]: (prev[category] as File[]).filter((_, i) => i !== index)
+            }));
+            setTotalSize(prev => prev - removed.size);
+        } else if (current && !Array.isArray(current)) {
+            setTotalSize(prev => prev - (current as File).size);
+            setDocs(prev => ({ ...prev, [category]: null }));
+        }
     };
 
     const fileToBase64 = (file: File): Promise<string> => {
@@ -101,6 +147,73 @@ export default function AddPropertyPage() {
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = error => reject(error);
         });
+    };
+
+    // Sub-component for upload cards
+    const UploadCard = ({ label, sub, category, isMultiple }: { label: string; sub: string; category: keyof typeof docs; isMultiple: boolean }) => {
+        const item = docs[category];
+        const files = Array.isArray(item) ? item : (item ? [item] : []);
+
+        return (
+            <div className="border rounded-xl p-4 flex flex-col gap-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2">
+                    <div className="bg-purple-100 p-2 rounded-lg">
+                        <UploadCloud className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-slate-900 leading-none">{label}</p>
+                        <p className="text-[10px] text-slate-500 uppercase mt-1 tracking-wider">{sub}</p>
+                    </div>
+                </div>
+
+                <div className="min-h-[140px] border-2 border-dashed rounded-lg bg-slate-50 flex flex-col items-center justify-center relative overflow-hidden group">
+                    {files.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-1 w-full h-full p-1">
+                            {files.map((file, i) => (
+                                <div key={i} className="relative group/img aspect-square border rounded bg-white overflow-hidden">
+                                    <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <button type="button" onClick={() => setViewImage(URL.createObjectURL(file))} className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white">
+                                            <Eye className="h-4 w-4" />
+                                        </button>
+                                        <button type="button" onClick={() => removeDoc(category, isMultiple ? i : undefined)} className="p-1.5 bg-red-500/20 hover:bg-red-500/40 rounded-full text-white">
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <div className="absolute bottom-0 right-0 bg-black/50 text-[8px] text-white px-1">
+                                        {(file.size / (1024 * 1024)).toFixed(1)}MB
+                                    </div>
+                                </div>
+                            ))}
+                            {isMultiple && files.length < 10 && (
+                                <label className="aspect-square border-2 border-dashed rounded flex items-center justify-center hover:bg-purple-50 cursor-pointer transition-colors">
+                                    <Plus className="h-4 w-4 text-purple-400" />
+                                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleDocChange(category, true)} />
+                                </label>
+                            )}
+                        </div>
+                    ) : (
+                        <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Awaiting Upload</span>
+                            <div className="mt-2 text-purple-600 font-bold text-xs">Add Photo</div>
+                            <input type="file" multiple={isMultiple} accept="image/*" className="hidden" onChange={handleDocChange(category, isMultiple)} />
+                        </label>
+                    )}
+                </div>
+                
+                {files.length > 0 && !isMultiple && (
+                    <div className="flex gap-2">
+                        <label className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-bold text-slate-600 text-center cursor-pointer transition-colors">
+                            REUPLOAD
+                            <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, false)} />
+                        </label>
+                        <button type="button" onClick={() => removeDoc(category)} className="flex-1 py-1.5 border border-red-100 hover:bg-red-50 rounded text-[10px] font-bold text-red-600 transition-colors uppercase">
+                            Delete
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     // ── Live validation helper ──
@@ -178,9 +291,34 @@ export default function AddPropertyPage() {
             formData.set("description", description);
             formData.set("amenities", JSON.stringify(amenities));
             
-            // Convert images to base64
-            const base64Images = await Promise.all(selectedFiles.map(file => fileToBase64(file)));
-            formData.set("images", JSON.stringify(base64Images));
+            // Convert images to base64 for each category
+            const categories = Object.keys(docs) as (keyof typeof docs)[];
+            const processedDocs: any = {};
+
+            for (const cat of categories) {
+                const value = docs[cat];
+                if (Array.isArray(value)) {
+                    processedDocs[cat] = await Promise.all(value.map(f => fileToBase64(f)));
+                } else if (value) {
+                    processedDocs[cat] = await fileToBase64(value);
+                } else {
+                    processedDocs[cat] = null;
+                }
+            }
+
+            // Map UI docs to backend schema fields
+            formData.set("buildingPhotos", JSON.stringify(processedDocs.buildingPhotos || []));
+            formData.set("commonAreaPhotos", JSON.stringify(processedDocs.commonAreaPhotos || []));
+            formData.set("bathroomPhoto", processedDocs.bathroomPhoto || "");
+            formData.set("parkingPhoto", processedDocs.parkingPhoto || "");
+            formData.set("aadhaarProof", processedDocs.aadhaarProof || "");
+            formData.set("panProof", processedDocs.panProof || "");
+            formData.set("pgLicenceUrl", processedDocs.pgLicenceUrl || "");
+            formData.set("livePhotoUrl", processedDocs.livePhotoUrl || "");
+            
+            // Legacy 'images' for backward compatibility
+            formData.set("images", JSON.stringify([...(processedDocs.buildingPhotos || []), ...(processedDocs.commonAreaPhotos || [])]));
+
             formData.set("ownerName", ownerName);
             formData.set("pgLicence", pgLicence);
             formData.set("phone", phone);
@@ -195,11 +333,13 @@ export default function AddPropertyPage() {
                 availability: parseInt(r.availability),
             }))));
 
-            await createProperty(formData);
-            alert("✅ Property created successfully!");
-            router.push("/dashboard/owner/properties");
+            const res = await createProperty(formData);
+            if (res) {
+                toast.success("Property listing submitted! Our verification team will check soon.");
+                router.push("/dashboard/owner/my-properties");
+            }
         } catch (e: any) {
-            alert(`❌ Failed: ${e.message}`);
+            toast.error(e.message || "Failed to create property.");
         } finally {
             setSaving(false);
         }
@@ -261,10 +401,10 @@ export default function AddPropertyPage() {
                                 maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
                             <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
                         </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                             <div className="mt-0.5 mt-0.5">ℹ️</div>
-                             <p className="text-[11px] text-blue-800 leading-tight">
-                                <strong>Verification Tip:</strong> Ensure the <span className="font-bold underline">Property Name</span> and <span className="font-bold underline">Owner Details</span> match exactly with your registered profile for faster approval.
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                             <div className="mt-0.5">⚠️</div>
+                             <p className="text-[11px] text-red-800 leading-tight">
+                                <span className="font-bold">CRITICAL:</span> All registered names (Property & Owner) <span className="font-bold underline">must match</span> with the registered profile details for faster verification.
                              </p>
                         </div>
                         <div className="space-y-1">
@@ -448,48 +588,40 @@ export default function AddPropertyPage() {
                     </CardContent>
                 </Card>
 
-                {/* Photos */}
+                {/* Photos & Documents */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Photos</CardTitle>
-                        <CardDescription>Upload high-quality images to get more views.</CardDescription>
-                        <p className="text-xs text-red-600 font-bold mt-1 uppercase tracking-tight">🔴 Maximum 25 MB overall limit for all photos</p>
+                        <CardTitle className="flex items-center justify-between">
+                            <span>Photos & Documents</span>
+                            <span className="text-xs font-bold text-red-600 uppercase tracking-widest whitespace-nowrap">🔴 MAX 25 MB OVERALLY LIMIT</span>
+                        </CardTitle>
+                        <CardDescription>Upload specific photos for faster verification by our team.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {selectedFiles.map((file, i) => (
-                                <div key={i} className="relative aspect-square rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
-                                    <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                                    <button
-                                        type="button"
-                                        onClick={() => removeFile(i)}
-                                        className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded-full p-1 shadow-sm text-red-500"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] p-1 truncate text-center">
-                                        {(file.size / (1024 * 1024)).toFixed(1)} MB
-                                    </div>
-                                </div>
-                            ))}
-                            <label className="border-2 border-dashed rounded-lg aspect-square flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 cursor-pointer transition-colors">
-                                <Plus className="h-6 w-6 mb-2" />
-                                <span className="text-[10px] text-center px-2">Add Photo</span>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleFileChange}
-                                />
-                            </label>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <UploadCard label="Building Photos" sub="Ext./Int. photos" category="buildingPhotos" isMultiple={true} />
+                            <UploadCard label="Common Area" sub="Hall, Lobby etc." category="commonAreaPhotos" isMultiple={true} />
+                            <UploadCard label="Bathroom" sub="Sample room photo" category="bathroomPhoto" isMultiple={false} />
+                            <UploadCard label="Parking Area" sub="Facility photo" category="parkingPhoto" isMultiple={false} />
+                            <UploadCard label="Owner Aadhaar" sub="Front & Back" category="aadhaarProof" isMultiple={false} />
+                            <UploadCard label="Owner PAN" sub="Front copy" category="panProof" isMultiple={false} />
+                            <UploadCard label="PG Licence" sub="Commercial copy" category="pgLicenceUrl" isMultiple={false} />
+                            <UploadCard label="Live Photo" sub="Current owner selfie" category="livePhotoUrl" isMultiple={false} />
                         </div>
-                        
-                        <div className="flex items-center justify-between text-[11px] font-medium border-t pt-3">
-                            <span className="text-slate-500">Total Upload Size: {(totalSize / (1024 * 1024)).toFixed(1)} MB</span>
-                            <span className={totalSize > MAX_TOTAL_SIZE * 0.8 ? "text-red-600" : "text-green-600"}>
-                                Remaining: {((MAX_TOTAL_SIZE - totalSize) / (1024 * 1024)).toFixed(1)} MB free
-                            </span>
+
+                        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-md border border-slate-200">
+                             <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Total Consumed</span>
+                                <span className={`text-sm font-mono ${(totalSize / (1024 * 1024)) > 20 ? 'text-red-500' : 'text-slate-800'}`}>
+                                    {(totalSize / (1024 * 1024)).toFixed(2)} MB
+                                </span>
+                             </div>
+                             <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Remaining</span>
+                                <span className="text-sm font-mono text-green-600">
+                                    {(Math.max(0, (MAX_TOTAL_SIZE - totalSize)) / (1024 * 1024)).toFixed(2)} MB
+                                </span>
+                             </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -497,7 +629,7 @@ export default function AddPropertyPage() {
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center gap-3">
                     <ShieldCheck className="h-5 w-5 text-purple-600" />
                     <p className="text-sm text-purple-800 font-medium">
-                        Property will be listed as <span className="font-bold">Pending Approval</span>. It will go live after admin verification.
+                        Property will be listed as <span className="font-bold">Pending Approval</span>. It will go live after <span className="font-bold underline">verification team check</span>.
                     </p>
                 </div>
 
@@ -508,6 +640,16 @@ export default function AddPropertyPage() {
                     </Button>
                 </div>
             </form>
+
+            {/* Simple Lightbox for Viewing Images */}
+            {viewImage && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <button onClick={() => setViewImage(null)} className="absolute top-6 right-6 text-white hover:text-gray-300">
+                        <X className="h-8 w-8" />
+                    </button>
+                    <img src={viewImage} alt="Full View" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+                </div>
+            )}
         </div>
     );
 }
