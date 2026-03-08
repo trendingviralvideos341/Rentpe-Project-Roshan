@@ -27,6 +27,7 @@ export async function getStudentProfile() {
                 status: true,
                 occupationType: true,
                 occupationDetail: true,
+                loyaltyPoints: true,
             }
         });
 
@@ -45,7 +46,8 @@ export async function getStudentProfile() {
             email: user?.email || (session as any).email || null,
             kycStatus: lastBooking?.status.startsWith('KYC') ? lastBooking.status : (lastBooking?.agreementSigned ? 'VERIFIED' : 'PENDING'),
             documents: lastBooking?.documents || [],
-            lastBookingId: lastBooking?.id || null
+            lastBookingId: lastBooking?.id || null,
+            loyaltyPoints: user?.loyaltyPoints || 0,
         };
     } catch (e) {
         console.error("getStudentProfile Error:", e);

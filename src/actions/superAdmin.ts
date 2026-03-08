@@ -26,7 +26,7 @@ async function isSuperAdmin() {
 //  PLATFORM BUSINESS DASHBOARD — All high-level KPIs in one call
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getSuperAdminBusinessSnapshot() {
-    await isSuperAdmin();
+    const adminId = await isSuperAdmin();
 
     const [
         totalStudents, totalOwners, totalAdmins,
@@ -39,6 +39,7 @@ export async function getSuperAdminBusinessSnapshot() {
         totalTickets, todayAttendance,
         settings,
         platformFees,
+        adminUser,
     ] = await Promise.all([
         prisma.user.count({ where: { role: 'USER', deletedAt: null } }),
         prisma.user.count({ where: { role: 'OWNER', deletedAt: null } }),
@@ -63,6 +64,10 @@ export async function getSuperAdminBusinessSnapshot() {
         (prisma as any).attendance.count({ where: { date: new Date().toISOString().split('T')[0] } }),
         prisma.platformSettings.findUnique({ where: { id: 'singleton' } }),
         (prisma as any).platformFee.aggregate({ _sum: { platformEarned: true } }),
+        prisma.user.findUnique({ 
+            where: { id: adminId },
+            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true }
+        }),
     ]);
 
     // Owner payouts total
@@ -96,6 +101,15 @@ export async function getSuperAdminBusinessSnapshot() {
         disputes: { total: totalDisputes, open: openDisputes, resolved: resolvedDisputes },
         fraud: { total: totalFraudAlerts, open: openFraudAlerts },
         support: { tickets: totalTickets, attendanceToday: todayAttendance },
+        user: {
+            id: adminUser?.id,
+            name: adminUser?.name || 'Platform Admin',
+            email: adminUser?.email,
+            role: adminUser?.role,
+            phone: adminUser?.phone,
+            createdAt: adminUser?.createdAt,
+            displayId: adminUser?.displayId,
+        }
     };
 }
 

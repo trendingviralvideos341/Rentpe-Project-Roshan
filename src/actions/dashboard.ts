@@ -57,7 +57,7 @@ export async function getOwnerDashboardStats() {
         // Always fetch fresh user data from DB — never trust stale JWT name
         const ownerUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true }
+            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true, loyaltyPoints: true }
         });
 
         return {
