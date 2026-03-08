@@ -136,7 +136,7 @@ export async function login(formData: FormData) {
                 phone: true,
                 twoFactorEnabled: true,
                 twoFactorSecret: true,
-            } as any
+            }
         });
 
         if (!user) {

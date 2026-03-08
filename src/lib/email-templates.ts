@@ -203,3 +203,29 @@ export const VerifierNotificationTemplate = (message: string, actionUrl: string)
   </div>
   <a href="https://rentpe.in${actionUrl}" class="button">Verify Documents</a>
 `);
+
+// ─────────────────────────────────────────────
+// RESTORED TEMPLATES (Auth & Billing)
+// ─────────────────────────────────────────────
+
+export const WelcomeTemplate = (name: string) => `
+${BaseLayout(`
+  <div class="header">Welcome to RentPe! 🎉</div>
+  <p>Hi ${name},</p>
+  <p>We're thrilled to have you on board. RentPe is your one-stop solution for finding and managing premium student housing.</p>
+  <p>Explore verified properties, manage your bookings, and experience hassle-free living.</p>
+  <a href="https://rentpe.in/properties" class="btn">Explore Properties</a>
+`)}
+`;
+
+export const InvoiceGeneratedTemplate = (tenantName: string, monthLabel: string, amount: number, dueDate: string) => `
+${BaseLayout(`
+  <div class="header">New Rent Invoice Generated 🧾</div>
+  <p>Hi ${tenantName},</p>
+  <p>Your rent invoice for <strong>${monthLabel}</strong> has been generated.</p>
+  <p><strong>Amount Due:</strong> ₹${amount.toLocaleString('en-IN')}</p>
+  <p><strong>Due Date:</strong> ${dueDate}</p>
+  <p>Please pay your rent on time to avoid late fees.</p>
+  <a href="https://rentpe.in/dashboard/student/payments" class="btn">View & Pay Invoice</a>
+`)}
+`;
