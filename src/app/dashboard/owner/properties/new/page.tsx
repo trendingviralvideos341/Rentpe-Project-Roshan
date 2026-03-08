@@ -200,12 +200,14 @@ export default function AddPropertyPage() {
             return <div className="grid grid-cols-2 gap-2 w-full">{slots}</div>;
         };
 
+        const error = errors[category];
+
         return (
-            <div className="border-2 border-slate-200 rounded-2xl p-4 flex flex-col gap-3 bg-white hover:border-purple-300 transition-colors shadow-sm">
+            <div className={`border-2 rounded-2xl p-4 flex flex-col gap-3 bg-white transition-all shadow-sm ${error ? "border-red-500 bg-red-50/10" : "border-slate-200 hover:border-purple-300"}`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
-                            <UploadCloud className="h-4 w-4 text-purple-600" />
+                        <div className={`p-2 rounded-lg border ${error ? "bg-red-50 border-red-100" : "bg-purple-50 border-purple-100"}`}>
+                            <UploadCloud className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-black text-slate-800 leading-tight truncate">{label}</p>
@@ -213,7 +215,7 @@ export default function AddPropertyPage() {
                         </div>
                     </div>
                     {isRequired ? (
-                        <span className="bg-red-50 text-red-500 text-[10px] font-black px-2 py-1 rounded-md ring-1 ring-red-100/50">MANDATORY</span>
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-md ring-1 ${error ? "bg-red-600 text-white ring-red-600 animate-pulse" : "bg-red-50 text-red-500 ring-red-100/50"}`}>MANDATORY</span>
                     ) : (
                         <span className="bg-slate-50 text-slate-400 text-[10px] font-black px-2 py-1 rounded-md ring-1 ring-slate-100">OPTIONAL</span>
                     )}
@@ -222,7 +224,7 @@ export default function AddPropertyPage() {
                 <div className="min-h-[140px] flex flex-col items-center justify-center relative">
                     {isMultiple || slotsCount > 1 ? renderGrid(slotsCount) : (
                         files.length > 0 ? (
-                            <div className="w-full h-36 relative group border border-purple-50 rounded-xl overflow-hidden shadow-sm">
+                            <div className="w-full h-36 relative group border-2 border-purple-200 rounded-xl overflow-hidden shadow-sm">
                                 <img src={URL.createObjectURL(files[0])} alt="preview" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
                                     <button type="button" onClick={() => setViewImage(URL.createObjectURL(files[0]))} 
@@ -239,14 +241,15 @@ export default function AddPropertyPage() {
                                 </div>
                             </div>
                         ) : (
-                            <label className="w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400 transition-all border-slate-300 group/single">
-                                <Plus className="h-6 w-6 text-slate-400 group-hover/single:text-purple-500 mb-1" />
-                                <span className="text-[10px] font-black text-slate-400 group-hover/single:text-purple-500 uppercase tracking-widest leading-none">AWAITING FILE</span>
+                            <label className={`w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all group/single ${error ? "border-red-400 bg-red-50/50 hover:bg-red-100/50" : "border-slate-300 bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400"}`}>
+                                <Plus className={`h-6 w-6 ${error ? "text-red-400" : "text-slate-400 group-hover/single:text-purple-500"} mb-1`} />
+                                <span className={`text-[10px] font-black uppercase tracking-widest leading-none ${error ? "text-red-500" : "text-slate-400 group-hover/single:text-purple-500"}`}>AWAITING FILE</span>
                                 <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, false)} />
                             </label>
                         )
                     )}
                 </div>
+                {error && <p className="text-[10px] text-red-600 font-bold uppercase italic mt-1 text-center">{error}</p>}
             </div>
         );
     };
@@ -301,6 +304,16 @@ export default function AddPropertyPage() {
         if (!gender) errs.gender = "Gender type is required";
         if (amenities.length === 0) errs.amenities = "Select at least one amenity";
         if (rooms.length === 0) errs.rooms = "Add at least one room";
+
+        // Conditional Mandatory for PG/Hostel text field
+        if ((propertyType === "PG" || propertyType === "Hostel") && !pgLicence.trim()) {
+            errs.pgLicence = "PG/Hostel Licence Number is required";
+        }
+
+        // Conditional Mandatory for Other type description
+        if (propertyType === "Other" && !otherPropertyType.trim()) {
+            errs.propertyType = "Please specify the property type";
+        }
 
         // Validate mandatory documents
         if (docs.buildingPhotos.length === 0) errs.buildingPhotos = "Building photos are mandatory (4 required)";
@@ -496,8 +509,20 @@ export default function AddPropertyPage() {
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium">PG/Hostel Licence No. <span className="text-muted-foreground text-xs">(Req: PG/Hostel)</span></label>
-                                <Input placeholder="e.g. GOV-12345-PG" value={pgLicence} onChange={e => setPgLicence(e.target.value)} />
+                                <label className="text-sm font-medium">
+                                    PG/Hostel Licence No. 
+                                    {(propertyType === "PG" || propertyType === "Hostel") && <span className="text-red-500">*</span>}
+                                    <span className="text-muted-foreground text-xs ml-1">
+                                        {propertyType === "PG" || propertyType === "Hostel" ? "(Required)" : "(Optional)"}
+                                    </span>
+                                </label>
+                                <Input 
+                                    placeholder="e.g. GOV-12345-PG" 
+                                    value={pgLicence} 
+                                    onChange={e => setPgLicence(e.target.value)} 
+                                    className={inputErr("pgLicence")}
+                                />
+                                {errors.pgLicence && <p className="text-xs text-red-600 font-semibold">{errors.pgLicence}</p>}
                             </div>
                         </div>
 
