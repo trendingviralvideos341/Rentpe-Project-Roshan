@@ -174,11 +174,11 @@ export async function login(formData: FormData) {
 
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         const token = await signJWT({
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-            roles: user.roles,
-            name: user.name,
+            userId: (user as any).id,
+            email: (user as any).email,
+            role: (user as any).role,
+            roles: (user as any).roles,
+            name: (user as any).name,
             permissions,
             adminRole: (user as any).adminRole ?? null,
             displayId: (user as any).displayId ?? null,
@@ -196,13 +196,13 @@ export async function login(formData: FormData) {
         });
 
         // Redirect based on active role
-        if (user.role === 'ADMIN') {
+        if ((user as any).role === 'ADMIN') {
             redirect('/dashboard/admin');
-        } else if (user.role === 'OWNER') {
+        } else if ((user as any).role === 'OWNER') {
             redirect('/dashboard/owner');
-        } else if (user.role === 'ONBOARDER') {
+        } else if ((user as any).role === 'ONBOARDER') {
             redirect('/dashboard/onboarder');
-        } else if (user.role === 'VERIFIER') {
+        } else if ((user as any).role === 'VERIFIER') {
             redirect('/dashboard/verifier');
         } else {
             redirect('/');
