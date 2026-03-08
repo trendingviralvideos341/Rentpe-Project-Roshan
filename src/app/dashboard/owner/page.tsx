@@ -11,7 +11,7 @@ const COLORS = ['#8b5cf6', '#e2e8f0'];
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams, useRouter } from "next/navigation";
-import { User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, ListFilter, Activity } from "lucide-react";
+import { User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, ListFilter, Activity, CreditCard } from "lucide-react";
 import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
 import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
 import { getOwnerInventory } from "@/actions/dashboard";
@@ -311,6 +311,14 @@ export default function OwnerDashboard() {
                                             </div>
                                         </div>
 
+                                        <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between group hover:bg-indigo-50 transition-colors">
+                                            <div>
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Loyalty Points</p>
+                                                <p className="text-xl font-black text-indigo-700">0 PRINTS</p>
+                                            </div>
+                                            <CreditCard className="h-8 w-8 text-indigo-200 group-hover:text-indigo-400 transition-colors" />
+                                        </div>
+
                                         <div className="p-4 border-2 border-emerald-200 bg-emerald-50 rounded-xl flex items-center justify-between shadow-sm">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 rounded-full bg-emerald-200 flex items-center justify-center">
@@ -318,7 +326,7 @@ export default function OwnerDashboard() {
                                                 </div>
                                                 <div>
                                                     <div className="text-[10px] font-bold text-emerald-700 uppercase">Partner Status</div>
-                                                    <div className="text-sm font-black text-emerald-800 tracking-tight">Active & Verified</div>
+                                                    <div className="text-sm font-black text-emerald-800 tracking-tight">VERIFIED KYC</div>
                                                 </div>
                                             </div>
                                         </div>

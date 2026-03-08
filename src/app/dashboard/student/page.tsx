@@ -309,10 +309,6 @@ export default function StudentDashboardPage() {
     const [signingBooking, setSigningBooking] = useState<any>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [profile, setProfile] = useState<any>(null);
-    const [isEditingProfile, setIsEditingProfile] = useState(false);
-    const [editingName, setEditingName] = useState("");
-    const [editingPhone, setEditingPhone] = useState("");
-    const [editingOcc, setEditingOcc] = useState("");
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -334,11 +330,6 @@ export default function StudentDashboardPage() {
             setBookings(bData);
             setPaymentHistory(pData);
             setProfile(profData);
-            if (profData) {
-                setEditingName(profData.name || "");
-                setEditingPhone(profData.phone || "");
-                setEditingOcc(profData.occupationType || "");
-            }
         } catch (e) {
             console.error(e);
             setError(true);
@@ -362,24 +353,6 @@ export default function StudentDashboardPage() {
         }
     };
 
-    const handleUpdateProfile = async () => {
-        try {
-            const res = await updateStudentProfile({
-                name: editingName,
-                phone: editingPhone,
-                occupationType: editingOcc
-            });
-            if (res.success) {
-                toast.success("Profile updated successfully! Any pending bookings have been synced.");
-                setIsEditingProfile(false);
-                await fetchData();
-            } else {
-                toast.error(res.error || "Update failed");
-            }
-        } catch (e) {
-            toast.error("Internal Error");
-        }
-    };
 
     const handleDownloadReceipt = (payment: any) => {
         try {
@@ -844,15 +817,13 @@ export default function StudentDashboardPage() {
                                         </CardDescription>
                                     </div>
                                 </div>
-                                {!isEditingProfile && (
-                                    <Button 
-                                        onClick={() => setIsEditingProfile(true)} 
-                                        variant="outline" 
+                                    <Button
+                                        onClick={() => router.push("/dashboard/student?tab=tickets")}
+                                        variant="outline"
                                         className="bg-white/10 hover:bg-white/20 text-white border-white/20 font-black px-6 backdrop-blur-sm"
                                     >
-                                        Edit Profile
+                                        Raise Support Ticket
                                     </Button>
-                                )}
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
@@ -860,15 +831,7 @@ export default function StudentDashboardPage() {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Full Legal Name</label>
-                                        {isEditingProfile ? (
-                                            <input 
-                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all"
-                                                value={editingName}
-                                                onChange={e => setEditingName(e.target.value)}
-                                            />
-                                        ) : (
-                                            <div className="text-lg font-black text-slate-800">{profile?.name}</div>
-                                        )}
+                                        <div className="text-lg font-black text-slate-800">{profile?.name}</div>
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official Email</label>
@@ -878,46 +841,15 @@ export default function StudentDashboardPage() {
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Primary Contact</label>
-                                        {isEditingProfile ? (
-                                            <div className="flex">
-                                                <span className="inline-flex items-center px-3 rounded-l-xl border-2 border-r-0 border-indigo-100 bg-slate-50 text-xs font-black text-slate-500 uppercase tracking-wider select-none">
-                                                    🇮🇳 +91
-                                                </span>
-                                                <input 
-                                                    type="tel"
-                                                    className="w-full bg-slate-50 border-2 border-l-0 border-indigo-100 rounded-r-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all"
-                                                    placeholder="10-digit mobile number"
-                                                    maxLength={10}
-                                                    value={editingPhone.replace(/^\+91/, "")}
-                                                    onChange={e => {
-                                                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                                                        setEditingPhone("+91" + val);
-                                                    }}
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="text-lg font-black text-slate-800">{profile?.phone || "Not set"}</div>
-                                        )}
+                                        <div className="text-lg font-black text-slate-800">{profile?.phone || "Not set"}</div>
                                     </div>
                                 </div>
                                 <div className="space-y-6">
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Occupancy Status</label>
-                                        {isEditingProfile ? (
-                                            <select 
-                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all appearance-none"
-                                                value={editingOcc}
-                                                onChange={e => setEditingOcc(e.target.value)}
-                                            >
-                                                <option value="STUDENT">Student</option>
-                                                <option value="PROFESSIONAL">Professional</option>
-                                                <option value="FREELANCER">Freelancer</option>
-                                            </select>
-                                        ) : (
-                                            <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none px-4 py-1.5 font-black text-[10px] uppercase">
-                                                {profile?.occupationType || "RESIDENT"}
-                                            </Badge>
-                                        )}
+                                        <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none px-4 py-1.5 font-black text-[10px] uppercase">
+                                            {profile?.occupationType || "RESIDENT"}
+                                        </Badge>
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Account Health</label>
@@ -929,7 +861,7 @@ export default function StudentDashboardPage() {
                                     <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between group hover:bg-indigo-50 transition-colors">
                                         <div>
                                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Loyalty Points</p>
-                                            <p className="text-xl font-black text-indigo-700">1,250 PRINTS</p>
+                                            <p className="text-xl font-black text-indigo-700">0 PRINTS</p>
                                         </div>
                                         <CreditCard className="h-8 w-8 text-indigo-200 group-hover:text-indigo-400 transition-colors" />
                                     </div>
@@ -948,23 +880,6 @@ export default function StudentDashboardPage() {
                                 </div>
                             </div>
 
-                            {isEditingProfile && (
-                                <div className="flex gap-4 pt-4 border-t">
-                                    <Button 
-                                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-xl shadow-lg shadow-indigo-200"
-                                        onClick={handleUpdateProfile}
-                                    >
-                                        Save Changes
-                                    </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        className="flex-1 h-12 rounded-xl font-black border-2 border-slate-100 hover:bg-slate-50"
-                                        onClick={() => setIsEditingProfile(false)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            )}
 
                             {/* ── Premium Digital Identity ── */}
                             <div className="relative p-8 bg-slate-900 rounded-[32px] text-white overflow-hidden shadow-2xl border-4 border-slate-800">
@@ -1005,7 +920,7 @@ export default function StudentDashboardPage() {
                                             </div>
                                             <div>
                                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Digital Validity</p>
-                                                <p className="text-[10px] font-bold">LIFETIME ACCESS GRANTED</p>
+                                                <p className="text-[10px] font-bold">VERIFIED KYC</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
