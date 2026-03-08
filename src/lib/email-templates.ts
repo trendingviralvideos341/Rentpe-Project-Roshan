@@ -92,3 +92,18 @@ export const KycStatusTemplate = (name: string, status: 'APPROVED' | 'REJECTED',
   ${status === 'REJECTED' ? '<p>Please log in to re-upload your documents for verification.</p>' : ''}
   <a href="https://rentpe.in/dashboard" class="button">Go to Dashboard</a>
 `);
+
+export const InvoiceGeneratedTemplate = (name: string, month: string, amount: number, dueDate: string) => BaseLayout(`
+  <h2 style="margin-top: 0;">New Rent Invoice Generated 📜</h2>
+  <p>Hi ${name},</p>
+  <p>A new rent invoice has been generated for <strong>${month}</strong>.</p>
+  <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin: 24px 0;">
+    <p style="margin: 0; font-size: 14px; color: #64748b;">Amount Due</p>
+    <p style="margin: 4px 0 16px 0; font-size: 28px; font-weight: 800; color: #1e293b;">₹${amount.toLocaleString('en-IN')}</p>
+    <p style="margin: 0; font-size: 14px; color: #64748b;">Due Date</p>
+    <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 600; color: #ef4444;">${dueDate}</p>
+  </div>
+  <p>Please ensure payment is made by the due date to avoid any late fees or service interruptions.</p>
+  <a href="https://rentpe.in/dashboard/student" class="button">Pay Now</a>
+  <p style="margin-top: 24px; font-size: 13px; color: #94a3b8;">You can download the formal PDF receipt from your dashboard after successful payment.</p>
+`);

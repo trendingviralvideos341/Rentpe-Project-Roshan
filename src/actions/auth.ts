@@ -140,11 +140,11 @@ export async function login(formData: FormData) {
             return { error: 'Invalid credentials' };
         }
 
-        if (user.status === 'BANNED' || user.status === 'INACTIVE') {
+        if ((user as any).status === 'BANNED' || (user as any).status === 'INACTIVE') {
             return { error: 'Your account has been suspended. Please contact support.' };
         }
 
-        const isMatch = await comparePassword(password, user.passwordHash);
+        const isMatch = await comparePassword(password, (user as any).passwordHash);
         if (!isMatch) {
             return { error: 'Invalid credentials' };
         }

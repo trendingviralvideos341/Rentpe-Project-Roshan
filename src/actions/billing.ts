@@ -64,22 +64,22 @@ export async function createBillingProfile(tenantId: string) {
     });
 }
 
-export async function generateInvoice(tenantId: string, month: string) {
-    const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
-
+/**
+ * Internal helper for automated billing (skips session check)
+ */
+export async function internalGenerateInvoice(tenantId: string, month: string, performedBy: string = 'SYSTEM') {
     const profile = await prisma.billingProfile.findUnique({
         where: { tenantId },
         include: { tenant: true }
     });
 
-    if (!profile) throw new Error("Billing profile not found. Create one first.");
+    if (!profile) throw new Error("Billing profile not found.");
 
     // Check for duplicate invoice
     const existing = await prisma.rentInvoice.findFirst({
         where: { tenantId, month }
     });
-    if (existing) throw new Error(`Invoice for ${month} already exists.`);
+    if (existing) return { skipped: true, reason: 'ALREADY_EXISTS' };
 
     const displayId = `INV-${Math.floor(Math.random() * 900000) + 100000}`;
     const dueDate = new Date();
@@ -104,12 +104,21 @@ export async function generateInvoice(tenantId: string, month: string) {
             targetId: tenantId,
             targetType: 'TENANT',
             details: `Invoice ${displayId} generated for ${month} (₹${profile.monthlyRent})`,
-            performedBy: (session as any).userId
+            performedBy
         }
     });
 
-    revalidatePath('/dashboard/owner/tenants');
     return invoice;
+}
+
+export async function generateInvoice(tenantId: string, month: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const result = await internalGenerateInvoice(tenantId, month, (session as any).userId);
+    
+    revalidatePath('/dashboard/owner/tenants');
+    return result;
 }
 
 export async function calculateMoveOutSettlement(tenantId: string, options: { deductions: number, notes?: string }) {
