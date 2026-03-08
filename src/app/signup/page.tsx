@@ -119,8 +119,10 @@ export default function SignupPage() {
                         )}
 
                         {/* Role Chip Selector */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-foreground">I am joining as:</label>
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold text-foreground block text-center w-full bg-muted/50 py-1.5 rounded-lg border border-border/50 shadow-sm">
+                                I am joining as:
+                            </label>
                             <div className="grid grid-cols-2 gap-3">
                                 {ROLE_OPTIONS.map((opt) => {
                                     const isSelected = role === opt.value;
@@ -150,9 +152,6 @@ export default function SignupPage() {
                                     );
                                 })}
                             </div>
-                            <p className="text-xs text-muted-foreground text-center pt-0.5">
-                                🔒 Onboarder &amp; Verifier roles are assigned by Admin only
-                            </p>
                         </div>
 
                         {/* Name — First / Middle / Last */}
