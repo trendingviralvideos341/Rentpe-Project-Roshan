@@ -86,6 +86,15 @@ export async function createProperty(formData: FormData) {
     const pgLicenceUrl = formData.get("pgLicenceUrl") as string;
     const livePhotoUrl = formData.get("livePhotoUrl") as string;
 
+    // Expanded photo categories
+    const exteriorPhotos = formData.get("exteriorPhotos") as string;
+    const interiorPhotos = formData.get("interiorPhotos") as string;
+    const roomsPhotos = formData.get("roomsPhotos") as string;
+    const hallPhotos = formData.get("hallPhotos") as string;
+    const lobbyPhotos = formData.get("lobbyPhotos") as string;
+    const washroomPhotos = formData.get("washroomPhotos") as string;
+    const amenitiesPhotos = formData.get("amenitiesPhotos") as string;
+
     const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
 
     // Server-side validation
@@ -103,26 +112,35 @@ export async function createProperty(formData: FormData) {
     const uploadTasks = async () => {
         const results: any = {};
         
-        // Batch uploads
-        if (buildingPhotos) {
-            const parsed = JSON.parse(buildingPhotos);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                results.buildingPhotos = await batchUploadToCloudinary(parsed, `${folder}/building`);
+        // Helper for batch uploads
+        const processBatch = async (field: string, data: string) => {
+            if (data) {
+                const parsed = JSON.parse(data);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    results[field] = await batchUploadToCloudinary(parsed, `${folder}/${field}`);
+                }
             }
-        }
-        if (commonAreaPhotos) {
-            const parsed = JSON.parse(commonAreaPhotos);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                results.commonAreaPhotos = await batchUploadToCloudinary(parsed, `${folder}/common`);
-            }
-        }
+        };
+
+        // Batch uploads for all categories
+        await Promise.all([
+            processBatch("buildingPhotos", buildingPhotos),
+            processBatch("commonAreaPhotos", commonAreaPhotos),
+            processBatch("exteriorPhotos", exteriorPhotos),
+            processBatch("interiorPhotos", interiorPhotos),
+            processBatch("roomsPhotos", roomsPhotos),
+            processBatch("hallPhotos", hallPhotos),
+            processBatch("lobbyPhotos", lobbyPhotos),
+            processBatch("washroomPhotos", washroomPhotos),
+            processBatch("amenitiesPhotos", amenitiesPhotos),
+            processBatch("aadhaarProof", aadhaarProof),
+            processBatch("panProof", panProof),
+            processBatch("pgLicenceUrl", pgLicenceUrl),
+        ]);
 
         // Single uploads
         if (bathroomPhoto?.startsWith('data:')) results.bathroomPhoto = await uploadToCloudinary(bathroomPhoto, folder);
         if (parkingPhoto?.startsWith('data:')) results.parkingPhoto = await uploadToCloudinary(parkingPhoto, folder);
-        if (aadhaarProof?.startsWith('data:')) results.aadhaarProof = await uploadToCloudinary(aadhaarProof, folder, true);
-        if (panProof?.startsWith('data:')) results.panProof = await uploadToCloudinary(panProof, folder, true);
-        if (pgLicenceUrl?.startsWith('data:')) results.pgLicenceUrl = await uploadToCloudinary(pgLicenceUrl, folder, true);
         if (livePhotoUrl?.startsWith('data:')) results.livePhotoUrl = await uploadToCloudinary(livePhotoUrl, folder);
 
         return results;
@@ -139,7 +157,11 @@ export async function createProperty(formData: FormData) {
                 city,
                 description,
                 amenities: amenities || "[]",
-                images: JSON.stringify([...(uploaded.buildingPhotos || []), ...(uploaded.commonAreaPhotos || [])]),
+                images: images || JSON.stringify([
+                    ...(uploaded.exteriorPhotos || []),
+                    ...(uploaded.interiorPhotos || []),
+                    ...(uploaded.roomsPhotos || [])
+                ]),
                 ownerName: finalOwnerName,
                 pgLicence: pgLicence || null,
                 ownerId: user?.parentOwnerId || (session as any).userId,
@@ -149,10 +171,18 @@ export async function createProperty(formData: FormData) {
                 commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
                 bathroomPhoto: uploaded.bathroomPhoto || null,
                 parkingPhoto: uploaded.parkingPhoto || null,
-                aadhaarProof: uploaded.aadhaarProof || null,
-                panProof: uploaded.panProof || null,
-                pgLicenceUrl: uploaded.pgLicenceUrl || null,
+                aadhaarProof: uploaded.aadhaarProof ? JSON.stringify(uploaded.aadhaarProof) : null,
+                panProof: uploaded.panProof ? JSON.stringify(uploaded.panProof) : null,
+                pgLicenceUrl: uploaded.pgLicenceUrl ? JSON.stringify(uploaded.pgLicenceUrl) : null,
                 livePhotoUrl: uploaded.livePhotoUrl || null,
+                // Expanded categories
+                exteriorPhotos: uploaded.exteriorPhotos ? JSON.stringify(uploaded.exteriorPhotos) : null,
+                interiorPhotos: uploaded.interiorPhotos ? JSON.stringify(uploaded.interiorPhotos) : null,
+                roomsPhotos: uploaded.roomsPhotos ? JSON.stringify(uploaded.roomsPhotos) : null,
+                hallPhotos: uploaded.hallPhotos ? JSON.stringify(uploaded.hallPhotos) : null,
+                lobbyPhotos: uploaded.lobbyPhotos ? JSON.stringify(uploaded.lobbyPhotos) : null,
+                washroomPhotos: uploaded.washroomPhotos ? JSON.stringify(uploaded.washroomPhotos) : null,
+                amenitiesPhotos: uploaded.amenitiesPhotos ? JSON.stringify(uploaded.amenitiesPhotos) : null,
             }
         });
 

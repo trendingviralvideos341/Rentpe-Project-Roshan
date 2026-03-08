@@ -98,6 +98,14 @@ model Property {
   parkingPhoto String?
   bathroomPhoto String?
   livePhotoUrl  String?
+  // Categorized Photos (JSON Arrays)
+  exteriorPhotos  String? 
+  interiorPhotos  String?
+  roomsPhotos     String?
+  hallPhotos       String?
+  lobbyPhotos      String?
+  washroomPhotos   String?
+  amenitiesPhotos  String?
   verifiedDocs  String    @default("[]")
   averageRating Float     @default(0)
   reviewCount   Int       @default(0)

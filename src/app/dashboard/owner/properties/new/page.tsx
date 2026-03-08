@@ -33,22 +33,28 @@ export default function AddPropertyPage() {
     
     // Structured document state
     const [docs, setDocs] = useState<{
-        buildingPhotos: File[];
-        commonAreaPhotos: File[];
-        bathroomPhoto: File | null;
-        parkingPhoto: File | null;
-        aadhaarProof: File | null;
-        panProof: File | null;
-        pgLicenceUrl: File | null;
+        exteriorPhotos: File[];
+        interiorPhotos: File[];
+        roomsPhotos: File[];
+        hallPhotos: File[];
+        lobbyPhotos: File[];
+        washroomPhotos: File[];
+        amenitiesPhotos: File[];
+        aadhaarProof: File[];
+        panProof: File[];
+        pgLicenceUrl: File[];
         livePhotoUrl: File | null;
     }>({
-        buildingPhotos: [],
-        commonAreaPhotos: [],
-        bathroomPhoto: null,
-        parkingPhoto: null,
-        aadhaarProof: null,
-        panProof: null,
-        pgLicenceUrl: null,
+        exteriorPhotos: [],
+        interiorPhotos: [],
+        roomsPhotos: [],
+        hallPhotos: [],
+        lobbyPhotos: [],
+        washroomPhotos: [],
+        amenitiesPhotos: [],
+        aadhaarProof: [],
+        panProof: [],
+        pgLicenceUrl: [],
         livePhotoUrl: null,
     });
     
@@ -150,68 +156,88 @@ export default function AddPropertyPage() {
     };
 
     // Sub-component for upload cards
-    const UploadCard = ({ label, sub, category, isMultiple }: { label: string; sub: string; category: keyof typeof docs; isMultiple: boolean }) => {
+    const UploadCard = ({ label, sub, category, isMultiple, slotsCount = 4 }: { label: string; sub: string; category: keyof typeof docs; isMultiple: boolean; slotsCount?: number }) => {
         const item = docs[category];
         const files = Array.isArray(item) ? item : (item ? [item] : []);
 
+        const renderGrid = (limit: number) => {
+            const slots = [];
+            for (let i = 0; i < limit; i++) {
+                if (files[i]) {
+                    slots.push(
+                        <div key={i} className="relative group/img aspect-square borderrounded-xl bg-white overflow-hidden shadow-sm">
+                            <img src={URL.createObjectURL(files[i])} alt="preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[2px]">
+                                <button type="button" onClick={() => setViewImage(URL.createObjectURL(files[i]))} 
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-[10px] font-black shadow-lg">
+                                    <Eye className="h-3 w-3" /> VIEW
+                                </button>
+                                <button type="button" onClick={() => removeDoc(category, i)} 
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full text-[10px] font-black shadow-lg">
+                                    <X className="h-3 w-3" /> DELETE
+                                </button>
+                            </div>
+                            <div className="absolute bottom-1 right-1 bg-black/60 text-[8px] text-white px-1.5 rounded-sm font-mono">
+                                {(files[i].size / (1024 * 1024)).toFixed(1)}MB
+                            </div>
+                        </div>
+                    );
+                } else {
+                    slots.push(
+                        <label key={i} className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center hover:bg-purple-50 hover:border-purple-300 cursor-pointer transition-all group/label">
+                            <Plus className="h-5 w-5 text-slate-300 group-hover/label:text-purple-600" />
+                            <span className="text-[10px] font-black text-slate-400 group-hover/label:text-purple-600 mt-1 uppercase tracking-tighter">Add</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, isMultiple)} />
+                        </label>
+                    );
+                }
+            }
+            return <div className="grid grid-cols-2 gap-3 w-full">{slots}</div>;
+        };
+
         return (
-            <div className="border rounded-xl p-4 flex flex-col gap-3 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2">
-                    <div className="bg-purple-100 p-2 rounded-lg">
-                        <UploadCloud className="h-4 w-4 text-purple-600" />
+            <div className="border border-slate-100 rounded-2xl p-5 flex flex-col gap-4 bg-white shadow-sm hover:shadow-xl transition-all duration-300">
+                <div className="flex items-center gap-3">
+                    <div className="bg-purple-50 p-2.5 rounded-xl border border-purple-100 shadow-sm">
+                        <UploadCloud className="h-5 w-5 text-purple-600" />
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-slate-900 leading-none">{label}</p>
-                        <p className="text-[10px] text-slate-500 uppercase mt-1 tracking-wider">{sub}</p>
+                        <p className="text-sm font-black text-slate-800 leading-tight">{label}</p>
+                        <p className="text-[10px] text-purple-600 font-bold uppercase mt-0.5 tracking-widest">{sub}</p>
                     </div>
                 </div>
 
-                <div className="min-h-[140px] border-2 border-dashed rounded-lg bg-slate-50 flex flex-col items-center justify-center relative overflow-hidden group">
-                    {files.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-1 w-full h-full p-1">
-                            {files.map((file, i) => (
-                                <div key={i} className="relative group/img aspect-square border rounded bg-white overflow-hidden">
-                                    <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button type="button" onClick={() => setViewImage(URL.createObjectURL(file))} className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white">
-                                            <Eye className="h-4 w-4" />
-                                        </button>
-                                        <button type="button" onClick={() => removeDoc(category, isMultiple ? i : undefined)} className="p-1.5 bg-red-500/20 hover:bg-red-500/40 rounded-full text-white">
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                    <div className="absolute bottom-0 right-0 bg-black/50 text-[8px] text-white px-1">
-                                        {(file.size / (1024 * 1024)).toFixed(1)}MB
-                                    </div>
+                <div className="min-h-[160px] flex flex-col items-center justify-center relative">
+                    {isMultiple || slotsCount > 1 ? renderGrid(slotsCount) : (
+                        files.length > 0 ? (
+                            <div className="w-full h-44 relative group border-2 border-purple-100 rounded-2xl overflow-hidden shadow-md">
+                                <img src={URL.createObjectURL(files[0])} alt="preview" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                                    <button type="button" onClick={() => setViewImage(URL.createObjectURL(files[0]))} 
+                                        className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-black shadow-xl">
+                                        <Eye className="h-4 w-4" /> VIEW FULL PHOTO
+                                    </button>
+                                    <button type="button" onClick={() => removeDoc(category)} 
+                                        className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black shadow-xl">
+                                        <X className="h-4 w-4" /> DELETE PHOTO
+                                    </button>
                                 </div>
-                            ))}
-                            {isMultiple && files.length < 10 && (
-                                <label className="aspect-square border-2 border-dashed rounded flex items-center justify-center hover:bg-purple-50 cursor-pointer transition-colors">
-                                    <Plus className="h-4 w-4 text-purple-400" />
-                                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleDocChange(category, true)} />
-                                </label>
-                            )}
-                        </div>
-                    ) : (
-                        <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Awaiting Upload</span>
-                            <div className="mt-2 text-purple-600 font-bold text-xs">Add Photo</div>
-                            <input type="file" multiple={isMultiple} accept="image/*" className="hidden" onChange={handleDocChange(category, isMultiple)} />
-                        </label>
+                                <div className="absolute bottom-2 right-2 bg-black/60 text-[10px] text-white px-2 py-0.5 rounded-md font-mono">
+                                    {(files[0].size / (1024 * 1024)).toFixed(1)}MB
+                                </div>
+                            </div>
+                        ) : (
+                            <label className="w-full h-44 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-purple-50 hover:border-purple-300 transition-all border-slate-200 group/single">
+                                <div className="p-4 bg-slate-50 group-hover/single:bg-purple-100 rounded-full mb-2 transition-colors">
+                                    <Plus className="h-8 w-8 text-slate-300 group-hover/single:text-purple-600" />
+                                </div>
+                                <span className="text-[11px] font-black text-slate-400 group-hover/single:text-purple-600 uppercase tracking-widest leading-none">Awaiting Document</span>
+                                <div className="mt-2 text-purple-600 font-black text-xs px-4 py-1.5 bg-purple-50 rounded-lg group-hover/single:bg-purple-600 group-hover/single:text-white transition-all">Add Photo</div>
+                                <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, false)} />
+                            </label>
+                        )
                     )}
                 </div>
-                
-                {files.length > 0 && !isMultiple && (
-                    <div className="flex gap-2">
-                        <label className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-bold text-slate-600 text-center cursor-pointer transition-colors">
-                            REUPLOAD
-                            <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, false)} />
-                        </label>
-                        <button type="button" onClick={() => removeDoc(category)} className="flex-1 py-1.5 border border-red-100 hover:bg-red-50 rounded text-[10px] font-bold text-red-600 transition-colors uppercase">
-                            Delete
-                        </button>
-                    </div>
-                )}
             </div>
         );
     };
@@ -307,17 +333,25 @@ export default function AddPropertyPage() {
             }
 
             // Map UI docs to backend schema fields
-            formData.set("buildingPhotos", JSON.stringify(processedDocs.buildingPhotos || []));
-            formData.set("commonAreaPhotos", JSON.stringify(processedDocs.commonAreaPhotos || []));
-            formData.set("bathroomPhoto", processedDocs.bathroomPhoto || "");
-            formData.set("parkingPhoto", processedDocs.parkingPhoto || "");
+            formData.set("exteriorPhotos", JSON.stringify(processedDocs.exteriorPhotos || []));
+            formData.set("interiorPhotos", JSON.stringify(processedDocs.interiorPhotos || []));
+            formData.set("roomsPhotos", JSON.stringify(processedDocs.roomsPhotos || []));
+            formData.set("hallPhotos", JSON.stringify(processedDocs.hallPhotos || []));
+            formData.set("lobbyPhotos", JSON.stringify(processedDocs.lobbyPhotos || []));
+            formData.set("washroomPhotos", JSON.stringify(processedDocs.washroomPhotos || []));
+            formData.set("amenitiesPhotos", JSON.stringify(processedDocs.amenitiesPhotos || []));
+            
             formData.set("aadhaarProof", processedDocs.aadhaarProof || "");
             formData.set("panProof", processedDocs.panProof || "");
             formData.set("pgLicenceUrl", processedDocs.pgLicenceUrl || "");
             formData.set("livePhotoUrl", processedDocs.livePhotoUrl || "");
             
             // Legacy 'images' for backward compatibility
-            formData.set("images", JSON.stringify([...(processedDocs.buildingPhotos || []), ...(processedDocs.commonAreaPhotos || [])]));
+            formData.set("images", JSON.stringify([
+                ...(processedDocs.exteriorPhotos || []),
+                ...(processedDocs.interiorPhotos || []),
+                ...(processedDocs.roomsPhotos || [])
+            ]));
 
             formData.set("ownerName", ownerName);
             formData.set("pgLicence", pgLicence);
@@ -589,38 +623,113 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Photos & Documents */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                            <span>Photos & Documents</span>
-                            <span className="text-xs font-bold text-red-600 uppercase tracking-widest whitespace-nowrap">🔴 MAX 25 MB OVERALLY LIMIT</span>
-                        </CardTitle>
-                        <CardDescription>Upload specific photos for faster verification by our team.</CardDescription>
+                <Card className="border-2 border-purple-100 shadow-2xl shadow-purple-500/50 scale-[1.02] transform transition-all duration-500">
+                    <CardHeader className="border-b bg-slate-50/80 p-10">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                            <div className="flex-1">
+                                <CardTitle className="text-3xl font-black text-slate-900 flex flex-wrap items-center gap-4">
+                                    Photos & Documents
+                                    <span className="text-[11px] bg-red-600 text-white px-4 py-1.5 rounded-full font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-red-200 animate-pulse">
+                                        <AlertTriangle className="h-4 w-4" /> 🔴 MAX 25 MB LIMIT
+                                    </span>
+                                </CardTitle>
+                                <CardDescription className="text-lg text-slate-500 mt-3 font-medium max-w-2xl">
+                                    High-resolution photos significantly increase your approval speed. Please ensure clarity for all legal documents.
+                                </CardDescription>
+                            </div>
+                            
+                            {/* Static Critical Disclaimer */}
+                            <div className="bg-white border-2 border-red-400 rounded-3xl p-6 flex items-start gap-5 max-w-xl shadow-2xl relative overflow-hidden ring-4 ring-red-50">
+                                <div className="absolute top-0 left-0 w-2 h-full bg-red-600" />
+                                <div className="p-3 bg-red-100 rounded-2xl">
+                                    <AlertTriangle className="h-8 w-8 text-red-600" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <p className="text-[14px] text-red-600 leading-tight font-black uppercase tracking-tighter">
+                                        CRITICAL VERIFICATION REQUIREMENT
+                                    </p>
+                                    <p className="text-[13px] text-slate-900 mt-2 font-black leading-snug">
+                                        All registered names (Property & Owner) must match with the registered profile details for faster verification.
+                                    </p>
+                                    <div className="h-px bg-slate-100 my-3 w-full" />
+                                    <p className="text-[11px] text-slate-500 font-bold italic flex items-center gap-2 uppercase tracking-widest">
+                                        <ShieldCheck className="h-4 w-4 text-emerald-500" /> Verification team will review and update you soon
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <UploadCard label="Building Photos" sub="Ext./Int. photos" category="buildingPhotos" isMultiple={true} />
-                            <UploadCard label="Common Area" sub="Hall, Lobby etc." category="commonAreaPhotos" isMultiple={true} />
-                            <UploadCard label="Bathroom" sub="Sample room photo" category="bathroomPhoto" isMultiple={false} />
-                            <UploadCard label="Parking Area" sub="Facility photo" category="parkingPhoto" isMultiple={false} />
-                            <UploadCard label="Owner Aadhaar" sub="Front & Back" category="aadhaarProof" isMultiple={false} />
-                            <UploadCard label="Owner PAN" sub="Front copy" category="panProof" isMultiple={false} />
-                            <UploadCard label="PG Licence" sub="Commercial copy" category="pgLicenceUrl" isMultiple={false} />
-                            <UploadCard label="Live Photo" sub="Current owner selfie" category="livePhotoUrl" isMultiple={false} />
+                    
+                    <CardContent className="p-10 space-y-16">
+                        {/* Interior & Exterior Visuals */}
+                        <div className="space-y-8">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-1.5 bg-purple-600 rounded-full" />
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">1. Property Architecture</h3>
+                                <div className="h-px flex-1 bg-slate-100" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                <UploadCard label="Exterior Photos" sub="Entrance & Front" category="exteriorPhotos" isMultiple={true} />
+                                <UploadCard label="Interior Photos" sub="Reception & Decor" category="interiorPhotos" isMultiple={true} />
+                                <UploadCard label="Hall" sub="Main shared area" category="hallPhotos" isMultiple={true} />
+                                <UploadCard label="Lobby" sub="Waiting & Lounge" category="lobbyPhotos" isMultiple={true} />
+                            </div>
                         </div>
 
-                        <div className="flex items-center justify-between bg-slate-50 p-3 rounded-md border border-slate-200">
-                             <div className="flex flex-col">
-                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Total Consumed</span>
-                                <span className={`text-sm font-mono ${(totalSize / (1024 * 1024)) > 20 ? 'text-red-500' : 'text-slate-800'}`}>
-                                    {(totalSize / (1024 * 1024)).toFixed(2)} MB
-                                </span>
+                        {/* Living Spaces */}
+                        <div className="space-y-8">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-1.5 bg-purple-600 rounded-full" />
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">2. Living Experience</h3>
+                                <div className="h-px flex-1 bg-slate-100" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                <UploadCard label="Rooms" sub="Bed styling & Space" category="roomsPhotos" isMultiple={true} />
+                                <UploadCard label="Washroom" sub="Tile & Fittings" category="washroomPhotos" isMultiple={true} />
+                                <UploadCard label="Other Amenities" sub="Kitchen, Gym, etc." category="amenitiesPhotos" isMultiple={true} />
+                                <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} />
+                            </div>
+                        </div>
+
+                        {/* Documentation Section */}
+                        <div className="space-y-8">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-1.5 bg-purple-600 rounded-full" />
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">3. Legal Documentation</h3>
+                                <div className="h-px flex-1 bg-slate-100" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" isMultiple={true} slotsCount={2} />
+                                <UploadCard label="Owner PAN" sub="Front Copy" category="panProof" isMultiple={true} slotsCount={2} />
+                                <UploadCard label="PG/Hostel Licence" sub="Operational proof" category="pgLicenceUrl" isMultiple={true} slotsCount={2} />
+                                <div className="border-2 rounded-3xl p-8 flex flex-col items-center justify-center bg-slate-50 border-dashed border-slate-200 opacity-60">
+                                    <ShieldCheck className="h-12 w-12 text-slate-300 mb-4" />
+                                    <p className="text-[12px] text-center font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                                        Verification Slot<br/>Reserved for Admin
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Capacity Stats Card */}
+                        <div className="flex items-center justify-between bg-gradient-to-br from-purple-700 to-violet-900 p-10 rounded-[40px] shadow-3xl shadow-purple-600/30 text-white border-b-8 border-purple-950">
+                             <div className="flex flex-col gap-2">
+                                <span className="text-[12px] text-purple-200 uppercase font-black tracking-[0.2em] opacity-80">Workspace Utilization</span>
+                                <div className="flex items-baseline gap-3">
+                                    <span className={`text-6xl font-black tracking-tighter ${(totalSize / (1024 * 1024)) > 20 ? 'text-orange-400' : 'text-white'}`}>
+                                        {(totalSize / (1024 * 1024)).toFixed(2)}
+                                    </span>
+                                    <span className="text-2xl font-black text-purple-200">MB</span>
+                                </div>
                              </div>
-                             <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Remaining</span>
-                                <span className="text-sm font-mono text-green-600">
-                                    {(Math.max(0, (MAX_TOTAL_SIZE - totalSize)) / (1024 * 1024)).toFixed(2)} MB
-                                </span>
+                             <div className="flex flex-col items-end gap-2">
+                                <span className="text-[12px] text-purple-200 uppercase font-black tracking-[0.2em] opacity-80">Free Space remaining</span>
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-6xl font-black text-emerald-400 tracking-tighter">
+                                        {(Math.max(0, (MAX_TOTAL_SIZE - totalSize)) / (1024 * 1024)).toFixed(2)}
+                                    </span>
+                                    <span className="text-2xl font-black text-emerald-200">MB</span>
+                                </div>
                              </div>
                         </div>
                     </CardContent>
