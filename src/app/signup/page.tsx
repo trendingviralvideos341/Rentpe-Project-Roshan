@@ -30,7 +30,8 @@ const ROLE_OPTIONS = [
         value: "USER",
         emoji: "🎓",
         label: "Student / Tenant",
-        sublabel: "Working Professional · Others",
+        sublabel1: "Working Professional",
+        sublabel2: "Others",
         gradient: "from-blue-600 to-indigo-600",
         selectedBg: "bg-gradient-to-br from-blue-600 to-indigo-600",
         border: "border-blue-500",
@@ -40,7 +41,8 @@ const ROLE_OPTIONS = [
         value: "OWNER",
         emoji: "🏢",
         label: "Property Owner",
-        sublabel: "PG · Hostel · Building Owner",
+        sublabel1: "PG / Hostel / Coliving",
+        sublabel2: "Building Owner",
         gradient: "from-orange-500 to-amber-500",
         selectedBg: "bg-gradient-to-br from-orange-500 to-amber-500",
         border: "border-orange-400",
@@ -52,6 +54,7 @@ export default function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [firstName, setFirstName] = useState("");
+    const [middleName, setMiddleName] = useState("");
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -66,7 +69,7 @@ export default function SignupPage() {
         e.preventDefault();
         setError(null);
 
-        // Final validation check before submit
+        // Validation
         const fnErr = validateName(firstName);
         const lnErr = validateName(lastName);
         const emErr = validateEmail(email);
@@ -83,9 +86,10 @@ export default function SignupPage() {
         }
 
         setLoading(true);
+        const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
         const formData = new FormData();
-        formData.set("firstName", firstName);
-        formData.set("lastName", lastName);
+        formData.set("firstName", fullName);      // full name passed as firstName
+        formData.set("lastName", ".");            // placeholder to satisfy schema
         formData.set("email", email);
         formData.set("password", password);
         formData.set("phone", `+91${phone}`);
@@ -97,7 +101,7 @@ export default function SignupPage() {
 
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-muted/30 px-4 py-8">
-            <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-border">
+            <Card className="w-full max-w-lg shadow-xl border-0 ring-1 ring-border">
                 <div className="h-2 rounded-t-xl bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600" />
 
                 <CardHeader className="space-y-1 pt-6">
@@ -125,7 +129,7 @@ export default function SignupPage() {
                                             key={opt.value}
                                             type="button"
                                             onClick={() => setRole(opt.value)}
-                                            className={`relative flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
+                                            className={`relative flex flex-col items-center justify-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer min-h-[110px]
                                                 ${isSelected
                                                     ? `${opt.selectedBg} border-transparent text-white shadow-lg scale-[1.02] ring-4 ${opt.ring}`
                                                     : `bg-card border-border hover:border-gray-400 text-foreground hover:shadow-md`
@@ -135,51 +139,65 @@ export default function SignupPage() {
                                                 <CheckCircle className="absolute top-2 right-2 h-4 w-4 text-white/80" />
                                             )}
                                             <span className="text-3xl leading-none">{opt.emoji}</span>
-                                            <span className="font-bold text-sm text-center leading-tight">{opt.label}</span>
-                                            <span className={`text-xs text-center leading-tight ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>
-                                                {opt.sublabel}
+                                            <span className="font-bold text-sm text-center leading-tight mt-1">{opt.label}</span>
+                                            <span className={`text-[11px] text-center leading-tight ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>
+                                                {opt.sublabel1}
+                                            </span>
+                                            <span className={`text-[11px] text-center leading-tight ${isSelected ? "text-white/60" : "text-muted-foreground/70"}`}>
+                                                {opt.sublabel2}
                                             </span>
                                         </button>
                                     );
                                 })}
                             </div>
-                            <p className="text-xs text-muted-foreground text-center">
+                            <p className="text-xs text-muted-foreground text-center pt-0.5">
                                 🔒 Onboarder &amp; Verifier roles are assigned by Admin only
                             </p>
                         </div>
 
-                        {/* Name row */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label htmlFor="firstName" className="text-sm font-medium">First name</label>
-                                <Input id="firstName" name="firstName" placeholder="John" required
-                                    className={fieldErrors.firstName ? "border-red-400" : ""}
-                                    value={firstName} onChange={e => {
-                                        const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
-                                        setFirstName(v);
-                                        const err = v.length > 0 ? validateName(v) : "";
-                                        setFieldErrors(p => { const n = { ...p }; if (err) n.firstName = err; else delete n.firstName; return n; });
-                                    }} />
-                                {fieldErrors.firstName && <p className="text-xs text-red-500">{fieldErrors.firstName}</p>}
-                            </div>
-                            <div className="space-y-1">
-                                <label htmlFor="lastName" className="text-sm font-medium">Last name</label>
-                                <Input id="lastName" name="lastName" placeholder="Doe" required
-                                    className={fieldErrors.lastName ? "border-red-400" : ""}
-                                    value={lastName} onChange={e => {
-                                        const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
-                                        setLastName(v);
-                                        const err = v.length > 0 ? validateName(v) : "";
-                                        setFieldErrors(p => { const n = { ...p }; if (err) n.lastName = err; else delete n.lastName; return n; });
-                                    }} />
-                                {fieldErrors.lastName && <p className="text-xs text-red-500">{fieldErrors.lastName}</p>}
+                        {/* Name — First / Middle / Last */}
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium">Full Name</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="space-y-1">
+                                    <Input id="firstName" placeholder="First name" required
+                                        className={fieldErrors.firstName ? "border-red-400" : ""}
+                                        value={firstName} onChange={e => {
+                                            const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                                            setFirstName(v);
+                                            const err = v.length > 0 ? validateName(v) : "";
+                                            setFieldErrors(p => { const n = { ...p }; if (err) n.firstName = err; else delete n.firstName; return n; });
+                                        }} />
+                                    {fieldErrors.firstName && <p className="text-[10px] text-red-500">{fieldErrors.firstName}</p>}
+                                    <p className="text-[10px] text-muted-foreground text-center">First</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <Input placeholder="Middle name"
+                                        value={middleName} onChange={e => {
+                                            const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                                            setMiddleName(v);
+                                        }} />
+                                    <p className="text-[10px] text-muted-foreground text-center">Middle <span className="opacity-60">(optional)</span></p>
+                                </div>
+                                <div className="space-y-1">
+                                    <Input placeholder="Last name" required
+                                        className={fieldErrors.lastName ? "border-red-400" : ""}
+                                        value={lastName} onChange={e => {
+                                            const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                                            setLastName(v);
+                                            const err = v.length > 0 ? validateName(v) : "";
+                                            setFieldErrors(p => { const n = { ...p }; if (err) n.lastName = err; else delete n.lastName; return n; });
+                                        }} />
+                                    {fieldErrors.lastName && <p className="text-[10px] text-red-500">{fieldErrors.lastName}</p>}
+                                    <p className="text-[10px] text-muted-foreground text-center">Last</p>
+                                </div>
                             </div>
                         </div>
 
                         {/* Email */}
                         <div className="space-y-1">
                             <label htmlFor="email" className="text-sm font-medium">Email</label>
-                            <Input id="email" name="email" placeholder="john@example.com" type="email" required
+                            <Input id="email" placeholder="john@example.com" type="email" required
                                 className={fieldErrors.email ? "border-red-400" : ""}
                                 value={email} onChange={e => {
                                     setEmail(e.target.value);
@@ -188,33 +206,33 @@ export default function SignupPage() {
                                 }} />
                             {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
                         </div>
-                        
-                        {/* Phone Number */}
+
+                        {/* Mobile Number */}
                         <div className="space-y-1">
                             <label htmlFor="phone" className="text-sm font-medium">Mobile Number</label>
-                            <div className="flex">
-                                <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 bg-muted text-xs font-bold text-muted-foreground select-none">
-                                    🇮🇳 +91
+                            <div className="flex rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-muted border-r border-input text-sm font-semibold text-foreground select-none whitespace-nowrap shrink-0">
+                                    🇮🇳 <span className="text-muted-foreground font-bold">+91</span>
                                 </span>
-                                <Input 
-                                    id="phone" 
-                                    name="phone" 
-                                    placeholder="9876543210" 
-                                    type="tel" 
+                                <input
+                                    id="phone"
+                                    name="phone"
+                                    placeholder="98765 43210"
+                                    type="tel"
                                     required
                                     maxLength={10}
-                                    className={`rounded-l-none ${fieldErrors.phone ? "border-red-400" : ""}`}
-                                    value={phone} 
+                                    className={`flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground ${fieldErrors.phone ? "border-red-400" : ""}`}
+                                    value={phone}
                                     onChange={e => {
                                         const v = e.target.value.replace(/\D/g, "").slice(0, 10);
                                         setPhone(v);
                                         const err = v.length === 10 ? validatePhone(`+91${v}`) : "";
-                                        setFieldErrors(p => { 
-                                            const n = { ...p }; 
-                                            if (err) n.phone = err; else delete n.phone; 
-                                            return n; 
+                                        setFieldErrors(p => {
+                                            const n = { ...p };
+                                            if (err) n.phone = err; else delete n.phone;
+                                            return n;
                                         });
-                                    }} 
+                                    }}
                                 />
                             </div>
                             {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}

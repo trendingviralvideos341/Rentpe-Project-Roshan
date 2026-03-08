@@ -318,22 +318,22 @@ export default function AdminTeamPage() {
                                         {addErrors[field] && <p className="text-xs text-red-500">{addErrors[field]}</p>}
                                     </div>
                                 ))}
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium">Phone Number *</label>
-                                    <div className="flex">
-                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 bg-muted text-xs font-bold text-muted-foreground select-none">
-                                            +91
-                                        </span>
-                                        <Input
-                                            placeholder="9876543210"
-                                            maxLength={10}
-                                            className={`rounded-l-none ${addErrors.phone ? "border-red-400 focus-visible:ring-red-400" : ""}`}
-                                            value={newMember.phone}
-                                            onChange={e => setField("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                                        />
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium">Phone Number *</label>
+                                        <div className="flex rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-muted border-r border-input text-sm font-semibold text-foreground select-none whitespace-nowrap shrink-0">
+                                                🇮🇳 <span className="text-muted-foreground">+91</span>
+                                            </span>
+                                            <input
+                                                placeholder="9876543210"
+                                                maxLength={10}
+                                                className={`flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground ${addErrors.phone ? "border-red-400" : ""}`}
+                                                value={newMember.phone}
+                                                onChange={e => setField("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                                            />
+                                        </div>
+                                        {addErrors.phone && <p className="text-xs text-red-500">{addErrors.phone}</p>}
                                     </div>
-                                    {addErrors.phone && <p className="text-xs text-red-500">{addErrors.phone}</p>}
-                                </div>
                             </div>
                         )}
 
