@@ -35,7 +35,7 @@ export async function getAdminStats() {
         // Always fetch fresh user data from DB — never trust stale JWT
         const adminUser = await prisma.user.findUnique({
             where: { id: (session as any).userId as string },
-            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true }
+            select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, createdAt: true, displayId: true }
         });
 
         return {
@@ -48,12 +48,13 @@ export async function getAdminStats() {
             propertyDistribution,
             user: {
                 id: adminUser?.id || (session as any).userId,
-                name: adminUser?.name || 'Admin',
-                email: adminUser?.email || (session.email as string),
-                role: adminUser?.role || session.role,
-                phone: adminUser?.phone || null,
-                createdAt: adminUser?.createdAt?.toISOString() || new Date().toISOString(),
-                displayId: adminUser?.displayId || null,
+                name: adminUser?.name || (session as any).name || 'Admin',
+                email: adminUser?.email || (session as any).email || 'admin@rentpe.in',
+                role: adminUser?.role || (session as any).role || 'ADMIN',
+                adminRole: adminUser?.adminRole || (session as any).adminRole,
+                phone: adminUser?.phone || (session as any).phone || '+91 9876543210',
+                createdAt: adminUser?.createdAt || (session as any).createdAt || new Date().toISOString(),
+                displayId: adminUser?.displayId || (session as any).displayId || 'ADM-000',
             }
         };
     } catch (e) {

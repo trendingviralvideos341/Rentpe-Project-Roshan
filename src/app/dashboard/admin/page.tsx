@@ -37,17 +37,42 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(false);
         try {
-            const [snap, rev, growth, conv] = await Promise.all([
-                getSuperAdminBusinessSnapshot(),
-                getPlatformRevenueTrends(6),
-                getUserGrowthAnalytics(6),
-                getBookingConversionAnalytics(6)
-            ]);
+            // First try getAdminStats (accessible to all admins)
+            const basicStats = await getAdminStats();
+            
+            // Try Super Admin specific stats (might fail for non-super admins)
+            let snap = null;
+            let rev = null;
+            let growth = null;
+            let conv = null;
+
+            try {
+                [snap, rev, growth, conv] = await Promise.all([
+                    getSuperAdminBusinessSnapshot(),
+                    getPlatformRevenueTrends(6),
+                    getUserGrowthAnalytics(6),
+                    getBookingConversionAnalytics(6)
+                ]);
+            } catch (e) {
+                console.warn("User is not a Super Admin, limited dashboard access.", e);
+                // If snap failed, use basicStats data to fill the snapshot for the UI
+                snap = {
+                    ...basicStats,
+                    user: basicStats.user
+                };
+            }
+
             setSnapshot(snap);
             setRevenueTrends(rev);
             setUserGrowth(growth);
             setConversion(conv);
         } catch (e) {
+            console.error("fetchStats Error:", e);
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
             console.error(e);
             setError(true);
         } finally {
@@ -155,13 +180,51 @@ export default function AdminDashboard() {
                                     <Shield className="h-12 w-12 text-white" />
                                 </div>
                                 <div className="text-center md:text-left">
-                                    <h2 className="text-3xl font-black tracking-tight">{snapshot.user?.name || 'Unknown User'}</h2>
-                                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                                    <h2 className="text-3xl font-black tracking-tight">{snapshot.user?.name || 'RentPe Admin'}</h2>
+                                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 mt-2">
                                         <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/30 uppercase tracking-widest">
                                             Platform Administrator
                                         </span>
-                                        <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-                                        <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">System Access: Root</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+                                            <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">System Access: {snapshot.user?.adminRole?.replace('_', ' ') || 'ROOT'}</span>
+                                        </div>
+                                    </div>
+                                    {/* Detailed Access Summary */}
+                                    <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
+                                        {(snapshot.user?.adminRole === 'SUPER_ADMIN' || !snapshot.user?.adminRole) && (
+                                            <>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Full Platform Control</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">System Governance</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Revenue Access</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Team Management</span>
+                                            </>
+                                        )}
+                                        {snapshot.user?.adminRole === 'OPERATIONS' && (
+                                            <>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Booking Lifecycle</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Property Controls</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Dispute Resolution</span>
+                                            </>
+                                        )}
+                                        {snapshot.user?.adminRole === 'SUPPORT' && (
+                                            <>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">User Assistance</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Booking Views</span>
+                                            </>
+                                        )}
+                                        {snapshot.user?.adminRole === 'MODERATION' && (
+                                            <>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Listing Security</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Fraud Prevention</span>
+                                            </>
+                                        )}
+                                        {snapshot.user?.adminRole === 'COMPLIANCE' && (
+                                            <>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">KYC Verification</span>
+                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Identity Governance</span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -178,7 +241,7 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Email Address</p>
-                                                <p className="text-sm font-bold text-blue-900">{snapshot.user?.email || 'Not set'}</p>
+                                                <p className="text-sm font-bold text-blue-900">{snapshot.user?.email || 'admin@rentpe.in'}</p>
                                             </div>
                                         </div>
 
@@ -188,7 +251,7 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Phone Number</p>
-                                                <p className="text-sm font-bold text-blue-900">{snapshot.user?.phone || 'Not set'}</p>
+                                                <p className="text-sm font-bold text-blue-900">{snapshot.user?.phone || '+91 9876543210'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -203,7 +266,12 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Admin Since</p>
-                                                <p className="text-sm font-bold text-blue-900">{snapshot.user?.createdAt ? new Date(snapshot.user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : 'N/A'}</p>
+                                                <p className="text-sm font-bold text-blue-900">
+                                                    {snapshot.user?.createdAt ? new Date(snapshot.user.createdAt).toLocaleString('en-IN', { 
+                                                        day: '2-digit', month: 'long', year: 'numeric', 
+                                                        hour: '2-digit', minute: '2-digit', hour12: true 
+                                                    }) : 'N/A'}
+                                                </p>
                                             </div>
                                         </div>
 

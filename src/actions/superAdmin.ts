@@ -66,7 +66,7 @@ export async function getSuperAdminBusinessSnapshot() {
         (prisma as any).platformFee.aggregate({ _sum: { platformEarned: true } }),
         prisma.user.findUnique({ 
             where: { id: adminId },
-            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true }
+            select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, createdAt: true, displayId: true }
         }),
     ]);
 
@@ -106,6 +106,7 @@ export async function getSuperAdminBusinessSnapshot() {
             name: adminUser?.name || 'Platform Admin',
             email: adminUser?.email,
             role: adminUser?.role,
+            adminRole: adminUser?.adminRole,
             phone: adminUser?.phone,
             createdAt: adminUser?.createdAt,
             displayId: adminUser?.displayId,
