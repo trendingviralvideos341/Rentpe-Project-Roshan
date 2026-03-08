@@ -102,7 +102,7 @@ export default function AdminTeamPage() {
     const [showAdd, setShowAdd] = useState(false);
     const [adding, setAdding] = useState(false);
     const [addErrors, setAddErrors] = useState<Record<string, string>>({});
-    const [newMember, setNewMember] = useState({ name: "", email: "", phone: "+91", role: "", permissions: [] as string[] });
+    const [newMember, setNewMember] = useState({ name: "", email: "", phone: "", role: "", permissions: [] as string[] }); // Changed phone to empty string
     const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
     const [empSearch, setEmpSearch] = useState("");
     const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
@@ -135,7 +135,9 @@ export default function AdminTeamPage() {
 
     function selectEmployee(emp: any) {
         setSelectedEmpId(emp.id);
-        setNewMember(p => ({ ...p, name: emp.name, email: emp.email, phone: emp.phone }));
+        // Extract 10 digits from phone if it starts with +91, otherwise use as is
+        const empPhoneDigits = emp.phone ? emp.phone.replace(/^\+91/, '') : '';
+        setNewMember(p => ({ ...p, name: emp.name, email: emp.email, phone: empPhoneDigits }));
         setEmpSearch(emp.name);
         setAddErrors(p => { const n = { ...p }; delete n.name; delete n.email; delete n.phone; return n; });
     }
@@ -151,7 +153,10 @@ export default function AdminTeamPage() {
         const errors: Record<string, string> = {};
         const nameErr = validateName(newMember.name); if (nameErr) errors.name = nameErr;
         const emailErr = validateEmail(newMember.email); if (emailErr) errors.email = emailErr;
-        const phoneErr = validatePhone(newMember.phone); if (phoneErr) errors.phone = phoneErr;
+        // Validate phone as 10 digits
+        if (!newMember.phone || newMember.phone.length !== 10 || !/^\d{10}$/.test(newMember.phone)) {
+            errors.phone = "Phone number must be 10 digits.";
+        }
         if (!newMember.role) errors.role = "Select a role";
         if (newMember.permissions.length === 0) errors.permissions = "Select at least one permission";
         return errors;
@@ -167,9 +172,11 @@ export default function AdminTeamPage() {
         if (Object.keys(errors).length > 0) { setAddErrors(errors); return; }
         setAdding(true);
         try {
-            await addTeamMember({ name: newMember.name, email: newMember.email, phone: newMember.phone, role: newMember.role, permissions: newMember.permissions });
+            // Prepend +91 to the 10-digit phone number before sending
+            const phoneWithPrefix = `+91${newMember.phone}`;
+            await addTeamMember({ name: newMember.name, email: newMember.email, phone: phoneWithPrefix, role: newMember.role, permissions: newMember.permissions });
             setShowAdd(false);
-            setNewMember({ name: "", email: "", phone: "+91", role: "", permissions: [] });
+            setNewMember({ name: "", email: "", phone: "", role: "", permissions: [] }); // Reset phone to empty
             setAddErrors({});
             fetchTeam();
         } catch (e: any) { setAddErrors({ submit: e.message || "Failed to add member." }); }
@@ -222,7 +229,7 @@ export default function AdminTeamPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={fetchTeam} disabled={loading}><RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />Refresh</Button>
-                    <Button onClick={() => { setShowAdd(!showAdd); setAddErrors({}); }}><UserPlus className="h-4 w-4 mr-2" />Add Member</Button>
+                    <Button onClick={() => { setShowAdd(!showAdd); setAddErrors({}); setNewMember({ name: "", email: "", phone: "", role: "", permissions: [] }); }}><UserPlus className="h-4 w-4 mr-2" />Add Member</Button>
                 </div>
             </div>
 
@@ -284,7 +291,7 @@ export default function AdminTeamPage() {
                                     {selectedEmpId && (
                                         <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
                                             ✅ {newMember.name} · {newMember.email}
-                                            <button onClick={() => { setSelectedEmpId(null); setEmpSearch(""); setNewMember(p => ({ ...p, name: "", email: "", phone: "+91" })); }}
+                                            <button onClick={() => { setSelectedEmpId(null); setEmpSearch(""); setNewMember(p => ({ ...p, name: "", email: "", phone: "" })); }}
                                                 className="ml-auto text-xs text-muted-foreground hover:text-red-600">✕ Clear</button>
                                         </div>
                                     )}
@@ -312,20 +319,20 @@ export default function AdminTeamPage() {
                                     </div>
                                 ))}
                                 <div className="space-y-1">
-                                    <label className="text-sm font-medium">Phone * <span className="text-xs text-muted-foreground">(+91 mandatory)</span></label>
-                                    <Input
-                                        value={newMember.phone}
-                                        onChange={e => {
-                                            let v = e.target.value;
-                                            if (!v.startsWith("+91")) v = "+91" + v.replace(/^\+91/, "");
-                                            if (v.length > 13) v = v.slice(0, 13);
-                                            setField("phone", v);
-                                        }}
-                                        placeholder="+919876543210"
-                                        className={addErrors.phone ? "border-red-400 focus-visible:ring-red-400" : ""}
-                                    />
+                                    <label className="text-sm font-medium">Phone Number *</label>
+                                    <div className="flex">
+                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 bg-muted text-xs font-bold text-muted-foreground select-none">
+                                            +91
+                                        </span>
+                                        <Input
+                                            placeholder="9876543210"
+                                            maxLength={10}
+                                            className={`rounded-l-none ${addErrors.phone ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                                            value={newMember.phone}
+                                            onChange={e => setField("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                                        />
+                                    </div>
                                     {addErrors.phone && <p className="text-xs text-red-500">{addErrors.phone}</p>}
-                                    <p className="text-[10px] text-muted-foreground">Format: +91 followed by 10 digits</p>
                                 </div>
                             </div>
                         )}

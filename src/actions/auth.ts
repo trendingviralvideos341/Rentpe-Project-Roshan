@@ -11,6 +11,7 @@ const SignupSchema = z.object({
     lastName: z.string().min(2),
     email: z.string().email(),
     password: z.string().min(6),
+    phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
 });
 
@@ -27,6 +28,7 @@ export async function signup(formData: FormData) {
         lastName: data.lastName,
         email: data.email,
         password: data.password,
+        phone: data.phone,
         role: data.role,
     });
 
@@ -34,7 +36,7 @@ export async function signup(formData: FormData) {
         return { error: 'Invalid data' };
     }
 
-    const { firstName, lastName, email, password, role } = validated.data;
+    const { firstName, lastName, email, password, phone, role } = validated.data;
 
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -60,6 +62,7 @@ export async function signup(formData: FormData) {
                 name: `${firstName} ${lastName}`,
                 email,
                 passwordHash: hashedPassword,
+                phone,
                 role: roleUp,
                 roles: roleUp,          // comma-separated for future multi-role
                 isStudent,

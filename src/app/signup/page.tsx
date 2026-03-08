@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { signup } from "@/actions/auth";
 import { CheckCircle, XCircle } from "lucide-react";
-import { validateEmail, validateName } from "@/lib/validators";
+import { validateEmail, validateName, validatePhone } from "@/lib/validators";
 
 function getStrength(password: string) {
     const checks = {
@@ -55,6 +55,7 @@ export default function SignupPage() {
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [phone, setPhone] = useState("");
     const [role, setRole] = useState("USER");
     const [showPassword, setShowPassword] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -69,8 +70,9 @@ export default function SignupPage() {
         const fnErr = validateName(firstName);
         const lnErr = validateName(lastName);
         const emErr = validateEmail(email);
-        if (fnErr || lnErr || emErr) {
-            setFieldErrors({ firstName: fnErr, lastName: lnErr, email: emErr });
+        const phErr = validatePhone(`+91${phone}`);
+        if (fnErr || lnErr || emErr || phErr) {
+            setFieldErrors({ firstName: fnErr, lastName: lnErr, email: emErr, phone: phErr });
             return;
         }
 
@@ -86,6 +88,7 @@ export default function SignupPage() {
         formData.set("lastName", lastName);
         formData.set("email", email);
         formData.set("password", password);
+        formData.set("phone", `+91${phone}`);
         formData.set("role", role);
 
         const result = await signup(formData);
@@ -184,6 +187,38 @@ export default function SignupPage() {
                                     setFieldErrors(p => { const n = { ...p }; if (err) n.email = err; else delete n.email; return n; });
                                 }} />
                             {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
+                        </div>
+                        
+                        {/* Phone Number */}
+                        <div className="space-y-1">
+                            <label htmlFor="phone" className="text-sm font-medium">Mobile Number</label>
+                            <div className="flex">
+                                <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 bg-muted text-xs font-bold text-muted-foreground select-none">
+                                    🇮🇳 +91
+                                </span>
+                                <Input 
+                                    id="phone" 
+                                    name="phone" 
+                                    placeholder="9876543210" 
+                                    type="tel" 
+                                    required
+                                    maxLength={10}
+                                    className={`rounded-l-none ${fieldErrors.phone ? "border-red-400" : ""}`}
+                                    value={phone} 
+                                    onChange={e => {
+                                        const v = e.target.value.replace(/\D/g, "").slice(0, 10);
+                                        setPhone(v);
+                                        const err = v.length === 10 ? validatePhone(`+91${v}`) : "";
+                                        setFieldErrors(p => { 
+                                            const n = { ...p }; 
+                                            if (err) n.phone = err; else delete n.phone; 
+                                            return n; 
+                                        });
+                                    }} 
+                                />
+                            </div>
+                            {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
+                            <p className="text-[10px] text-muted-foreground italic">Standard Indian 10-digit mobile number</p>
                         </div>
 
                         {/* Password */}

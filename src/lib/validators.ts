@@ -16,15 +16,19 @@ export const validateEmail = (v: string): string => {
 
 // ── Phone ────────────────────────────────────────────────────────────────────
 // Accepts +91 followed by 10 digits OR just 10 digits (6-9 start)
+// Enforces +91 followed by exactly 10 digits (6-9 start)
 export const validatePhone = (v: string): string => {
     const trimmed = v.trim();
     if (!trimmed) return "Phone number is required";
-
-    // Support either +91XXXXXXXXXX (13 chars) or XXXXXXXXXX (10 chars)
-    if (/^\+91[6-9]\d{9}$/.test(trimmed)) return "";
-    if (/^[6-9]\d{9}$/.test(trimmed)) return "";
-
-    return "Enter a valid 10-digit number (e.g. 9876543210)";
+    
+    // Strict format: +91XXXXXXXXXX
+    const re = /^\+91[6-9]\d{9}$/;
+    if (!re.test(trimmed)) {
+        if (!trimmed.startsWith("+91")) return "Phone number must start with +91";
+        if (trimmed.length !== 13) return "Phone number must be exactly 10 digits after +91";
+        return "Enter a valid Indian mobile number starting with 6-9";
+    }
+    return "";
 };
 
 // ── Name ─────────────────────────────────────────────────────────────────────
