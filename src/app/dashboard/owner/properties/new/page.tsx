@@ -33,29 +33,25 @@ export default function AddPropertyPage() {
     
     // Structured document state
     const [docs, setDocs] = useState<{
-        exteriorPhotos: File[];
-        interiorPhotos: File[];
-        roomsPhotos: File[];
-        hallPhotos: File[];
-        lobbyPhotos: File[];
-        washroomPhotos: File[];
+        buildingPhotos: File[];
+        commonAreaPhotos: File[];
+        roomsAndBathroomPhotos: File[];
+        parkingPhotos: File[];
         amenitiesPhotos: File[];
         aadhaarProof: File[];
         panProof: File[];
         pgLicenceUrl: File[];
-        livePhotoUrl: File | null;
+        livePhotoUrl: File[];
     }>({
-        exteriorPhotos: [],
-        interiorPhotos: [],
-        roomsPhotos: [],
-        hallPhotos: [],
-        lobbyPhotos: [],
-        washroomPhotos: [],
+        buildingPhotos: [],
+        commonAreaPhotos: [],
+        roomsAndBathroomPhotos: [],
+        parkingPhotos: [],
         amenitiesPhotos: [],
         aadhaarProof: [],
         panProof: [],
         pgLicenceUrl: [],
-        livePhotoUrl: null,
+        livePhotoUrl: [],
     });
     
     const [totalSize, setTotalSize] = useState(0);
@@ -105,11 +101,11 @@ export default function AddPropertyPage() {
         if (files.length === 0) return;
 
         let newTotalSize = totalSize;
-        const currentFiles = isMultiple ? (docs[category] as File[]) : (docs[category] ? [docs[category] as File] : []);
+        const currentFiles = docs[category];
         
         // If single and already has file, subtract its size before adding new one (reupload)
-        if (!isMultiple && docs[category]) {
-            newTotalSize -= (docs[category] as File).size;
+        if (!isMultiple && currentFiles.length > 0) {
+            newTotalSize -= currentFiles[0].size;
         }
 
         const validFiles: File[] = [];
@@ -126,23 +122,23 @@ export default function AddPropertyPage() {
 
         setDocs(prev => ({
             ...prev,
-            [category]: isMultiple ? [...(prev[category] as File[]), ...validFiles] : validFiles[0]
+            [category]: isMultiple ? [...prev[category], ...validFiles] : [validFiles[0]]
         }));
         setTotalSize(newTotalSize);
     };
 
     const removeDoc = (category: keyof typeof docs, index?: number) => {
         const current = docs[category];
-        if (Array.isArray(current) && index !== undefined) {
+        if (index !== undefined) {
             const removed = current[index];
             setDocs(prev => ({
                 ...prev,
-                [category]: (prev[category] as File[]).filter((_, i) => i !== index)
+                [category]: prev[category].filter((_, i) => i !== index)
             }));
             setTotalSize(prev => prev - removed.size);
-        } else if (current && !Array.isArray(current)) {
-            setTotalSize(prev => prev - (current as File).size);
-            setDocs(prev => ({ ...prev, [category]: null }));
+        } else if (current.length > 0) {
+            setTotalSize(prev => prev - current[0].size);
+            setDocs(prev => ({ ...prev, [category]: [] }));
         }
     };
 
@@ -156,7 +152,14 @@ export default function AddPropertyPage() {
     };
 
     // Sub-component for upload cards
-    const UploadCard = ({ label, sub, category, isMultiple, slotsCount = 4 }: { label: string; sub: string; category: keyof typeof docs; isMultiple: boolean; slotsCount?: number }) => {
+    const UploadCard = ({ label, sub, category, isMultiple = true, slotsCount = 4, isRequired = false }: { 
+        label: string; 
+        sub: string; 
+        category: keyof typeof docs; 
+        isMultiple?: boolean; 
+        slotsCount?: number;
+        isRequired?: boolean;
+    }) => {
         const item = docs[category];
         const files = Array.isArray(item) ? item : (item ? [item] : []);
 
@@ -197,14 +200,21 @@ export default function AddPropertyPage() {
 
         return (
             <div className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 bg-white hover:border-purple-200 transition-colors">
-                <div className="flex items-center gap-3">
-                    <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
-                        <UploadCloud className="h-4 w-4 text-purple-600" />
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
+                            <UploadCloud className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-black text-slate-800 leading-tight truncate">{label}</p>
+                            <p className="text-[9px] text-purple-400 font-bold uppercase truncate">{sub}</p>
+                        </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-black text-slate-800 leading-tight truncate">{label}</p>
-                        <p className="text-[9px] text-purple-400 font-bold uppercase truncate">{sub}</p>
-                    </div>
+                    {isRequired ? (
+                        <span className="bg-red-50 text-red-500 text-[10px] font-black px-2 py-1 rounded-md ring-1 ring-red-100/50">MANDATORY</span>
+                    ) : (
+                        <span className="bg-slate-50 text-slate-400 text-[10px] font-black px-2 py-1 rounded-md ring-1 ring-slate-100">OPTIONAL</span>
+                    )}
                 </div>
 
                 <div className="min-h-[140px] flex flex-col items-center justify-center relative">
@@ -290,6 +300,17 @@ export default function AddPropertyPage() {
         if (amenities.length === 0) errs.amenities = "Select at least one amenity";
         if (rooms.length === 0) errs.rooms = "Add at least one room";
 
+        // Validate mandatory documents
+        if (docs.buildingPhotos.length === 0) errs.buildingPhotos = "Building photos are mandatory (4 required)";
+        if (docs.commonAreaPhotos.length === 0) errs.commonAreaPhotos = "Common area photos are mandatory (2 required)";
+        if (docs.roomsAndBathroomPhotos.length === 0) errs.roomsAndBathroomPhotos = "Rooms & Bathroom photos are mandatory (4 required)";
+        
+        // Legal docs (Mandatory)
+        if (docs.aadhaarProof.length === 0) errs.aadhaarProof = "Aadhaar proof is mandatory";
+        if (docs.panProof.length === 0) errs.panProof = "PAN proof is mandatory";
+        if (docs.pgLicenceUrl.length === 0) errs.pgLicenceUrl = "PG Licence is mandatory";
+        if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Live Photo is mandatory";
+
         rooms.forEach((room, i) => {
             if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
             if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${i + 1}: Valid price required`;
@@ -330,24 +351,21 @@ export default function AddPropertyPage() {
             }
 
             // Map UI docs to backend schema fields
-            formData.set("exteriorPhotos", JSON.stringify(processedDocs.exteriorPhotos || []));
-            formData.set("interiorPhotos", JSON.stringify(processedDocs.interiorPhotos || []));
-            formData.set("roomsPhotos", JSON.stringify(processedDocs.roomsPhotos || []));
-            formData.set("hallPhotos", JSON.stringify(processedDocs.hallPhotos || []));
-            formData.set("lobbyPhotos", JSON.stringify(processedDocs.lobbyPhotos || []));
-            formData.set("washroomPhotos", JSON.stringify(processedDocs.washroomPhotos || []));
+            formData.set("buildingPhotos", JSON.stringify(processedDocs.buildingPhotos || []));
+            formData.set("commonAreaPhotos", JSON.stringify(processedDocs.commonAreaPhotos || []));
+            formData.set("roomsAndBathroomPhotos", JSON.stringify(processedDocs.roomsAndBathroomPhotos || []));
+            formData.set("parkingPhotos", JSON.stringify(processedDocs.parkingPhotos || []));
             formData.set("amenitiesPhotos", JSON.stringify(processedDocs.amenitiesPhotos || []));
             
-            formData.set("aadhaarProof", processedDocs.aadhaarProof || "");
-            formData.set("panProof", processedDocs.panProof || "");
-            formData.set("pgLicenceUrl", processedDocs.pgLicenceUrl || "");
-            formData.set("livePhotoUrl", processedDocs.livePhotoUrl || "");
+            formData.set("aadhaarProof", JSON.stringify(processedDocs.aadhaarProof || []));
+            formData.set("panProof", JSON.stringify(processedDocs.panProof || []));
+            formData.set("pgLicenceUrl", JSON.stringify(processedDocs.pgLicenceUrl || []));
+            formData.set("livePhotoUrl", processedDocs.livePhotoUrl?.[0] || "");
             
             // Legacy 'images' for backward compatibility
             formData.set("images", JSON.stringify([
-                ...(processedDocs.exteriorPhotos || []),
-                ...(processedDocs.interiorPhotos || []),
-                ...(processedDocs.roomsPhotos || [])
+                ...(processedDocs.buildingPhotos || []),
+                ...(processedDocs.roomsAndBathroomPhotos || [])
             ]));
 
             formData.set("ownerName", ownerName);
@@ -653,32 +671,19 @@ export default function AddPropertyPage() {
                     </CardHeader>
                     
                     <CardContent className="p-6 space-y-10">
-                        {/* Interior & Exterior Visuals */}
+                        {/* Property Visuals */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-6 w-1 bg-purple-600 rounded-full" />
-                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">1. Property Architecture</h3>
+                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">1. Property Assets</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UploadCard label="Exterior" sub="Entrance/Front" category="exteriorPhotos" isMultiple={true} />
-                                <UploadCard label="Interior" sub="Reception/Decor" category="interiorPhotos" isMultiple={true} />
-                                <UploadCard label="Hall" sub="Shared area" category="hallPhotos" isMultiple={true} />
-                                <UploadCard label="Lobby" sub="Waiting area" category="lobbyPhotos" isMultiple={true} />
-                            </div>
-                        </div>
-
-                        {/* Living Spaces */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="h-6 w-1 bg-purple-600 rounded-full" />
-                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">2. Living Experience</h3>
-                                <div className="h-px flex-1 bg-slate-100" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UploadCard label="Rooms" sub="Bed & Space" category="roomsPhotos" isMultiple={true} />
-                                <UploadCard label="Washroom" sub="Tile & Fitting" category="washroomPhotos" isMultiple={true} />
-                                <UploadCard label="Other Amenities" sub="Kitchen/Gym (Others Specify)" category="amenitiesPhotos" isMultiple={true} />
+                                <UploadCard label="Building Photos" sub="(Exterior/Interior Required)" category="buildingPhotos" slotsCount={4} isRequired={true} />
+                                <UploadCard label="Common Area" sub="(Hallway/Lobby/Shared)" category="commonAreaPhotos" slotsCount={2} isRequired={true} />
+                                <UploadCard label="Rooms & Bathroom" sub="(Bed & Living Space)" category="roomsAndBathroomPhotos" slotsCount={4} isRequired={true} />
+                                <UploadCard label="Parking Area" sub="(Parking Facility)" category="parkingPhotos" slotsCount={2} isRequired={false} />
+                                <UploadCard label="Other Amenities" sub="(Gym/Others)" category="amenitiesPhotos" slotsCount={4} isRequired={false} />
                             </div>
                         </div>
 
@@ -686,14 +691,14 @@ export default function AddPropertyPage() {
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-6 w-1 bg-purple-600 rounded-full" />
-                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">3. Legal Documentation</h3>
+                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">2. Legal Documentation</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" isMultiple={true} slotsCount={2} />
-                                <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" isMultiple={true} slotsCount={2} />
-                                <UploadCard label="PG Licence" sub="Operational" category="pgLicenceUrl" isMultiple={true} slotsCount={2} />
-                                <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} />
+                                <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" slotsCount={2} isRequired={true} />
+                                <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" slotsCount={2} isRequired={true} />
+                                <UploadCard label="PG Licence" sub="Operational" category="pgLicenceUrl" slotsCount={2} isRequired={true} />
+                                <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} isRequired={true} />
                             </div>
                         </div>
 

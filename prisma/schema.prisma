@@ -95,8 +95,8 @@ model Property {
   pgLicenceUrl String?
   buildingPhotos String?
   commonAreaPhotos String?
-  parkingPhoto String?
-  bathroomPhoto String?
+  parkingPhotos  String?
+  roomsAndBathroomPhotos String?
   livePhotoUrl  String?
   // Categorized Photos (JSON Arrays)
   exteriorPhotos  String? 

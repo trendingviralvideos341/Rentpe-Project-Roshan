@@ -79,21 +79,14 @@ export async function createProperty(formData: FormData) {
 
     const buildingPhotos = formData.get("buildingPhotos") as string;
     const commonAreaPhotos = formData.get("commonAreaPhotos") as string;
-    const bathroomPhoto = formData.get("bathroomPhoto") as string;
-    const parkingPhoto = formData.get("parkingPhoto") as string;
+    const roomsAndBathroomPhotos = formData.get("roomsAndBathroomPhotos") as string;
+    const parkingPhotos = formData.get("parkingPhotos") as string;
+    const amenitiesPhotos = formData.get("amenitiesPhotos") as string;
+
     const aadhaarProof = formData.get("aadhaarProof") as string;
     const panProof = formData.get("panProof") as string;
     const pgLicenceUrl = formData.get("pgLicenceUrl") as string;
     const livePhotoUrl = formData.get("livePhotoUrl") as string;
-
-    // Expanded photo categories
-    const exteriorPhotos = formData.get("exteriorPhotos") as string;
-    const interiorPhotos = formData.get("interiorPhotos") as string;
-    const roomsPhotos = formData.get("roomsPhotos") as string;
-    const hallPhotos = formData.get("hallPhotos") as string;
-    const lobbyPhotos = formData.get("lobbyPhotos") as string;
-    const washroomPhotos = formData.get("washroomPhotos") as string;
-    const amenitiesPhotos = formData.get("amenitiesPhotos") as string;
 
     const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
 
@@ -101,7 +94,6 @@ export async function createProperty(formData: FormData) {
     if (!name?.trim()) throw new Error("Property name is required");
     if (!address?.trim()) throw new Error("Address is required");
     if (!city?.trim()) throw new Error("City is required");
-    if (!description?.trim()) throw new Error("Description is required");
 
     // Auto-fill owner info from profile if not in form
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
@@ -122,16 +114,19 @@ export async function createProperty(formData: FormData) {
             }
         };
 
+        // Helper for single uploads (base64)
+        const processSingle = async (field: string, data: string) => {
+            if (data && data.startsWith('data:')) {
+                results[field] = await uploadToCloudinary(data, folder);
+            }
+        };
+
         // Batch uploads for all categories
         await Promise.all([
             processBatch("buildingPhotos", buildingPhotos),
             processBatch("commonAreaPhotos", commonAreaPhotos),
-            processBatch("exteriorPhotos", exteriorPhotos),
-            processBatch("interiorPhotos", interiorPhotos),
-            processBatch("roomsPhotos", roomsPhotos),
-            processBatch("hallPhotos", hallPhotos),
-            processBatch("lobbyPhotos", lobbyPhotos),
-            processBatch("washroomPhotos", washroomPhotos),
+            processBatch("roomsAndBathroomPhotos", roomsAndBathroomPhotos),
+            processBatch("parkingPhotos", parkingPhotos),
             processBatch("amenitiesPhotos", amenitiesPhotos),
             processBatch("aadhaarProof", aadhaarProof),
             processBatch("panProof", panProof),
@@ -139,9 +134,7 @@ export async function createProperty(formData: FormData) {
         ]);
 
         // Single uploads
-        if (bathroomPhoto?.startsWith('data:')) results.bathroomPhoto = await uploadToCloudinary(bathroomPhoto, folder);
-        if (parkingPhoto?.startsWith('data:')) results.parkingPhoto = await uploadToCloudinary(parkingPhoto, folder);
-        if (livePhotoUrl?.startsWith('data:')) results.livePhotoUrl = await uploadToCloudinary(livePhotoUrl, folder);
+        await processSingle("livePhotoUrl", livePhotoUrl);
 
         return results;
     };
@@ -149,7 +142,7 @@ export async function createProperty(formData: FormData) {
     const uploaded = await uploadTasks();
 
     // 2. Create property and rooms in a transaction
-    const property = await prisma.$transaction(async (tx) => {
+    const property = await (prisma as any).$transaction(async (tx: any) => {
         const newProperty = await tx.property.create({
             data: {
                 name,
@@ -158,31 +151,24 @@ export async function createProperty(formData: FormData) {
                 description,
                 amenities: amenities || "[]",
                 images: images || JSON.stringify([
-                    ...(uploaded.exteriorPhotos || []),
-                    ...(uploaded.interiorPhotos || []),
-                    ...(uploaded.roomsPhotos || [])
+                    ...(uploaded.buildingPhotos || []),
+                    ...(uploaded.roomsAndBathroomPhotos || [])
                 ]),
                 ownerName: finalOwnerName,
                 pgLicence: pgLicence || null,
                 ownerId: user?.parentOwnerId || (session as any).userId,
                 status: "PENDING_APPROVAL",
-                // Structured fields
+                // Structured Category Mapping
                 buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
                 commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
-                bathroomPhoto: uploaded.bathroomPhoto || null,
-                parkingPhoto: uploaded.parkingPhoto || null,
+                roomsAndBathroomPhotos: uploaded.roomsAndBathroomPhotos ? JSON.stringify(uploaded.roomsAndBathroomPhotos) : null,
+                parkingPhotos: uploaded.parkingPhotos ? JSON.stringify(uploaded.parkingPhotos) : null,
+                amenitiesPhotos: uploaded.amenitiesPhotos ? JSON.stringify(uploaded.amenitiesPhotos) : null,
+                
                 aadhaarProof: uploaded.aadhaarProof ? JSON.stringify(uploaded.aadhaarProof) : null,
                 panProof: uploaded.panProof ? JSON.stringify(uploaded.panProof) : null,
                 pgLicenceUrl: uploaded.pgLicenceUrl ? JSON.stringify(uploaded.pgLicenceUrl) : null,
                 livePhotoUrl: uploaded.livePhotoUrl || null,
-                // Expanded categories
-                exteriorPhotos: uploaded.exteriorPhotos ? JSON.stringify(uploaded.exteriorPhotos) : null,
-                interiorPhotos: uploaded.interiorPhotos ? JSON.stringify(uploaded.interiorPhotos) : null,
-                roomsPhotos: uploaded.roomsPhotos ? JSON.stringify(uploaded.roomsPhotos) : null,
-                hallPhotos: uploaded.hallPhotos ? JSON.stringify(uploaded.hallPhotos) : null,
-                lobbyPhotos: uploaded.lobbyPhotos ? JSON.stringify(uploaded.lobbyPhotos) : null,
-                washroomPhotos: uploaded.washroomPhotos ? JSON.stringify(uploaded.washroomPhotos) : null,
-                amenitiesPhotos: uploaded.amenitiesPhotos ? JSON.stringify(uploaded.amenitiesPhotos) : null,
             }
         });
 
