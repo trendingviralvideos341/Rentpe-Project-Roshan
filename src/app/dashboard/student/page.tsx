@@ -879,11 +879,22 @@ export default function StudentDashboardPage() {
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Primary Contact</label>
                                         {isEditingProfile ? (
-                                            <input 
-                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all"
-                                                value={editingPhone}
-                                                onChange={e => setEditingPhone(e.target.value)}
-                                            />
+                                            <div className="flex">
+                                                <span className="inline-flex items-center px-3 rounded-l-xl border-2 border-r-0 border-indigo-100 bg-slate-50 text-xs font-black text-slate-500 uppercase tracking-wider select-none">
+                                                    🇮🇳 +91
+                                                </span>
+                                                <input 
+                                                    type="tel"
+                                                    className="w-full bg-slate-50 border-2 border-l-0 border-indigo-100 rounded-r-xl p-3 font-bold text-slate-700 focus:border-indigo-400 outline-none transition-all"
+                                                    placeholder="10-digit mobile number"
+                                                    maxLength={10}
+                                                    value={editingPhone.replace(/^\+91/, "")}
+                                                    onChange={e => {
+                                                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                                                        setEditingPhone("+91" + val);
+                                                    }}
+                                                />
+                                            </div>
                                         ) : (
                                             <div className="text-lg font-black text-slate-800">{profile?.phone || "Not set"}</div>
                                         )}
