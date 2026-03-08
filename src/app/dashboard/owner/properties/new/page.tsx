@@ -315,21 +315,22 @@ export default function AddPropertyPage() {
             errs.propertyType = "Please specify the property type";
         }
 
-        // Validate mandatory documents
-        if (docs.buildingPhotos.length === 0) errs.buildingPhotos = "Building photos are mandatory (4 required)";
-        if (docs.commonAreaPhotos.length === 0) errs.commonAreaPhotos = "Common area photos are mandatory (2 required)";
-        if (docs.roomsAndBathroomPhotos.length === 0) errs.roomsAndBathroomPhotos = "Rooms & Bathroom photos are mandatory (4 required)";
+        // Validate mandatory documents with specific slot counts
+        if (docs.buildingPhotos.length < 4) errs.buildingPhotos = "4 Building photos are mandatory";
+        if (docs.commonAreaPhotos.length < 2) errs.commonAreaPhotos = "2 Common area photos are mandatory";
+        if (docs.roomsAndBathroomPhotos.length < 4) errs.roomsAndBathroomPhotos = "4 Rooms & Bathroom photos are mandatory";
         
         // Legal docs (Mandatory)
-        if (docs.aadhaarProof.length === 0) errs.aadhaarProof = "Aadhaar proof is mandatory";
-        if (docs.panProof.length === 0) errs.panProof = "PAN proof is mandatory";
+        if (docs.aadhaarProof.length < 2) errs.aadhaarProof = "Both Aadhaar Front & Back are mandatory";
+        if (docs.panProof.length < 2) errs.panProof = "Both PAN Front & Back are mandatory";
         
         // Conditional Mandatory for PG/Hostel
-        if ((propertyType === "PG" || propertyType === "Hostel") && docs.pgLicenceUrl.length === 0) {
-            errs.pgLicenceUrl = "PG/Hostel Licence is mandatory for selected property type";
+        if (propertyType === "PG" || propertyType === "Hostel") {
+            if (!pgLicence.trim()) errs.pgLicence = "PG/Hostel Licence Number is required";
+            if (docs.pgLicenceUrl.length < 2) errs.pgLicenceUrl = "Both Licence Front & Back are mandatory";
         }
         
-        if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Live Photo is mandatory";
+        if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Live Photo (Selfie) is mandatory";
 
         rooms.forEach((room, i) => {
             if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
