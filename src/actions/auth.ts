@@ -16,6 +16,7 @@ const SignupSchema = z.object({
     password: z.string().min(6),
     phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
+    agreed: z.boolean().refine(v => v === true, "You must agree to the Terms of Service"),
 });
 
 const LoginSchema = z.object({
@@ -33,6 +34,7 @@ export async function signup(formData: FormData) {
         password: data.password,
         phone: data.phone,
         role: data.role,
+        agreed: data.agreed === 'true' || data.agreed === 'on',
     });
 
     if (!validated.success) {
@@ -71,6 +73,17 @@ export async function signup(formData: FormData) {
                 isStudent,
                 isOwner,
                 displayId,
+            }
+        });
+
+        // Log T&C Consent for legal compliance
+        await prisma.auditLog.create({
+            data: {
+                action: 'TC_CONSENT_GIVEN',
+                targetId: user.id,
+                targetType: 'USER',
+                details: `User agreed to Terms of Service, Privacy Policy, and Tenant Agreement at signup.`,
+                performedBy: user.id
             }
         });
 
@@ -215,23 +228,23 @@ export async function verify2FALogin(userId: string, token: string) {
                 displayId: true,
                 twoFactorEnabled: true,
                 twoFactorSecret: true,
-            } as any
+            }
         });
 
-        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+        if (!user || !(user as any).twoFactorEnabled || !(user as any).twoFactorSecret) {
             return { error: 'Invalid session or 2FA not enabled' };
         }
 
-        const isValid = verify2FAToken((user as any).twoFactorSecret as string, token);
+        const isValid = verify2FAToken((user as any).twoFactorSecret, token);
         if (!isValid) {
             return { error: 'Invalid verification code' };
         }
 
         // Create Session
         let permissions: string[] = [];
-        if ((user as any).role === 'ADMIN') {
+        if (user.role === 'ADMIN') {
             const emp = await prisma.employee.findUnique({
-                where: { email: user.email as unknown as string },
+                where: { email: user.email },
                 select: { permissions: true, status: true }
             });
             if (emp && emp.status === 'ACTIVE') {
@@ -241,16 +254,16 @@ export async function verify2FALogin(userId: string, token: string) {
 
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         const jwtToken = await signJWT({
-            userId: user.id as unknown as string,
-            email: user.email as unknown as string,
-            role: (user as any).role as unknown as string,
-            roles: (user as any).roles as unknown as string,
-            name: (user as any).name as unknown as string,
-            phone: (user as any).phone as unknown as string,
-            displayId: (user as any).displayId as unknown as string,
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            roles: user.roles,
+            name: user.name,
+            phone: user.phone,
+            displayId: user.displayId,
             permissions,
             expiresAt,
-        } as any);
+        });
 
         const cookieStore = await cookies();
         cookieStore.set('rentpe_session', jwtToken, {
@@ -263,11 +276,11 @@ export async function verify2FALogin(userId: string, token: string) {
 
         // Update last login
         await prisma.user.update({
-            where: { id: user.id as unknown as string },
+            where: { id: user.id },
             data: { lastLoginAt: new Date() }
         });
 
-        return { success: true, redirect: (user as any).role === 'ADMIN' ? '/dashboard/admin' : (user as any).role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student' };
+        return { success: true, redirect: user.role === 'ADMIN' ? '/dashboard/admin' : user.role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student' };
     } catch (e) {
         console.error("2FA Login Error:", e);
         return { error: 'Authentication failed' };
@@ -409,7 +422,10 @@ export async function getCurrentUser() {
 
         const user = await prisma.user.findUnique({
             where: { id: session.userId as string },
-            select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true, twoFactorEnabled: true }
+            select: {
+                id: true, email: true, name: true, role: true, roles: true,
+                impersonatorId: true, twoFactorEnabled: true
+            } as any
         });
 
         if (!user) {

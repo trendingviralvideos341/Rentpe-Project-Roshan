@@ -99,6 +99,7 @@ export default function SignupPage() {
         formData.set("password", password);
         formData.set("phone", `+91${phone}`);
         formData.set("role", role);
+        formData.set("agreed", agreed ? "true" : "false");
 
         const result = await signup(formData);
         if (result?.error) { setError(result.error); setLoading(false); }
