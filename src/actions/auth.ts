@@ -521,7 +521,7 @@ export async function getSecurityLogs() {
         where: {
             action: { in: ['LOGIN_FAILURE', 'ACCOUNT_PURGED'] }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { timestamp: 'desc' },
         take: 50
     });
 }
