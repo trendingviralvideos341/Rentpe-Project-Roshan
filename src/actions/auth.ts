@@ -17,6 +17,8 @@ const SignupSchema = z.object({
     phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
     agreed: z.boolean().refine(v => v === true, "You must agree to the Terms of Service"),
+    marketingAgreed: z.boolean().optional(),
+    dataSharingAgreed: z.boolean().optional(),
 });
 
 const LoginSchema = z.object({
@@ -35,13 +37,15 @@ export async function signup(formData: FormData) {
         phone: data.phone,
         role: data.role,
         agreed: data.agreed === 'true' || data.agreed === 'on',
+        marketingAgreed: data.marketingAgreed === 'true' || data.marketingAgreed === 'on',
+        dataSharingAgreed: data.dataSharingAgreed === 'true' || data.dataSharingAgreed === 'on',
     });
 
     if (!validated.success) {
         return { error: 'Invalid data' };
     }
 
-    const { firstName, lastName, email, password, phone, role } = validated.data;
+    const { firstName, lastName, email, password, phone, role, marketingAgreed, dataSharingAgreed } = validated.data;
 
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -76,13 +80,13 @@ export async function signup(formData: FormData) {
             }
         });
 
-        // Log T&C Consent for legal compliance
+        // Log T&C Consent for legal compliance (DPDP Phase 2/3)
         await prisma.auditLog.create({
             data: {
                 action: 'TC_CONSENT_GIVEN',
                 targetId: user.id,
                 targetType: 'USER',
-                details: `User agreed to Terms of Service, Privacy Policy, and Tenant Agreement at signup.`,
+                details: `User agreed to: T&C: true, Marketing: ${marketingAgreed}, DataSharing: ${dataSharingAgreed}`,
                 performedBy: user.id
             }
         });
@@ -137,6 +141,16 @@ export async function login(formData: FormData) {
         });
 
         if (!user) {
+            // Security Phase 3: Log failed attempt
+            await prisma.auditLog.create({
+                data: {
+                    action: 'LOGIN_FAILURE',
+                    targetId: 'ANY',
+                    targetType: 'SYSTEM',
+                    details: `Failed login attempt for: ${email}`,
+                    performedBy: 'ANONYMOUS'
+                }
+            });
             return { error: 'Invalid credentials' };
         }
 
@@ -146,6 +160,16 @@ export async function login(formData: FormData) {
 
         const isMatch = await comparePassword(password, (user as any).passwordHash);
         if (!isMatch) {
+            // Security Phase 3: Log failed attempt for existing user
+            await prisma.auditLog.create({
+                data: {
+                    action: 'LOGIN_FAILURE',
+                    targetId: user.id || '?',
+                    targetType: 'USER',
+                    details: `Incorrect password for: ${email}`,
+                    performedBy: user.id || 'ANONYMOUS'
+                }
+            });
             return { error: 'Invalid credentials' };
         }
 
@@ -168,7 +192,7 @@ export async function login(formData: FormData) {
                 select: { permissions: true, status: true }
             });
             if (emp && emp.status === 'ACTIVE') {
-                try { permissions = JSON.parse(emp.permissions || "[]"); } catch { }
+                try { permissions = JSON.parse((emp as any).permissions || "[]"); } catch { }
             }
         }
 
@@ -424,7 +448,7 @@ export async function getCurrentUser() {
             where: { id: session.userId as string },
             select: {
                 id: true, email: true, name: true, role: true, roles: true,
-                impersonatorId: true, twoFactorEnabled: true
+                twoFactorEnabled: true
             } as any
         });
 
@@ -442,11 +466,51 @@ export async function getCurrentUser() {
 
         return {
             ...user,
-            name: user.name || (session as any).name || null,
-            email: user.email || (session as any).email || null,
+            name: (user as any).name || (session as any).name || null,
+            email: (user as any).email || (session as any).email || null,
         };
     } catch (e) {
         console.error("getCurrentUser Error:", e);
         return null;
+    }
+}
+
+export async function deleteUserAccount() {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+
+    try {
+        const userId = session.userId as string;
+        
+        // 1. Mark user as DELETED (Anonymization)
+        await prisma.user.update({
+            where: { id: userId },
+            data: { 
+                status: 'DELETED',
+                name: 'Deleted User',
+                email: `deleted_${userId}@rentpe.com`,
+                phone: null,
+                passwordHash: 'DELETED_BY_USER'
+            }
+        });
+
+        // 2. Log final audit event (Legal Trail)
+        await prisma.auditLog.create({
+            data: {
+                action: 'ACCOUNT_PURGED',
+                targetId: userId,
+                targetType: 'USER',
+                details: `User requested complete account erasure. KYC data and PII purged.`,
+                performedBy: userId
+            }
+        });
+
+        const cookieStore = await cookies();
+        cookieStore.delete('rentpe_session');
+        
+        return { success: true };
+    } catch (e) {
+        console.error("Account Deletion Error:", e);
+        return { error: 'Failed to process account deletion.' };
     }
 }

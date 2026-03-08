@@ -292,23 +292,44 @@ export default function SignupPage() {
                     </CardContent>
 
                     <CardFooter className="flex flex-col space-y-4">
-                        {/* T&C Consent */}
-                        <label className="flex items-start gap-3 cursor-pointer group">
-                            <input
-                                type="checkbox"
-                                className="mt-0.5 h-4 w-4 rounded accent-violet-600 shrink-0 cursor-pointer"
-                                checked={agreed}
-                                onChange={e => setAgreed(e.target.checked)}
-                            />
-                            <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                                I have read and agree to the{" "}
-                                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-violet-600 font-semibold hover:underline">Terms of Service</Link>
-                                {" "}&amp;{" "}
-                                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-violet-600 font-semibold hover:underline">Privacy Policy</Link>.
-                                By signing up I also accept the{" "}
-                                <Link href="/tenant-agreement" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">Tenant Agreement</Link>.
-                            </span>
-                        </label>
+                        {/* ⚖️ Granular Consent (DPDP Act Compliance) */}
+                        <div className="space-y-3 pt-2">
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    name="agreed"
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                                    required
+                                    checked={agreed}
+                                    onChange={e => setAgreed(e.target.checked)}
+                                />
+                                <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors uppercase tracking-wider font-bold">
+                                    I AGREE TO THE <Link href="/terms" target="_blank" className="text-violet-600 underline">TERMS</Link> AND <Link href="/privacy" target="_blank" className="text-violet-600 underline">PRIVACY POLICY</Link> (REQUIRED)
+                                </span>
+                            </label>
+
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    name="marketingAgreed"
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                                />
+                                <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+                                    I consent to receiving property alerts, offers, and marketing updates via Email/SMS/WhatsApp. (Optional)
+                                </span>
+                            </label>
+
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    name="dataSharingAgreed"
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                                />
+                                <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+                                    I consent to RentPe sharing my verified profile with property owners for faster background checks. (Optional)
+                                </span>
+                            </label>
+                        </div>
                         <Button
                             className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 hover:from-violet-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold text-base py-5 shadow-lg hover:shadow-xl transition-all"
                             type="submit" disabled={loading}>
