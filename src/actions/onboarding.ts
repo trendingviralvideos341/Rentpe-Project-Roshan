@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 
 // ── helpers ──────────────────────────────────────────
 function appendAudit(existing: string, entry: { status: string; actorId: string; actorName: string; note?: string }) {
@@ -96,6 +97,24 @@ export async function teamSubmitOnboarding(data: {
         note: "Field visit — submitted directly to verification",
     });
 
+    // 1. Upload documents and photos to Cloudinary
+    const folder = `onboarding/${displayId}`;
+    const uploadData: any = { ...data };
+
+    if (data.idProofData) uploadData.idProofData = await uploadToCloudinary(data.idProofData, folder);
+    if (data.pgLicenceData) uploadData.pgLicenceData = await uploadToCloudinary(data.pgLicenceData, folder);
+    if (data.buildingImageData) uploadData.buildingImageData = await uploadToCloudinary(data.buildingImageData, folder);
+    
+    if (data.additionalPhotos) {
+        try {
+            const photos = JSON.parse(data.additionalPhotos);
+            if (Array.isArray(photos) && photos.length > 0) {
+                const urls = await batchUploadToCloudinary(photos, folder);
+                uploadData.additionalPhotos = JSON.stringify(urls);
+            }
+        } catch (e) {}
+    }
+
     const record = await prisma.ownerOnboarding.create({
         data: {
             displayId,
@@ -104,8 +123,7 @@ export async function teamSubmitOnboarding(data: {
             onboardedById: actor.id,
             onboardedAt: new Date(),
             auditTrail,
-            additionalPhotos: data.additionalPhotos || "[]",
-            ...data,
+            ...uploadData,
         },
     });
 
@@ -137,6 +155,24 @@ export async function acceptOnboarding(id: string, updates: {
         note: "Accepted and completed by Onboarding Team — forwarded to Verification",
     });
 
+    // 1. Upload new documents and photos to Cloudinary
+    const folder = `onboarding/${record.displayId}`;
+    const uploadData: any = { ...updates };
+
+    if (updates.idProofData) uploadData.idProofData = await uploadToCloudinary(updates.idProofData, folder);
+    if (updates.pgLicenceData) uploadData.pgLicenceData = await uploadToCloudinary(updates.pgLicenceData, folder);
+    if (updates.buildingImageData) uploadData.buildingImageData = await uploadToCloudinary(updates.buildingImageData, folder);
+    
+    if (updates.additionalPhotos) {
+        try {
+            const photos = JSON.parse(updates.additionalPhotos);
+            const toUpload = photos.filter((p: string) => p.startsWith('data:'));
+            const urls = await batchUploadToCloudinary(toUpload, folder);
+            const finalPhotos = photos.map((p: string) => p.startsWith('data:') ? urls.shift() : p);
+            uploadData.additionalPhotos = JSON.stringify(finalPhotos);
+        } catch (e) {}
+    }
+
     const updated = await prisma.ownerOnboarding.update({
         where: { id },
         data: {
@@ -144,8 +180,7 @@ export async function acceptOnboarding(id: string, updates: {
             onboardedById: actor.id,
             onboardedAt: new Date(),
             auditTrail,
-            additionalPhotos: updates.additionalPhotos ?? record.additionalPhotos,
-            ...updates,
+            ...uploadData,
         },
     });
 

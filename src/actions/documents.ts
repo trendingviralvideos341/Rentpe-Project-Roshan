@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { uploadToCloudinary } from "@/lib/upload";
 
 export async function uploadTenantDocument(data: {
     bookingId: string;
@@ -25,6 +26,9 @@ export async function uploadTenantDocument(data: {
         details: `Document ${data.type} uploaded`
     };
 
+    // 1. Upload to Cloudinary
+    const cloudUrl = await uploadToCloudinary(data.fileData, `kyc/${data.bookingId}`);
+
     // Upsert: if doc of this type already exists for this booking, replace it
     const existing = await prisma.tenantDocument.findFirst({
         where: { bookingId: data.bookingId, type: data.type }
@@ -37,13 +41,13 @@ export async function uploadTenantDocument(data: {
         } catch (e) { }
 
         auditEvent.action = 'REUPLOADED';
-        auditEvent.details = `Document ${data.type} re-uploaded`;
+        auditEvent.details = `Document ${data.type} re-uploaded. URL: ${cloudUrl}`;
         currentTrail.push(auditEvent);
 
         return await prisma.tenantDocument.update({
             where: { id: existing.id },
             data: {
-                fileData: data.fileData,
+                fileData: cloudUrl,
                 fileName: data.fileName,
                 status: 'PENDING',
                 rejectedNote: null,
@@ -59,7 +63,7 @@ export async function uploadTenantDocument(data: {
         data: {
             bookingId: data.bookingId,
             type: data.type,
-            fileData: data.fileData,
+            fileData: cloudUrl,
             fileName: data.fileName,
             status: 'PENDING',
             auditTrail: JSON.stringify([auditEvent])

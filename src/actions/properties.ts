@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
@@ -87,7 +88,20 @@ export async function createProperty(formData: FormData) {
     // Auto-fill owner info from profile if not in form
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
-    // Create property and rooms in a transaction
+    // 1. Process Property Images (batch upload)
+    let imageUrls: string[] = [];
+    if (images) {
+        try {
+            const parsedImages = JSON.parse(images);
+            if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                imageUrls = await batchUploadToCloudinary(parsedImages, `properties/${name.replace(/\s+/g, '_')}`);
+            }
+        } catch (e) {
+            console.error("Image parsing/upload error:", e);
+        }
+    }
+
+    // 2. Create property and rooms in a transaction
     const property = await prisma.$transaction(async (tx) => {
         const newProperty = await tx.property.create({
             data: {
@@ -96,7 +110,7 @@ export async function createProperty(formData: FormData) {
                 city,
                 description,
                 amenities: amenities || "[]",
-                images: images || "[]",
+                images: JSON.stringify(imageUrls),
                 ownerName: finalOwnerName,
                 pgLicence: pgLicence || null,
                 ownerId: user?.parentOwnerId || (session as any).userId, // Link to parent if staff creating
@@ -193,9 +207,45 @@ export async function savePropertyDocuments(propertyId: string, docs: {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
+    const folder = `properties/docs/${propertyId}`;
+    const uploadData: any = { ...docs };
+
+    // Handle single fields
+    if (docs.aadhaarProof?.startsWith('data:')) uploadData.aadhaarProof = await uploadToCloudinary(docs.aadhaarProof, folder);
+    if (docs.panProof?.startsWith('data:')) uploadData.panProof = await uploadToCloudinary(docs.panProof, folder);
+    if (docs.pgLicenceUrl?.startsWith('data:')) uploadData.pgLicenceUrl = await uploadToCloudinary(docs.pgLicenceUrl, folder);
+    if (docs.pgPhotoUrl?.startsWith('data:')) uploadData.pgPhotoUrl = await uploadToCloudinary(docs.pgPhotoUrl, folder);
+    if (docs.parkingPhoto?.startsWith('data:')) uploadData.parkingPhoto = await uploadToCloudinary(docs.parkingPhoto, folder);
+    if (docs.bathroomPhoto?.startsWith('data:')) uploadData.bathroomPhoto = await uploadToCloudinary(docs.bathroomPhoto, folder);
+    if (docs.livePhotoUrl?.startsWith('data:')) uploadData.livePhotoUrl = await uploadToCloudinary(docs.livePhotoUrl, folder);
+
+    // Handle JSON array fields
+    if (docs.buildingPhotos) {
+        try {
+            const photos = JSON.parse(docs.buildingPhotos);
+            // Only upload photos that are base64 (start with data:)
+            const toUpload = photos.filter((p: string) => p.startsWith('data:'));
+            const uploadedUrls = await batchUploadToCloudinary(toUpload, folder);
+            
+            // Reconstruct array with new URLs and existing non-base64 URLs
+            const finalPhotos = photos.map((p: string) => p.startsWith('data:') ? uploadedUrls.shift() : p);
+            uploadData.buildingPhotos = JSON.stringify(finalPhotos);
+        } catch (e) {}
+    }
+
+    if (docs.commonAreaPhotos) {
+        try {
+            const photos = JSON.parse(docs.commonAreaPhotos);
+            const toUpload = photos.filter((p: string) => p.startsWith('data:'));
+            const uploadedUrls = await batchUploadToCloudinary(toUpload, folder);
+            const finalPhotos = photos.map((p: string) => p.startsWith('data:') ? uploadedUrls.shift() : p);
+            uploadData.commonAreaPhotos = JSON.stringify(finalPhotos);
+        } catch (e) {}
+    }
+
     await prisma.property.update({
         where: { id: propertyId, ownerId: (session as any).userId },
-        data: docs
+        data: uploadData
     });
 
     return { success: true };

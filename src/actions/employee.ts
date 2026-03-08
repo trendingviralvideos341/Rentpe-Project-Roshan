@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession, encryptPassword } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { uploadToCloudinary } from "@/lib/upload";
 
 // ── Helpers ──────────────────────────────────────────────
 async function generateEoreqId(): Promise<string> {
@@ -211,8 +212,11 @@ export async function uploadEmployeeDoc(id: string, docField: string, docData: s
 
     const auditTrail = appendAudit(existing.auditTrail, "DOC_UPLOADED", (session as any).userId, (session as any).name || "Admin", `Uploaded: ${docField} — ${docName}`);
 
+    // 1. Upload to Cloudinary
+    const cloudUrl = await uploadToCloudinary(docData, `employees/${id}/${docField}`);
+
     const updateData: any = { auditTrail };
-    updateData[fieldMap.dataField] = docData;
+    updateData[fieldMap.dataField] = cloudUrl;
     updateData[fieldMap.nameField] = docName;
 
     const emp = await prisma.employee.update({ where: { id }, data: updateData });
