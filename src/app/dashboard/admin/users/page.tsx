@@ -4,16 +4,56 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye } from "lucide-react";
-import { getUsers, updateUserStatus } from "@/actions/admin";
+import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star } from "lucide-react";
+import { getUsers, updateUserStatus, updateUserPoints } from "@/actions/admin";
 import { impersonateUser } from "@/actions/admin-auth";
+
+// ── Points Modal ──────────────────────────────────────
+function PointsModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (points: number, reason: string) => void; onCancel: () => void }) {
+    const [points, setPoints] = useState(user.loyaltyPoints || 0);
+    const [reason, setReason] = useState("");
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-indigo-100">
+                        <Star className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-lg">Manage Loyalty Points</h3>
+                        <p className="text-sm text-muted-foreground">{user.name} · Currently: {user.loyaltyPoints || 0} Points</p>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground uppercase text-[10px] font-black">New Points Balance</label>
+                        <Input type="number" value={points} onChange={e => setPoints(parseInt(e.target.value) || 0)} className="font-black text-xl h-14 border-2 border-indigo-100 focus:border-indigo-500 rounded-xl" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground uppercase text-[10px] font-black">Reason for Adjustment *</label>
+                        <textarea value={reason} onChange={e => setReason(e.target.value)}
+                            placeholder="e.g., Reward for on-time payment, manual correction, etc."
+                            className="w-full border-2 border-slate-100 rounded-xl p-3 text-sm resize-none h-24 focus:outline-none focus:border-indigo-500 transition-all" />
+                    </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                    <button onClick={onCancel} className="px-6 py-2.5 text-sm font-bold border-2 rounded-xl hover:bg-muted transition-colors">Cancel</button>
+                    <button disabled={!reason.trim()} onClick={() => onConfirm(points, reason)}
+                        className="px-6 py-2.5 text-sm rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200">
+                        Update Points
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // ── Block/Unblock Modal ──────────────────────────────────
 function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reason: string) => void; onCancel: () => void }) {
     const [reason, setReason] = useState("");
     const isBanned = user.status === "BANNED";
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
                 <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${isBanned ? "bg-green-100" : "bg-red-100"}`}>
@@ -50,6 +90,7 @@ export default function AdminUsersPage() {
     const [filterStatus, setFilterStatus] = useState("ALL");
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [blockTarget, setBlockTarget] = useState<any | null>(null);
+    const [pointsTarget, setPointsTarget] = useState<any | null>(null);
     const [processing, setProcessing] = useState(false);
 
     const fetchUsers = useCallback(async () => {
@@ -78,6 +119,20 @@ export default function AdminUsersPage() {
         } finally {
             setProcessing(false);
             setBlockTarget(null);
+        }
+    }
+
+    async function handlePointsConfirm(points: number, reason: string) {
+        if (!pointsTarget) return;
+        setProcessing(true);
+        try {
+            await updateUserPoints(pointsTarget.id, points, reason);
+            fetchUsers();
+        } catch {
+            alert("Failed to update points");
+        } finally {
+            setProcessing(false);
+            setPointsTarget(null);
         }
     }
 
@@ -110,6 +165,7 @@ export default function AdminUsersPage() {
     return (
         <div className="space-y-6">
             {blockTarget && <BlockModal user={blockTarget} onConfirm={handleBlockConfirm} onCancel={() => setBlockTarget(null)} />}
+            {pointsTarget && <PointsModal user={pointsTarget} onConfirm={handlePointsConfirm} onCancel={() => setPointsTarget(null)} />}
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold">User Management</h1>
@@ -161,6 +217,7 @@ export default function AdminUsersPage() {
                                     <th className="p-4 text-left font-medium">Email / Phone</th>
                                     <th className="p-4 text-left font-medium">{tab === "OWNER" ? "PGs / Properties" : "Bookings"}</th>
                                     <th className="p-4 text-left font-medium">Status & History</th>
+                                    <th className="p-4 text-left font-medium">Points</th>
                                     <th className="p-4 text-left font-medium">Actions</th>
                                 </tr>
                             </thead>
@@ -183,7 +240,12 @@ export default function AdminUsersPage() {
                                                     <div>{user.email}</div>
                                                     <div className="text-xs text-muted-foreground">{user.phone || "No Phone"}</div>
                                                 </td>
-
+                                                <td className="p-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-black text-indigo-700">{user.loyaltyPoints || 0}</span>
+                                                        <span className="text-[10px] text-muted-foreground uppercase">Points</span>
+                                                    </div>
+                                                </td>
                                                 {/* PG/Bookings Info Column */}
                                                 <td className="p-4">
                                                     {tab === "OWNER" ? (
@@ -263,6 +325,10 @@ export default function AdminUsersPage() {
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="flex flex-col gap-2">
+                                                        <Button size="sm" variant="outline" className="h-8 text-[11px] border-indigo-200 text-indigo-700 hover:bg-indigo-50" disabled={processing} onClick={() => setPointsTarget(user)}>
+                                                            <Star className="h-3 w-3 mr-1" /> Manage Points
+                                                        </Button>
+
                                                         <Button size="sm" variant="outline" className="h-8 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-50" disabled={processing} onClick={() => handleImpersonate(user.id)}>
                                                             <Eye className="h-3 w-3 mr-1" /> Login As...
                                                         </Button>

@@ -861,7 +861,7 @@ export default function StudentDashboardPage() {
                                     <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between group hover:bg-indigo-50 transition-colors">
                                         <div>
                                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Loyalty Points</p>
-                                            <p className="text-xl font-black text-indigo-700">0 PRINTS</p>
+                                            <p className="text-xl font-black text-indigo-700">{profile?.loyaltyPoints || 0} Points</p>
                                         </div>
                                         <CreditCard className="h-8 w-8 text-indigo-200 group-hover:text-indigo-400 transition-colors" />
                                     </div>

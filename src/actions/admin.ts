@@ -169,6 +169,31 @@ export async function updateUserStatus(userId: string, status: string, reason: s
     return user;
 }
 
+export async function updateUserPoints(userId: string, points: number, reason: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: { loyaltyPoints: points }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            action: 'USER_POINTS_UPDATED',
+            targetId: userId,
+            targetType: 'USER',
+            details: `Points set to ${points}. Reason: ${reason}`,
+            performedBy: (session as any).userId as string
+        }
+    });
+
+    revalidatePath('/dashboard/admin/users');
+    revalidatePath('/dashboard/student');
+    revalidatePath('/dashboard/owner');
+    return user;
+}
+
 export async function getTransactions() {
     try {
         const session = await getSession();
