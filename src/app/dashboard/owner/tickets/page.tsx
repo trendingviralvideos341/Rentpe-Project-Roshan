@@ -3,10 +3,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getOwnerTickets, getOwnerRaisedTickets, createOwnerTicket, resolveTicket, replyToTicket, escalateTicketToAdmin } from "@/actions/ops";
 import { OWNER_TO_ADMIN_CATEGORIES } from "@/lib/ticket-categories";
-import { MessageSquare, CheckCircle, Clock, AlertCircle, Plus, Send, ArrowUpRight, Shield } from "lucide-react";
+import { MessageSquare, CheckCircle, Clock, AlertCircle, Plus, Send, ArrowUpRight, Shield, ImagePlus, X } from "lucide-react";
 
 export default function OwnerTicketsPage() {
     const [studentTickets, setStudentTickets] = useState<any[]>([]);
@@ -18,8 +18,28 @@ export default function OwnerTicketsPage() {
     const [description, setDescription] = useState("");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
+    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+    const imgInputRef = useRef<HTMLInputElement>(null);
 
     const ownerCategories = OWNER_TO_ADMIN_CATEGORIES;
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        const remaining = 3 - uploadedImages.length;
+        const toProcess = files.slice(0, remaining);
+        toProcess.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setUploadedImages(prev => [...prev, ev.target?.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+    };
+
+    const removeImage = (idx: number) => {
+        setUploadedImages(prev => prev.filter((_, i) => i !== idx));
+    };
 
     const fetchAll = async () => {
         setLoading(true);
@@ -57,8 +77,11 @@ export default function OwnerTicketsPage() {
         if (!description.trim()) return;
         setCreating(true);
         try {
-            await createOwnerTicket({ category, description: description.trim() });
-            setDescription(""); setShowCreate(false);
+            const descWithImages = uploadedImages.length > 0
+                ? `${description.trim()}\n\n[ATTACHMENTS: ${uploadedImages.length} screenshot(s) attached]`
+                : description.trim();
+            await createOwnerTicket({ category, description: descWithImages });
+            setDescription(""); setShowCreate(false); setUploadedImages([]);
             fetchAll();
             setTab('raised');
         } catch (e) { alert("Failed to create ticket."); }
@@ -127,6 +150,46 @@ export default function OwnerTicketsPage() {
                                 placeholder="Describe your issue..."
                                 rows={4}
                                 className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-none"
+                            />
+                        </div>
+
+                        {/* Photo Upload Section */}
+                        <div>
+                            <label className="text-sm font-medium mb-1 block">Screenshots / Photos</label>
+                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                                <ImagePlus className="h-3 w-3" />
+                                Please upload screenshots of the error and photos for quick support (max 3 images)
+                            </p>
+                            <div className="flex flex-wrap gap-3 mb-3">
+                                {uploadedImages.map((img, idx) => (
+                                    <div key={idx} className="relative group">
+                                        <img src={img} alt={`Screenshot ${idx + 1}`} className="h-24 w-24 object-cover rounded-lg border-2 border-blue-200" />
+                                        <button
+                                            onClick={() => removeImage(idx)}
+                                            className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {uploadedImages.length < 3 && (
+                                    <button
+                                        onClick={() => imgInputRef.current?.click()}
+                                        className="h-24 w-24 border-2 border-dashed border-blue-300/50 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-500/50 hover:bg-blue-50 transition-all text-muted-foreground"
+                                    >
+                                        <ImagePlus className="h-5 w-5 text-blue-400" />
+                                        <span className="text-[10px] font-medium">Add Photo</span>
+                                        <span className="text-[9px] opacity-60">{uploadedImages.length}/3</span>
+                                    </button>
+                                )}
+                            </div>
+                            <input
+                                ref={imgInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={handleImageUpload}
                             />
                         </div>
                         <div className="flex gap-2">

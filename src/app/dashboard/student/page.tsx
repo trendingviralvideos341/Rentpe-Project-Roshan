@@ -817,13 +817,6 @@ export default function StudentDashboardPage() {
                                         </CardDescription>
                                     </div>
                                 </div>
-                                    <Button
-                                        onClick={() => router.push("/dashboard/student?tab=tickets")}
-                                        variant="outline"
-                                        className="bg-white/10 hover:bg-white/20 text-white border-white/20 font-black px-6 backdrop-blur-sm"
-                                    >
-                                        Raise Support Ticket
-                                    </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
