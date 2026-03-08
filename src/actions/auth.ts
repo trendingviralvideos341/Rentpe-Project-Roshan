@@ -1,9 +1,10 @@
-'use server';
+"use server";
 
 import { z } from 'zod';
 import prisma from "@/lib/prisma";
 import { sendEmail } from '@/lib/email';
 import { WelcomeTemplate } from '@/lib/email-templates';
+import { verify2FAToken } from "@/lib/2fa";
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
@@ -117,6 +118,8 @@ export async function login(formData: FormData) {
                 adminRole: true,
                 displayId: true,
                 phone: true,
+                twoFactorEnabled: true,
+                twoFactorSecret: true,
             }
         });
 
@@ -131,6 +134,11 @@ export async function login(formData: FormData) {
         const isMatch = await comparePassword(password, user.passwordHash);
         if (!isMatch) {
             return { error: 'Invalid credentials' };
+        }
+
+        // 2FA Check
+        if ((user as any).twoFactorEnabled) {
+            return { require2FA: true, userId: user.id };
         }
 
         // Update last login timestamp
@@ -190,6 +198,79 @@ export async function login(formData: FormData) {
         if (e.message === 'NEXT_REDIRECT') throw e;
         console.error("Login Error:", e);
         return { error: 'Something went wrong. Please try again.' };
+    }
+}
+
+export async function verify2FALogin(userId: string, token: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                roles: true,
+                name: true,
+                phone: true,
+                displayId: true,
+                twoFactorEnabled: true,
+                twoFactorSecret: true,
+            } as any
+        });
+
+        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+            return { error: 'Invalid session or 2FA not enabled' };
+        }
+
+        const isValid = verify2FAToken((user as any).twoFactorSecret as string, token);
+        if (!isValid) {
+            return { error: 'Invalid verification code' };
+        }
+
+        // Create Session
+        let permissions: string[] = [];
+        if ((user as any).role === 'ADMIN') {
+            const emp = await prisma.employee.findUnique({
+                where: { email: user.email as unknown as string },
+                select: { permissions: true, status: true }
+            });
+            if (emp && emp.status === 'ACTIVE') {
+                try { permissions = JSON.parse(emp.permissions || "[]"); } catch { }
+            }
+        }
+
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const jwtToken = await signJWT({
+            userId: user.id as unknown as string,
+            email: user.email as unknown as string,
+            role: (user as any).role as unknown as string,
+            roles: (user as any).roles as unknown as string,
+            name: (user as any).name as unknown as string,
+            phone: (user as any).phone as unknown as string,
+            displayId: (user as any).displayId as unknown as string,
+            permissions,
+            expiresAt,
+        } as any);
+
+        const cookieStore = await cookies();
+        cookieStore.set('rentpe_session', jwtToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            expires: expiresAt,
+            sameSite: 'lax',
+            path: '/',
+        });
+
+        // Update last login
+        await prisma.user.update({
+            where: { id: user.id as unknown as string },
+            data: { lastLoginAt: new Date() }
+        });
+
+        return { success: true, redirect: (user as any).role === 'ADMIN' ? '/dashboard/admin' : (user as any).role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student' };
+    } catch (e) {
+        console.error("2FA Login Error:", e);
+        return { error: 'Authentication failed' };
     }
 }
 
@@ -328,7 +409,7 @@ export async function getCurrentUser() {
 
         const user = await prisma.user.findUnique({
             where: { id: session.userId as string },
-            select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true }
+            select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true, twoFactorEnabled: true }
         });
 
         if (!user) {

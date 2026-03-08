@@ -71,6 +71,10 @@ model User {
   // Governance & Security
   fraudAlerts      FraudAlert[]
   loginLogs        LoginLog[]
+
+  // Two-Factor Authentication
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean           @default(false)
 }
 
 model Property {

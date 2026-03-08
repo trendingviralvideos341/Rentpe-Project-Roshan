@@ -15,6 +15,11 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
+    const [require2FA, setRequire2FA] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
+    const [twoFactorCode, setTwoFactorCode] = useState("");
+    const [verifying2FA, setVerifying2FA] = useState(false);
+
     async function handleLoginAction(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
@@ -26,9 +31,34 @@ export default function LoginPage() {
 
         const result = await login(formData);
 
-        if (result?.error) {
+        if (result?.require2FA) {
+            setUserId(result.userId);
+            setRequire2FA(true);
+            setLoading(false);
+        } else if (result?.error) {
             setError(result.error);
             setLoading(false);
+        } else {
+            // Success (redirect handled by server action or similar)
+            // But since redirect(path) is called in server action, it might throw NEXT_REDIRECT
+            // which is handled by Next.js. If it returns success: true, we can client-redirect.
+        }
+    }
+
+    async function handle2FAVerify(e: React.FormEvent) {
+        e.preventDefault();
+        if (!userId) return;
+        setVerifying2FA(true);
+        setError(null);
+
+        const { verify2FALogin } = await import("@/actions/auth");
+        const result = await verify2FALogin(userId, twoFactorCode);
+
+        if (result?.error) {
+            setError(result.error);
+            setVerifying2FA(false);
+        } else if (result?.redirect) {
+            window.location.href = result.redirect;
         }
     }
 
@@ -39,86 +69,128 @@ export default function LoginPage() {
                 <div className="h-2 rounded-t-xl bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600" />
 
                 <CardHeader className="space-y-1 pt-6">
-                    <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-                    <CardDescription>Enter your credentials to sign in to your account</CardDescription>
+                    <CardTitle className="text-2xl font-bold">
+                        {require2FA ? "Security Verification" : "Welcome back"}
+                    </CardTitle>
+                    <CardDescription>
+                        {require2FA
+                            ? "Enter the 6-digit code from your authenticator app"
+                            : "Enter your credentials to sign in to your account"}
+                    </CardDescription>
                 </CardHeader>
 
-                <form onSubmit={handleLoginAction}>
-                    <CardContent className="space-y-4">
-                        {error && (
-                            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2">
-                                <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                                {error}
-                            </div>
-                        )}
+                {!require2FA ? (
+                    <form onSubmit={handleLoginAction}>
+                        <CardContent className="space-y-4">
+                            {error && (
+                                <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2">
+                                    <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                    {error}
+                                </div>
+                            )}
 
-                        <div className="space-y-2">
-                            <label htmlFor="email" className="text-sm font-medium">Email</label>
-                            <Input
-                                id="email"
-                                name="email"
-                                placeholder="owner@rentpe.com"
-                                type="email"
-                                required
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label htmlFor="password" className="text-sm font-medium">Password</label>
-                                <Link href="/forgot-password" className="text-xs text-purple-600 hover:underline">Forgot password?</Link>
-                            </div>
-                            {/* Password input with monkey toggle */}
-                            <div className="relative">
+                            <div className="space-y-2">
+                                <label htmlFor="email" className="text-sm font-medium">Email</label>
                                 <Input
-                                    id="password"
-                                    name="password"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Enter your password"
+                                    id="email"
+                                    name="email"
+                                    placeholder="owner@rentpe.com"
+                                    type="email"
                                     required
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    className="pr-12"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    title={showPassword ? "Hide password" : "Show password"}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xl leading-none select-none hover:scale-125 transition-transform duration-200"
-                                    tabIndex={-1}
-                                >
-                                    {showPassword ? "🐵" : "🙈"}
-                                </button>
                             </div>
-                        </div>
-                    </CardContent>
 
-                    <CardFooter className="flex flex-col space-y-4">
-                        <Button
-                            className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 hover:from-violet-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold text-base py-5 shadow-lg hover:shadow-xl transition-all"
-                            type="submit"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <span className="flex items-center gap-2">
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                                    </svg>
-                                    Signing In...
-                                </span>
-                            ) : "🔑 Sign In"}
-                        </Button>
-                        <div className="text-center text-sm text-muted-foreground">
-                            Don&apos;t have an account?{" "}
-                            <Link href="/signup" className="text-purple-600 font-semibold hover:underline">
-                                Sign up
-                            </Link>
-                        </div>
-                    </CardFooter>
-                </form>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="password" className="text-sm font-medium">Password</label>
+                                    <Link href="/forgot-password" className="text-xs text-purple-600 hover:underline">Forgot password?</Link>
+                                </div>
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Enter your password"
+                                        required
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        className="pr-12"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xl hover:scale-125 transition-transform"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? "🐵" : "🙈"}
+                                    </button>
+                                </div>
+                            </div>
+                        </CardContent>
+
+                        <CardFooter className="flex flex-col space-y-4">
+                            <Button
+                                className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 text-white font-bold py-5 shadow-lg"
+                                type="submit"
+                                disabled={loading}
+                            >
+                                {loading ? "Signing In..." : "🔑 Sign In"}
+                            </Button>
+                            <div className="text-center text-sm text-muted-foreground">
+                                Don&apos;t have an account? <Link href="/signup" className="text-purple-600 font-semibold hover:underline">Sign up</Link>
+                            </div>
+                        </CardFooter>
+                    </form>
+                ) : (
+                    <form onSubmit={handle2FAVerify}>
+                        <CardContent className="space-y-4">
+                            {error && (
+                                <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2">
+                                    <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                    {error}
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <label htmlFor="2fa-code" className="text-sm font-medium">Authentication Code</label>
+                                <Input
+                                    id="2fa-code"
+                                    placeholder="000000"
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    maxLength={6}
+                                    required
+                                    value={twoFactorCode}
+                                    onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                                    className="text-center text-2xl tracking-[0.5em] font-mono py-6"
+                                />
+                            </div>
+                            <p className="text-xs text-center text-muted-foreground">
+                                Open your 2FA app to see the code.
+                            </p>
+                        </CardContent>
+
+                        <CardFooter className="flex flex-col space-y-4">
+                            <Button
+                                className="w-full bg-black text-white font-bold py-5 shadow-lg hover:bg-gray-800"
+                                type="submit"
+                                disabled={verifying2FA}
+                            >
+                                {verifying2FA ? "Verifying..." : "🛡️ Verify & Login"}
+                            </Button>
+                            <button
+                                type="button"
+                                onClick={() => setRequire2FA(false)}
+                                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                            >
+                                ← Back to login
+                            </button>
+                        </CardFooter>
+                    </form>
+                )}
             </Card>
         </div>
     );
