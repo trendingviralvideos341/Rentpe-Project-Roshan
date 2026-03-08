@@ -104,6 +104,9 @@ export async function login(formData: FormData) {
                 roles: true,
                 name: true,
                 status: true,
+                adminRole: true,
+                displayId: true,
+                phone: true,
             }
         });
 
@@ -146,6 +149,9 @@ export async function login(formData: FormData) {
             roles: user.roles,
             name: user.name,
             permissions,
+            adminRole: (user as any).adminRole ?? null,
+            displayId: (user as any).displayId ?? null,
+            phone: (user as any).phone ?? null,
             expiresAt,
         });
 
@@ -218,6 +224,7 @@ export async function switchRole(targetRole: string) {
 
     // Issue a fresh JWT with the new active role
     let permissions: string[] = [];
+    let adminRole: string | null = null;
     if (targetRole === 'ADMIN') {
         const emp = await prisma.employee.findUnique({
             where: { email: user.email },
@@ -226,7 +233,18 @@ export async function switchRole(targetRole: string) {
         if (emp && emp.status === 'ACTIVE') {
             try { permissions = JSON.parse(emp.permissions || "[]"); } catch { }
         }
+        const adminUserRecord = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { adminRole: true }
+        });
+        adminRole = adminUserRecord?.adminRole ?? null;
     }
+
+    // Fetch displayId and phone for all roles
+    const fullUserRecord = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { displayId: true, phone: true }
+    });
 
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const token = await signJWT({
@@ -236,6 +254,9 @@ export async function switchRole(targetRole: string) {
         roles: user.roles,
         name: user.name,
         permissions,
+        adminRole,
+        displayId: fullUserRecord?.displayId ?? null,
+        phone: fullUserRecord?.phone ?? null,
         expiresAt,
     });
 
