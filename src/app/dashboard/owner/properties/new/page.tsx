@@ -775,8 +775,12 @@ export default function AddPropertyPage() {
                                 </div>
                             </div>
                         ))}
-                        <Button type="button" variant="outline" className="w-full border-dashed border-2" onClick={addRoom}>
-                            <Plus className="h-4 w-4 mr-2" /> Add Room
+                        <Button 
+                            type="button" 
+                            className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest shadow-lg shadow-purple-200 border-2 border-purple-400/20 active:scale-95 transition-all" 
+                            onClick={addRoom}
+                        >
+                            <Plus className="h-5 w-5 mr-2 stroke-[3]" /> Add Your Property Room
                         </Button>
                     </CardContent>
                 </Card>
