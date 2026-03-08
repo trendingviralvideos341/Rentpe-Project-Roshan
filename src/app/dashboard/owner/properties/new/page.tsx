@@ -32,6 +32,10 @@ export default function AddPropertyPage() {
     const [otherPropertyType, setOtherPropertyType] = useState("");
     const [gender, setGender] = useState<"Boys" | "Girls" | "Co-ed" | "">("");
     const [amenities, setAmenities] = useState<string[]>([]);
+    const [customAmenityInput, setCustomAmenityInput] = useState("");
+    const [showCustomAmenity, setShowCustomAmenity] = useState(false);
+    
+    const amenityOptions = ["WiFi", "AC", "Laundry", "Power Backup", "CCTV", "Biometric", "Food", "Cleaning", "Parking", "Gym", "Hot Water", "TV"];
     
     // Structured document state
     const [docs, setDocs] = useState<{
@@ -84,6 +88,17 @@ export default function AddPropertyPage() {
 
     const toggleAmenity = (a: string) => {
         setAmenities(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
+    };
+
+    const addCustomAmenity = () => {
+        if (!customAmenityInput.trim()) return;
+        const normalizedInput = customAmenityInput.trim();
+        if (amenities.includes(normalizedInput)) {
+            toast.error("Amenity already added");
+            return;
+        }
+        setAmenities(prev => [...prev, normalizedInput]);
+        setCustomAmenityInput("");
     };
 
     const addRoom = () => {
@@ -645,14 +660,56 @@ export default function AddPropertyPage() {
                         <CardDescription>Select what your property offers. (At least 1 required)</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${errors.amenities ? "border-2 border-red-300 rounded-lg p-2" : ""}`}>
-                            {["WiFi", "AC", "Laundry", "Power Backup", "CCTV", "Biometric", "Food", "Cleaning", "Parking", "Gym", "Hot Water", "TV"].map((item) => (
+                        <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${errors.amenities ? "border-2 border-red-300 rounded-lg p-2" : ""}`}>
+                            {amenityOptions.map((item) => (
                                 <label key={item} className={`flex items-center space-x-2 border p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${amenities.includes(item) ? "bg-primary/10 border-primary" : ""}`}>
                                     <input type="checkbox" className="w-4 h-4 text-primary" checked={amenities.includes(item)} onChange={() => toggleAmenity(item)} />
-                                    <span>{item}</span>
+                                    <span className="text-sm">{item}</span>
                                 </label>
                             ))}
+                            {/* Other Checkbox */}
+                            <label className={`flex items-center space-x-2 border p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${showCustomAmenity ? "bg-primary/10 border-primary" : ""}`}>
+                                <input type="checkbox" className="w-4 h-4 text-primary" checked={showCustomAmenity} onChange={() => setShowCustomAmenity(!showCustomAmenity)} />
+                                <span className="text-sm font-bold">Other (Specify)</span>
+                            </label>
                         </div>
+
+                        {showCustomAmenity && (
+                            <div className="mt-4 p-4 border-2 border-dashed border-purple-200 rounded-xl bg-purple-50/30 animate-in fade-in slide-in-from-top-2">
+                                <div className="flex gap-2">
+                                    <Input 
+                                        placeholder="Type amenity name (e.g. Swimming Pool, Library...)" 
+                                        value={customAmenityInput} 
+                                        onChange={(e) => setCustomAmenityInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                addCustomAmenity();
+                                            }
+                                        }}
+                                        className="h-10 text-sm font-bold"
+                                    />
+                                    <Button type="button" onClick={addCustomAmenity} className="bg-purple-600 hover:bg-purple-700 h-10 px-6 font-black">
+                                        ADD
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-tight">Custom amenities will appear as tags below</p>
+                            </div>
+                        )}
+
+                        {/* Custom Amenities Tags */}
+                        {amenities.filter(a => !amenityOptions.includes(a)).length > 0 && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {amenities.filter(a => !amenityOptions.includes(a)).map(a => (
+                                    <div key={a} className="flex items-center gap-2 px-3 py-1.5 bg-white border-2 border-purple-100 rounded-full shadow-sm animate-in zoom-in-95">
+                                        <span className="text-sm font-bold text-slate-700">{a}</span>
+                                        <button type="button" onClick={() => toggleAmenity(a)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         {errors.amenities && <p className="text-xs text-red-500 mt-2">{errors.amenities}</p>}
                     </CardContent>
                 </Card>
