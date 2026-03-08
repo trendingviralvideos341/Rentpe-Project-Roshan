@@ -168,7 +168,7 @@ export default function AddPropertyPage() {
             for (let i = 0; i < limit; i++) {
                 if (files[i]) {
                     slots.push(
-                        <div key={i} className="relative group/img aspect-square border-2 border-purple-50 rounded-xl bg-white overflow-hidden">
+                        <div key={i} className="relative group/img aspect-square border-2 border-purple-200 rounded-xl bg-white overflow-hidden shadow-sm">
                             <img src={URL.createObjectURL(files[i])} alt="preview" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]">
                                 <button type="button" onClick={() => setViewImage(URL.createObjectURL(files[i]))} 
@@ -187,9 +187,9 @@ export default function AddPropertyPage() {
                     );
                 } else {
                     slots.push(
-                        <label key={i} className="aspect-square border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center hover:bg-purple-50 hover:border-purple-200 cursor-pointer transition-all group/label">
-                            <Plus className="h-5 w-5 text-slate-300 group-hover/label:text-purple-600" />
-                            <span className="text-[9px] font-black text-slate-300 group-hover/label:text-purple-600 mt-1 uppercase tracking-tight">ADD</span>
+                        <label key={i} className="aspect-square border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400 cursor-pointer transition-all group/label">
+                            <Plus className="h-5 w-5 text-slate-400 group-hover/label:text-purple-600" />
+                            <span className="text-[9px] font-black text-slate-400 group-hover/label:text-purple-600 mt-1 uppercase tracking-tight">ADD</span>
                             <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, isMultiple)} />
                         </label>
                     );
@@ -199,7 +199,7 @@ export default function AddPropertyPage() {
         };
 
         return (
-            <div className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 bg-white hover:border-purple-200 transition-colors">
+            <div className="border-2 border-slate-200 rounded-2xl p-4 flex flex-col gap-3 bg-white hover:border-purple-300 transition-colors shadow-sm">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
@@ -237,9 +237,9 @@ export default function AddPropertyPage() {
                                 </div>
                             </div>
                         ) : (
-                            <label className="w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-purple-50 hover:border-purple-200 transition-all border-slate-100 group/single">
-                                <Plus className="h-6 w-6 text-slate-200 group-hover/single:text-purple-400 mb-1" />
-                                <span className="text-[10px] font-black text-slate-300 group-hover/single:text-purple-400 uppercase tracking-widest leading-none">AWAITING FILE</span>
+                            <label className="w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400 transition-all border-slate-300 group/single">
+                                <Plus className="h-6 w-6 text-slate-400 group-hover/single:text-purple-500 mb-1" />
+                                <span className="text-[10px] font-black text-slate-400 group-hover/single:text-purple-500 uppercase tracking-widest leading-none">AWAITING FILE</span>
                                 <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, false)} />
                             </label>
                         )
@@ -674,7 +674,7 @@ export default function AddPropertyPage() {
                         {/* Property Visuals */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-6 w-1 bg-purple-600 rounded-full" />
+                                <div className="h-6 w-1.5 bg-purple-600 rounded-full" />
                                 <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">1. Property Assets</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
@@ -690,7 +690,7 @@ export default function AddPropertyPage() {
                         {/* Documentation Section */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-6 w-1 bg-purple-600 rounded-full" />
+                                <div className="h-6 w-1.5 bg-purple-600 rounded-full" />
                                 <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">2. Legal Documentation</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
