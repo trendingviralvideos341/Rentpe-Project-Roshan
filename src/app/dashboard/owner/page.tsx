@@ -262,18 +262,9 @@ export default function OwnerDashboard() {
                                 </div>
                                 <div className="text-center md:text-left">
                                     <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Premium Partner"}</h2>
-                                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                                        <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/30 uppercase tracking-widest">
-                                            Verified Property Owner
-                                        </span>
-                                        <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>
-                                        <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">
-                                            {stats.propertyCount > 5 ? '🏆 Platinum Tier Partner' : stats.propertyCount > 2 ? '🥇 Gold Tier Partner' : '🥈 Silver Tier Partner'}
-                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
                         <CardContent className="p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

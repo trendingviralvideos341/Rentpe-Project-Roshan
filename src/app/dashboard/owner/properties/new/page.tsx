@@ -211,25 +211,16 @@ export default function AddPropertyPage() {
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
                             <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
-                                onChange={e => {
-                                    const v = e.target.value;
-                                    setOwnerName(v);
-                                    const err = v.length > 0 ? validateName(v) : "";
-                                    setFieldErr("ownerName", err);
-                                }} className={inputErr("ownerName")} />
-                            {errors.ownerName && <p className="text-xs text-red-600 font-semibold">{errors.ownerName}</p>}
+                                readOnly={true}
+                                className={`${inputErr("ownerName")} ${readOnlyCls}`} />
+                            <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name</p>
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(10 digits)</span></label>
                             <Input placeholder="e.g. 9876543210" value={phone}
-                                onChange={e => {
-                                    const v = normalizePhone(e.target.value);
-                                    setPhone(v);
-                                    const err = v ? validatePhone(v) : "";
-                                    setFieldErr("phone", err);
-                                }} maxLength={13} className={inputErr("phone")} />
-                            {errors.phone ? <p className="text-xs text-red-600 font-semibold">{errors.phone}</p>
-                                : <p className="text-[10px] text-muted-foreground">Enter your 10-digit mobile number</p>}
+                                readOnly={true}
+                                maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
+                            <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium">PG/Hostel Licence No. <span className="text-muted-foreground text-xs">(optional)</span></label>

@@ -380,35 +380,26 @@ export default function PropertyDetailPage() {
                                 <label className="text-sm font-medium">Full Name (As per ID) <span className="text-red-500">*</span></label>
                                 <div className="grid grid-cols-3 gap-2">
                                     <Input placeholder="First" required value={formData.firstName}
-                                        className={fieldErrors.firstName ? "border-red-500 ring-1 ring-red-200" : ""}
-                                        onChange={e => {
-                                            const v = onlyLetters(e.target.value);
-                                            setFormData(p => ({ ...p, firstName: v }));
-                                            if (fieldErrors.firstName) setFieldErrors(p => { const n = { ...p }; delete n.firstName; return n; });
-                                        }} />
+                                        readOnly={true}
+                                        className={`bg-gray-50 cursor-not-allowed ${fieldErrors.firstName ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    />
                                     <Input placeholder="Middle" value={formData.middleName}
                                         onChange={e => setFormData(p => ({ ...p, middleName: onlyLetters(e.target.value) }))} />
                                     <Input placeholder="Last" required value={formData.lastName}
-                                        className={fieldErrors.lastName ? "border-red-500 ring-1 ring-red-200" : ""}
-                                        onChange={e => {
-                                            const v = onlyLetters(e.target.value);
-                                            setFormData(p => ({ ...p, lastName: v }));
-                                            if (fieldErrors.lastName) setFieldErrors(p => { const n = { ...p }; delete n.lastName; return n; });
-                                        }} />
+                                        readOnly={true}
+                                        className={`bg-gray-50 cursor-not-allowed ${fieldErrors.lastName ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                    />
                                 </div>
-                                {(fieldErrors.firstName || fieldErrors.lastName) && <p className="text-[10px] text-red-600 font-bold mt-1">First and Last name required (Letters only)</p>}
+                                <p className="text-[10px] text-blue-600 font-medium italic">Name locked to registered profile</p>
                             </div>
 
                             {/* Email & Phone with +91 */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Contact Details <span className="text-red-500">*</span></label>
                                 <Input type="email" placeholder="📧 Email for communication" value={formData.email}
-                                    className={fieldErrors.email ? "border-red-500 ring-1 ring-red-200" : ""}
-                                    onChange={e => {
-                                        setFormData(p => ({ ...p, email: e.target.value }));
-                                        if (fieldErrors.email) setFieldErrors(p => { const n = { ...p }; delete n.email; return n; });
-                                    }} />
-                                {fieldErrors.email && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.email}</p>}
+                                    readOnly={true}
+                                    className={`bg-gray-50 cursor-not-allowed ${fieldErrors.email ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                />
                                 <div className="flex">
                                     <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-muted text-sm font-semibold text-muted-foreground select-none">
                                         🇮🇳 +91
@@ -416,20 +407,13 @@ export default function PropertyDetailPage() {
                                     <Input
                                         type="tel"
                                         placeholder="10-digit mobile number"
-                                        className={`rounded-l-none ${fieldErrors.phone ? "border-red-500 ring-1 ring-red-200" : ""}`}
+                                        readOnly={true}
+                                        className={`rounded-l-none bg-gray-50 cursor-not-allowed ${fieldErrors.phone ? "border-red-500 ring-1 ring-red-200" : ""}`}
                                         maxLength={10}
                                         value={formData.phone}
-                                        onChange={e => {
-                                            const v = onlyDigits(e.target.value).slice(0, 10);
-                                            setFormData(p => ({ ...p, phone: v }));
-                                            if (fieldErrors.phone) setFieldErrors(p => { const n = { ...p }; delete n.phone; return n; });
-                                        }}
                                     />
                                 </div>
-                                {fieldErrors.phone && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.phone}</p>}
-                                {formData.phone.length > 0 && formData.phone.length < 10 && (
-                                    <p className="text-[11px] text-red-500">Enter a valid 10-digit number ({10 - formData.phone.length} more digits needed)</p>
-                                )}
+                                <p className="text-[10px] text-blue-600 font-medium italic">Contact details locked to registered profile</p>
                             </div>
 
                             {/* Occupation */}
