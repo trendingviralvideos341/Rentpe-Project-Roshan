@@ -85,8 +85,7 @@ export default function AddPropertyPage() {
             .then(data => {
                 if (cancelled) return;
                 if (!data?.[0] || data[0].Status !== "Success" || !data[0].PostOffice?.length) {
-                    setPinError("Invalid PIN – no results");
-                    setCity(""); setState(""); setPostOffice(""); setPostOffices([]);
+                    setPinError("Invalid PIN results. Please enter details manually.");
                     return;
                 }
                 const offices = data[0].PostOffice;
@@ -95,7 +94,7 @@ export default function AddPropertyPage() {
                 setState(offices[0].State);
                 setPostOffice(offices[0].Name);
             })
-            .catch(() => { if (!cancelled) setPinError("Network error"); })
+            .catch(() => { if (!cancelled) setPinError("Network error. Please enter details manually."); })
             .finally(() => { if (!cancelled) setPinFetching(false); });
 
         return () => { cancelled = true; };
@@ -256,7 +255,7 @@ export default function AddPropertyPage() {
                             </div>
                             {postOffices.length > 1 ? (
                                 <div className="space-y-1">
-                                    <label className="text-sm font-medium">Post Office</label>
+                                    <label className="text-sm font-medium">Post Office <span className="text-red-500">*</span></label>
                                     <select value={postOffice} onChange={e => setPostOffice(e.target.value)}
                                         className="w-full h-10 border rounded-md px-3 py-2 text-sm border-input bg-blue-50">
                                         {postOffices.map(po => <option key={po.Name} value={po.Name}>{po.Name}</option>)}
@@ -264,21 +263,21 @@ export default function AddPropertyPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-1">
-                                    <label className="text-sm font-medium">Post Office</label>
-                                    <Input className={readOnlyCls} readOnly value={postOffice} placeholder="Auto from PIN" />
+                                    <label className="text-sm font-medium">Post Office <span className="text-red-500">*</span></label>
+                                    <Input value={postOffice} onChange={e => setPostOffice(e.target.value)} placeholder="Auto from PIN or type manually" />
                                 </div>
                             )}
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">City <span className="text-red-500">*</span>
-                                    {city && <span className="text-green-600 text-[10px] ml-1">✓ Auto</span>}
+                                    {city && postOffices.length > 0 && <span className="text-green-600 text-[10px] ml-1">✓ Auto</span>}
                                 </label>
-                                <Input className={`${readOnlyCls} ${inputErr("city")}`} readOnly value={city} placeholder="Auto from PIN" />
+                                <Input className={inputErr("city")} value={city} onChange={e => setCity(e.target.value)} placeholder="Auto from PIN or type manually" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">State <span className="text-red-500">*</span>
-                                    {state && <span className="text-green-600 text-[10px] ml-1">✓ Auto</span>}
+                                    {state && postOffices.length > 0 && <span className="text-green-600 text-[10px] ml-1">✓ Auto</span>}
                                 </label>
-                                <Input className={`${readOnlyCls} ${inputErr("state")}`} readOnly value={state} placeholder="Auto from PIN" />
+                                <Input className={inputErr("state")} value={state} onChange={e => setState(e.target.value)} placeholder="Auto from PIN or type manually" />
                             </div>
                         </div>
                         {city && state && pincode.length === 6 && (
