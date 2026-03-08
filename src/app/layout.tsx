@@ -7,6 +7,7 @@ import SessionGuard from "@/components/layout/SessionGuard";
 import SessionSync from "@/components/layout/SessionSync";
 import { Toaster } from 'sonner';
 import { getSession } from "@/lib/auth";
+import { CSPostHogProvider } from "@/components/providers/posthog-provider";
 import prisma from "@/lib/prisma";
 
 const geistSans = Geist({
@@ -58,14 +59,16 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <SessionSync userId={activeUserId} role={activeRole} />
-        <SessionGuard />
-        <Navbar session={freshSession} />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
-        <Toaster position="top-right" richColors closeButton />
+        <CSPostHogProvider>
+          <SessionSync userId={activeUserId} role={activeRole} />
+          <SessionGuard />
+          <Navbar session={freshSession} />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+          <Toaster position="top-right" richColors closeButton />
+        </CSPostHogProvider>
       </body>
     </html>
   );
