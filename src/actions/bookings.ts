@@ -4,6 +4,12 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { sendEmail } from "@/lib/email";
+import { 
+    BookingPendingTemplate, 
+    BookingConfirmedTemplate, 
+    KycStatusTemplate 
+} from "@/lib/email-templates";
 
 export async function createBooking(data: {
     roomId?: string,
@@ -69,9 +75,31 @@ export async function createBooking(data: {
 
     // Notify owner about new booking
     try {
-        const property = await prisma.property.findFirst({ where: { name: data.propertyName } });
+        const property = await prisma.property.findFirst({ 
+            where: { name: data.propertyName },
+            include: { owner: { select: { email: true } } }
+        });
+        
         if (property) {
             await createNotification(property.ownerId, 'BOOKING', `New booking request for ${data.propertyName} by ${data.guestName}`);
+            
+            // Email to Owner
+            if (property.owner?.email) {
+                sendEmail({
+                    to: property.owner.email,
+                    subject: `New Booking Request: ${data.propertyName}`,
+                    html: `<p>Hi Owner,</p><p>You have a new booking request for <strong>${data.propertyName}</strong> from <strong>${data.guestName}</strong>.</p><p><a href="https://rentpe.in/dashboard/owner/bookings">View request on dashboard</a></p>`
+                }).catch(err => console.error('Failed to email owner:', err));
+            }
+        }
+
+        // Email to Tenant
+        if (guestEmail) {
+            sendEmail({
+                to: guestEmail,
+                subject: `Booking Request Received: ${data.propertyName} 🕒`,
+                html: BookingPendingTemplate(guestName, data.propertyName, booking.displayId)
+            }).catch(err => console.error('Failed to email tenant booking pending:', err));
         }
     } catch (e) { }
 
@@ -227,6 +255,15 @@ export async function approveBooking(id: string, data: {
     try {
         if (booking.userId) {
             await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} has been approved! Room: ${data.roomAssigned || 'TBD'}`);
+            
+            const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
+            if (student?.email) {
+                sendEmail({
+                    to: student.email,
+                    subject: `Booking Confirmed: ${booking.propertyName} ✅`,
+                    html: BookingConfirmedTemplate(student.name || 'Student', booking.propertyName, data.onboardingDate || 'TBD')
+                }).catch(err => console.error('Failed to email booking confirmation:', err));
+            }
         }
     } catch (e) { }
 
@@ -272,6 +309,15 @@ export async function rejectBooking(id: string, reason?: string) {
     try {
         if (booking.userId) {
             await createNotification(booking.userId, 'BOOKING', `Your booking for ${booking.propertyName} was rejected. ${reason || ''}`);
+            
+            const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
+            if (student?.email) {
+                sendEmail({
+                    to: student.email,
+                    subject: `Booking Update: ${booking.propertyName}`,
+                    html: `<p>Hi ${student.name || 'there'},</p><p>We regret to inform you that your booking for <strong>${booking.propertyName}</strong> was not approved by the owner.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}<p>Please feel free to browse other verified properties on RentPe.</p>`
+                }).catch(err => console.error('Failed to email booking rejection:', err));
+            }
         }
     } catch (e) { }
 
@@ -654,7 +700,18 @@ export async function verifyKycAndProceed(bookingId: string) {
     });
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
-    if (booking?.userId) await createNotification(booking.userId, 'BOOKING', `KYC verified! Your rental agreement for ${booking.propertyName} is ready to sign.`);
+    if (booking?.userId) {
+        await createNotification(booking.userId, 'BOOKING', `KYC verified! Your rental agreement for ${booking.propertyName} is ready to sign.`);
+        
+        const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
+        if (student?.email) {
+            sendEmail({
+                to: student.email,
+                subject: `KYC Verified: ${booking.propertyName} ✅`,
+                html: KycStatusTemplate(student.name || 'there', 'APPROVED')
+            }).catch(err => console.error('Failed to email KYC approval:', err));
+        }
+    }
 
     await prisma.auditLog.create({ data: { action: 'KYC_VERIFIED', targetId: bookingId, targetType: 'BOOKING', details: `All KYC documents verified. Moved to AGREEMENT_PENDING.`, performedBy: (session as any).userId } });
 
@@ -674,7 +731,18 @@ export async function markKycFailed(bookingId: string, reason: string) {
     });
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
-    if (booking?.userId) await createNotification(booking.userId, 'BOOKING', `KYC failed for ${booking.propertyName}. Reason: ${reason}. Please re-upload documents.`);
+    if (booking?.userId) {
+        await createNotification(booking.userId, 'BOOKING', `KYC failed for ${booking.propertyName}. Reason: ${reason}. Please re-upload documents.`);
+        
+        const student = await prisma.user.findUnique({ where: { id: booking.userId }, select: { email: true, name: true } });
+        if (student?.email) {
+            sendEmail({
+                to: student.email,
+                subject: `KYC Verification Update: ${booking.propertyName} ⚠️`,
+                html: KycStatusTemplate(student.name || 'there', 'REJECTED', reason)
+            }).catch(err => console.error('Failed to email KYC rejection:', err));
+        }
+    }
 
     await prisma.auditLog.create({ data: { action: 'KYC_FAILED', targetId: bookingId, targetType: 'BOOKING', details: `KYC rejected. Reason: ${reason}`, performedBy: (session as any).userId } });
 

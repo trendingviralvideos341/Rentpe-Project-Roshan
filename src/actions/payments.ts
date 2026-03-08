@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { razorpay } from "@/lib/razorpay";
 import { revalidatePath } from "next/cache";
+import { sendEmail } from "@/lib/email";
 
 export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string }) {
     const session = await getSession();
@@ -141,6 +142,29 @@ export async function verifyPayment(data: {
                 paymentStatus: "PAID"
             }
         });
+
+        // 4. Send Payment Receipt Email (Async)
+        const user = await tx.user.findUnique({ where: { id: (session as any).userId }, select: { email: true, name: true } });
+        if (user?.email) {
+            sendEmail({
+                to: user.email,
+                subject: `Payment Receipt: ₹${payment.amount} confirmed! 🧾`,
+                html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <h2 style="color: #8b5cf6;">Payment Received!</h2>
+                        <p>Hi ${user.name || 'there'},</p>
+                        <p>Your payment of <strong>₹${payment.amount}</strong> has been successfully verified.</p>
+                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0;"><strong>Payment ID:</strong> ${data.razorpay_payment_id}</p>
+                            <p style="margin: 4px 0 0 0;"><strong>Amount:</strong> ₹${payment.amount}</p>
+                            <p style="margin: 4px 0 0 0;"><strong>Status:</strong> Success</p>
+                        </div>
+                        <p>You can view your payment history and download invoices from your dashboard.</p>
+                        <a href="https://rentpe.in/dashboard/student" style="display: inline-block; background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 10px;">Go to Dashboard</a>
+                    </div>
+                `
+            }).catch(err => console.error('Failed to email payment receipt:', err));
+        }
 
         revalidatePath("/dashboard/student");
         revalidatePath("/dashboard/owner/bookings");

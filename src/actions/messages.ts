@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { sendEmail } from "@/lib/email";
 
 /**
  * Start or continue a message thread between student and owner
@@ -50,6 +51,15 @@ export async function sendMessage(data: {
         'MESSAGE',
         `💬 New message from ${sender?.name || 'Someone'}: "${data.content.slice(0, 60)}${data.content.length > 60 ? '...' : ''}"`
     );
+
+    const receiver = await prisma.user.findUnique({ where: { id: data.receiverId }, select: { email: true, name: true } });
+    if (receiver?.email) {
+        sendEmail({
+            to: receiver.email,
+            subject: `New message from ${sender?.name || 'Support'} 💬`,
+            html: `<p>Hi ${receiver.name || 'there'},</p><p>You have a new message from <strong>${sender?.name || 'RentPe User'}</strong>:</p><blockquote style="border-left: 4px solid #8b5cf6; padding-left: 15px; font-style: italic; color: #475569;">"${data.content.slice(0, 100)}${data.content.length > 100 ? '...' : ''}"</blockquote><p><a href="https://rentpe.in/dashboard" style="display:inline-block; background:#8b5cf6; color:white; padding:10px 20px; border-radius:6px; text-decoration:none;">Reply in Dashboard</a></p>`
+        }).catch(err => console.error('Failed to email message notification:', err));
+    }
 
     revalidatePath('/dashboard/student/messages');
     revalidatePath('/dashboard/owner/messages');

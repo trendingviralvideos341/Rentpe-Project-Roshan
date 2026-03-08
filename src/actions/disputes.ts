@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { sendEmail } from "@/lib/email";
 
 /**
  * Student or owner raises a dispute
@@ -38,9 +39,17 @@ export async function raiseDispute(data: {
     });
 
     // Notify admin team
-    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true, email: true } });
     for (const admin of admins) {
         await createNotification(admin.id, 'TICKET', `New ${data.type} dispute raised: "${data.subject}" — Priority: ${data.priority || 'MEDIUM'}`);
+        
+        if (admin.email) {
+            sendEmail({
+                to: admin.email,
+                subject: `[DISPUTE] ${data.priority || 'MEDIUM'}: ${data.subject}`,
+                html: `<p>A new dispute has been raised by ${session.role}.</p><p><strong>Subject:</strong> ${data.subject}</p><p><strong>Type:</strong> ${data.type}</p><p><a href="https://rentpe.in/dashboard/admin/disputes">View in Admin Panel</a></p>`
+            }).catch(err => console.error('Failed to email admin dispute:', err));
+        }
     }
 
     await prisma.auditLog.create({
@@ -96,6 +105,15 @@ export async function resolveDispute(disputeId: string, resolution: string) {
     });
 
     await createNotification(dispute.raisedById, 'TICKET', `Your dispute "${dispute.subject}" has been resolved: ${resolution}`);
+
+    const user = await prisma.user.findUnique({ where: { id: dispute.raisedById }, select: { email: true, name: true } });
+    if (user?.email) {
+        sendEmail({
+            to: user.email,
+            subject: `Dispute Resolved: ${dispute.subject} ✅`,
+            html: `<h2>Good news!</h2><p>Hi ${user.name || 'there'},</p><p>Your dispute "<strong>${dispute.subject}</strong>" has been resolved by our support team.</p><div style="background: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0;"><strong>Resolution:</strong><br/>${resolution}</div><p>Thank you for your patience.</p>`
+        }).catch(err => console.error('Failed to email dispute resolution:', err));
+    }
 
     await prisma.auditLog.create({
         data: {

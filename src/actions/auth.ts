@@ -2,6 +2,8 @@
 
 import { z } from 'zod';
 import prisma from "@/lib/prisma";
+import { sendEmail } from '@/lib/email';
+import { WelcomeTemplate } from '@/lib/email-templates';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
@@ -57,7 +59,7 @@ export async function signup(formData: FormData) {
         const isOwner = roleUp === "OWNER";
         const isStudent = roleUp === "USER";
 
-        await prisma.user.create({
+        const user = await prisma.user.create({
             data: {
                 name: `${firstName} ${lastName}`,
                 email,
@@ -70,6 +72,14 @@ export async function signup(formData: FormData) {
                 displayId,
             }
         });
+
+        // Send Welcome Email (async, don't block redirect)
+        sendEmail({
+            to: email,
+            subject: 'Welcome to RentPe! 🚀',
+            html: WelcomeTemplate(`${firstName} ${lastName}`),
+        }).catch(err => console.error('Failed to send welcome email:', err));
+
     } catch (e) {
         console.error("Signup Error:", e);
         return { error: 'Database connection failed. Please try again later.' };
