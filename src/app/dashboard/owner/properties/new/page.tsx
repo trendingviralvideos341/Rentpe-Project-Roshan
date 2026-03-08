@@ -154,16 +154,18 @@ export default function AddPropertyPage() {
     };
 
     // Sub-component for upload cards
-    const UploadCard = ({ label, sub, category, isMultiple = true, slotsCount = 4, isRequired = false }: { 
+    const UploadCard = ({ label, sub, category, isMultiple = true, slotsCount = 4, isRequired = false, minRequired }: { 
         label: string; 
         sub: string; 
         category: keyof typeof docs; 
         isMultiple?: boolean; 
         slotsCount?: number;
         isRequired?: boolean;
+        minRequired?: number;
     }) => {
         const item = docs[category];
         const files = Array.isArray(item) ? item : (item ? [item] : []);
+        const effectiveMinRequired = minRequired ?? (isRequired ? slotsCount : 0);
 
         const renderGrid = (limit: number) => {
             const slots = [];
@@ -188,10 +190,13 @@ export default function AddPropertyPage() {
                         </div>
                     );
                 } else {
+                    const isExtraOptional = files.length >= effectiveMinRequired;
                     slots.push(
                         <label key={i} className="aspect-square border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400 cursor-pointer transition-all group/label">
-                            <Plus className="h-5 w-5 text-slate-400 group-hover/label:text-purple-600" />
-                            <span className="text-[9px] font-black text-slate-400 group-hover/label:text-purple-600 mt-1 uppercase tracking-tight">ADD</span>
+                            <Plus className={`h-5 w-5 ${isExtraOptional ? "text-slate-300" : "text-slate-400"} group-hover/label:text-purple-600`} />
+                            <span className={`text-[9px] font-black ${isExtraOptional ? "text-slate-300" : "text-slate-400"} group-hover/label:text-purple-600 mt-1 uppercase tracking-tight`}>
+                                {isExtraOptional ? "OPTIONAL" : "ADD"}
+                            </span>
                             <input type="file" accept="image/*" className="hidden" onChange={handleDocChange(category, isMultiple)} />
                         </label>
                     );
@@ -777,10 +782,11 @@ export default function AddPropertyPage() {
                                 <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" slotsCount={2} isRequired={true} />
                                 <UploadCard 
                                     label="PG/Hostel Licence" 
-                                    sub={propertyType === "Other" ? "Any other legal doc (Optional)" : "1 Mandatory, 2nd Optional"} 
+                                    sub={propertyType === "Other" ? "Any other legal doc (Optional)" : "Operational / Approval"} 
                                     category="pgLicenceUrl" 
                                     slotsCount={2} 
                                     isRequired={propertyType === "PG" || propertyType === "Hostel"} 
+                                    minRequired={1}
                                 />
                                 <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} isRequired={true} />
                             </div>
