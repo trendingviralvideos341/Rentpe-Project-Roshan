@@ -267,7 +267,9 @@ export default function OwnerDashboard() {
                                             Verified Property Owner
                                         </span>
                                         <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>
-                                        <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">Gold Tier Member</span>
+                                        <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">
+                                            {stats.propertyCount > 5 ? '🏆 Platinum Tier Partner' : stats.propertyCount > 2 ? '🥇 Gold Tier Partner' : '🥈 Silver Tier Partner'}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -309,7 +311,12 @@ export default function OwnerDashboard() {
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase">Partner Since</p>
-                                                <p className="text-sm font-bold text-blue-900">{stats.user?.createdAt ? new Date(stats.user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : "January 2024"}</p>
+                                                <p className="text-sm font-bold text-blue-900">
+                                                    {stats.user?.createdAt ? new Date(stats.user.createdAt).toLocaleString('en-IN', { 
+                                                        day: '2-digit', month: 'long', year: 'numeric', 
+                                                        hour: '2-digit', minute: '2-digit', hour12: true 
+                                                    }) : "January 2024"}
+                                                </p>
                                             </div>
                                         </div>
 

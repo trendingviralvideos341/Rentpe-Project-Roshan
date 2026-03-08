@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, Plus, X, AlertTriangle, ShieldCheck } from "lucide-react";
 import { createProperty } from "@/actions/properties";
+import { getCurrentUser } from "@/actions/auth";
 import { validateName, validatePhone, validateEmail, normalizePhone } from "@/lib/validators";
 
 export default function AddPropertyPage() {
@@ -34,8 +35,18 @@ export default function AddPropertyPage() {
     const [pinError, setPinError] = useState("");
     const [postOffices, setPostOffices] = useState<{ Name: string; District: string; State: string }[]>([]);
 
-    // Rooms
     const [rooms, setRooms] = useState<{ roomNumber: string; type: string; price: string; availability: string }[]>([]);
+
+    useEffect(() => {
+        const loadProfile = async () => {
+            const user = await getCurrentUser();
+            if (user) {
+                setOwnerName(user.name || "");
+                setPhone(user.phone || "");
+            }
+        };
+        loadProfile();
+    }, []);
 
     const toggleAmenity = (a: string) => {
         setAmenities(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);

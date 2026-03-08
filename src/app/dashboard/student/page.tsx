@@ -922,6 +922,18 @@ export default function StudentDashboardPage() {
                                         </div>
                                         <CreditCard className="h-8 w-8 text-indigo-200 group-hover:text-indigo-400 transition-colors" />
                                     </div>
+                                    <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Partner Since</p>
+                                            <p className="text-sm font-black text-slate-700">
+                                                {profile?.createdAt ? new Date(profile.createdAt).toLocaleString('en-IN', { 
+                                                    day: '2-digit', month: 'long', year: 'numeric', 
+                                                    hour: '2-digit', minute: '2-digit', hour12: true 
+                                                }) : "January 2024"}
+                                            </p>
+                                        </div>
+                                        <Calendar className="h-6 w-6 text-slate-300" />
+                                    </div>
                                 </div>
                             </div>
 

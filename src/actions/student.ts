@@ -41,6 +41,8 @@ export async function getStudentProfile() {
 
         return {
             ...user,
+            name: user?.name || (session as any).name || "Verified Resident",
+            email: user?.email || (session as any).email || null,
             kycStatus: lastBooking?.status.startsWith('KYC') ? lastBooking.status : (lastBooking?.agreementSigned ? 'VERIFIED' : 'PENDING'),
             documents: lastBooking?.documents || [],
             lastBookingId: lastBooking?.id || null

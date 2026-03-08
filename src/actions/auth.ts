@@ -286,3 +286,36 @@ export async function checkSessionIntegrity() {
         return { status: 'error' };
     }
 }
+
+export async function getCurrentUser() {
+    try {
+        const session = await getSession();
+        if (!session || !session.userId) return null;
+
+        const user = await prisma.user.findUnique({
+            where: { id: session.userId as string },
+            select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true }
+        });
+
+        if (!user) {
+            // Return session data at least
+            return {
+                id: session.userId,
+                name: (session as any).name || null,
+                email: (session as any).email || null,
+                phone: null,
+                role: session.role,
+                createdAt: new Date().toISOString()
+            };
+        }
+
+        return {
+            ...user,
+            name: user.name || (session as any).name || null,
+            email: user.email || (session as any).email || null,
+        };
+    } catch (e) {
+        console.error("getCurrentUser Error:", e);
+        return null;
+    }
+}

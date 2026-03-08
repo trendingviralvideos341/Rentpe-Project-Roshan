@@ -11,7 +11,7 @@ import { getReviewsForProperty } from "@/actions/reviews";
 import { Input } from "@/components/ui/input";
 import { validateEmail, validatePhone, validateName } from "@/lib/validators";
 import { formatDistanceToNow } from "date-fns";
-
+import { getCurrentUser } from "@/actions/auth";
 import { ImageCarousel } from "@/components/ImageCarousel";
 
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
@@ -41,6 +41,23 @@ export default function PropertyDetailPage() {
         occupationDetail: "",
     });
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const user = await getCurrentUser();
+            if (user && user.name) {
+                const parts = user.name.split(" ");
+                setFormData(prev => ({
+                    ...prev,
+                    firstName: parts[0] || "",
+                    lastName: parts.slice(1).join(" ") || "",
+                    email: user.email || "",
+                    phone: (user.phone || "").replace("+91", ""),
+                }));
+            }
+        };
+        fetchUser();
+    }, []);
 
     useEffect(() => {
         const fetchProperty = async () => {

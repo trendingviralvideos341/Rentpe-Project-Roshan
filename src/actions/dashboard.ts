@@ -69,7 +69,7 @@ export async function getOwnerDashboardStats() {
             occupancyStats,
             user: {
                 id: ownerUser?.id || userId,
-                name: ownerUser?.name || 'Owner',
+                name: ownerUser?.name || (session as any).name || 'Owner',
                 email: ownerUser?.email || (session.email as string),
                 role: ownerUser?.role || session.role,
                 phone: ownerUser?.phone || null,
