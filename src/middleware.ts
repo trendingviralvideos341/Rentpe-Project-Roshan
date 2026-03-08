@@ -34,7 +34,7 @@ export default async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
 
     // 0. API Rate Limiting (Security Phase 2)
-    const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown';
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
     if (path.startsWith('/api') || path === '/login' || path === '/signup') {
         if (isRateLimited(ip)) {
             return new NextResponse('Too many requests. Please try again in a minute.', { status: 429 });
