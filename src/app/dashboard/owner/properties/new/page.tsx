@@ -679,7 +679,6 @@ export default function AddPropertyPage() {
                                 <UploadCard label="Rooms" sub="Bed & Space" category="roomsPhotos" isMultiple={true} />
                                 <UploadCard label="Washroom" sub="Tile & Fitting" category="washroomPhotos" isMultiple={true} />
                                 <UploadCard label="Other Amenities" sub="Kitchen/Gym (Others Specify)" category="amenitiesPhotos" isMultiple={true} />
-                                <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} />
                             </div>
                         </div>
 
@@ -690,10 +689,11 @@ export default function AddPropertyPage() {
                                 <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">3. Legal Documentation</h3>
                                 <div className="h-px flex-1 bg-slate-100" />
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" isMultiple={true} slotsCount={2} />
                                 <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" isMultiple={true} slotsCount={2} />
                                 <UploadCard label="PG Licence" sub="Operational" category="pgLicenceUrl" isMultiple={true} slotsCount={2} />
+                                <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} />
                             </div>
                         </div>
 
