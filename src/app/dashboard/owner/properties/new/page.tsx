@@ -327,7 +327,7 @@ export default function AddPropertyPage() {
         // Conditional Mandatory for PG/Hostel
         if (propertyType === "PG" || propertyType === "Hostel") {
             if (!pgLicence.trim()) errs.pgLicence = "PG/Hostel Licence Number is required";
-            if (docs.pgLicenceUrl.length < 2) errs.pgLicenceUrl = "Both Licence Front & Back are mandatory";
+            if (docs.pgLicenceUrl.length < 1) errs.pgLicenceUrl = "PG/Hostel Licence photo is mandatory";
         }
         
         if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Live Photo (Selfie) is mandatory";
@@ -777,7 +777,7 @@ export default function AddPropertyPage() {
                                 <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" slotsCount={2} isRequired={true} />
                                 <UploadCard 
                                     label="PG/Hostel Licence" 
-                                    sub={propertyType === "Other" ? "Any other legal doc" : "Operational"} 
+                                    sub={propertyType === "Other" ? "Any other legal doc (Optional)" : "1 Mandatory, 2nd Optional"} 
                                     category="pgLicenceUrl" 
                                     slotsCount={2} 
                                     isRequired={propertyType === "PG" || propertyType === "Hostel"} 
