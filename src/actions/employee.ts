@@ -212,8 +212,8 @@ export async function uploadEmployeeDoc(id: string, docField: string, docData: s
 
     const auditTrail = appendAudit(existing.auditTrail, "DOC_UPLOADED", (session as any).userId, (session as any).name || "Admin", `Uploaded: ${docField} — ${docName}`);
 
-    // 1. Upload to Cloudinary
-    const cloudUrl = await uploadToCloudinary(docData, `employees/${id}/${docField}`);
+    // 1. Upload to Cloudinary with private access
+    const cloudUrl = await uploadToCloudinary(docData, `employees/${id}/${docField}`, true);
 
     const updateData: any = { auditTrail };
     updateData[fieldMap.dataField] = cloudUrl;

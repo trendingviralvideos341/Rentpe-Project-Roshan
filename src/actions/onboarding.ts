@@ -101,8 +101,8 @@ export async function teamSubmitOnboarding(data: {
     const folder = `onboarding/${displayId}`;
     const uploadData: any = { ...data };
 
-    if (data.idProofData) uploadData.idProofData = await uploadToCloudinary(data.idProofData, folder);
-    if (data.pgLicenceData) uploadData.pgLicenceData = await uploadToCloudinary(data.pgLicenceData, folder);
+    if (data.idProofData) uploadData.idProofData = await uploadToCloudinary(data.idProofData, folder, true);
+    if (data.pgLicenceData) uploadData.pgLicenceData = await uploadToCloudinary(data.pgLicenceData, folder, true);
     if (data.buildingImageData) uploadData.buildingImageData = await uploadToCloudinary(data.buildingImageData, folder);
     
     if (data.additionalPhotos) {
@@ -159,8 +159,8 @@ export async function acceptOnboarding(id: string, updates: {
     const folder = `onboarding/${record.displayId}`;
     const uploadData: any = { ...updates };
 
-    if (updates.idProofData) uploadData.idProofData = await uploadToCloudinary(updates.idProofData, folder);
-    if (updates.pgLicenceData) uploadData.pgLicenceData = await uploadToCloudinary(updates.pgLicenceData, folder);
+    if (updates.idProofData) uploadData.idProofData = await uploadToCloudinary(updates.idProofData, folder, true);
+    if (updates.pgLicenceData) uploadData.pgLicenceData = await uploadToCloudinary(updates.pgLicenceData, folder, true);
     if (updates.buildingImageData) uploadData.buildingImageData = await uploadToCloudinary(updates.buildingImageData, folder);
     
     if (updates.additionalPhotos) {

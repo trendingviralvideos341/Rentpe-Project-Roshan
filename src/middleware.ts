@@ -9,8 +9,37 @@ const JWT_SECRET = new TextEncoder().encode(
 const protectedRoutes = ['/dashboard'];
 const publicRoutes = ['/login', '/signup', '/'];
 
+// --- Basic Rate Limiter (In-Memory for Dev/Single-Server) ---
+// For production scale, use Redis-based limiting.
+const IP_REQUESTS = new Map<string, { count: number; lastReset: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS = 60; // 60 requests per minute
+
+function isRateLimited(ip: string): boolean {
+    const now = Date.now();
+    const stats = IP_REQUESTS.get(ip) || { count: 0, lastReset: now };
+
+    if (now - stats.lastReset > RATE_LIMIT_WINDOW) {
+        stats.count = 1;
+        stats.lastReset = now;
+    } else {
+        stats.count++;
+    }
+
+    IP_REQUESTS.set(ip, stats);
+    return stats.count > MAX_REQUESTS;
+}
+
 export default async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
+
+    // 0. API Rate Limiting (Security Phase 2)
+    const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown';
+    if (path.startsWith('/api') || path === '/login' || path === '/signup') {
+        if (isRateLimited(ip)) {
+            return new NextResponse('Too many requests. Please try again in a minute.', { status: 429 });
+        }
+    }
     const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
     const isPublicRoute = publicRoutes.some(route => path === route);
 

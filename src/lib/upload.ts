@@ -2,19 +2,22 @@ import cloudinary from './cloudinary';
 
 /**
  * Uploads a base64 string to Cloudinary.
- * Returns the secure URL of the uploaded image.
+ * Returns the secure URL/public_id of the uploaded file.
+ * @param isPrivate - If true, uploads as 'authenticated' type (not public)
  */
-export async function uploadToCloudinary(base64Data: string, folder: string): Promise<string> {
+export async function uploadToCloudinary(base64Data: string, folder: string, isPrivate: boolean = false): Promise<string> {
   // If no Cloudinary credentials are set in development, return the base64 as-is (Mock mode)
   if (!process.env.CLOUDINARY_API_KEY && process.env.NODE_ENV === 'development') {
     console.warn(`[Cloudinary Mock] Uploading to ${folder}... (No API Key found)`);
-    return base64Data; // Fallback to base64 so dev doesn't break
+    return base64Data;
   }
 
   try {
     const uploadResponse = await cloudinary.uploader.upload(base64Data, {
       folder: `rentpe/${folder}`,
-      resource_type: 'auto', // Automatically detect if it's an image, pdf, etc.
+      resource_type: 'auto',
+      type: isPrivate ? 'authenticated' : 'upload', // 'authenticated' requires signed URLs to view
+      access_mode: isPrivate ? 'authenticated' : 'public',
     });
 
     return uploadResponse.secure_url;

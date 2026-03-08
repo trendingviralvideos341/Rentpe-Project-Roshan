@@ -26,8 +26,8 @@ export async function uploadTenantDocument(data: {
         details: `Document ${data.type} uploaded`
     };
 
-    // 1. Upload to Cloudinary
-    const cloudUrl = await uploadToCloudinary(data.fileData, `kyc/${data.bookingId}`);
+    // 1. Upload to Cloudinary with private access
+    const cloudUrl = await uploadToCloudinary(data.fileData, `kyc/${data.bookingId}`, true);
 
     // Upsert: if doc of this type already exists for this booking, replace it
     const existing = await prisma.tenantDocument.findFirst({
