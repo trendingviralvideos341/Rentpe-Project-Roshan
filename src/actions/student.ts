@@ -28,7 +28,7 @@ export async function getStudentProfile() {
                 occupationType: true,
                 occupationDetail: true,
                 loyaltyPoints: true,
-            }
+            } as any,
         });
 
         // Get KYC summary (last booking's documents)
@@ -41,13 +41,13 @@ export async function getStudentProfile() {
         });
 
         return {
-            ...user,
+            ...(user as any),
             name: user?.name || (session as any).name || "Verified Resident",
             email: user?.email || (session as any).email || null,
             kycStatus: lastBooking?.status.startsWith('KYC') ? lastBooking.status : (lastBooking?.agreementSigned ? 'VERIFIED' : 'PENDING'),
             documents: lastBooking?.documents || [],
             lastBookingId: lastBooking?.id || null,
-            loyaltyPoints: user?.loyaltyPoints || 0,
+            loyaltyPoints: (user as any)?.loyaltyPoints ?? 0,
         };
     } catch (e) {
         console.error("getStudentProfile Error:", e);

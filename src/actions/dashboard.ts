@@ -57,7 +57,7 @@ export async function getOwnerDashboardStats() {
         // Always fetch fresh user data from DB — never trust stale JWT name
         const ownerUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true, loyaltyPoints: true }
+            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true, loyaltyPoints: true } as any
         });
 
         return {
@@ -69,12 +69,13 @@ export async function getOwnerDashboardStats() {
             occupancyStats,
             user: {
                 id: ownerUser?.id || userId,
-                name: ownerUser?.name || (session as any).name || 'Owner',
-                email: ownerUser?.email || (session.email as string),
-                role: ownerUser?.role || session.role,
-                phone: ownerUser?.phone || null,
-                createdAt: ownerUser?.createdAt?.toISOString() || new Date().toISOString(),
-                displayId: ownerUser?.displayId || null,
+                name: (ownerUser as any)?.name || (session as any).name || 'Owner',
+                email: (ownerUser as any)?.email || (session.email as string),
+                role: (ownerUser as any)?.role || session.role,
+                phone: (ownerUser as any)?.phone || null,
+                createdAt: (ownerUser as any)?.createdAt || new Date(),
+                displayId: (ownerUser as any)?.displayId || null,
+                loyaltyPoints: (ownerUser as any)?.loyaltyPoints ?? 0,
             }
         };
     } catch (e: any) {

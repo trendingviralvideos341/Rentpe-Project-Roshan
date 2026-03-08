@@ -73,12 +73,6 @@ export default function AdminDashboard() {
             setLoading(false);
         }
     }, []);
-            console.error(e);
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
 
     useEffect(() => {
         fetchStats();
