@@ -262,9 +262,9 @@ export default function OwnerDashboard() {
                                 </div>
                                 <div className="text-center md:text-left">
                                     <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Premium Partner"}</h2>
-                                    </div>
                                 </div>
                             </div>
+                        </div>
 
                         <CardContent className="p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -321,11 +321,10 @@ export default function OwnerDashboard() {
                                                     <div className="text-sm font-black text-emerald-800 tracking-tight">Active & Verified</div>
                                                 </div>
                                             </div>
-                                            <div className="px-3 py-1 bg-emerald-600 text-white text-[10px] font-black rounded-full uppercase">VIP Support</div>
                                         </div>
-                                    </div>
                                 </div>
                             </div>
+                        </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
