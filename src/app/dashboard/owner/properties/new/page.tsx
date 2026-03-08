@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Plus, X, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Plus, X, AlertTriangle, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
 import { validateName, validatePhone, validateEmail, normalizePhone } from "@/lib/validators";
@@ -29,6 +30,9 @@ export default function AddPropertyPage() {
     const [pgLicence, setPgLicence] = useState("");
     const [gender, setGender] = useState<"Boys" | "Girls" | "Co-ed" | "">("");
     const [amenities, setAmenities] = useState<string[]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [totalSize, setTotalSize] = useState(0);
+    const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
 
     // Pincode auto-fetch
     const [pinFetching, setPinFetching] = useState(false);
@@ -64,6 +68,39 @@ export default function AddPropertyPage() {
         const updated = [...rooms];
         (updated[i] as any)[field] = value;
         setRooms(updated);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        const newFiles = [...selectedFiles];
+        let newTotalSize = totalSize;
+
+        files.forEach(file => {
+            if (newTotalSize + file.size <= MAX_TOTAL_SIZE) {
+                newFiles.push(file);
+                newTotalSize += file.size;
+            } else {
+                toast.error(`Cannot add ${file.name}. Total limit 25MB reached.`);
+            }
+        });
+
+        setSelectedFiles(newFiles);
+        setTotalSize(newTotalSize);
+    };
+
+    const removeFile = (index: number) => {
+        const removed = selectedFiles[index];
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+        setTotalSize(prev => prev - removed.size);
+    };
+
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
     };
 
     // ── Live validation helper ──
@@ -140,7 +177,10 @@ export default function AddPropertyPage() {
             formData.set("city", city);
             formData.set("description", description);
             formData.set("amenities", JSON.stringify(amenities));
-            formData.set("images", JSON.stringify([]));
+            
+            // Convert images to base64
+            const base64Images = await Promise.all(selectedFiles.map(file => fileToBase64(file)));
+            formData.set("images", JSON.stringify(base64Images));
             formData.set("ownerName", ownerName);
             formData.set("pgLicence", pgLicence);
             formData.set("phone", phone);
@@ -220,6 +260,12 @@ export default function AddPropertyPage() {
                                 readOnly={true}
                                 maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
                             <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone</p>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                             <div className="mt-0.5 mt-0.5">ℹ️</div>
+                             <p className="text-[11px] text-blue-800 leading-tight">
+                                <strong>Verification Tip:</strong> Ensure the <span className="font-bold underline">Property Name</span> and <span className="font-bold underline">Owner Details</span> match exactly with your registered profile for faster approval.
+                             </p>
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium">PG/Hostel Licence No. <span className="text-muted-foreground text-xs">(optional)</span></label>
@@ -406,13 +452,44 @@ export default function AddPropertyPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Photos</CardTitle>
-                        <CardDescription>Upload high-quality images to get more views. (Optional for now)</CardDescription>
+                        <CardDescription>Upload high-quality images to get more views.</CardDescription>
+                        <p className="text-xs text-red-600 font-bold mt-1 uppercase tracking-tight">🔴 Maximum 25 MB overall limit for all photos</p>
                     </CardHeader>
-                    <CardContent>
-                        <div className="border-2 border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 cursor-pointer transition-colors">
-                            <Upload className="h-8 w-8 mb-4" />
-                            <p>Drag and drop images here, or click to upload</p>
-                            <p className="text-xs mt-2">PNG, JPG up to 10MB</p>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {selectedFiles.map((file, i) => (
+                                <div key={i} className="relative aspect-square rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
+                                    <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeFile(i)}
+                                        className="absolute top-1 right-1 bg-white/80 hover:bg-white rounded-full p-1 shadow-sm text-red-500"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] p-1 truncate text-center">
+                                        {(file.size / (1024 * 1024)).toFixed(1)} MB
+                                    </div>
+                                </div>
+                            ))}
+                            <label className="border-2 border-dashed rounded-lg aspect-square flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 cursor-pointer transition-colors">
+                                <Plus className="h-6 w-6 mb-2" />
+                                <span className="text-[10px] text-center px-2">Add Photo</span>
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+                            </label>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-[11px] font-medium border-t pt-3">
+                            <span className="text-slate-500">Total Upload Size: {(totalSize / (1024 * 1024)).toFixed(1)} MB</span>
+                            <span className={totalSize > MAX_TOTAL_SIZE * 0.8 ? "text-red-600" : "text-green-600"}>
+                                Remaining: {((MAX_TOTAL_SIZE - totalSize) / (1024 * 1024)).toFixed(1)} MB free
+                            </span>
                         </div>
                     </CardContent>
                 </Card>
