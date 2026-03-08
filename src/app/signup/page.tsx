@@ -61,6 +61,7 @@ export default function SignupPage() {
     const [phone, setPhone] = useState("");
     const [role, setRole] = useState("USER");
     const [showPassword, setShowPassword] = useState(false);
+    const [agreed, setAgreed] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     const { checks, passed } = getStrength(password);
@@ -82,6 +83,10 @@ export default function SignupPage() {
         if (password.length < 8) { setError("Password must be at least 8 characters long."); return; }
         if (!checks.upper || !checks.lower || !checks.number) {
             setError("Password must include uppercase, lowercase and a number.");
+            return;
+        }
+        if (!agreed) {
+            setError("Please agree to the Terms of Service and Privacy Policy to continue.");
             return;
         }
 
@@ -286,6 +291,23 @@ export default function SignupPage() {
                     </CardContent>
 
                     <CardFooter className="flex flex-col space-y-4">
+                        {/* T&C Consent */}
+                        <label className="flex items-start gap-3 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                className="mt-0.5 h-4 w-4 rounded accent-violet-600 shrink-0 cursor-pointer"
+                                checked={agreed}
+                                onChange={e => setAgreed(e.target.checked)}
+                            />
+                            <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+                                I have read and agree to the{" "}
+                                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-violet-600 font-semibold hover:underline">Terms of Service</Link>
+                                {" "}&amp;{" "}
+                                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-violet-600 font-semibold hover:underline">Privacy Policy</Link>.
+                                By signing up I also accept the{" "}
+                                <Link href="/tenant-agreement" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">Tenant Agreement</Link>.
+                            </span>
+                        </label>
                         <Button
                             className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 hover:from-violet-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold text-base py-5 shadow-lg hover:shadow-xl transition-all"
                             type="submit" disabled={loading}>

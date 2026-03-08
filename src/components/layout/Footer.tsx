@@ -40,9 +40,11 @@ const Footer = () => {
                     <div className="space-y-4">
                         <h4 className="font-semibold">Legal</h4>
                         <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
                             <li><Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link></li>
+                            <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
                             <li><Link href="/refund" className="hover:text-primary transition-colors">Refund Policy</Link></li>
+                            <li><Link href="/tenant-agreement" className="hover:text-primary transition-colors">Tenant Agreement</Link></li>
+                            <li><Link href="/cookie-policy" className="hover:text-primary transition-colors">Cookie Policy</Link></li>
                             <li><Link href="/guidelines" className="hover:text-primary transition-colors">Community Guidelines</Link></li>
                         </ul>
                     </div>
@@ -67,8 +69,14 @@ const Footer = () => {
                     </div>
                 </div>
 
-                <div className="border-t mt-12 pt-8 text-center text-sm text-muted-foreground">
-                    © {new Date().getFullYear()} RentPe. All rights reserved.
+                <div className="border-t mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span>© {new Date().getFullYear()} RentPe Technologies Pvt. Ltd. All rights reserved.</span>
+                    <div className="flex flex-wrap gap-4">
+                        <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+                        <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
+                        <Link href="/refund" className="hover:text-primary transition-colors">Refunds</Link>
+                        <Link href="/cookie-policy" className="hover:text-primary transition-colors">Cookies</Link>
+                    </div>
                 </div>
             </div>
         </footer>
