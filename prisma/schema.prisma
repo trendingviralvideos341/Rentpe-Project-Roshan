@@ -3,141 +3,126 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("RENTPE_DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("RENTPE_DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id               String            @id @default(uuid())
-  email            String            @unique
-  passwordHash     String
-  role             String            @default("USER")
-  roles            String            @default("USER") // Comma-separated list of assigned roles
-  // Admin sub-role for RBAC: SUPER_ADMIN | OPERATIONS | SUPPORT | MODERATION | COMPLIANCE
-  adminRole        String?           // null for non-admins
-  isStudent        Boolean           @default(false)
-  isOwner          Boolean           @default(false)
-  isAdmin          Boolean           @default(false)
-  isOnboarder      Boolean           @default(false)
-  isVerifier       Boolean           @default(false)
-  name             String?
-  phone            String?
-  status           String            @default("ACTIVE")
-  loyaltyPoints    Int               @default(0)
-  lastLoginAt      DateTime?         @default(now())
-  lastLoginIp      String?
-  bannedReason     String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  displayId        String?           @unique
-  deletedAt        DateTime?
-  razorpayAccountId String?
-  commissionRate    Float?           // Per-owner override commission % (null = use platform default)
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  businessName     String?   // PG Owner business name
-  // Extended student profile
-  profilePhoto     String?   // base64 or URL
-  dateOfBirth      String?   // ISO date string
-  gender           String?   // MALE | FEMALE | OTHER | PREFER_NOT_TO_SAY
-  emergencyContact String?   // JSON: { name, phone, relation }
-  currentAddress   String?
-  college          String?   // College or Workplace
-  occupationType   String?   // STUDENT | PROFESSIONAL | FREELANCER
-  occupationDetail String?   // Specific college name or company name
-  bio              String?
-  // Notification preferences (JSON: { bookings: true, kyc: true, messages: true, disputes: true })
-  notifPrefs       String    @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
-  // Account
-  deactivationRequested Boolean @default(false)
+  id                    String            @id @default(uuid())
+  email                 String            @unique
+  passwordHash          String
+  role                  String            @default("USER")
+  roles                 String            @default("USER")
+  adminRole             String?
+  isStudent             Boolean           @default(false)
+  isOwner               Boolean           @default(false)
+  isAdmin               Boolean           @default(false)
+  isOnboarder           Boolean           @default(false)
+  isVerifier            Boolean           @default(false)
+  name                  String?
+  phone                 String?
+  status                String            @default("ACTIVE")
+  loyaltyPoints         Int               @default(0)
+  lastLoginAt           DateTime?         @default(now())
+  lastLoginIp           String?
+  bannedReason          String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  displayId             String?           @unique
+  deletedAt             DateTime?
+  razorpayAccountId     String?
+  commissionRate        Float?
+  resetToken            String?
+  resetTokenExpiry      DateTime?
+  businessName          String?
+  profilePhoto          String?
+  dateOfBirth           String?
+  gender                String?
+  emergencyContact      String?
+  currentAddress        String?
+  college               String?
+  occupationType        String?
+  occupationDetail      String?
+  bio                   String?
+  notifPrefs            String            @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
+  deactivationRequested Boolean           @default(false)
   deactivationReason    String?
-  actionNotes      ActionNote[]      @relation("TargetUser")
-  auditLogs        AuditLog[]        @relation("PerformedBy")
-  bookings         Booking[]
-  notifications    Notification[]
-  ownerOnboardings OwnerOnboarding[] @relation("OnboardedBy")
-  properties       Property[]
-  tickets          Ticket[]
-  savedProperties  SavedProperty[]
-  sentMessages     Message[]         @relation("SentMessages")
-  receivedMessages Message[]         @relation("ReceivedMessages")
-  sessions         UserSession[]
-  // Team Management: staff sub-accounts
-  parentOwnerId    String?
-  parentOwner      User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
-  staffMembers     User[]            @relation("OwnerToStaff")
-  staffPermissions String?           // JSON array of strings
-  
-  // Governance & Security
-  fraudAlerts      FraudAlert[]
-  loginLogs        LoginLog[]
-
-  // Two-Factor Authentication
-  twoFactorSecret  String?
-  twoFactorEnabled Boolean           @default(false)
+  parentOwnerId         String?
+  staffPermissions      String?
+  twoFactorSecret       String?
+  twoFactorEnabled      Boolean           @default(false)
+  actionNotes           ActionNote[]      @relation("TargetUser")
+  auditLogs             AuditLog[]        @relation("PerformedBy")
+  bookings              Booking[]
+  fraudAlerts           FraudAlert[]
+  loginLogs             LoginLog[]
+  receivedMessages      Message[]         @relation("ReceivedMessages")
+  sentMessages          Message[]         @relation("SentMessages")
+  notifications         Notification[]
+  ownerOnboardings      OwnerOnboarding[] @relation("OnboardedBy")
+  properties            Property[]
+  savedProperties       SavedProperty[]
+  tickets               Ticket[]
+  parentOwner           User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
+  staffMembers          User[]            @relation("OwnerToStaff")
+  sessions              UserSession[]
 }
 
 model Property {
-  id          String     @id @default(uuid())
-  ownerId     String
-  name        String
-  address     String
-  city        String
-  description String?
-  amenities   String
-  images      String
-  // PENDING_APPROVAL, PAYMENT_PENDING, LIVE, REJECTED, SUSPENDED
-  status      String     @default("PENDING_APPROVAL")
-  adminNotes  String?
-  pgPhotoUrl  String?
-  aadhaarProof String?
-  panProof     String?
-  pgLicenceUrl String?
-  buildingPhotos String?
-  commonAreaPhotos String?
-  parkingPhotos  String?
+  id                     String          @id @default(uuid())
+  ownerId                String
+  name                   String
+  address                String
+  city                   String
+  description            String?
+  amenities              String
+  images                 String
+  status                 String          @default("PENDING_APPROVAL")
+  adminNotes             String?
+  pgPhotoUrl             String?
+  aadhaarProof           String?
+  panProof               String?
+  pgLicenceUrl           String?
+  buildingPhotos         String?
+  commonAreaPhotos       String?
+  parkingPhotos          String?
   roomsAndBathroomPhotos String?
-  livePhotoUrl  String?
-  // Categorized Photos (JSON Arrays)
-  exteriorPhotos  String? 
-  interiorPhotos  String?
-  roomsPhotos     String?
-  hallPhotos       String?
-  lobbyPhotos      String?
-  washroomPhotos   String?
-  amenitiesPhotos  String?
-  verifiedDocs  String    @default("[]")
-  averageRating Float     @default(0)
-  reviewCount   Int       @default(0)
-  // Property type and targeting
-  propertyType  String    @default("PG")      // PG | HOSTEL | COLIVING
-  genderType    String    @default("COED")    // BOYS | GIRLS | COED
-  // Location coordinates
-  latitude      Float?
-  longitude     Float?
-  // Policies
-  cancellationPolicy String? // FLEXIBLE | MODERATE | STRICT
-  noticePeriod  Int?          // days
-  refundPolicy  String?       // free text
-  // Bank details for owner payouts
-  bankAccountNo String?
-  bankIfsc      String?
-  bankName      String?
-  // Extras
-  videoUrl      String?
-  isVerified    Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt   DateTime   @updatedAt
-  ownerName   String?
-  pgLicence   String?
-  foodMenu    FoodMenu[]
-  owner       User       @relation(fields: [ownerId], references: [id])
-  rooms       Room[]
-  bookings    Booking[]
-  tenants     Tenant[]
-  tickets     Ticket[]
-  reviews     Review[]
-  savedBy     SavedProperty[]
+  livePhotoUrl           String?
+  exteriorPhotos         String?
+  interiorPhotos         String?
+  roomsPhotos            String?
+  hallPhotos             String?
+  lobbyPhotos            String?
+  washroomPhotos         String?
+  amenitiesPhotos        String?
+  verifiedDocs           String          @default("[]")
+  averageRating          Float           @default(0)
+  reviewCount            Int             @default(0)
+  propertyType           String          @default("PG")
+  genderType             String          @default("COED")
+  latitude               Float?
+  longitude              Float?
+  cancellationPolicy     String?
+  noticePeriod           Int?
+  refundPolicy           String?
+  bankAccountNo          String?
+  bankIfsc               String?
+  bankName               String?
+  videoUrl               String?
+  isVerified             Boolean         @default(false)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  ownerName              String?
+  pgLicence              String?
+  bookings               Booking[]
+  foodMenu               FoodMenu[]
+  owner                  User            @relation(fields: [ownerId], references: [id])
+  reviews                Review[]
+  rooms                  Room[]
+  savedBy                SavedProperty[]
+  tenants                Tenant[]
+  tickets                Ticket[]
 }
 
 model Room {
@@ -150,226 +135,201 @@ model Room {
   photoUrl     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  beds         Bed[]
   bookings     Booking[]
   property     Property  @relation(fields: [propertyId], references: [id])
   tenants      Tenant[]
-  beds         Bed[]
 }
 
 model Bed {
   id                String    @id @default(uuid())
   roomId            String
-  bedNumber         String    // e.g. "101-A"
-  // AVAILABLE | RESERVED | OCCUPIED | MAINTENANCE
+  bedNumber         String
   status            String    @default("AVAILABLE")
   lockedByBookingId String?
   lockedAt          DateTime?
-  lockExpiresAt     DateTime? // 10-min anti-ghost window
+  lockExpiresAt     DateTime?
   currentBookingId  String?
-  // Link to active tenant
   tenantId          String?   @unique
-  tenant            Tenant?
-  // MAINTENANCE status fields
   maintenanceReason String?
   maintenanceSince  DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   room              Room      @relation(fields: [roomId], references: [id])
+  tenant            Tenant?
 }
 
-
 model Booking {
-  id               String           @id @default(uuid())
-  displayId        String           @unique
-  userId           String
-  propertyId       String?
-  roomId           String?
-  propertyName     String
-  occupancy        String
-  guestName        String
-  guestEmail       String?
-  guestPhone       String?
-  guestAddress     String?
-  onboardingDate   String?
-  moveInDate       String
-  // Status: PENDING_APPROVAL | APPROVED_PENDING_TOKEN | TOKEN_PAID | ROOM_RESERVED
-  //         KYC_PENDING | KYC_VERIFIED | KYC_FAILED | AGREEMENT_PENDING
-  //         BOOKING_CONFIRMED | CHECKED_IN | WAITLISTED | REJECTED | CANCELLED | EXPIRED
-  //         (Legacy: APPROVED_KYC_PENDING, APPROVED_PAYMENT_PENDING, PAID, CASH_PAID)
-  status           String           @default("PENDING_APPROVAL")
-  paymentStatus    String           @default("UNPAID")
-  paymentMethod    String?
-  paidAt           DateTime?
-  amount           Float
-  roomAssigned     String?
-  agreementSigned  Boolean          @default(false)
-  agreementSignedAt DateTime?
-  tenantId         String?          @unique
-  // Token payment fields
-  tokenAmount      Float?           @default(1000)
-  tokenPaidAt      DateTime?
-  tokenPaymentId   String?
+  id                   String           @id @default(uuid())
+  displayId            String           @unique
+  userId               String
+  propertyId           String?
+  roomId               String?
+  propertyName         String
+  occupancy            String
+  guestName            String
+  guestEmail           String?
+  guestPhone           String?
+  guestAddress         String?
+  onboardingDate       String?
+  moveInDate           String
+  status               String           @default("PENDING_APPROVAL")
+  paymentStatus        String           @default("UNPAID")
+  paymentMethod        String?
+  paidAt               DateTime?
+  amount               Float
+  roomAssigned         String?
+  agreementSigned      Boolean          @default(false)
+  agreementSignedAt    DateTime?
+  tenantId             String?          @unique
+  tokenAmount          Float?           @default(1000)
+  tokenPaidAt          DateTime?
+  tokenPaymentId       String?
   reservationExpiresAt DateTime?
-  // KYC fields
-  kycVerifiedAt    DateTime?
-  kycRejectedAt    DateTime?
-  kycNotes         String?
-  // Rejection / cancellation
-  rejectionReason  String?
-  cancelReason     String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  deletedAt        DateTime?
-  guestCity        String?
-  guestCountry     String?          @default("India")
-  guestPincode     String?
-  occupationDetail String?
-  occupationType   String?
-  pendingAmount    Float?
-  room             Room?            @relation(fields: [roomId], references: [id])
-  user             User             @relation(fields: [userId], references: [id])
-  property         Property?        @relation(fields: [propertyId], references: [id])
-  payments         Payment[]
-  platformFee      PlatformFee?
-  documents        TenantDocument[]
-  tenant           Tenant?
+  kycVerifiedAt        DateTime?
+  kycRejectedAt        DateTime?
+  kycNotes             String?
+  rejectionReason      String?
+  cancelReason         String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  deletedAt            DateTime?
+  guestCity            String?
+  guestCountry         String?          @default("India")
+  guestPincode         String?
+  occupationDetail     String?
+  occupationType       String?
+  pendingAmount        Float?
+  property             Property?        @relation(fields: [propertyId], references: [id])
+  user                 User             @relation(fields: [userId], references: [id])
+  room                 Room?            @relation(fields: [roomId], references: [id])
+  payments             Payment[]
+  platformFee          PlatformFee?
+  tenant               Tenant?
+  documents            TenantDocument[]
 }
 
 model Waitlist {
-  id           String   @id @default(uuid())
-  userId       String
-  propertyId   String
-  roomType     String?
-  occupancy    String?
-  guestName    String
-  guestPhone   String?
-  guestEmail   String?
-  moveInDate   String?
-  status       String   @default("WAITING") // WAITING | NOTIFIED | CONVERTED | CANCELLED
-  notifiedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String    @id @default(uuid())
+  userId     String
+  propertyId String
+  roomType   String?
+  occupancy  String?
+  guestName  String
+  guestPhone String?
+  guestEmail String?
+  moveInDate String?
+  status     String    @default("WAITING")
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Tenant {
-  id                  String           @id @default(uuid())
-  displayId           String           @unique
-  studentId           String           // userId from User model
-  bookingId           String?          @unique
+  id                  String            @id @default(uuid())
+  displayId           String            @unique
+  studentId           String
+  bookingId           String?           @unique
   propertyId          String
   roomId              String
-  bedId               String?          @unique
+  bedId               String?           @unique
   name                String
   phone               String
   email               String?
   roomNumber          String
   roomType            String
   rent                Float
-  startDate           String           // Move-in date
+  startDate           String
   expectedMoveOutDate String?
   actualMoveOutDate   String?
-  // UPCOMING_MOVE_IN | ACTIVE_TENANT | MOVE_OUT_SCHEDULED | MOVE_OUT_COMPLETED
-  status              String           @default("UPCOMING_MOVE_IN")
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  status              String            @default("UPCOMING_MOVE_IN")
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
   vacateNote          String?
   address             String?
   city                String?
-  country             String?          @default("India")
+  country             String?           @default("India")
   occupationDetail    String?
   occupationType      String?
   pincode             String?
-  booking             Booking?         @relation(fields: [bookingId], references: [id])
-  bed                 Bed?             @relation(fields: [bedId], references: [id])
+  attendances         Attendance[]
+  billingProfile      BillingProfile?
+  disputes            Dispute[]
   moveOutRequests     MoveOutRequest[]
   rentRecords         RentRecord[]
-  room                Room             @relation(fields: [roomId], references: [id])
-  property            Property         @relation(fields: [propertyId], references: [id])
   reviews             Review[]
-  
-  // Governance & Operations
-  disputes            Dispute[]
-  attendances         Attendance[]
-
-  // Financial System Integration
-  billingProfile      BillingProfile?
   settlementRecord    SettlementRecord?
+  property            Property          @relation(fields: [propertyId], references: [id])
+  room                Room              @relation(fields: [roomId], references: [id])
+  bed                 Bed?              @relation(fields: [bedId], references: [id])
+  booking             Booking?          @relation(fields: [bookingId], references: [id])
 }
 
-// ── Financial System Models ──
-
 model BillingProfile {
-  id                String           @id @default(uuid())
-  tenantId          String           @unique
-  propertyId        String
-  roomId            String
-  bedId             String?
-  monthlyRent       Float
-  securityDeposit   Float
-  billingDay        Int              @default(1) // Day of month when invoice is generated
-  status            String           @default("ACTIVE") // ACTIVE | CLOSED
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  tenant            Tenant           @relation(fields: [tenantId], references: [id])
-  invoices          RentInvoice[]
-  deposit           SecurityDeposit?
+  id              String           @id @default(uuid())
+  tenantId        String           @unique
+  propertyId      String
+  roomId          String
+  bedId           String?
+  monthlyRent     Float
+  securityDeposit Float
+  billingDay      Int              @default(1)
+  status          String           @default("ACTIVE")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  invoices        RentInvoice[]
+  deposit         SecurityDeposit?
 }
 
 model RentInvoice {
-  id                String           @id @default(uuid())
-  displayId         String           @unique
-  billingProfileId  String
-  tenantId          String
-  propertyId        String
-  month             String           // e.g. "March 2026"
-  amount            Float
-  dueDate           DateTime
-  // PENDING | PAID | OVERDUE | PARTIALLY_PAID | CANCELLED
-  status            String           @default("PENDING")
-  paidAmount        Float            @default(0)
-  paidAt            DateTime?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  billingProfile    BillingProfile   @relation(fields: [billingProfileId], references: [id])
-  payments          Payment[]        @relation("InvoicePayments")
+  id               String         @id @default(uuid())
+  displayId        String         @unique
+  billingProfileId String
+  tenantId         String
+  propertyId       String
+  month            String
+  amount           Float
+  dueDate          DateTime
+  status           String         @default("PENDING")
+  paidAmount       Float          @default(0)
+  paidAt           DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  payments         Payment[]      @relation("InvoicePayments")
+  billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
 }
 
 model SecurityDeposit {
-  id                String           @id @default(uuid())
-  billingProfileId  String           @unique
-  tenantId          String
-  amount            Float
-  // PENDING | PAID | REFUNDED | PARTIALLY_REFUNDED
-  status            String           @default("PENDING")
-  paidAt            DateTime?
-  refundStatus      String?          // PENDING | PROCESSED
-  refundAmount      Float?
-  deductionAmount   Float?
-  deductionReason   String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  billingProfile    BillingProfile   @relation(fields: [billingProfileId], references: [id])
-  payments          Payment[]        @relation("DepositPayments")
+  id               String         @id @default(uuid())
+  billingProfileId String         @unique
+  tenantId         String
+  amount           Float
+  status           String         @default("PENDING")
+  paidAt           DateTime?
+  refundStatus     String?
+  refundAmount     Float?
+  deductionAmount  Float?
+  deductionReason  String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  payments         Payment[]      @relation("DepositPayments")
+  billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
 }
 
 model SettlementRecord {
-  id                String           @id @default(uuid())
-  tenantId          String           @unique
-  finalRentPending  Float
-  utilityCharges    Float            @default(0)
-  damageDeductions  Float            @default(0)
-  depositRefunded   Float
-  settlementDate    DateTime         @default(now())
-  notes             String?
-  createdAt         DateTime         @default(now())
-
-  tenant            Tenant           @relation(fields: [tenantId], references: [id])
+  id               String   @id @default(uuid())
+  tenantId         String   @unique
+  finalRentPending Float
+  utilityCharges   Float    @default(0)
+  damageDeductions Float    @default(0)
+  depositRefunded  Float
+  settlementDate   DateTime @default(now())
+  notes            String?
+  createdAt        DateTime @default(now())
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
 }
 
-// ── Tenant History (Archived stay records) ──
 model TenantHistory {
   id               String   @id @default(uuid())
   tenantId         String
@@ -384,31 +344,26 @@ model TenantHistory {
   createdAt        DateTime @default(now())
 }
 
-// ── Operations (Food & Attendance) ──
-
 model Attendance {
-  id         String   @id @default(uuid())
+  id         String @id @default(uuid())
   tenantId   String
   propertyId String
-  date       String   // "YYYY-MM-DD"
-  // PRESENT | ABSENT | LATE | LEAVE
-  status     String   @default("PRESENT")
-  mealType   String   @default("GENERAL") // BREAKFAST | LUNCH | DINNER | GENERAL
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  date       String
+  status     String @default("PRESENT")
+  mealType   String @default("GENERAL")
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, date, mealType])
 }
 
-// ── Move Out Requests ──
 model MoveOutRequest {
   id            String    @id @default(uuid())
   tenantId      String
-  requestedBy   String    // userId
-  requestedDate String    // Target move-out date
+  requestedBy   String
+  requestedDate String
   reason        String?
-  // PENDING | APPROVED | REJECTED | CANCELLED
   status        String    @default("PENDING")
-  approvedBy    String?   // admin or owner userId
+  approvedBy    String?
   approvedAt    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -416,20 +371,19 @@ model MoveOutRequest {
 }
 
 model Review {
-  id           String   @id @default(uuid())
-  propertyId   String
-  tenantId     String
-  rating       Int      // 1 to 5
-  comment      String?
-  status       String   @default("PUBLISHED") // PUBLISHED, HIDDEN, FLAGGED
-  adminNotes   String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  property     Property @relation(fields: [propertyId], references: [id])
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  id         String   @id @default(uuid())
+  propertyId String
+  tenantId   String
+  rating     Int
+  comment    String?
+  status     String   @default("PUBLISHED")
+  adminNotes String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
 
-  @@unique([propertyId, tenantId]) // A tenant can only review a property once
+  @@unique([propertyId, tenantId])
 }
 
 model RentRecord {
@@ -444,20 +398,20 @@ model RentRecord {
 }
 
 model Payment {
-  id              String   @id @default(uuid())
+  id              String           @id @default(uuid())
   bookingId       String
-  invoiceId       String?  // Optional: Link to formal invoice
-  depositId       String?  // Optional: Link to security deposit
+  invoiceId       String?
+  depositId       String?
   amount          Float
   method          String
-  status          String   @default("PENDING")
+  status          String           @default("PENDING")
   razorpayOrderId String?
   razorpayId      String?
   verifiedBy      String?
-  date            DateTime @default(now())
-  booking         Booking  @relation(fields: [bookingId], references: [id])
-  invoice         RentInvoice? @relation("InvoicePayments", fields: [invoiceId], references: [id])
+  date            DateTime         @default(now())
   deposit         SecurityDeposit? @relation("DepositPayments", fields: [depositId], references: [id])
+  invoice         RentInvoice?     @relation("InvoicePayments", fields: [invoiceId], references: [id])
+  booking         Booking          @relation(fields: [bookingId], references: [id])
 }
 
 model FoodMenu {
@@ -484,21 +438,21 @@ model Ticket {
   replies      String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  property     Property? @relation(fields: [propertyId], references: [id])
   user         User      @relation(fields: [userId], references: [id])
+  property     Property? @relation(fields: [propertyId], references: [id])
 }
 
 model Notification {
   id             String   @id @default(uuid())
   userId         String
-  type           String   // BOOKING | KYC | PAYMENT | SYSTEM
-  category       String?  // Step in lifecycle e.g. BOOKING_REQUEST
+  type           String
+  category       String?
   message        String
   isRead         Boolean  @default(false)
-  isPersistent   Boolean  @default(false) // For pop-ups that stay until dismissed
-  targetRole     String   @default("USER") // USER | OWNER | VERIFIER
-  metadata       String?  // JSON for bookingId, actionUrl, etc.
-  recipientEmail String?  // To track email delivery if applicable
+  isPersistent   Boolean  @default(false)
+  targetRole     String   @default("USER")
+  metadata       String?
+  recipientEmail String?
   createdAt      DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id])
 }
@@ -579,15 +533,12 @@ model PlatformSettings {
   ownerRentFeeFlat         Float    @default(9)
   ownerOnboardingFeeFlat   Float    @default(99)
   platformWalletBalance    Float    @default(0)
-  // Super Admin: Global commission % (overrides per-owner if no override set)
-  globalCommissionRate     Float    @default(10)   // e.g. 10 = 10%
-  // Business rules config (JSON)
+  globalCommissionRate     Float    @default(10)
   kycRequired              Boolean  @default(true)
   tokenPaymentRequired     Boolean  @default(true)
   maxBookingsPerStudentDay Int      @default(3)
   maxListingsPerOwnerDay   Int      @default(3)
-  reservationWindowMins    Int      @default(10)   // anti-ghost lock window
-  // Maintenance mode
+  reservationWindowMins    Int      @default(10)
   maintenanceMode          Boolean  @default(false)
   maintenanceMessage       String?
   updatedAt                DateTime @updatedAt
@@ -705,91 +656,85 @@ model Employee {
   empCodeNotes           String?
 }
 
-// Owner Payout - tracks commission-adjusted payouts to PG owners
 model OwnerPayout {
-  id                String    @id @default(uuid())
-  displayId         String    @unique
-  ownerId           String
-  propertyId        String?
-  period            String    // e.g. "March 2026"
-  grossAmount       Float     // total rent collected
-  commissionAmount  Float     // platform commission deducted
-  netAmount         Float     // amount to be paid to owner
-  bookingIds        String    @default("[]") // JSON array of booking IDs
-  status            String    @default("PENDING") // PENDING | APPROVED | PAID | CANCELLED
-  paymentMode       String?   // BANK_TRANSFER | UPI | CHEQUE
-  bankAccountNo     String?
-  bankIfsc          String?
-  txnReference      String?
-  notes             String?
-  scheduledFor      DateTime?
-  paidAt            DateTime?
-  approvedBy        String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  displayId        String    @unique
+  ownerId          String
+  propertyId       String?
+  period           String
+  grossAmount      Float
+  commissionAmount Float
+  netAmount        Float
+  bookingIds       String    @default("[]")
+  status           String    @default("PENDING")
+  paymentMode      String?
+  bankAccountNo    String?
+  bankIfsc         String?
+  txnReference     String?
+  notes            String?
+  scheduledFor     DateTime?
+  paidAt           DateTime?
+  approvedBy       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
-// Dispute - raised by student or owner, resolved by admin
 model Dispute {
-  id            String    @id @default(uuid())
-  displayId     String    @unique
-  tenantId      String?   // New relation to Tenant
-  bookingId     String?
-  raisedById    String    // userId of student or owner
-  raisedByRole  String    @default("USER") // USER | OWNER
-  type          String    // REFUND | DAMAGE | FRAUD | KYC | OTHER
-  subject       String
-  description   String
-  evidenceData  String?   // base64 image/doc
-  evidenceName  String?
-  // OPEN | UNDER_REVIEW | RESOLVED | CLOSED
-  status        String    @default("OPEN")
-  priority      String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
-  resolution    String?
-  resolvedById  String?
-  resolvedAt    DateTime?
-  adminNotes    String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
+  id           String    @id @default(uuid())
+  displayId    String    @unique
+  tenantId     String?
+  bookingId    String?
+  raisedById   String
+  raisedByRole String    @default("USER")
+  type         String
+  subject      String
+  description  String
+  evidenceData String?
+  evidenceName String?
+  status       String    @default("OPEN")
+  priority     String    @default("MEDIUM")
+  resolution   String?
+  resolvedById String?
+  resolvedAt   DateTime?
+  adminNotes   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id])
 }
 
-// ── Booking Timeline Events (immutable chronological history per booking) ──
 model BookingEvent {
   id              String   @id @default(uuid())
   bookingId       String
-  eventType       String   // REQUEST_SUBMITTED | OWNER_VIEWED | OWNER_ACCEPTED | BED_ALLOCATED | KYC_UPLOADED | KYC_VERIFIED | BOOKING_CONFIRMED | CANCELLED | etc.
+  eventType       String
   title           String
   description     String?
-  performedBy     String?  // userId (null = SYSTEM)
-  performedByRole String?  // USER | OWNER | ADMIN | SYSTEM
-  metadata        String   @default("{}") // JSON extra context
+  performedBy     String?
+  performedByRole String?
+  metadata        String   @default("{}")
   createdAt       DateTime @default(now())
 }
 
-// ── Fraud Alerts (auto-detected suspicious behaviour) ──
 model FraudAlert {
-  id               String   @id @default(uuid())
-  userId           String   // Explicit userId for relation
-  type             String   // HIGH_BOOKING_VOLUME | DUPLICATE_CONTACT | RAPID_CANCELLATIONS | RAPID_LISTINGS | SUSPICIOUS_IP
-  severity         String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
-  targetId         String
-  targetType       String   // USER | PROPERTY | BOOKING
-  description      String
-  metadata         String   @default("{}")
-  status           String   @default("OPEN") // OPEN | UNDER_INVESTIGATION | RESOLVED | DISMISSED
-  investigatedBy   String?
-  resolution       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             User     @relation(fields: [userId], references: [id])
+  id             String   @id @default(uuid())
+  userId         String
+  type           String
+  severity       String   @default("MEDIUM")
+  targetId       String
+  targetType     String
+  description    String
+  metadata       String   @default("{}")
+  status         String   @default("OPEN")
+  investigatedBy String?
+  resolution     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
 }
 
-// ── System Events (operational health log, visible on Admin dashboard) ──
 model SystemEvent {
   id        String   @id @default(uuid())
-  type      String   // LOGIN_FAILURE | SERVER_ERROR | BOOKING_FAILURE | SUSPICIOUS_ACCESS | RATE_LIMIT_HIT
-  severity  String   @default("INFO") // INFO | WARNING | ERROR | CRITICAL
+  type      String
+  severity  String   @default("INFO")
   message   String
   userId    String?
   ipAddress String?
@@ -798,24 +743,22 @@ model SystemEvent {
   createdAt DateTime @default(now())
 }
 
-// ── Admin Login Log (security tracking: IP, device, success/fail) ──
 model LoginLog {
   id         String   @id @default(uuid())
   userId     String
   userRole   String
-  adminRole  String?  // sub-role if admin
+  adminRole  String?
   success    Boolean
   ipAddress  String?
   userAgent  String?
-  failReason String?  // WRONG_PASSWORD | ACCOUNT_BANNED | RATE_LIMITED
+  failReason String?
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id])
 }
 
-// ── Rate Limit Tracker (DB-based, no Redis needed) ──
 model RateLimit {
   id          String   @id @default(uuid())
-  key         String   @unique  // e.g. "booking:user123" or "login:1.2.3.4"
+  key         String   @unique
   action      String
   count       Int      @default(1)
   windowStart DateTime @default(now())
@@ -823,84 +766,73 @@ model RateLimit {
   updatedAt   DateTime @updatedAt
 }
 
-// ── Admin Permission Overrides (granular RBAC beyond role defaults) ──
 model AdminPermission {
   id         String   @id @default(uuid())
   adminId    String
-  permission String   // CANCEL_BOOKING | SUSPEND_PROPERTY | VIEW_KYC | RESOLVE_DISPUTE | MANAGE_PAYOUTS
+  permission String
   granted    Boolean  @default(true)
   grantedBy  String?
   reason     String?
   createdAt  DateTime @default(now())
 }
 
-// ── Saved Properties (student wishlist / bookmarks) ──
 model SavedProperty {
   id         String   @id @default(uuid())
   userId     String
   propertyId String
-  note       String?  // Personal note about this property
+  note       String?
   createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id])
   property   Property @relation(fields: [propertyId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, propertyId])
 }
 
-// ── Messages (student ↔ owner direct messaging per booking) ──
 model Message {
-  id          String   @id @default(uuid())
-  bookingId   String?  // Optional: linked to a booking
-  propertyId  String?  // Optional: pre-booking enquiry
-  threadId    String   // Groups messages into a conversation
-  senderId    String
-  receiverId  String
-  content     String
-  attachmentData String? // base64 small image/doc
-  attachmentName String?
-  isRead      Boolean  @default(false)
-  readAt      DateTime?
-  deletedBySender Boolean @default(false)
-  deletedByReceiver Boolean @default(false)
-  createdAt   DateTime @default(now())
-  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  id                String    @id @default(uuid())
+  bookingId         String?
+  propertyId        String?
+  threadId          String
+  senderId          String
+  receiverId        String
+  content           String
+  attachmentData    String?
+  attachmentName    String?
+  isRead            Boolean   @default(false)
+  readAt            DateTime?
+  deletedBySender   Boolean   @default(false)
+  deletedByReceiver Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  receiver          User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender            User      @relation("SentMessages", fields: [senderId], references: [id])
 }
 
-// ── User Sessions (security tracking — logout all sessions) ──
 model UserSession {
-  id          String   @id @default(uuid())
-  userId      String
-  token       String   @unique  // JWT token hash
-  ipAddress   String?
-  userAgent   String?
-  isActive    Boolean  @default(true)
-  lastSeenAt  DateTime @default(now())
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  ipAddress  String?
+  userAgent  String?
+  isActive   Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
 }
 
-// ── Refund Record (tracks refunds, deducted from owner revenue) ──
 model RefundRecord {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   bookingId    String
   amount       Float
   reason       String
-  // FULL | PARTIAL | NONE
-  refundType   String   @default("PARTIAL")
-  // PENDING | PROCESSED | REJECTED
-  status       String   @default("PENDING")
-  initiatedBy  String   // USER | OWNER | ADMIN
-  initiatedAt  DateTime @default(now())
+  refundType   String    @default("PARTIAL")
+  status       String    @default("PENDING")
+  initiatedBy  String
+  initiatedAt  DateTime  @default(now())
   processedAt  DateTime?
   processedBy  String?
   txnReference String?
   notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
-
-
-
-
