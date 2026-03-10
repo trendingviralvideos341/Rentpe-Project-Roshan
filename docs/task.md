@@ -1,0 +1,46 @@
+# Notification System & Property UI Refinement
+
+## Tasks
+- [x] Enhance Notification model in `schema.prisma`
+- [x] Create `NotificationService` in `src/lib/notifications.ts`
+- [x] Create 10 email templates in `src/lib/email-templates.ts`
+- [x] Integrate triggers into backend actions
+- [x] Build frontend notification sync
+- [x] Final Verification & Rollout
+- [x] Implement Property Type Selection & Conditional Validation
+    - [x] Add `propertyType` state to `AddPropertyPage`
+    - [x] Add selection UI (PG, Hostel, Flat, Other) at form start
+    - [x] Update `validate` logic for conditional mandatory license
+    - [x] Update `handleSubmit` and Backend for `propertyType` storage
+    - [x] Verify conditional validation behavior
+    - [x] Implement Dynamic "OPTIONAL" labels in upload grids
+- [x] Profile Sync & UI Refinement (Phase 7)
+    - [x] Update `getCurrentUser` to include `phone` field
+    - [x] Refresh `page.tsx` states from session correctly
+    - [x] Update read-only labels with support contact info
+- [x] Custom Amenities Support (Phase 8)
+    - [x] Add `Other(Specify)` option to amenities
+    - [x] Implement tag-based input UI
+- [x] Approval Messaging Polish (Phase 9)
+    - [x] Update message text to "Verification Team's final approval"
+    - [x] Remove underline from footer message
+- [x] Server-Side Fixes (Phase 10)
+    - [x] Increase `bodySizeLimit` in `next.config.ts` to 50MB
+    - [x] Update `uploadToCloudinary` to trigger mock mode on placeholder keys
+- [x] Room Button UI Enhancement (Phase 11)
+    - [x] Update "Add Room" button with colored/prominent styling
+- [x] Database Synchronization (Phase 12)
+    - [x] Run `npx prisma db push` to sync schema
+    - [x] Regenerate Prisma client (skipped due to dev server lock, schema was already synced)
+- [x] Push all updates to GitHub
+- [x] Supabase Database Integration (Phase 13)
+    - [x] Update `schema.prisma` provider to `postgresql`
+    - [x] Configure `DATABASE_URL` and `DIRECT_URL` in `.env`
+    - [x] Troubleshooting: Solve "Can't reach database" (IPv6) error via Pooler
+    - [x] Initialize Supabase schema (Manual SQL migration due to timeouts)
+    - [x] Regenerate Prisma client for PostgreSQL
+- [x] Push all updates to GitHub
+- [x] Production Readiness & Seeding
+    - [x] Verify Cloudinary Credentials in `.env`
+    - [x] Seed Supabase with live sample data
+    - [x] Perform final sanity check on upload/DB
