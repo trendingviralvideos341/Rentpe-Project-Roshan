@@ -45,7 +45,7 @@ export async function addOwnerStaff(data: {
 
     // Generate invite token
     const inviteToken = crypto.randomBytes(32).toString('hex');
-    const inviteTokenExpiry = new DateTime(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    const inviteTokenExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
 
     const staff = await prisma.user.create({
         data: {
