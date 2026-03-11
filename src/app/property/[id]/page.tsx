@@ -30,6 +30,7 @@ export default function PropertyDetailPage() {
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
 
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const [formData, setFormData] = useState({
         guestName: "",
         guestEmail: "",
@@ -46,7 +47,8 @@ export default function PropertyDetailPage() {
     useEffect(() => {
         const fetchUser = async () => {
             const user = await getCurrentUser();
-            if (user && user.name) {
+            setCurrentUser(user);
+            if (user) {
                 setFormData(prev => ({
                     ...prev,
                     guestName: user.name || "",
@@ -94,7 +96,6 @@ export default function PropertyDetailPage() {
             }
         };
         fetchProperty();
-        fetchProperty();
     }, [id]);
 
     const handleBooking = async () => {
@@ -136,7 +137,7 @@ export default function PropertyDetailPage() {
             router.push("/booking/requested");
         } catch (e: any) {
             if (e.message.includes("logged in")) {
-                router.push("/login");
+                router.push("/login?redirect=" + encodeURIComponent(window.location.pathname));
             } else {
                 alert("Booking failed. Please try again.");
             }
@@ -377,19 +378,36 @@ export default function PropertyDetailPage() {
                             {/* Guest Name — Read Only */}
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium">Guest Name <span className="text-red-500">*</span></label>
-                                <Input value={formData.guestName} readOnly={true} className="bg-gray-50 cursor-not-allowed" />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Name locked to registered profile</p>
+                                <Input 
+                                    value={formData.guestName} 
+                                    readOnly={true} 
+                                    placeholder={!currentUser ? "Sign in to fill" : ""}
+                                    className="bg-gray-50 cursor-not-allowed" 
+                                />
+                                <p className="text-[10px] text-blue-600 font-medium italic">
+                                    {!currentUser ? "🔒 Proifle required for safety" : "Name locked to registered profile"}
+                                </p>
                             </div>
 
                             {/* Email & Phone — Read Only */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Contact Details <span className="text-red-500">*</span></label>
-                                <Input value={formData.guestEmail} readOnly={true} className="bg-gray-50 cursor-not-allowed" />
+                                <Input 
+                                    value={formData.guestEmail} 
+                                    readOnly={true} 
+                                    placeholder={!currentUser ? "Sign in to fill" : ""}
+                                    className="bg-gray-50 cursor-not-allowed" 
+                                />
                                 <div className="flex">
                                     <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-muted text-sm font-semibold text-muted-foreground">
                                         🇮🇳 +91
                                     </span>
-                                    <Input value={formData.guestPhone} readOnly={true} className="rounded-l-none bg-gray-50 cursor-not-allowed" />
+                                    <Input 
+                                        value={formData.guestPhone} 
+                                        readOnly={true} 
+                                        placeholder={!currentUser ? "Sign in to fill" : ""}
+                                        className="rounded-l-none bg-gray-50 cursor-not-allowed" 
+                                    />
                                 </div>
                                 <p className="text-[10px] text-blue-600 font-medium italic">Contact details locked to registered profile</p>
                             </div>
@@ -495,10 +513,10 @@ export default function PropertyDetailPage() {
 
                             <Button
                                 className="w-full text-lg h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-lg"
-                                onClick={handleBooking}
+                                onClick={!currentUser ? () => router.push("/login?redirect=" + encodeURIComponent(window.location.pathname)) : handleBooking}
                                 disabled={bookingLoading || property.rooms.length === 0}
                             >
-                                {bookingLoading ? "Processing..." : "🚀 Request Booking"}
+                                {!currentUser ? "🔒 Sign in to Book" : bookingLoading ? "Processing..." : "🚀 Request Booking"}
                             </Button>
                             <p className="text-xs text-center text-muted-foreground">Fastest booking experience. No hidden charges.</p>
                         </CardContent>
