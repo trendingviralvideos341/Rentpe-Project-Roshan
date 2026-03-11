@@ -27,6 +27,8 @@ export default function AddPropertyPage() {
     const [phone, setPhone] = useState("");
     const [description, setDescription] = useState("");
     const [ownerName, setOwnerName] = useState("");
+    const [ownerEmail, setOwnerEmail] = useState("");
+    const [businessName, setBusinessName] = useState("");
     const [pgLicence, setPgLicence] = useState("");
     const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
     const [licenseNumber, setLicenseNumber] = useState("");
@@ -80,6 +82,8 @@ export default function AddPropertyPage() {
             const user = await getCurrentUser();
             if (user) {
                 setOwnerName(user.name || "");
+                setOwnerEmail(user.email || "");
+                setBusinessName((user as any).businessName || "");
                 let p = user.phone || "";
                 if (p && !p.startsWith("+91")) p = "+91" + p;
                 setPhone(p);
@@ -530,12 +534,29 @@ export default function AddPropertyPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(+91 Mandatory)</span></label>
+                                <label className="text-sm font-medium">Business / Entity Name</label>
+                                <Input placeholder="e.g. SkyLiv Properties Pvt Ltd" value={businessName}
+                                    readOnly={true}
+                                    className={`${readOnlyCls}`} />
+                                <p className="text-[10px] text-blue-600 font-medium italic">Syncs from your Business Profile.</p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Contact Email</label>
+                                <Input placeholder="owner@example.com" value={ownerEmail}
+                                    readOnly={true}
+                                    className={`${readOnlyCls}`} />
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered account email.</p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span></label>
                                 <Input placeholder="e.g. +919876543210" value={phone}
                                     readOnly={true}
                                     maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone. Contact support to update.</p>
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to verified mobile number.</p>
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">
                                     PG/Hostel Licence No. 

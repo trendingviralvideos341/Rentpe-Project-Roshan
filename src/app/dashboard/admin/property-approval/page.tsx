@@ -11,6 +11,7 @@ import { Building2, User, Phone, Mail, CheckCircle, XCircle, RefreshCcw, MapPin,
 import { getAllPropertiesForAdmin, approveProperty, getAdminPropertyAnalytics, markPropertyPending } from "@/actions/admin";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
 import { useToast } from "@/components/ui/use-toast";
+import { PropertyStepper } from "@/components/property/PropertyStepper";
 
 export default function AdminPropertyApprovalPage() {
     const [properties, setProperties] = useState<any[]>([]);
@@ -228,7 +229,9 @@ export default function AdminPropertyApprovalPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-4 sm:p-6">
+                            <CardContent className="p-4 sm:p-6 space-y-6">
+                                <PropertyStepper status={property.status} adminNotes={property.adminNotes} />
+                                
                                 <Tabs defaultValue="details">
                                     <TabsList className="grid w-full grid-cols-3 max-w-2xl mb-6">
                                         <TabsTrigger value="details">Property Details</TabsTrigger>

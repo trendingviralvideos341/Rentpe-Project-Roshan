@@ -9,6 +9,7 @@ import { getProperties } from "@/actions/properties";
 import { getSession } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { ImageCarousel } from "@/components/ImageCarousel";
+import { PropertyStepper } from "@/components/property/PropertyStepper";
 
 export default function OwnerPropertiesPage() {
     const [properties, setProperties] = useState<any[]>([]);
@@ -94,17 +95,11 @@ export default function OwnerPropertiesPage() {
                                     <MapPin className="h-3 w-3 mr-1" /> {property.city}
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                {property.status === 'PAYMENT_PENDING' && (
-                                    <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-md">
-                                        <p className="text-xs font-bold text-indigo-800 uppercase mb-2 flex items-center gap-1 border-b border-indigo-200 pb-1">
-                                            <AlertCircle className="h-4 w-4" /> Action Required
-                                        </p>
-                                        <p className="text-sm text-indigo-700 font-medium">Your property is verified! Please complete the onboarding payment to make it LIVE on search.</p>
-                                    </div>
-                                )}
+                            <CardContent className="space-y-4">
+                                <PropertyStepper status={property.status} adminNotes={property.adminNotes} />
+
                                 {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
-                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                                         <p className="text-xs font-bold text-red-800 uppercase mb-2 flex items-center gap-1 border-b border-red-200 pb-1">
                                             <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
                                         </p>
