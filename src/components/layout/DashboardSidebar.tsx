@@ -142,7 +142,7 @@ export default function DashboardSidebar(props: SidebarProps) {
             title: "Operations",
             links: [
                 { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
-                { href: "/dashboard/admin/bookings", label: "Platform Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
+                { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
                 { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },
                 { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "sub_admin", "verifier"] },
                 { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },

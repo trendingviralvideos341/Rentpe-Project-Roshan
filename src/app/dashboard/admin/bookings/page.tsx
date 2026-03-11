@@ -6,20 +6,55 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
     Users, Search, RefreshCcw, Calendar, Building2,
-    CreditCard, Tag, User, Mail, Phone, Clock
+    CreditCard, Tag, User, Mail, Phone, Clock,
+    ChevronDown, ChevronUp, FileText, ClipboardList, CheckCircle, XCircle, AlertCircle, Eye
 } from "lucide-react";
-import { getAdminBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid, checkInBooking } from "@/actions/bookings";
+import { 
+    getAdminBookings, 
+    approveBooking, 
+    rejectBooking as rejectBookingAction, 
+    markBookingPaid, 
+    checkInBooking 
+} from "@/actions/bookings";
+import { getAvailableRooms } from "@/actions/rooms";
+import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { toast } from "sonner";
+import React from "react";
 
-const STATUS_COLORS: Record<string, string> = {
-    'PENDING_APPROVAL': 'bg-red-50 text-red-700 border-red-200',
-    'APPROVED_KYC_PENDING': 'bg-blue-50 text-blue-700 border-blue-200',
-    'APPROVED_PAYMENT_PENDING': 'bg-amber-50 text-amber-700 border-amber-200',
-    'PAID': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    'CASH_PAID': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    'CHECKED_IN': 'bg-green-50 text-green-700 border-green-200 font-bold',
-    'REJECTED': 'bg-red-100 text-red-700 border-red-200',
-    'CANCELLED': 'bg-gray-100 text-gray-700 border-gray-200',
+const TYPE_LABELS: Record<string, string> = {
+    ID_PROOF: "🪪 ID Proof",
+    ADDRESS_PROOF: "🏠 Address Proof",
+    COLLEGE_COMPANY: "🎓 College / Company",
+    SELFIE: "📸 Live Selfie",
+    AADHAAR_FRONT: "🪪 Aadhaar Front",
+    AADHAAR_BACK: "🪪 Aadhaar Back",
+    PAN_FRONT: "💳 PAN Front",
+    PAN_BACK: "💳 PAN Back",
+    STUDENT_ID: "🎓 Student ID",
+    COMPANY_ID: "🏢 Company ID",
+    LIVE_PHOTO: "📸 Live Photo",
+    OTHER: "📎 Other",
+};
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+    PENDING_APPROVAL:       { label: '🔴 New Request',        cls: 'bg-red-100 text-red-700 border-red-300' },
+    WAITLISTED:             { label: '📋 Waitlisted',          cls: 'bg-blue-100 text-blue-700 border-blue-300' },
+    APPROVED_PENDING_TOKEN: { label: '💳 Awaiting Token Pay', cls: 'bg-purple-100 text-purple-700 border-purple-300' },
+    TOKEN_PAID:             { label: '💰 Token Paid',          cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+    ROOM_RESERVED:          { label: '🏠 Room Reserved',       cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+    KYC_PENDING:            { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    KYC_VERIFIED:           { label: '✅ KYC Verified',        cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    KYC_FAILED:             { label: '❌ KYC Failed',          cls: 'bg-rose-100 text-rose-700 border-rose-300' },
+    AGREEMENT_PENDING:      { label: '✍️ Agreement Pending',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    BOOKING_CONFIRMED:      { label: '✅ Confirmed',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    CHECKED_IN:             { label: '🏡 Checked In',          cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    APPROVED_KYC_PENDING:   { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    APPROVED_PAYMENT_PENDING:{ label: '💳 Payment Pending',    cls: 'bg-purple-100 text-purple-700 border-purple-300' },
+    PAID:                   { label: '✅ Paid',                cls: 'bg-green-100 text-green-700 border-green-300' },
+    CASH_PAID:              { label: '✅ Cash Paid',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    REJECTED:               { label: '❌ Rejected',            cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+    CANCELLED:              { label: '🚫 Cancelled',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
+    EXPIRED:                { label: '⏰ Expired',             cls: 'bg-orange-100 text-orange-700 border-orange-300' },
 };
 
 const PAYMENT_STATUS_COLORS: Record<string, string> = {
@@ -28,17 +63,219 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
     'PARTIAL': 'text-amber-600 font-bold',
 };
 
+function StatusBadge({ status }: { status: string }) {
+    const badge = STATUS_BADGE[status] || { label: status, cls: 'bg-gray-100 text-gray-600 border-gray-300' };
+    return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${badge.cls}`}>{badge.label}</span>;
+}
+
+// ── Booking Detail Component (Expanded Row) ──
+function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }: { booking: any; rooms: any[]; onRefresh: () => void; defaultTab?: "onboarding" | "documents" }) {
+    const [tab, setTab] = useState<"onboarding" | "documents">(defaultTab);
+    const [docs, setDocs] = useState<any[]>([]);
+    const [docsLoading, setDocsLoading] = useState(false);
+    const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+    const [rejectNote, setRejectNote] = useState("");
+    const [previewDoc, setPreviewDoc] = useState<any>(null);
+
+    const fetchDocs = async () => {
+        setDocsLoading(true);
+        try {
+            const d = await getTenantDocuments(booking.id);
+            setDocs(d);
+        } catch { } finally { setDocsLoading(false); }
+    };
+
+    useEffect(() => {
+        if (tab === "documents") fetchDocs();
+    }, [tab]);
+
+    const handleVerify = async (docId: string) => {
+        try { 
+            await verifyDocument(docId, "VERIFIED"); 
+            fetchDocs(); 
+            toast.success("Document Verified (Admin Override)"); 
+        } catch { toast.error("Failed to verify."); }
+    };
+
+    const handleReject = async (docId: string) => {
+        if (!rejectNote.trim()) { toast.error("Enter rejection reason."); return; }
+        try {
+            await verifyDocument(docId, "REJECTED", rejectNote);
+            setRejectTarget(null); setRejectNote(""); fetchDocs();
+            toast.success("Document Rejected (Admin Override)");
+        } catch { toast.error("Failed to reject."); }
+    };
+
+    const pendingDocs = docs.filter(d => d.status === "PENDING");
+    const verifiedDocs = docs.filter(d => d.status === "VERIFIED");
+    const rejectedDocs = docs.filter(d => d.status === "REJECTED");
+
+    return (
+        <tr>
+            <td colSpan={7} className="bg-slate-50 border-b">
+                <div className="p-4 space-y-3">
+                    {/* Tab switcher */}
+                    <div className="flex gap-2 border-b pb-2">
+                        <button
+                            onClick={() => setTab("onboarding")}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "onboarding" ? "border-indigo-600 text-indigo-700 bg-indigo-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                        >
+                            <ClipboardList className="h-4 w-4" /> Onboarding Details
+                        </button>
+                        <button
+                            onClick={() => { setTab("documents"); fetchDocs(); }}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "documents" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                        >
+                            <FileText className="h-4 w-4" /> Verify Documents
+                            {pendingDocs.length > 0 && tab === "documents" && (
+                                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse ml-1">{pendingDocs.length}</span>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* ── ONBOARDING TAB ── */}
+                    {tab === "onboarding" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <div className="text-xs font-bold uppercase text-indigo-700 mb-2">📋 Customer Identity</div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {[
+                                        ["Full Name", booking.guestName],
+                                        ["Email", booking.guestEmail || "—"],
+                                        ["Phone", booking.guestPhone || "—"],
+                                        ["Occupation", booking.occupationType ? `${booking.occupationType} - ${booking.occupationDetail || ""}` : "—"],
+                                        ["Move-in Date", booking.onboardingDate || booking.moveInDate || "—"],
+                                        ["Address", booking.guestAddress ? `${booking.guestAddress}, ${booking.guestCity} - ${booking.guestPincode}` : "—"],
+                                    ].map(([label, value]) => (
+                                        <div key={label} className="bg-white border rounded p-2">
+                                            <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
+                                            <div className="text-sm font-medium">{value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="text-xs font-bold uppercase text-green-700 mb-2">🏠 Property & Transaction</div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {[
+                                        ["Property Name", booking.propertyName || "—"],
+                                        ["Occupancy", booking.occupancy || "—"],
+                                        ["Allocated Room", booking.roomAssigned || "Not Allocated"],
+                                        ["Booking Price", `₹${booking.amount}` || "—"],
+                                        ["Method", booking.paymentMethod || "Online"],
+                                        ["Transaction ID", booking.paymentId || "—"],
+                                    ].map(([label, value]) => (
+                                        <div key={label} className="bg-white border rounded p-2">
+                                            <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
+                                            <div className="text-sm font-medium">{value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── DOCUMENTS TAB ── */}
+                    {tab === "documents" && (
+                        <div className="space-y-3">
+                            {pendingDocs.length > 0 && (
+                                <div className="bg-red-50 border-2 border-red-400 rounded-lg p-3">
+                                    <div className="text-red-700 font-bold text-sm mb-2">🔴 {pendingDocs.length} Document{pendingDocs.length > 1 ? "s" : ""} Pending Review</div>
+                                    <div className="space-y-2">
+                                        {pendingDocs.map(doc => (
+                                            <div key={doc.id} className="bg-white border border-red-200 rounded p-2 flex items-center justify-between gap-2 flex-wrap">
+                                                <div>
+                                                    <div className="font-semibold text-sm">{TYPE_LABELS[doc.type] || doc.type}</div>
+                                                    <div className="text-[10px] text-muted-foreground">{doc.fileName} • {new Date(doc.uploadedAt).toLocaleString()}</div>
+                                                </div>
+                                                <div className="flex gap-1.5 items-center flex-wrap">
+                                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPreviewDoc(doc)}><Eye className="h-3 w-3 mr-1" />View</Button>
+                                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleVerify(doc.id)}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>
+                                                    {rejectTarget === doc.id ? (
+                                                        <div className="flex gap-1 items-center">
+                                                            <input className="border rounded px-2 py-1 text-xs w-36" placeholder="Reason..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} />
+                                                            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleReject(doc.id)}>Reject</Button>
+                                                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setRejectTarget(null); setRejectNote(""); }}>✕</Button>
+                                                        </div>
+                                                    ) : (
+                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600" onClick={() => setRejectTarget(doc.id)}><XCircle className="h-3 w-3 mr-1" />Decline</Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {verifiedDocs.length > 0 && (
+                                    <div className="space-y-1">
+                                        <div className="text-xs font-bold text-green-700 uppercase">✅ Verified</div>
+                                        {verifiedDocs.map(doc => (
+                                            <div key={doc.id} className="bg-green-50 border border-green-200 rounded p-2 flex items-center justify-between">
+                                                <div className="text-sm font-medium">{TYPE_LABELS[doc.type] || doc.type}</div>
+                                                <Button size="sm" variant="ghost" className="h-6 text-[10px] text-green-700 hover:bg-green-100" onClick={() => setPreviewDoc(doc)}>View</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {rejectedDocs.length > 0 && (
+                                    <div className="space-y-1">
+                                        <div className="text-xs font-bold text-red-700 uppercase">❌ Rejected</div>
+                                        {rejectedDocs.map(doc => (
+                                            <div key={doc.id} className="bg-red-100 border border-red-200 rounded p-2 flex items-center justify-between">
+                                                <div className="text-sm font-medium">{TYPE_LABELS[doc.type] || doc.type}</div>
+                                                <Button size="sm" variant="ghost" className="h-6 text-[10px] text-red-700 hover:bg-red-100" onClick={() => setPreviewDoc(doc)}>View</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {docs.length === 0 && !docsLoading && (
+                                <div className="text-center text-sm text-muted-foreground py-4 bg-white border rounded italic">No documents uploaded yet.</div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Preview Modal (Simplified) */}
+                    {previewDoc && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
+                            <div className="bg-white rounded-xl p-5 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center border-b pb-2">
+                                    <h2 className="font-bold">{TYPE_LABELS[previewDoc.type] || "Document Preview"}</h2>
+                                    <XCircle className="h-5 w-5 cursor-pointer text-muted-foreground" onClick={() => setPreviewDoc(null)} />
+                                </div>
+                                {previewDoc.fileData?.startsWith("data:image") ? (
+                                    <img src={previewDoc.fileData} alt="Doc" className="w-full rounded border max-h-80 object-contain" />
+                                ) : (
+                                    <div className="h-40 flex items-center justify-center bg-muted rounded text-xs">Preview unavailable</div>
+                                )}
+                                <Button className="w-full h-8 text-xs" variant="secondary" onClick={() => setPreviewDoc(null)}>Close</Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </td>
+        </tr>
+    );
+}
+
 export default function AdminBookingsPage() {
     const [bookings, setBookings] = useState<any[]>([]);
+    const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState("ALL");
+    const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
 
     const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await getAdminBookings();
-            setBookings(data);
+            const [bookingData, roomData] = await Promise.all([getAdminBookings(), getAvailableRooms()]);
+            setBookings(bookingData);
+            setRooms(roomData);
         } catch (e) {
             console.error(e);
         } finally {
@@ -91,9 +328,9 @@ export default function AdminBookingsPage() {
 
     const filtered = bookings.filter(b => {
         const matchesSearch =
-            b.guestName.toLowerCase().includes(search.toLowerCase()) ||
-            b.displayId.toLowerCase().includes(search.toLowerCase()) ||
-            b.propertyName.toLowerCase().includes(search.toLowerCase());
+            (b.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
+            (b.displayId || "").toLowerCase().includes(search.toLowerCase()) ||
+            (b.propertyName || "").toLowerCase().includes(search.toLowerCase());
         const matchesStatus = filterStatus === "ALL" || b.status === filterStatus;
         return matchesSearch && matchesStatus;
     });
@@ -115,13 +352,13 @@ export default function AdminBookingsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search by ID, Customer Name, or PG..."
-                        className="pl-9"
+                        className="pl-9 h-11 rounded-xl shadow-sm"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
                 <select
-                    className="h-10 border rounded-md px-3 text-sm bg-background"
+                    className="h-11 border rounded-xl px-4 text-sm bg-background shadow-sm"
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
                 >
@@ -138,91 +375,87 @@ export default function AdminBookingsPage() {
 
             {loading ? (
                 <div className="p-20 text-center animate-pulse text-muted-foreground">Loading all bookings...</div>
-            ) : filtered.length === 0 ? (
-                <Card>
-                    <CardContent className="p-12 text-center text-muted-foreground">
-                        No bookings found matching your criteria.
+            ) : (
+                <Card className="rounded-2xl shadow-sm border-slate-200 overflow-hidden">
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider text-left">
+                                        <th className="p-4">Booking ID</th>
+                                        <th className="p-4">Guest Info</th>
+                                        <th className="p-4">Property</th>
+                                        <th className="p-4">Allocated</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {filtered.length === 0 ? (
+                                        <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">No bookings found.</td></tr>
+                                    ) : (
+                                        filtered.map(booking => (
+                                            <React.Fragment key={booking.id}>
+                                                <tr className={`hover:bg-slate-50/50 transition-colors ${booking.status === "PENDING_APPROVAL" ? "bg-red-50/30" : ""}`}>
+                                                    <td className="p-4 font-mono text-xs font-bold text-slate-900">{booking.displayId}</td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-slate-900">{booking.guestName}</div>
+                                                        <div className="text-[10px] text-slate-400">{booking.guestEmail}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-indigo-700">{booking.propertyName}</div>
+                                                        <div className="text-[10px] text-slate-400">{booking.occupancy}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="text-xs font-medium text-slate-700">{booking.roomAssigned || "Not Allocated"}</div>
+                                                        <div className="text-[10px] text-slate-400">In: {booking.moveInDate}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <StatusBadge status={booking.status} />
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex justify-end gap-1">
+                                                            {booking.status === "PENDING_APPROVAL" && (
+                                                                <>
+                                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                                                    <Button size="sm" variant="destructive" className="h-7 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
+                                                                </>
+                                                            )}
+                                                            {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
+                                                                <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
+                                                                    💵 Mark Cash Paid
+                                                                </Button>
+                                                            )}
+                                                            {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
+                                                                <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
+                                                                    🚀 Check-in
+                                                                </Button>
+                                                            )}
+                                                            <Button
+                                                                variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-colors"
+                                                                onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
+                                                            >
+                                                                {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {expandedBooking === booking.id && (
+                                                    <AdminBookingDetail 
+                                                        booking={booking} 
+                                                        rooms={rooms} 
+                                                        onRefresh={fetchBookings} 
+                                                        defaultTab={booking.status === "APPROVED_KYC_PENDING" ? "documents" : "onboarding"}
+                                                    />
+                                                )}
+                                            </React.Fragment>
+                                        )))
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
                     </CardContent>
                 </Card>
-            ) : (
-                <div className="grid gap-4">
-                    {filtered.map(booking => (
-                        <Card key={booking.id} className="overflow-hidden hover:border-primary/50 transition-colors">
-                            <CardContent className="p-0">
-                                <div className="p-4 flex flex-wrap items-center justify-between gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                            <User className="h-6 w-6" />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-bold text-lg">{booking.guestName}</p>
-                                                <span className="text-xs font-mono text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
-                                                    {booking.displayId}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {booking.propertyName}</span>
-                                                <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> {booking.occupancy}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-6">
-                                        <div className="text-right">
-                                            <p className="text-xs text-muted-foreground uppercase font-semibold">Payment Status</p>
-                                            <p className={`text-sm ${PAYMENT_STATUS_COLORS[booking.paymentStatus] || ''}`}>
-                                                {booking.paymentStatus}
-                                            </p>
-                                            <p className="text-lg font-bold">₹{booking.amount}</p>
-                                        </div>
-
-                                        <div className="flex flex-col items-end gap-2">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[booking.status] || 'bg-muted'}`}>
-                                                {booking.status === 'CANCELLED' ? '🚫 Cancelled by User' :
-                                                    booking.status === 'APPROVED_KYC_PENDING' ? '📝 KYC PENDING' :
-                                                        booking.status === 'APPROVED_PAYMENT_PENDING' ? '⏳ AWAITING PAYMENT' :
-                                                            booking.status.replace(/_/g, ' ')}
-                                            </span>
-
-                                            <div className="flex gap-2 mt-1">
-                                                {booking.status === "PENDING_APPROVAL" && (
-                                                    <>
-                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px]" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                                                        <Button size="sm" variant="destructive" className="h-7 text-[10px]" onClick={() => handleReject(booking.id)}>Reject</Button>
-                                                    </>
-                                                )}
-                                                {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
-                                                    <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
-                                                        ✅ Mark Cash Paid
-                                                    </Button>
-                                                )}
-                                                {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
-                                                    <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
-                                                        🚀 Confirm Check-in
-                                                    </Button>
-                                                )}
-                                            </div>
-
-                                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                                <Clock className="h-2.5 w-2.5" /> {new Date(booking.createdAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="px-4 py-3 bg-muted/30 border-t flex justify-between items-center text-xs text-muted-foreground">
-                                    <div className="flex gap-4">
-                                        <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {booking.guestEmail || 'N/A'}</span>
-                                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {booking.guestPhone || 'N/A'}</span>
-                                    </div>
-                                    <div>
-                                        Move-in: <span className="font-medium text-foreground">{booking.moveInDate}</span>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
             )}
         </div>
     );
