@@ -255,7 +255,7 @@ export default function SearchPage() {
                                     </Button>
                                 </Link>
                                 <Link href="/about" className="w-full sm:w-auto">
-                                    <Button size="lg" variant="outline" className="w-full border-2 border-white/50 text-white hover:bg-white/10 px-8 h-14 rounded-2xl font-bold">
+                                    <Button size="lg" variant="outline" className="w-full border-2 border-white/50 text-white bg-transparent hover:bg-white/10 px-8 h-14 rounded-2xl font-bold">
                                         Learn How It Works
                                     </Button>
                                 </Link>

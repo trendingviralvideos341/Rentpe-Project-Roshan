@@ -95,7 +95,8 @@ async function main() {
             city: "Delhi",
             description: "Premium co-living PG with modern amenities near DU North Campus. WiFi, meals, laundry, and 24/7 security included.",
             amenities: JSON.stringify(["WiFi", "Meals", "Laundry", "AC", "Power Backup", "Security", "Parking", "CCTV", "Housekeeping"]),
-            images: JSON.stringify(["/images/pg1.jpg", "/images/pg2.jpg"])
+            images: JSON.stringify(["/images/pg1.jpg", "/images/pg2.jpg"]),
+            status: "LIVE"
         }
     });
     console.log("✅ Property created:", property.name);
