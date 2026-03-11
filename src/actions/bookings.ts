@@ -18,6 +18,9 @@ export async function createBooking(data: {
     occupationType?: string,
     occupationDetail?: string,
     propertyId?: string,
+    stayDuration?: number,
+    occupants?: number,
+    message?: string,
 }) {
     const session = await getSession();
     if (!session) throw new Error("You must be logged in to book.");
@@ -55,6 +58,9 @@ export async function createBooking(data: {
             occupationType: data.occupationType,
             occupationDetail: data.occupationDetail,
             propertyId: data.propertyId,
+            stayDuration: data.stayDuration,
+            occupants: data.occupants,
+            message: data.message,
         }
     });
 

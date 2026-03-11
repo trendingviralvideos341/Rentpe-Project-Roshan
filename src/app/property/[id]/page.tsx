@@ -31,12 +31,13 @@ export default function PropertyDetailPage() {
     const [bookingLoading, setBookingLoading] = useState(false);
 
     const [formData, setFormData] = useState({
-        firstName: "",
-        middleName: "",
-        lastName: "",
+        guestName: "",
+        guestEmail: "",
+        guestPhone: "",
         moveInDate: "",
-        email: "",
-        phone: "",
+        stayDuration: "6", // Default 6 months
+        occupants: "1",
+        message: "",
         occupationType: "",
         occupationDetail: "",
     });
@@ -46,13 +47,11 @@ export default function PropertyDetailPage() {
         const fetchUser = async () => {
             const user = await getCurrentUser();
             if (user && user.name) {
-                const parts = user.name.split(" ");
                 setFormData(prev => ({
                     ...prev,
-                    firstName: parts[0] || "",
-                    lastName: parts.slice(1).join(" ") || "",
-                    email: user.email || "",
-                    phone: (user.phone || "").replace("+91", ""),
+                    guestName: user.name || "",
+                    guestEmail: user.email || "",
+                    guestPhone: (user.phone || "").replace("+91", ""),
                 }));
             }
         };
@@ -100,13 +99,10 @@ export default function PropertyDetailPage() {
 
     const handleBooking = async () => {
         const errs: Record<string, string> = {};
-        const fnErr = validateName(formData.firstName); if (fnErr) errs.firstName = fnErr;
-        const lnErr = validateName(formData.lastName); if (lnErr) errs.lastName = lnErr;
-        const emErr = validateEmail(formData.email); if (emErr) errs.email = emErr;
-        const phErr = validatePhone(`+91${formData.phone}`); if (phErr) errs.phone = phErr;
         if (!formData.moveInDate) errs.moveInDate = "Move-in date is required";
         if (!formData.occupationType) errs.occupationType = "Occupation type is required";
         if (!formData.occupationDetail.trim()) errs.occupationDetail = "Occupation detail is required";
+        if (!formData.stayDuration) errs.stayDuration = "Stay duration is required";
 
         if (Object.keys(errs).length > 0) {
             setFieldErrors(errs);
@@ -124,15 +120,18 @@ export default function PropertyDetailPage() {
             await createBooking({
                 propertyName: property.name,
                 propertyId: property.id,
-                guestName: `${formData.firstName} ${formData.middleName} ${formData.lastName}`.replace(/\s+/g, ' ').trim(),
+                guestName: formData.guestName,
                 occupancy,
                 moveInDate: formData.moveInDate,
+                stayDuration: parseInt(formData.stayDuration),
+                occupants: parseInt(formData.occupants),
+                message: formData.message,
                 amount: Number(amount.replace(/[^0-9.]/g, '')),
-                guestEmail: formData.email,
-                guestPhone: `+91${formData.phone}`,
+                guestEmail: formData.guestEmail,
+                guestPhone: `+91${formData.guestPhone}`,
                 occupationType: formData.occupationType,
                 occupationDetail: formData.occupationDetail,
-            });
+            } as any);
 
             router.push("/booking/requested");
         } catch (e: any) {
@@ -375,45 +374,55 @@ export default function PropertyDetailPage() {
                                 </select>
                             </div>
 
-                            {/* Guest Name — letters only */}
+                            {/* Guest Name — Read Only */}
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Full Name (As per ID) <span className="text-red-500">*</span></label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <Input placeholder="First" required value={formData.firstName}
-                                        readOnly={true}
-                                        className={`bg-gray-50 cursor-not-allowed ${fieldErrors.firstName ? "border-red-500 ring-1 ring-red-200" : ""}`}
-                                    />
-                                    <Input placeholder="Middle" value={formData.middleName}
-                                        onChange={e => setFormData(p => ({ ...p, middleName: onlyLetters(e.target.value) }))} />
-                                    <Input placeholder="Last" required value={formData.lastName}
-                                        readOnly={true}
-                                        className={`bg-gray-50 cursor-not-allowed ${fieldErrors.lastName ? "border-red-500 ring-1 ring-red-200" : ""}`}
-                                    />
-                                </div>
+                                <label className="text-sm font-medium">Guest Name <span className="text-red-500">*</span></label>
+                                <Input value={formData.guestName} readOnly={true} className="bg-gray-50 cursor-not-allowed" />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Name locked to registered profile</p>
                             </div>
 
-                            {/* Email & Phone with +91 */}
+                            {/* Email & Phone — Read Only */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Contact Details <span className="text-red-500">*</span></label>
-                                <Input type="email" placeholder="📧 Email for communication" value={formData.email}
-                                    readOnly={true}
-                                    className={`bg-gray-50 cursor-not-allowed ${fieldErrors.email ? "border-red-500 ring-1 ring-red-200" : ""}`}
-                                />
+                                <Input value={formData.guestEmail} readOnly={true} className="bg-gray-50 cursor-not-allowed" />
                                 <div className="flex">
-                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-muted text-sm font-semibold text-muted-foreground select-none">
+                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-muted text-sm font-semibold text-muted-foreground">
                                         🇮🇳 +91
                                     </span>
-                                    <Input
-                                        type="tel"
-                                        placeholder="10-digit mobile number"
-                                        readOnly={true}
-                                        className={`rounded-l-none bg-gray-50 cursor-not-allowed ${fieldErrors.phone ? "border-red-500 ring-1 ring-red-200" : ""}`}
-                                        maxLength={10}
-                                        value={formData.phone}
-                                    />
+                                    <Input value={formData.guestPhone} readOnly={true} className="rounded-l-none bg-gray-50 cursor-not-allowed" />
                                 </div>
                                 <p className="text-[10px] text-blue-600 font-medium italic">Contact details locked to registered profile</p>
+                            </div>
+
+                            {/* Stay Duration & Occupants */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Stay Duration (Months)</label>
+                                    <select 
+                                        className="w-full border rounded-md p-2 bg-background text-sm"
+                                        value={formData.stayDuration}
+                                        onChange={e => setFormData(p => ({ ...p, stayDuration: e.target.value }))}
+                                    >
+                                        <option value="1">1 Month</option>
+                                        <option value="3">3 Months</option>
+                                        <option value="6">6 Months</option>
+                                        <option value="12">12 Months</option>
+                                        <option value="24">24 Months</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">No. of Occupants</label>
+                                    <select 
+                                        className="w-full border rounded-md p-2 bg-background text-sm"
+                                        value={formData.occupants}
+                                        onChange={e => setFormData(p => ({ ...p, occupants: e.target.value }))}
+                                    >
+                                        <option value="1">1 Person</option>
+                                        <option value="2">2 Persons</option>
+                                        <option value="3">3 Persons</option>
+                                        <option value="4">4+ Persons</option>
+                                    </select>
+                                </div>
                             </div>
 
                             {/* Occupation */}
@@ -466,6 +475,17 @@ export default function PropertyDetailPage() {
                                         if (fieldErrors.moveInDate) setFieldErrors(p => { const n = { ...p }; delete n.moveInDate; return n; });
                                     }} />
                                 {fieldErrors.moveInDate && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.moveInDate}</p>}
+                            </div>
+
+                            {/* Optional Message */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Any Message for Owner? (Optional)</label>
+                                <textarea 
+                                    className="w-full border rounded-md p-2 bg-background text-sm min-h-[60px]"
+                                    placeholder="e.g. I need early check-in, tell me about security..."
+                                    value={formData.message}
+                                    onChange={e => setFormData(p => ({ ...p, message: e.target.value }))}
+                                />
                             </div>
 
                             <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">

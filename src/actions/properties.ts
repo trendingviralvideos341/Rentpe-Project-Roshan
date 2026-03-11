@@ -77,6 +77,8 @@ export async function createProperty(formData: FormData) {
     const pgLicence = formData.get("pgLicence") as string;
     const roomsJson = formData.get("rooms") as string;
     const propertyType = formData.get("propertyType") as string;
+    const licenseNumber = formData.get("licenseNumber") as string;
+    const reraId = formData.get("reraId") as string;
 
     const buildingPhotos = formData.get("buildingPhotos") as string;
     const commonAreaPhotos = formData.get("commonAreaPhotos") as string;
@@ -160,6 +162,8 @@ export async function createProperty(formData: FormData) {
                 ownerId: user?.parentOwnerId || (session as any).userId,
                 status: "PENDING_APPROVAL",
                 propertyType: propertyType || "PG",
+                licenseNumber: licenseNumber || null,
+                reraId: reraId || null,
                 // Structured Category Mapping
                 buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
                 commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
@@ -437,6 +441,7 @@ export async function requestDocumentReupload(propertyId: string, docType: strin
         if (!property) return { success: false, error: "Property not found" };
 
         // Append reupload request to admin notes using a structured tag
+        // If docType already includes an index (e.g. "buildingPhotos-0"), it works directly
         const reuploadTag = `[REUPLOAD:${docType}] ${note}`;
         const newNotes = property.adminNotes
             ? `${property.adminNotes}\n${reuploadTag}`

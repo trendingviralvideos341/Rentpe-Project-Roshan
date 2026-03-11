@@ -115,6 +115,8 @@ model Property {
   updatedAt              DateTime        @updatedAt
   ownerName              String?
   pgLicence              String?
+  licenseNumber          String?
+  reraId                 String?
   bookings               Booking[]
   foodMenu               FoodMenu[]
   owner                  User            @relation(fields: [ownerId], references: [id])
@@ -173,6 +175,9 @@ model Booking {
   guestAddress         String?
   onboardingDate       String?
   moveInDate           String
+  stayDuration         Int?
+  occupants            Int?              @default(1)
+  message              String?
   status               String           @default("PENDING_APPROVAL")
   paymentStatus        String           @default("UNPAID")
   paymentMethod        String?

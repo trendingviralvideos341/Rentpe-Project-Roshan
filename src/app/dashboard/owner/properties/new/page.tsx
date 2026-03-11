@@ -29,6 +29,8 @@ export default function AddPropertyPage() {
     const [ownerName, setOwnerName] = useState("");
     const [pgLicence, setPgLicence] = useState("");
     const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
+    const [licenseNumber, setLicenseNumber] = useState("");
+    const [reraId, setReraId] = useState("");
     const [otherPropertyType, setOtherPropertyType] = useState("");
     const [gender, setGender] = useState<"Boys" | "Girls" | "Co-ed" | "">("");
     const [amenities, setAmenities] = useState<string[]>([]);
@@ -412,7 +414,8 @@ export default function AddPropertyPage() {
             ]));
 
             formData.set("ownerName", ownerName);
-            formData.set("pgLicence", pgLicence);
+            formData.set("licenseNumber", licenseNumber);
+            formData.set("reraId", reraId);
             formData.set("propertyType", propertyType === "Other" ? otherPropertyType : propertyType as string);
             formData.set("phone", phone);
             formData.set("gender", gender);
@@ -525,29 +528,37 @@ export default function AddPropertyPage() {
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(+91 Mandatory)</span></label>
                                 <Input placeholder="e.g. +919876543210" value={phone}
                                     readOnly={true}
                                     maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone. Contact Rentpe Support Team to update.</p>
+                                <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile phone. Contact support to update.</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">
                                     PG/Hostel Licence No. 
                                     {(propertyType === "PG" || propertyType === "Hostel") && <span className="text-red-500">*</span>}
-                                    <span className="text-muted-foreground text-xs ml-1">
-                                        {propertyType === "PG" || propertyType === "Hostel" ? "(Required)" : "(Optional)"}
-                                    </span>
                                 </label>
                                 <Input 
                                     placeholder="e.g. GOV-12345-PG" 
-                                    value={pgLicence} 
-                                    onChange={e => setPgLicence(e.target.value)} 
-                                    className={inputErr("pgLicence")}
+                                    value={licenseNumber} 
+                                    onChange={e => setLicenseNumber(e.target.value)} 
+                                    className={inputErr("licenseNumber")}
                                 />
-                                {errors.pgLicence && <p className="text-xs text-red-600 font-semibold">{errors.pgLicence}</p>}
+                                {errors.licenseNumber && <p className="text-xs text-red-600 font-semibold">{errors.licenseNumber}</p>}
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">
+                                    RERA ID / Reg No.
+                                    <span className="text-muted-foreground text-xs ml-1">(Highly Recommended)</span>
+                                </label>
+                                <Input 
+                                    placeholder="e.g. RERA-KA-2024-001" 
+                                    value={reraId} 
+                                    onChange={e => setReraId(e.target.value)} 
+                                />
                             </div>
                         </div>
 
