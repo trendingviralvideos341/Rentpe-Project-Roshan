@@ -42,6 +42,7 @@ export default function PropertyDetailPage() {
         occupationType: "",
         occupationDetail: "",
     });
+    const [mealPlan, setMealPlan] = useState<"with" | "without">("with");
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -103,7 +104,6 @@ export default function PropertyDetailPage() {
         if (!formData.moveInDate) errs.moveInDate = "Move-in date is required";
         if (!formData.occupationType) errs.occupationType = "Occupation type is required";
         if (!formData.occupationDetail.trim()) errs.occupationDetail = "Occupation detail is required";
-        if (!formData.stayDuration) errs.stayDuration = "Stay duration is required";
 
         if (Object.keys(errs).length > 0) {
             setFieldErrors(errs);
@@ -116,18 +116,18 @@ export default function PropertyDetailPage() {
             const selectEl = document.querySelector("select") as HTMLSelectElement;
             const occupancyFull = selectEl?.value || "Triple Sharing - ₹12,000";
             const occupancy = occupancyFull.split(" - ")[0];
-            const amount = occupancyFull.split(" - ")[1] || "₹0";
-
+            const baseAmount = Number(occupancyFull.split(" - ")[1]?.replace(/[^0-9.]/g, '') || "0");
+            
             await createBooking({
                 propertyName: property.name,
                 propertyId: property.id,
                 guestName: formData.guestName,
                 occupancy,
                 moveInDate: formData.moveInDate,
-                stayDuration: parseInt(formData.stayDuration),
-                occupants: parseInt(formData.occupants),
-                message: formData.message,
-                amount: Number(amount.replace(/[^0-9.]/g, '')),
+                stayDuration: 6,
+                occupants: 1,
+                message: `${formData.message}${property.amenities.includes("Mess/Food") ? `\nMeal Plan: ${mealPlan === 'with' ? 'With Food' : 'Without Food'}` : ''}`,
+                amount: baseAmount,
                 guestEmail: formData.guestEmail,
                 guestPhone: `+91${formData.guestPhone}`,
                 occupationType: formData.occupationType,
@@ -253,8 +253,8 @@ export default function PropertyDetailPage() {
                         </div>
                     </div>
 
-                    {/* Food Menu */}
-                    <div>
+                    {/* Food Menu — Hidden per user request */}
+                    {/* <div>
                         <h2 className="text-xl font-bold mb-4">Weekly Food Menu</h2>
                         <Card>
                             <CardContent className="p-0">
@@ -285,7 +285,7 @@ export default function PropertyDetailPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    </div>
+                    </div> */}
 
                     {/* Verified Reviews Section */}
                     <div className="mt-8 pt-8 border-t">
@@ -384,9 +384,11 @@ export default function PropertyDetailPage() {
                                     placeholder={!currentUser ? "Sign in to fill" : ""}
                                     className="bg-gray-50 cursor-not-allowed" 
                                 />
-                                <p className="text-[10px] text-blue-600 font-medium italic">
-                                    {!currentUser ? "🔒 Proifle required for safety" : "Name locked to registered profile"}
-                                </p>
+                                {!currentUser && (
+                                    <p className="text-[11px] text-red-600 font-bold italic mt-1">
+                                        ⚠️ Sign in first to proceed with the request booking
+                                    </p>
+                                )}
                             </div>
 
                             {/* Email & Phone — Read Only */}
@@ -400,7 +402,7 @@ export default function PropertyDetailPage() {
                                 />
                                 <div className="flex">
                                     <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-muted text-sm font-semibold text-muted-foreground">
-                                        🇮🇳 +91
+                                        +91
                                     </span>
                                     <Input 
                                         value={formData.guestPhone} 
@@ -409,39 +411,36 @@ export default function PropertyDetailPage() {
                                         className="rounded-l-none bg-gray-50 cursor-not-allowed" 
                                     />
                                 </div>
-                                <p className="text-[10px] text-blue-600 font-medium italic">Contact details locked to registered profile</p>
+                                {!currentUser && (
+                                    <p className="text-[11px] text-red-600 font-bold italic mt-1">
+                                        ⚠️ Sign in first to proceed with the request booking
+                                    </p>
+                                )}
                             </div>
 
-                            {/* Stay Duration & Occupants */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Stay Duration (Months)</label>
-                                    <select 
-                                        className="w-full border rounded-md p-2 bg-background text-sm"
-                                        value={formData.stayDuration}
-                                        onChange={e => setFormData(p => ({ ...p, stayDuration: e.target.value }))}
-                                    >
-                                        <option value="1">1 Month</option>
-                                        <option value="3">3 Months</option>
-                                        <option value="6">6 Months</option>
-                                        <option value="12">12 Months</option>
-                                        <option value="24">24 Months</option>
-                                    </select>
+                            {/* Meal Plan Preference (Conditional) */}
+                            {property.amenities.includes("Mess/Food") && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Meal Plan Preference <span className="text-red-500">*</span></label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMealPlan("with")}
+                                            className={`flex-1 py-2 rounded-lg text-xs font-bold border-2 transition-all ${mealPlan === "with" ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-600 hover:border-blue-400"}`}
+                                        >
+                                            🍴 With Food
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMealPlan("without")}
+                                            className={`flex-1 py-2 rounded-lg text-xs font-bold border-2 transition-all ${mealPlan === "without" ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-600 hover:border-blue-400"}`}
+                                        >
+                                            🚫 Without Food
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground italic text-center">Price may vary based on meal selection</p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">No. of Occupants</label>
-                                    <select 
-                                        className="w-full border rounded-md p-2 bg-background text-sm"
-                                        value={formData.occupants}
-                                        onChange={e => setFormData(p => ({ ...p, occupants: e.target.value }))}
-                                    >
-                                        <option value="1">1 Person</option>
-                                        <option value="2">2 Persons</option>
-                                        <option value="3">3 Persons</option>
-                                        <option value="4">4+ Persons</option>
-                                    </select>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Occupation */}
                             <div className="space-y-1.5">
