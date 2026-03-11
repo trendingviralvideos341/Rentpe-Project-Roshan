@@ -10,10 +10,11 @@ export default async function OwnerLayout({
 }) {
     const user = await getCurrentUser() as any;
     const permissions = user?.staffPermissions ? JSON.parse(user.staffPermissions) : [];
+    const isStaff = !!user?.parentOwnerId;
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)]">
-            <DashboardSidebar role="owner" permissions={permissions} />
+            <DashboardSidebar role="owner" permissions={permissions} isStaff={isStaff} />
             <main className="flex-1 p-8 bg-muted/10">
                 {children}
             </main>

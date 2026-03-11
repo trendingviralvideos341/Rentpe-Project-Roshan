@@ -27,6 +27,7 @@ interface SidebarSection {
 interface SidebarProps {
     role: "owner" | "admin" | "student" | "onboarder" | "verifier";
     permissions?: string[];
+    isStaff?: boolean;
 }
 
 export default function DashboardSidebar(props: SidebarProps) {
@@ -190,7 +191,8 @@ export default function DashboardSidebar(props: SidebarProps) {
     const isSuperAdmin =
         perms.includes("super_admin") ||
         perms.includes("sub_admin") ||
-        (role === "admin" && perms.length === 0);
+        (role === "admin" && perms.length === 0) ||
+        (role === "owner" && !props.isStaff); // Primary owners have full access
 
     const filterSectionLinks = (sections: SidebarSection[]) => {
         return sections.map(section => ({
