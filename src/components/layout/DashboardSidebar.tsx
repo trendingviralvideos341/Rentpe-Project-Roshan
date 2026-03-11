@@ -92,32 +92,32 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Property Mgmt",
             links: [
-                { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
-                { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils },
+                { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount, reqPerm: ["manage_properties"] },
+                { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils, reqPerm: ["food_menu"] },
             ]
         },
         {
             title: "Tenant Operations",
             links: [
-                { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
-                { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
-                { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount },
-                { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar },
+                { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount, reqPerm: ["view_bookings", "approve_bookings"] },
+                { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
             ]
         },
         {
             title: "Finance",
             links: [
-                { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard },
-                { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings },
+                { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard, reqPerm: ["view_payments", "mark_rent"] },
+                { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings, reqPerm: ["view_payments"] },
             ]
         },
         {
             title: "Team & Help",
             links: [
-                { href: "/dashboard/owner/staff", label: "Management Team", icon: UserPlus },
-                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },
-                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList },
+                { href: "/dashboard/owner/staff", label: "Management Team", icon: UserPlus, reqPerm: ["manage_staff"] },
+                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["support"] },
+                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList, reqPerm: ["view_activity"] },
             ]
         }
     ];
@@ -204,7 +204,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     };
 
     const sectionMap: Record<string, SidebarSection[]> = {
-        owner: ownerSections,
+        owner: filterSectionLinks(ownerSections),
         admin: filterSectionLinks(adminSections),
         student: studentSections,
     };

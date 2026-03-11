@@ -1,28 +1,25 @@
 'use server';
+import crypto from "crypto";
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import bcrypt from "bcryptjs";
 
 export async function getOwnerStaff() {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-    const staff = await prisma.ownerStaff.findMany({
-        where: { ownerId: (session as any).userId },
-        orderBy: { updatedAt: 'desc' }
+    const staff = await prisma.user.findMany({
+        where: { 
+            parentOwnerId: (session as any).userId,
+            deletedAt: null 
+        },
+        orderBy: { createdAt: 'desc' }
     });
 
-    const staffWithNotes = await Promise.all(staff.map(async (s) => {
-        const notes = await prisma.actionNote.findMany({
-            where: { targetId: s.id, targetType: 'OWNER_STAFF' },
-            orderBy: { timestamp: 'desc' }
-        });
-        return { ...s, actionNotes: notes };
-    }));
-
-    return staffWithNotes;
+    return staff;
 }
 
 export async function addOwnerStaff(data: {
@@ -32,92 +29,126 @@ export async function addOwnerStaff(data: {
     designation: string,
     staffAddress: string,
     permissions: string[],
-    idProof?: string,
-    addressProof?: string,
-    photo?: string,
 }) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    const ownerId = (session as any).userId;
 
     // Validate mandatory fields
     if (!data.name || !data.email || !data.phone || !data.designation || !data.staffAddress) {
         throw new Error("All fields (name, email, phone, designation, address) are mandatory.");
     }
-    if (!data.idProof || !data.addressProof || !data.photo) {
-        throw new Error("ID verification, address verification, and photo are all mandatory.");
-    }
 
-    const staff = await prisma.ownerStaff.create({
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new Error("User with this email already exists.");
+
+    // Generate invite token
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const inviteTokenExpiry = new DateTime(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+    const staff = await prisma.user.create({
         data: {
             displayId: `STF-${Math.floor(Math.random() * 9000) + 1000}`,
-            ownerId: (session as any).userId,
-            name: data.name,
             email: data.email,
+            name: data.name,
             phone: data.phone,
-            designation: data.designation,
-            staffAddress: data.staffAddress,
-            permissions: JSON.stringify(data.permissions),
-            idProof: data.idProof,
-            addressProof: data.addressProof,
-            photo: data.photo,
-        }
-    });
-
-    await prisma.actionNote.create({
-        data: {
-            targetId: staff.id,
-            targetType: 'OWNER_STAFF',
-            action: 'ADDED',
-            reason: `Staff member ${staff.name} (${staff.designation}) added`,
-            performedBy: (session as any).userId
+            passwordHash: 'INVITED_PENDING', // Temp placeholder
+            role: 'OWNER',
+            roles: 'OWNER,STAFF',
+            status: 'INVITED',
+            parentOwnerId: ownerId,
+            staffPermissions: JSON.stringify(data.permissions),
+            resetToken: inviteToken,
+            resetTokenExpiry: inviteTokenExpiry,
+            // designation and occupationDetail can be used to store staff info
+            occupationDetail: data.designation,
+            currentAddress: data.staffAddress,
+            isOwner: true,
         }
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'OWNER',
+        actorId: ownerId,
+        actorRole: 'OWNER',
         actorName: (session as any).name || 'Owner',
         actionType: 'CREATE',
-        entityType: 'OWNER_STAFF' as any,
+        entityType: 'USER',
         entityId: staff.id,
-        description: `${staff.name} (${staff.designation})`,
+        description: `Invited staff ${data.name} as ${data.designation}`,
     });
 
     revalidatePath('/dashboard/owner/staff');
-    return staff;
+
+    // Return invite link for UI (in production this would be emailed)
+    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join-team?token=${inviteToken}`;
+    
+    return { success: true, inviteLink, staffId: staff.id };
 }
 
 export async function updateStaffStatus(id: string, status: 'ACTIVE' | 'BLOCKED' | 'REMOVED', reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-    const staff = await prisma.ownerStaff.update({
+    const staff = await prisma.user.update({
         where: { id },
         data: { status }
     });
 
     const action = status === 'BLOCKED' || status === 'REMOVED' ? 'BLOCKED' : 'UNBLOCKED';
 
-    await prisma.actionNote.create({
-        data: {
-            targetId: id,
-            targetType: 'OWNER_STAFF',
-            action,
-            reason,
-            performedBy: (session as any).userId
-        }
-    });
-
     logAuditEvent({
         actorId: (session as any).userId,
         actorRole: (session as any).role || 'OWNER',
         actorName: (session as any).name || 'Owner',
         actionType: action === 'BLOCKED' ? 'REJECT' : 'APPROVE',
-        entityType: 'OWNER_STAFF' as any,
+        entityType: 'USER',
         entityId: id,
         description: reason,
     });
 
     revalidatePath('/dashboard/owner/staff');
     return staff;
+}
+
+export async function joinStaffTeam(token: string, passwordHash: string) {
+    try {
+        const user = await prisma.user.findFirst({
+            where: {
+                resetToken: token,
+                resetTokenExpiry: { gte: new Date() },
+                status: 'INVITED'
+            }
+        });
+
+        if (!user) {
+            return { success: false, error: "Invalid or expired invitation token." };
+        }
+
+        const hashed = await bcrypt.hash(passwordHash, 10);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                passwordHash: hashed,
+                status: 'ACTIVE',
+                resetToken: null,
+                resetTokenExpiry: null
+            }
+        });
+
+        logAuditEvent({
+            actorId: user.id,
+            actorRole: 'OWNER',
+            actorName: user.name || 'Staff',
+            actionType: 'UPDATE',
+            entityType: 'USER',
+            entityId: user.id,
+            description: "Staff account activated via invite",
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 }

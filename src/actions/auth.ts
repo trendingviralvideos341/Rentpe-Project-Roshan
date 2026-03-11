@@ -450,7 +450,8 @@ export async function getCurrentUser() {
             where: { id: session.userId as string },
             select: {
                 id: true, email: true, name: true, role: true, roles: true,
-                phone: true, twoFactorEnabled: true, businessName: true, profilePhoto: true
+                phone: true, twoFactorEnabled: true, businessName: true, profilePhoto: true,
+                staffPermissions: true, parentOwnerId: true
             } as any
         });
 

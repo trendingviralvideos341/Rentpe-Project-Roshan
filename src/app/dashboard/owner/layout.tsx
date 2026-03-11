@@ -1,15 +1,19 @@
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
+import { getCurrentUser } from "@/actions/auth";
 
 export const dynamic = 'force-dynamic';
 
-export default function OwnerLayout({
+export default async function OwnerLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const user = await getCurrentUser() as any;
+    const permissions = user?.staffPermissions ? JSON.parse(user.staffPermissions) : [];
+
     return (
         <div className="flex min-h-[calc(100vh-4rem)]">
-            <DashboardSidebar role="owner" />
+            <DashboardSidebar role="owner" permissions={permissions} />
             <main className="flex-1 p-8 bg-muted/10">
                 {children}
             </main>

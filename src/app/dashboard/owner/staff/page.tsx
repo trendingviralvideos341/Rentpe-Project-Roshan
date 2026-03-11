@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserPlus, Ban, CheckCircle, Camera, Upload, AlertTriangle } from "lucide-react";
+import { UserPlus, Ban, CheckCircle, Mail, Copy } from "lucide-react";
 import { getOwnerStaff, addOwnerStaff, updateStaffStatus } from "@/actions/staff";
 
 const ownerPermissionsList = [
@@ -19,20 +19,9 @@ const ownerPermissionsList = [
     { id: "support", label: "Handle Support Tickets" },
 ];
 
-const MAX_TOTAL_BYTES = 5 * 1024 * 1024;
-function base64ToBytes(b64: string): number {
-    if (!b64) return 0;
-    const base = b64.includes(",") ? b64.split(",")[1] : b64;
-    return Math.floor((base.length * 3) / 4);
-}
-function formatMB(bytes: number) { return (bytes / (1024 * 1024)).toFixed(2); }
-
 const emptyForm = {
     name: "", email: "", phone: "", designation: "", staffAddress: "",
     permissions: [] as string[],
-    idProof: "", idProofName: "",
-    addressProof: "", addressProofName: "",
-    photo: "",
 };
 
 export default function OwnerStaffPage() {
@@ -40,16 +29,7 @@ export default function OwnerStaffPage() {
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState({ ...emptyForm });
-    const [cameraActive, setCameraActive] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const idRef = useRef<HTMLInputElement>(null);
-    const addrRef = useRef<HTMLInputElement>(null);
-
-    const usedBytes = base64ToBytes(form.idProof) + base64ToBytes(form.addressProof) + base64ToBytes(form.photo);
-    const usedPercent = Math.min(100, (usedBytes / MAX_TOTAL_BYTES) * 100);
-    const isAtLimit = usedBytes >= MAX_TOTAL_BYTES;
+    const [inviteLink, setInviteLink] = useState<string | null>(null);
 
     const fetchStaff = async () => {
         setLoading(true);
@@ -67,57 +47,9 @@ export default function OwnerStaffPage() {
         }));
     };
 
-    const handleFileUpload = (field: "idProof" | "addressProof", nameField: "idProofName" | "addressProofName", file: File) => {
-        setUploadError(null);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const b64 = e.target?.result as string;
-            const newBytes = base64ToBytes(b64);
-            const existingBytes = base64ToBytes(form[field]);
-            const projected = usedBytes - existingBytes + newBytes;
-            if (projected > MAX_TOTAL_BYTES) {
-                setUploadError(`❌ File too large. Would exceed 5MB limit by ${formatMB(projected - MAX_TOTAL_BYTES)} MB.`);
-                return;
-            }
-            setForm(p => ({ ...p, [field]: b64, [nameField]: file.name }));
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const startCamera = async () => {
-        setCameraActive(true);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-            if (videoRef.current) videoRef.current.srcObject = stream;
-        } catch { alert("Camera access denied."); setCameraActive(false); }
-    };
-
-    const capturePhoto = () => {
-        if (!canvasRef.current || !videoRef.current) return;
-        const canvas = canvasRef.current;
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        canvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
-        const b64 = canvas.toDataURL("image/jpeg", 0.75);
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream?.getTracks().forEach(t => t.stop());
-        setCameraActive(false);
-        const newBytes = base64ToBytes(b64);
-        const existingBytes = base64ToBytes(form.photo);
-        if (usedBytes - existingBytes + newBytes > MAX_TOTAL_BYTES) {
-            setUploadError("Photo too large. Compress existing docs first.");
-            return;
-        }
-        setForm(p => ({ ...p, photo: b64 }));
-    };
-
     const handleAddStaff = async () => {
         if (!form.name || !form.email || !form.phone || !form.designation || !form.staffAddress) {
             alert("All fields (name, email, phone, designation, address) are mandatory.");
-            return;
-        }
-        if (!form.idProof || !form.addressProof || !form.photo) {
-            alert("ID verification, address verification, and photo are all mandatory.");
             return;
         }
         if (form.permissions.length === 0) {
@@ -125,16 +57,15 @@ export default function OwnerStaffPage() {
             return;
         }
         try {
-            await addOwnerStaff({
+            const res = await addOwnerStaff({
                 name: form.name, email: form.email, phone: form.phone,
                 designation: form.designation, staffAddress: form.staffAddress,
                 permissions: form.permissions,
-                idProof: form.idProof, addressProof: form.addressProof, photo: form.photo,
             });
-            setShowAdd(false);
-            setForm({ ...emptyForm });
-            setUploadError(null);
-            fetchStaff();
+            if (res.inviteLink) {
+                setInviteLink(res.inviteLink);
+            }
+            await fetchStaff();
         } catch (e: any) { alert(`Failed to add staff: ${e.message}`); }
     };
 
@@ -158,203 +89,188 @@ export default function OwnerStaffPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">My Staff</h1>
-                    <p className="text-muted-foreground">Add subordinates and control what they can access.</p>
+                    <h1 className="text-3xl font-bold">Management Team</h1>
+                    <p className="text-muted-foreground">Invite staff members and control their dashboard access.</p>
                 </div>
-                <Button onClick={() => setShowAdd(!showAdd)}>
-                    <UserPlus className="h-4 w-4 mr-2" /> Add Staff
+                <Button onClick={() => { setShowAdd(!showAdd); setInviteLink(null); }}>
+                    <UserPlus className="h-4 w-4 mr-2" /> Invite Staff
                 </Button>
             </div>
 
             {showAdd && (
-                <Card className="border-primary/30 border-2">
-                    <CardContent className="p-6 space-y-5">
-                        <h3 className="font-bold text-lg">Add New Staff Member</h3>
-
-                        {/* Basic Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {[
-                                { label: "Full Name *", field: "name", placeholder: "Full name" },
-                                { label: "Email *", field: "email", placeholder: "email@pg.com" },
-                                { label: "Phone *", field: "phone", placeholder: "9XXXXXXXXX" },
-                                { label: "Designation *", field: "designation", placeholder: "Property Manager" },
-                            ].map(({ label, field, placeholder }) => (
-                                <div key={field} className="space-y-1">
-                                    <label className="text-sm font-medium">{label}</label>
-                                    <Input value={(form as any)[field]} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))} placeholder={placeholder} />
-                                </div>
-                            ))}
-                            <div className="space-y-1 md:col-span-2">
-                                <label className="text-sm font-medium">Address *</label>
-                                <Input value={form.staffAddress} onChange={e => setForm(p => ({ ...p, staffAddress: e.target.value }))} placeholder="Full residential address" />
-                            </div>
+                <Card className="border-primary/30 border-2 shadow-xl animate-in slide-in-from-top-4 duration-300">
+                    <CardContent className="p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-lg">Send Staff Invitation</h3>
+                            {inviteLink && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider">Invite Generated</span>}
                         </div>
 
-                        {/* 5MB Storage Meter */}
-                        <div className={`rounded-xl border-2 p-4 space-y-2 ${isAtLimit ? "border-red-500 bg-red-50" : usedPercent >= 80 ? "border-orange-400 bg-orange-50" : "border-gray-200 bg-gray-50"}`}>
-                            <div className="flex justify-between text-sm font-bold">
-                                <span>📦 Document Storage</span>
-                                <span className={isAtLimit ? "text-red-600" : "text-gray-600"}>{formatMB(usedBytes)} MB / 5.00 MB</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                <div className={`h-2.5 rounded-full transition-all ${isAtLimit ? "bg-red-600" : usedPercent >= 80 ? "bg-orange-500" : "bg-green-500"}`} style={{ width: `${usedPercent}%` }} />
-                            </div>
-                            <p className="text-xs font-bold text-red-600">🔴 Remaining: {formatMB(MAX_TOTAL_BYTES - usedBytes)} MB</p>
-                            <div className="flex items-start gap-2 p-2 bg-red-100 border border-red-200 rounded-lg">
-                                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-red-700">
-                                    <strong>Tip:</strong> Compress files at <a href="https://compressjpeg.com" target="_blank" rel="noopener noreferrer" className="underline font-bold">compressjpeg.com</a> or <a href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer" className="underline font-bold">ilovepdf.com</a>
-                                </p>
-                            </div>
-                        </div>
-
-                        {uploadError && <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-sm text-red-700 font-medium">{uploadError}</div>}
-
-                        {/* Document Uploads */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* ID Proof */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold">🪪 ID Verification *</label>
-                                <p className="text-xs text-muted-foreground">Aadhaar / PAN / Passport</p>
-                                <input type="file" accept="image/*,application/pdf" className="hidden" ref={idRef} onChange={e => { if (e.target.files?.[0]) handleFileUpload("idProof", "idProofName", e.target.files[0]); }} />
-                                <Button size="sm" variant="outline" className="w-full" onClick={() => idRef.current?.click()} disabled={isAtLimit}>
-                                    <Upload className="h-3 w-3 mr-1" /> {form.idProof ? `✅ ${form.idProofName}` : "Upload ID"}
-                                </Button>
-                            </div>
-
-                            {/* Address Proof */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold">🏠 Address Verification *</label>
-                                <p className="text-xs text-muted-foreground">Utility bill / Bank statement</p>
-                                <input type="file" accept="image/*,application/pdf" className="hidden" ref={addrRef} onChange={e => { if (e.target.files?.[0]) handleFileUpload("addressProof", "addressProofName", e.target.files[0]); }} />
-                                <Button size="sm" variant="outline" className="w-full" onClick={() => addrRef.current?.click()} disabled={isAtLimit}>
-                                    <Upload className="h-3 w-3 mr-1" /> {form.addressProof ? `✅ ${form.addressProofName}` : "Upload Address Proof"}
-                                </Button>
-                            </div>
-
-                            {/* Photo */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold">📸 Staff Photo *</label>
-                                <p className="text-xs text-muted-foreground">Live camera capture</p>
-                                {form.photo ? (
-                                    <div className="space-y-1">
-                                        <img src={form.photo} alt="Staff photo" className="w-full h-24 object-cover rounded-lg border" />
-                                        <Button size="sm" variant="outline" className="w-full text-xs" onClick={startCamera}>Retake</Button>
+                        {inviteLink ? (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5 space-y-4 animate-in zoom-in-95">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-green-100 p-2 rounded-full">
+                                        <Mail className="h-5 w-5 text-green-600" />
                                     </div>
-                                ) : (
-                                    <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" onClick={startCamera} disabled={isAtLimit}>
-                                        <Camera className="h-3 w-3 mr-1" /> Take Photo
+                                    <div>
+                                        <p className="text-sm font-bold text-green-800">Invitation Link Ready</p>
+                                        <p className="text-xs text-green-700/80">Copy and share this link with your staff member. They can use it to set their password.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Input value={inviteLink} readOnly className="bg-white border-green-200 font-mono text-xs h-10 shadow-inner" />
+                                    <Button onClick={() => { navigator.clipboard.writeText(inviteLink); alert("Invite link copied to clipboard!"); }} className="bg-green-600 hover:bg-green-700 h-10 px-4">
+                                        <Copy className="h-4 w-4 mr-2" /> Copy Link
                                     </Button>
-                                )}
+                                </div>
+                                <div className="pt-2">
+                                    <Button variant="outline" className="w-full border-green-200 text-green-700 hover:bg-green-100" onClick={() => { setShowAdd(false); setInviteLink(null); setForm({ ...emptyForm }); }}>
+                                        Done
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {[
+                                        { label: "Full Name *", field: "name", placeholder: "Full name" },
+                                        { label: "Email *", field: "email", placeholder: "email@pg.com" },
+                                        { label: "Phone *", field: "phone", placeholder: "9XXXXXXXXX" },
+                                        { label: "Designation *", field: "designation", placeholder: "Property Manager" },
+                                    ].map(({ label, field, placeholder }) => (
+                                        <div key={field} className="space-y-1">
+                                            <label className="text-sm font-medium">{label}</label>
+                                            <Input 
+                                                value={(form as any)[field]} 
+                                                onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))} 
+                                                placeholder={placeholder} 
+                                                className="focus-visible:ring-primary h-10"
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className="space-y-1 md:col-span-2">
+                                        <label className="text-sm font-medium">Residential Address *</label>
+                                        <Input 
+                                            value={form.staffAddress} 
+                                            onChange={e => setForm(p => ({ ...p, staffAddress: e.target.value }))} 
+                                            placeholder="Full residential address for records" 
+                                            className="focus-visible:ring-primary h-10"
+                                        />
+                                    </div>
+                                </div>
 
-                        {/* Permissions */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Authorized Permissions *</label>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {ownerPermissionsList.map(perm => (
-                                    <label key={perm.id} className={`flex items-center gap-2 p-2 rounded border cursor-pointer text-xs ${form.permissions.includes(perm.id) ? "bg-primary/10 border-primary" : "hover:bg-muted"}`}>
-                                        <input type="checkbox" checked={form.permissions.includes(perm.id)} onChange={() => togglePerm(perm.id)} className="accent-primary" />
-                                        {perm.label}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-bold flex items-center gap-2">
+                                        🛡️ Dashboard Access Permissions
+                                        <span className="text-[10px] font-normal text-muted-foreground">(Select allowed features)</span>
                                     </label>
-                                ))}
-                            </div>
-                        </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                        {ownerPermissionsList.map(perm => (
+                                            <label 
+                                                key={perm.id} 
+                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-sm ${
+                                                    form.permissions.includes(perm.id) 
+                                                        ? "bg-primary/5 border-primary shadow-sm" 
+                                                        : "hover:bg-muted border-transparent bg-muted/30"
+                                                }`}
+                                            >
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={form.permissions.includes(perm.id)} 
+                                                    onChange={() => togglePerm(perm.id)} 
+                                                    className="w-4 h-4 accent-primary rounded cursor-pointer" 
+                                                />
+                                                <span className={form.permissions.includes(perm.id) ? "font-bold text-primary" : ""}>
+                                                    {perm.label}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
 
-                        <div className="flex gap-2">
-                            <Button onClick={handleAddStaff} className="bg-green-600 hover:bg-green-700">Add Staff Member</Button>
-                            <Button variant="outline" onClick={() => { setShowAdd(false); setForm({ ...emptyForm }); setUploadError(null); }}>Cancel</Button>
-                        </div>
+                                <div className="flex gap-3 pt-4">
+                                    <Button onClick={handleAddStaff} className="bg-primary hover:bg-primary/90 flex-1 h-11 font-bold">Generate Invite & Add Staff</Button>
+                                    <Button variant="outline" onClick={() => { setShowAdd(false); setForm({ ...emptyForm }); }} className="h-11 px-6">Cancel</Button>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             )}
 
-            {/* Camera Modal */}
-            {cameraActive && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
-                        <h2 className="text-xl font-bold text-center">📸 Capture Staff Photo</h2>
-                        <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg border" />
-                        <canvas ref={canvasRef} className="hidden" />
-                        <div className="flex gap-3">
-                            <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={capturePhoto}>📸 Capture</Button>
-                            <Button variant="outline" className="flex-1" onClick={() => {
-                                const stream = videoRef.current?.srcObject as MediaStream;
-                                stream?.getTracks().forEach(t => t.stop());
-                                setCameraActive(false);
-                            }}>Cancel</Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Staff Table */}
-            <Card>
+            <Card className="overflow-hidden border-none shadow-md">
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-muted border-b">
+                            <thead className="bg-muted/50 border-b">
                                 <tr>
-                                    <th className="p-4 text-left font-medium">ID</th>
-                                    <th className="p-4 text-left font-medium">Name</th>
-                                    <th className="p-4 text-left font-medium">Designation</th>
-                                    <th className="p-4 text-left font-medium">Authorized For</th>
-                                    <th className="p-4 text-left font-medium">Status & History</th>
-                                    <th className="p-4 text-left font-medium">Actions</th>
+                                    <th className="p-4 text-left font-bold text-xs uppercase tracking-wider text-muted-foreground">ID</th>
+                                    <th className="p-4 text-left font-bold text-xs uppercase tracking-wider text-muted-foreground">Name & Contact</th>
+                                    <th className="p-4 text-left font-bold text-xs uppercase tracking-wider text-muted-foreground">Designation</th>
+                                    <th className="p-4 text-left font-bold text-xs uppercase tracking-wider text-muted-foreground">Permissions</th>
+                                    <th className="p-4 text-left font-bold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
+                                    <th className="p-4 text-left font-bold text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-muted/30">
                                 {staff.map((s: any) => {
-                                    const perms = JSON.parse(s.permissions || "[]");
-                                    const isBlocked = s.status === "BLOCKED" || s.status === "REMOVED";
+                                    const perms = JSON.parse(s.staffPermissions || "[]");
+                                    const isBlocked = s.status === "BLOCKED";
+                                    const isInvited = s.status === "INVITED";
+                                    
                                     return (
-                                        <tr key={s.id} className={`border-b hover:bg-muted/5 ${isBlocked ? "bg-red-50/50" : ""}`}>
-                                            <td className="p-4 font-mono text-xs">{s.displayId}</td>
+                                        <tr key={s.id} className={`hover:bg-muted/10 transition-colors ${isBlocked ? "bg-red-50/20" : ""}`}>
+                                            <td className="p-4 font-mono text-[10px] text-muted-foreground">{s.displayId}</td>
                                             <td className="p-4">
-                                                <div className="flex items-center gap-2">
-                                                    {s.photo && <img src={s.photo} alt="" className="w-8 h-8 rounded-full object-cover border" />}
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isBlocked ? "bg-red-100 text-red-600" : isInvited ? "bg-blue-100 text-blue-600" : "bg-primary/10 text-primary"}`}>
+                                                        {s.name.charAt(0)}
+                                                    </div>
                                                     <div>
-                                                        <div className={`font-medium ${isBlocked ? "line-through text-red-400" : ""}`}>{s.name}</div>
-                                                        <div className="text-[10px] text-muted-foreground">{s.email} • {s.phone}</div>
-                                                        <div className="text-[10px] text-muted-foreground italic">Added: {new Date(s.addedOn).toLocaleDateString()}</div>
+                                                        <div className={`font-bold ${isBlocked ? "line-through text-muted-foreground" : "text-foreground"}`}>{s.name}</div>
+                                                        <div className="text-[10px] text-muted-foreground flex flex-col">
+                                                            <span>{s.email}</span>
+                                                            <span>{s.phone}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="p-4"><span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{s.designation}</span></td>
                                             <td className="p-4">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {perms.map((p: string) => {
+                                                <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-[10px] font-black uppercase shadow-sm border border-purple-200">
+                                                    {s.occupationDetail || "Staff"}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                    {perms.length > 0 ? perms.map((p: string) => {
                                                         const perm = ownerPermissionsList.find(op => op.id === p);
-                                                        return <span key={p} className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-[10px]">{perm?.label || p}</span>;
-                                                    })}
+                                                        return <span key={p} className="bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-[9px] font-bold border border-muted-foreground/10">{perm?.label || p}</span>;
+                                                    }) : <span className="text-[10px] text-muted-foreground italic">No specific perms</span>}
                                                 </div>
                                             </td>
                                             <td className="p-4">
-                                                {isBlocked
-                                                    ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 uppercase">🚫 Blocked</span>
-                                                    : <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase">✅ Active</span>
-                                                }
-                                                {s.actionNotes?.length > 0 && (
-                                                    <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                                                        {s.actionNotes.map((note: any, i: number) => (
-                                                            <div key={i} className={`text-[9px] p-1 rounded border ${note.action === "BLOCKED" || note.action === "REMOVED" ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"}`}>
-                                                                <div className="font-bold uppercase">{note.action === "BLOCKED" || note.action === "REMOVED" ? "🚫 Blocked" : "✅ Unblocked"}</div>
-                                                                <div>Reason: {note.reason}</div>
-                                                                <div>{new Date(note.timestamp).toLocaleString()}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                {isInvited ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 border border-blue-200">
+                                                        <Mail className="h-3 w-3" /> INVITED
+                                                    </span>
+                                                ) : isBlocked ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-700 border border-red-200">
+                                                        <Ban className="h-3 w-3" /> BLOCKED
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-green-100 text-green-700 border border-green-200">
+                                                        <CheckCircle className="h-3 w-3" /> ACTIVE
+                                                    </span>
                                                 )}
                                             </td>
                                             <td className="p-4">
                                                 {!isBlocked ? (
-                                                    <Button size="sm" variant="destructive" className="h-7 text-[10px]" onClick={() => handleBlockStaff(s.id)}>
-                                                        <Ban className="h-3 w-3 mr-1" /> Block
+                                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleBlockStaff(s.id)}>
+                                                        Block Access
                                                     </Button>
                                                 ) : (
-                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] border-green-300 text-green-700 hover:bg-green-50" onClick={() => handleUnblockStaff(s.id)}>
-                                                        <CheckCircle className="h-3 w-3 mr-1" /> Unblock
+                                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700" onClick={() => handleUnblockStaff(s.id)}>
+                                                        Restore Access
                                                     </Button>
                                                 )}
                                             </td>
@@ -364,9 +280,42 @@ export default function OwnerStaffPage() {
                             </tbody>
                         </table>
                     </div>
-                    {staff.length === 0 && <div className="p-8 text-center text-muted-foreground">No staff members added yet.</div>}
+                    {staff.length === 0 && (
+                        <div className="p-12 text-center">
+                            <div className="bg-muted/30 inline-flex p-4 rounded-full mb-4">
+                                <UsersIcon className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                            <h3 className="font-bold">No Staff Members Yet</h3>
+                            <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-1">
+                                Give your team access to the dashboard by inviting them with specific permissions.
+                            </p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+// Helper icon
+function UsersIcon(props: any) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
     );
 }
