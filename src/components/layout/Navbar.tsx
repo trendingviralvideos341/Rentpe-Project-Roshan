@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, Home, ArrowLeftRight, Loader2, Eye } from 'lucide-react';
+import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { stopImpersonation } from '@/actions/admin-auth';
@@ -85,7 +85,12 @@ const Navbar = ({ session }: { session: any }) => {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-6">
                         <Link href="/search" className="text-sm font-medium hover:text-primary transition-colors">Find PG</Link>
-                        <Link href="/list-property" className="text-sm font-medium hover:text-primary transition-colors">List Property</Link>
+                        <Link href="/list-property">
+                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-sm group">
+                                <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                List Your PG
+                            </button>
+                        </Link>
                         <Link href="/about" className="text-sm font-medium hover:text-primary transition-colors">About Us</Link>
                     </div>
 
@@ -150,7 +155,12 @@ const Navbar = ({ session }: { session: any }) => {
                 {isOpen && (
                     <div className="md:hidden border-t bg-background p-4 space-y-4 animate-in slide-in-from-top-2">
                         <Link href="/search" className="block text-sm font-medium hover:text-primary" onClick={() => setIsOpen(false)}>Find PG</Link>
-                        <Link href="/list-property" className="block text-sm font-medium hover:text-primary" onClick={() => setIsOpen(false)}>List Property</Link>
+                        <Link href="/list-property" className="block" onClick={() => setIsOpen(false)}>
+                            <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-500 text-white shadow-sm">
+                                <Building className="h-4 w-4" />
+                                List Your Property
+                            </div>
+                        </Link>
                         <div className="pt-4 border-t flex flex-col space-y-2">
                             {isLoggedIn ? (
                                 <div className="flex flex-col space-y-2">

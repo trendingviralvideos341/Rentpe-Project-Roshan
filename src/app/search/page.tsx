@@ -230,6 +230,50 @@ export default function SearchPage() {
                     )}
                 </>
             )}
+
+            {/* Owner CTA Section */}
+            {!loading && (
+                <div className="mt-16 mb-8 bg-gradient-to-r from-blue-600 to-violet-700 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden group">
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
+                        <div className="space-y-6 text-center md:text-left flex-1">
+                            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm font-bold border border-white/30 animate-pulse">
+                                <Building size={16} />
+                                For PG & Hostel Owners
+                            </div>
+                            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
+                                Reach thousands of students <br className="hidden lg:block" /> 
+                                in just a few clicks.
+                            </h2>
+                            <p className="text-lg text-blue-100 max-w-2xl leading-relaxed font-medium">
+                                RentPe is India's fastest-growing platform for student housing. 
+                                List your property today and get verified instantly to start receiving bookings.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-2">
+                                <Link href="/list-property" className="w-full sm:w-auto">
+                                    <Button size="lg" className="w-full bg-white text-blue-700 hover:bg-blue-50 font-black px-10 h-14 rounded-2xl shadow-xl hover:scale-105 transition-transform">
+                                        🚀 List Your Property
+                                    </Button>
+                                </Link>
+                                <Link href="/about" className="w-full sm:w-auto">
+                                    <Button size="lg" variant="outline" className="w-full border-2 border-white/50 text-white hover:bg-white/10 px-8 h-14 rounded-2xl font-bold">
+                                        Learn How It Works
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                        <div className="hidden lg:block relative">
+                            <div className="bg-white/10 p-8 rounded-[40px] backdrop-blur-xl border border-white/20 transform rotate-6 group-hover:rotate-0 transition-transform duration-500 shadow-3xl">
+                                <Building size={120} className="text-white opacity-90" />
+                            </div>
+                            {/* Decorative Sparkle */}
+                            <div className="absolute -top-4 -right-4 w-12 h-12 bg-yellow-400 rounded-full blur-2xl opacity-50 animate-pulse" />
+                        </div>
+                    </div>
+                    {/* Decorative Background Elements */}
+                    <div className="absolute -top-32 -right-32 w-80 h-80 bg-blue-400 rounded-full blur-[120px] opacity-30 group-hover:opacity-50 transition-opacity" />
+                    <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-purple-400 rounded-full blur-[120px] opacity-30 group-hover:opacity-50 transition-opacity" />
+                </div>
+            )}
         </div>
     );
 }

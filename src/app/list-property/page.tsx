@@ -2,6 +2,8 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { getCurrentUser } from "@/actions/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,7 @@ function formatMB(bytes: number) { return (bytes / (1024 * 1024)).toFixed(2); }
 
 export default function ListPropertyPage() {
     const router = useRouter();
+    const [loadingSession, setLoadingSession] = useState(true);
     const [step, setStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,6 +47,29 @@ export default function ListPropertyPage() {
         amenities: [] as string[], amenitiesOther: "",
         photos: {} as Record<string, string>,
     });
+    
+    useEffect(() => {
+        async function checkSession() {
+            setLoadingSession(true);
+            const user = await getCurrentUser();
+            if (!user) {
+                // Redirect with callback
+                router.push("/login?callbackUrl=/list-property&role=OWNER");
+                return;
+            }
+            setLoadingSession(false);
+        }
+        checkSession();
+    }, [router]);
+
+    if (loadingSession) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mb-4"></div>
+                <p className="text-muted-foreground font-medium animate-pulse">Initializing Owner Portal...</p>
+            </div>
+        );
+    }
 
     const totalPhotoBytes = Object.values(form.photos).reduce((sum, b64) => sum + base64ToBytes(b64), 0);
     const photoPercent = Math.min(100, (totalPhotoBytes / MAX_PHOTO_BYTES) * 100);
