@@ -4,9 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star } from "lucide-react";
+import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star, X } from "lucide-react";
 import { getUsers, updateUserStatus, updateUserPoints } from "@/actions/admin";
 import { impersonateUser } from "@/actions/admin-auth";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 // ── Points Modal ──────────────────────────────────────
 function PointsModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (points: number, reason: string) => void; onCancel: () => void }) {
@@ -83,15 +86,30 @@ function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reas
 }
 
 export default function AdminUsersPage() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const routerRole = searchParams.get("role");
+    const routerStatus = searchParams.get("status");
+    
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState<"STUDENT" | "OWNER">("STUDENT");
+    const [tab, setTab] = useState<string>(routerRole || (routerStatus === "SUSPENDED" ? "SUSPENDED" : "ALL"));
     const [search, setSearch] = useState("");
-    const [filterStatus, setFilterStatus] = useState("ALL");
+    const [filterStatus, setFilterStatus] = useState(routerStatus || "ALL");
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [blockTarget, setBlockTarget] = useState<any | null>(null);
     const [pointsTarget, setPointsTarget] = useState<any | null>(null);
     const [processing, setProcessing] = useState(false);
+
+    // Sync tab with URL params
+    useEffect(() => {
+        if (routerRole) setTab(routerRole);
+        else if (routerStatus === "SUSPENDED") setTab("SUSPENDED");
+        else setTab("ALL");
+        
+        if (routerStatus) setFilterStatus(routerStatus);
+        else setFilterStatus("ALL");
+    }, [routerRole, routerStatus]);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -149,12 +167,23 @@ export default function AdminUsersPage() {
         }
     }
 
-    // Fix: match both USER and STUDENT roles to Student tab
-    const studentCount = users.filter(u => u.role === "STUDENT" || u.role === "USER").length;
-    const ownerCount = users.filter(u => u.role === "OWNER").length;
+    const counts = {
+        ALL: users.length,
+        STUDENT: users.filter(u => u.role === "STUDENT" || u.role === "USER").length,
+        OWNER: users.filter(u => u.role === "OWNER").length,
+        EMPLOYEE: users.filter(u => ["ADMIN", "ONBOARDER", "VERIFIER"].includes(u.role)).length,
+        SUSPENDED: users.filter(u => u.status === "BANNED" || u.status === "SUSPENDED").length,
+    };
 
     const filtered = users
-        .filter(u => tab === "STUDENT" ? (u.role === "STUDENT" || u.role === "USER") : u.role === "OWNER")
+        .filter(u => {
+            if (tab === "ALL") return true;
+            if (tab === "STUDENT") return u.role === "STUDENT" || u.role === "USER";
+            if (tab === "OWNER") return u.role === "OWNER";
+            if (tab === "EMPLOYEE") return ["ADMIN", "ONBOARDER", "VERIFIER"].includes(u.role);
+            if (tab === "SUSPENDED") return u.status === "BANNED" || u.status === "SUSPENDED";
+            return true;
+        })
         .filter(u => filterStatus === "ALL" || u.status === filterStatus)
         .filter(u =>
             (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -169,179 +198,143 @@ export default function AdminUsersPage() {
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold">User Management</h1>
-                    <p className="text-muted-foreground">Manage students and owners. Block or unblock accounts.</p>
+                    <p className="text-muted-foreground">Manage students, owners and employees. Secure oversight of all platform accounts.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
                     <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
                 </Button>
             </div>
 
-            {/* Colored Tabs */}
-            <div className="flex gap-2">
-                <Button
-                    onClick={() => setTab("STUDENT")}
-                    className={tab === "STUDENT" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white border border-blue-300 text-blue-700 hover:bg-blue-50"}
-                >
-                    🎓 Students ({studentCount})
-                </Button>
-                <Button
-                    onClick={() => setTab("OWNER")}
-                    className={tab === "OWNER" ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-white border border-purple-300 text-purple-700 hover:bg-purple-50"}
-                >
-                    🏠 Owners ({ownerCount})
-                </Button>
+            {/* Expanded Tabs */}
+            <div className="flex gap-2 flex-wrap">
+                {[
+                    { id: "ALL", label: "All Users", color: "slate" },
+                    { id: "STUDENT", label: "Students", color: "blue" },
+                    { id: "OWNER", label: "Owners", color: "purple" },
+                    { id: "EMPLOYEE", label: "Employees", color: "teal" },
+                    { id: "SUSPENDED", label: "Suspended", color: "red" },
+                ].map(t => (
+                    <Button
+                        key={t.id}
+                        onClick={() => {
+                            setTab(t.id);
+                            const params = new URLSearchParams(window.location.search);
+                            if (t.id === "ALL") params.delete("role");
+                            else if (t.id === "SUSPENDED") { params.delete("role"); params.set("status", "SUSPENDED"); }
+                            else { params.set("role", t.id); params.delete("status"); }
+                            router.push(`/dashboard/admin/users?${params.toString()}`);
+                        }}
+                        variant={tab === t.id ? "default" : "outline"}
+                        className={cn(
+                            "h-9 px-4 rounded-full text-xs font-bold transition-all",
+                            tab === t.id ? "" : `border-${t.color}-200 text-${t.color}-600 hover:bg-${t.color}-50`
+                        )}
+                    >
+                        {t.label} ({counts[t.id as keyof typeof counts]})
+                    </Button>
+                ))}
             </div>
 
             {/* Filters */}
             <div className="flex gap-4 items-center">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-10" placeholder="Search by name, email, or ID..." value={search} onChange={e => setSearch(e.target.value)} />
+                    <Input className="pl-10 h-11 rounded-xl shadow-sm" placeholder="Search by name, email, or ID..." value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
-                <select className="border rounded-md p-2 bg-background text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                <select className="border rounded-xl p-2 bg-background text-sm h-11 px-4 shadow-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                     <option value="ALL">All Status</option>
                     <option value="ACTIVE">Active</option>
                     <option value="BANNED">Blocked</option>
+                    <option value="SUSPENDED">Suspended</option>
                 </select>
             </div>
 
             {/* Table */}
-            <Card>
+            <Card className="rounded-2xl shadow-sm border-slate-200 overflow-hidden">
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-muted border-b">
+                            <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="p-4 text-left font-medium">ID</th>
-                                    <th className="p-4 text-left font-medium">Name</th>
-                                    <th className="p-4 text-left font-medium">Email / Phone</th>
-                                    <th className="p-4 text-left font-medium">{tab === "OWNER" ? "PGs / Properties" : "Bookings"}</th>
-                                    <th className="p-4 text-left font-medium">Status & History</th>
-                                    <th className="p-4 text-left font-medium">Points</th>
-                                    <th className="p-4 text-left font-medium">Actions</th>
+                                    <th className="p-4 text-left text-xs font-black uppercase text-slate-500">User Identity</th>
+                                    <th className="p-4 text-left text-xs font-black uppercase text-slate-500">Role & Access</th>
+                                    <th className="p-4 text-left text-xs font-black uppercase text-slate-500">Contact</th>
+                                    <th className="p-4 text-left text-xs font-black uppercase text-slate-500">{tab === "OWNER" ? "Properties" : "History"}</th>
+                                    <th className="p-4 text-left text-xs font-black uppercase text-slate-500">Status</th>
+                                    <th className="p-4 text-right text-xs font-black uppercase text-slate-500">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y">
+                            <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan={6} className="p-8 text-center animate-pulse">Loading platform users...</td></tr>
+                                    <tr><td colSpan={6} className="p-20 text-center animate-pulse text-slate-400">Loading platform users...</td></tr>
                                 ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No users found.</td></tr>
+                                    <tr><td colSpan={6} className="p-20 text-center text-muted-foreground">No users found in this category.</td></tr>
                                 ) : (
                                     filtered.map(user => {
-                                        const isExpanded = expandedUser === user.id;
+                                        const isBanned = user.status === "BANNED" || user.status === "SUSPENDED";
                                         return (
-                                            <tr key={user.id} className={`hover:bg-muted/5 ${user.status === "BANNED" ? "bg-red-50" : ""}`}>
-                                                <td className="p-4 font-mono text-xs">{user.displayId || user.id.slice(0, 8)}</td>
+                                            <tr key={user.id} className={`hover:bg-slate-50/50 transition-colors ${isBanned ? "bg-red-50/30" : ""}`}>
                                                 <td className="p-4">
-                                                    <div className={`font-medium ${user.status === "BANNED" ? "text-red-600 line-through" : ""}`}>{user.name}</div>
-                                                    <div className="text-[10px] text-muted-foreground">Joined: {new Date(user.createdAt).toLocaleDateString()}</div>
-                                                </td>
-                                                <td className="p-4 text-sm">
-                                                    <div>{user.email}</div>
-                                                    <div className="text-xs text-muted-foreground">{user.phone || "No Phone"}</div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-black text-indigo-700">{user.loyaltyPoints || 0}</span>
-                                                        <span className="text-[10px] text-muted-foreground uppercase">Points</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 uppercase">
+                                                            {user.name?.charAt(0) || "U"}
+                                                        </div>
+                                                        <div>
+                                                            <Link href={`/dashboard/admin/users/${user.id}`} className="font-bold text-slate-900 hover:text-blue-600 transition-colors flex items-center gap-1">
+                                                                {user.name} <Eye className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                                                            </Link>
+                                                            <div className="text-[10px] font-mono text-slate-400">{user.displayId || user.id.slice(0, 8)}</div>
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                {/* PG/Bookings Info Column */}
                                                 <td className="p-4">
-                                                    {tab === "OWNER" ? (
-                                                        <div>
-                                                            {user.properties && user.properties.length > 0 ? (
-                                                                <div className="space-y-1">
-                                                                    {user.properties.slice(0, isExpanded ? undefined : 2).map((p: any) => (
-                                                                        <div key={p.id} className="bg-purple-50 border border-purple-200 rounded p-1.5 text-[11px]">
-                                                                            <div className="font-bold text-purple-800 flex items-center gap-1">
-                                                                                <Building className="h-3 w-3" /> {p.name}
-                                                                            </div>
-                                                                            <div className="text-purple-600 truncate" title={p.address}>{p.city} — {p.address}</div>
-                                                                            <div className="text-purple-500  mt-0.5">
-                                                                                {p.rooms?.length || 0} rooms
-                                                                                {p.rooms?.length > 0 && (
-                                                                                    <span className="ml-1">(₹{Math.min(...p.rooms.map((r: any) => r.price))}–₹{Math.max(...p.rooms.map((r: any) => r.price))})</span>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                    {user.properties.length > 2 && (
-                                                                        <button
-                                                                            onClick={() => setExpandedUser(isExpanded ? null : user.id)}
-                                                                            className="text-[10px] text-purple-600 hover:underline flex items-center gap-1"
-                                                                        >
-                                                                            {isExpanded ? <>Show less <ChevronUp className="h-3 w-3" /></> : <>{user.properties.length - 2} more <ChevronDown className="h-3 w-3" /></>}
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-muted-foreground italic">No properties</span>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div>
-                                                            {user.bookings && user.bookings.length > 0 ? (
-                                                                <div className="space-y-1">
-                                                                    {user.bookings.map((b: any) => (
-                                                                        <div key={b.id} className={`text-[11px] p-1 rounded border ${b.status === "PAID" ? "bg-green-50 border-green-200" : b.status === "REJECTED" ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}>
-                                                                            <div className="font-medium">{b.propertyName}</div>
-                                                                            <div className="flex justify-between">
-                                                                                <span className={`font-bold ${b.status === "PAID" ? "text-green-700" : b.status === "REJECTED" ? "text-red-700" : "text-gray-700"}`}>
-                                                                                    {b.status === "PAID" ? "✅ Paid" : b.status === "REJECTED" ? "❌ Rejected" : b.status === "APPROVED_PAYMENT_PENDING" ? "⏳ Payment Pending" : "⏳ Awaiting Approval"}
-                                                                                </span>
-                                                                                <span>{b.amount}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-muted-foreground italic">No bookings</span>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                                                        user.role === "OWNER" ? "bg-purple-100 text-purple-700 border-purple-200" :
+                                                        ["ADMIN", "ONBOARDER", "VERIFIER"].includes(user.role) ? "bg-teal-100 text-teal-700 border-teal-200" :
+                                                        "bg-blue-100 text-blue-700 border-blue-200"
+                                                    )}>
+                                                        {user.role}
+                                                    </span>
+                                                    <div className="text-[10px] text-slate-400 mt-1">Member since {new Date(user.createdAt).toLocaleDateString()}</div>
                                                 </td>
-
                                                 <td className="p-4">
-                                                    {user.status === "BANNED" ? (
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-red-100 text-red-800 uppercase">🚫 Blocked</span>
+                                                    <div className="text-sm text-slate-600">{user.email}</div>
+                                                    <div className="text-xs font-medium text-slate-500">{user.phone || "—"}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    {user.role === "OWNER" ? (
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-slate-700">{user.properties?.length || 0}</span>
+                                                            <span className="text-[10px] uppercase text-slate-400 font-bold">Listings</span>
+                                                        </div>
                                                     ) : (
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase">✅ Active</span>
-                                                    )}
-                                                    {user.actionNotes && user.actionNotes.length > 0 && (
-                                                        <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                                                            {user.actionNotes.slice(0, 3).map((note: any) => (
-                                                                <div key={note.id} className={`text-[10px] p-1.5 rounded border ${note.action === "BANNED" ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"}`}>
-                                                                    <div className="font-bold">{note.action === "BANNED" ? "🚫 Blocked" : "✅ Unblocked"}</div>
-                                                                    <div className="truncate" title={note.reason}>Reason: {note.reason}</div>
-                                                                    <div className="text-muted-foreground">{new Date(note.timestamp).toLocaleDateString()}</div>
-                                                                </div>
-                                                            ))}
-                                                            {user.actionNotes.length > 3 && (
-                                                                <div className="text-[10px] text-muted-foreground italic">+{user.actionNotes.length - 3} more...</div>
-                                                            )}
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-slate-700">{user.bookings?.length || 0}</span>
+                                                            <span className="text-[10px] uppercase text-slate-400 font-bold">Bookings</span>
                                                         </div>
                                                     )}
                                                 </td>
                                                 <td className="p-4">
-                                                    <div className="flex flex-col gap-2">
-                                                        <Button size="sm" variant="outline" className="h-8 text-[11px] border-indigo-200 text-indigo-700 hover:bg-indigo-50" disabled={processing} onClick={() => setPointsTarget(user)}>
-                                                            <Star className="h-3 w-3 mr-1" /> Manage Points
-                                                        </Button>
-
-                                                        <Button size="sm" variant="outline" className="h-8 text-[11px] border-blue-200 text-blue-700 hover:bg-blue-50" disabled={processing} onClick={() => handleImpersonate(user.id)}>
-                                                            <Eye className="h-3 w-3 mr-1" /> Login As...
-                                                        </Button>
-
-                                                        {user.status === "BANNED" ? (
-                                                            <Button size="sm" variant="outline" className="h-8 text-[11px] border-green-300 text-green-700 hover:bg-green-50" disabled={processing} onClick={() => setBlockTarget(user)}>
-                                                                <CheckCircle className="h-3 w-3 mr-1" /> Unblock
+                                                    {isBanned ? (
+                                                        <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-red-100 text-red-700 border border-red-200 uppercase tracking-tighter">Suspended</span>
+                                                    ) : (
+                                                        <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-green-100 text-green-700 border border-green-200 uppercase tracking-tighter">Active</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Link href={`/dashboard/admin/users/${user.id}`}>
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                                                                <Eye className="h-4 w-4" />
                                                             </Button>
-                                                        ) : (
-                                                            <Button size="sm" variant="destructive" className="h-8 text-[11px]" disabled={processing} onClick={() => setBlockTarget(user)}>
-                                                                <Ban className="h-3 w-3 mr-1" /> Block
-                                                            </Button>
-                                                        )}
+                                                        </Link>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50" onClick={() => setPointsTarget(user)}>
+                                                            <Star className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => setBlockTarget(user)}>
+                                                            <Ban className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
                                                 </td>
                                             </tr>

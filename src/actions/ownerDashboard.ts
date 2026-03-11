@@ -368,8 +368,6 @@ export async function getOwnerProfile() {
 }
 
 export async function updateOwnerProfile(data: {
-    name?: string;
-    phone?: string;
     businessName?: string;
     profilePhoto?: string;
 }) {
@@ -378,7 +376,7 @@ export async function updateOwnerProfile(data: {
 
     await (prisma as any).user.update({
         where: { id: (session as any).userId },
-        data: { name: data.name?.trim(), phone: data.phone?.trim(), businessName: data.businessName?.trim(), profilePhoto: data.profilePhoto }
+        data: { businessName: data.businessName?.trim(), profilePhoto: data.profilePhoto }
     });
 
     revalidatePath('/dashboard/owner/settings');

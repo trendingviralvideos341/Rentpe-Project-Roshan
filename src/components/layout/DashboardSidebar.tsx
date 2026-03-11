@@ -87,7 +87,11 @@ export default function DashboardSidebar(props: SidebarProps) {
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin?tab=profile", label: "My Profile", icon: Shield },
-        { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
+        { href: "/dashboard/admin/users", label: "All Users", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
+        { href: "/dashboard/admin/users?role=STUDENT", label: "Students", icon: User, reqPerm: ["super_admin", "sub_admin"] },
+        { href: "/dashboard/admin/users?role=OWNER", label: "Owners", icon: Building, reqPerm: ["super_admin", "sub_admin"] },
+        { href: "/dashboard/admin/users?role=EMPLOYEE", label: "Employees", icon: UserCheck, reqPerm: ["super_admin", "sub_admin"] },
+        { href: "/dashboard/admin/users?status=SUSPENDED", label: "Suspended", icon: X, reqPerm: ["super_admin", "sub_admin"] },
         { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
         { href: "/dashboard/admin/bookings", label: "Platform Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
         { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },

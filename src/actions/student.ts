@@ -92,7 +92,7 @@ export async function getStudentProfile() {
 /**
  * Updates student profile details. Used for 'User Data Auto-fill' consistency.
  */
-export async function updateStudentProfile(data: { name?: string; phone?: string; occupationType?: string; occupationDetail?: string }) {
+export async function updateStudentProfile(data: { occupationType?: string; occupationDetail?: string }) {
     try {
         const session = await getSession();
         if (!session) throw new Error("Unauthorized");
@@ -102,23 +102,8 @@ export async function updateStudentProfile(data: { name?: string; phone?: string
         const updated = await prisma.user.update({
             where: { id: userId },
             data: {
-                name: data.name,
-                phone: data.phone,
                 occupationType: data.occupationType,
                 occupationDetail: data.occupationDetail,
-            }
-        });
-
-        // If user changed their name/phone, update their most recent PENDING/APPROVED booking too
-        // to ensure the 'Auto-fill' requirement is met even if they change it mid-onboarding.
-        await prisma.booking.updateMany({
-            where: { 
-                userId,
-                status: { in: ['PENDING_APPROVAL', 'APPROVED_PENDING_TOKEN', 'KYC_PENDING', 'APPROVED_KYC_PENDING'] }
-            },
-            data: {
-                guestName: data.name,
-                guestPhone: data.phone
             }
         });
 

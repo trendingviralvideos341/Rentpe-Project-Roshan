@@ -172,6 +172,39 @@ export async function updateUserStatus(userId: string, status: string, reason: s
     return user;
 }
 
+export async function adminUpdateUserProfile(userId: string, data: { name?: string; email?: string; phone?: string; role?: string }) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const oldUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!oldUser) throw new Error("User not found");
+
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            ...data,
+            // If phone is provided, ensure it has +91 if it's a 10 digit number
+            phone: data.phone ? (data.phone.length === 10 ? `+91${data.phone}` : data.phone) : undefined
+        }
+    });
+
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        description: `User profile updated by admin: ${Object.keys(data).join(', ')}`,
+        previousValue: { name: oldUser.name, email: oldUser.email, phone: oldUser.phone, role: oldUser.role } as any,
+        newValue: data as any
+    });
+
+    revalidatePath('/dashboard/admin/users');
+    revalidatePath(`/dashboard/admin/users/${userId}`);
+    return user;
+}
+
 export async function updateUserPoints(userId: string, points: number, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -216,6 +249,43 @@ export async function getTransactions() {
     } catch (e) {
         console.error("getTransactions Error:", e);
         return [];
+    }
+}
+
+export async function getUserById(userId: string) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+        return await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                actionNotes: {
+                    orderBy: { timestamp: 'desc' }
+                },
+                properties: {
+                    include: {
+                        rooms: true
+                    }
+                },
+                bookings: {
+                    include: {
+                        documents: true,
+                        property: {
+                            select: { name: true }
+                        }
+                    },
+                    orderBy: { createdAt: 'desc' }
+                },
+                auditLogs: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 50
+                }
+            }
+        });
+    } catch (e) {
+        console.error("getUserById Error:", e);
+        return null;
     }
 }
 
