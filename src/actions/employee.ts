@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession, encryptPassword } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { uploadToCloudinary } from "@/lib/upload";
+import { logAuditEvent } from "@/lib/audit";
 
 // ── Helpers ──────────────────────────────────────────────
 async function generateEoreqId(): Promise<string> {
@@ -41,14 +42,14 @@ async function autoProvisionAdminUser(emp: any, sessionUserId: string) {
             }
         });
 
-        await prisma.auditLog.create({
-            data: {
-                action: 'ADMIN_PROVISIONED',
-                targetId: emp.id,
-                targetType: 'EMPLOYEE',
-                details: `Auto-provisioned login account (Rentpe@123)`,
-                performedBy: sessionUserId
-            }
+        logAuditEvent({
+            actorId: sessionUserId,
+            actorRole: 'ADMIN',
+            actorName: 'Admin',
+            actionType: 'CREATE',
+            entityType: 'USER',
+            entityId: emp.id,
+            description: `Auto-provisioned login account (Rentpe@123)`,
         });
     }
 }
@@ -116,14 +117,14 @@ export async function addEmployee(data: {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'EMPLOYEE_ADDED',
-            targetId: emp.id,
-            targetType: 'EMPLOYEE',
-            details: `${emp.name} — ${emp.department} / ${emp.designation}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'CREATE',
+        entityType: 'EMPLOYEE',
+        entityId: emp.id,
+        description: `${emp.name} — ${emp.department} / ${emp.designation}`,
     });
 
     revalidatePath('/dashboard/admin/employees');
@@ -154,13 +155,14 @@ export async function updateEmployeeStatus(id: string, status: 'ACTIVE' | 'SUSPE
 
     const emp = await prisma.employee.update({ where: { id }, data: updateData });
 
-    await prisma.auditLog.create({
-        data: {
-            action: `EMPLOYEE_${status}`,
-            targetId: id, targetType: 'EMPLOYEE',
-            details: reason,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: status === 'ACTIVE' ? 'APPROVE' : (status === 'REJECTED' ? 'REJECT' : 'UPDATE'),
+        entityType: 'EMPLOYEE',
+        entityId: id,
+        description: reason,
     });
 
     revalidatePath('/dashboard/admin/employees');
@@ -378,8 +380,14 @@ export async function unsuspendEmployee(id: string, reason: string) {
         where: { id },
         data: { status: "ACTIVE", suspensionReason: null, auditTrail }
     });
-    await prisma.auditLog.create({
-        data: { action: 'EMPLOYEE_UNSUSPENDED', targetId: id, targetType: 'EMPLOYEE', details: reason, performedBy: (session as any).userId }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'EMPLOYEE',
+        entityId: id,
+        description: reason,
     });
     revalidatePath('/dashboard/admin/employees');
     return emp;

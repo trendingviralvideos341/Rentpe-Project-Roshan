@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 /**
  * Admin creates a payout batch for an owner
@@ -47,14 +48,14 @@ export async function createPayoutBatch(data: {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PAYOUT_CREATED',
-            targetId: payout.id,
-            targetType: 'PAYOUT',
-            details: `Payout ₹${netAmount} created for owner ${data.ownerId} — Period: ${data.period}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'CREATE',
+        entityType: 'PAYOUT' as any,
+        entityId: payout.id,
+        description: `Payout ₹${netAmount} created for owner ${data.ownerId} — Period: ${data.period}`,
     });
 
     revalidatePath('/dashboard/admin/payouts');
@@ -73,14 +74,14 @@ export async function approvePayoutBatch(payoutId: string) {
         data: { status: 'APPROVED', approvedBy: (session as any).userId }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PAYOUT_APPROVED',
-            targetId: payoutId,
-            targetType: 'PAYOUT',
-            details: `Payout ${payout.displayId} approved. Net: ₹${payout.netAmount}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'APPROVE',
+        entityType: 'PAYOUT' as any,
+        entityId: payoutId,
+        description: `Payout ${payout.displayId} approved. Net: ₹${payout.netAmount}`,
     });
 
     revalidatePath('/dashboard/admin/payouts');
@@ -99,14 +100,14 @@ export async function markPayoutPaid(payoutId: string, txnReference: string) {
         data: { status: 'PAID', txnReference, paidAt: new Date() }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PAYOUT_PAID',
-            targetId: payoutId,
-            targetType: 'PAYOUT',
-            details: `Payout ${payout.displayId} marked PAID. Txn: ${txnReference}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE', // Marked as paid
+        entityType: 'PAYOUT' as any,
+        entityId: payoutId,
+        description: `Payout ${payout.displayId} marked PAID. Txn: ${txnReference}`,
     });
 
     revalidatePath('/dashboard/admin/payouts');

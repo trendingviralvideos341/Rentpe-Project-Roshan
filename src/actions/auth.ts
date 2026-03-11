@@ -523,9 +523,9 @@ export async function getSecurityLogs() {
 
     return await prisma.auditLog.findMany({
         where: {
-            action: { in: ['LOGIN_FAILURE', 'ACCOUNT_PURGED'] }
+            actionType: { in: ['LOGIN_FAILURE', 'ACCOUNT_PURGED'] }
         },
-        orderBy: { timestamp: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: 50
     });
 }

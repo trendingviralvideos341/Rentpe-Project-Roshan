@@ -56,14 +56,14 @@ export default function OwnerActivityLogPage() {
     };
 
     const filtered = logs
-        .filter(l => filterAction === "ALL" || l.action === filterAction)
+        .filter(l => filterAction === "ALL" || l.actionType === filterAction)
         .filter(l =>
-            (l.targetId || "").toLowerCase().includes(search.toLowerCase()) ||
-            (l.details || "").toLowerCase().includes(search.toLowerCase()) ||
-            l.action.toLowerCase().includes(search.toLowerCase())
+            (l.entityId || "").toLowerCase().includes(search.toLowerCase()) ||
+            (l.description || "").toLowerCase().includes(search.toLowerCase()) ||
+            l.actionType.toLowerCase().includes(search.toLowerCase())
         );
 
-    const uniqueActions = [...new Set(logs.map(l => l.action))].sort();
+    const uniqueActions = [...new Set(logs.map(l => l.actionType))].sort();
 
     return (
         <div className="space-y-6">
@@ -81,9 +81,9 @@ export default function OwnerActivityLogPage() {
             <div className="grid grid-cols-4 gap-3">
                 {[
                     { label: "Total Actions", value: logs.length, color: "bg-blue-50 border-blue-200 text-blue-700" },
-                    { label: "Approvals", value: logs.filter(l => l.action.includes("APPROVED") || l.action.includes("PAID") || l.action.includes("RESTORED")).length, color: "bg-green-50 border-green-200 text-green-700" },
-                    { label: "Rejections/Removals", value: logs.filter(l => l.action.includes("REJECTED") || l.action.includes("REMOVED") || l.action.includes("VACATED")).length, color: "bg-red-50 border-red-200 text-red-700" },
-                    { label: "Today", value: logs.filter(l => new Date(l.timestamp).toDateString() === new Date().toDateString()).length, color: "bg-purple-50 border-purple-200 text-purple-700" },
+                    { label: "Approvals", value: logs.filter(l => l.actionType.includes("APPROVED") || l.actionType.includes("PAID") || l.actionType.includes("RESTORED")).length, color: "bg-green-50 border-green-200 text-green-700" },
+                    { label: "Rejections/Removals", value: logs.filter(l => l.actionType.includes("REJECTED") || l.actionType.includes("REMOVED") || l.actionType.includes("VACATED")).length, color: "bg-red-50 border-red-200 text-red-700" },
+                    { label: "Today", value: logs.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length, color: "bg-purple-50 border-purple-200 text-purple-700" },
                 ].map(stat => (
                     <div key={stat.label} className={`p-3 rounded-lg border text-center ${stat.color}`}>
                         <div className="text-2xl font-bold">{stat.value}</div>
@@ -114,7 +114,7 @@ export default function OwnerActivityLogPage() {
                             const info = actionLabels[a];
                             return (
                                 <option key={a} value={a}>
-                                    {info ? `${info.icon} ${info.label}` : a} ({logs.filter(l => l.action === a).length})
+                                    {info ? `${info.icon} ${info.label}` : a} ({logs.filter(l => l.actionType === a).length})
                                 </option>
                             );
                         })}
@@ -123,10 +123,10 @@ export default function OwnerActivityLogPage() {
 
                 {["owner", "staff"].map(tabValue => {
                     const activeLogs = filtered.filter(l => {
-                        // The Owner has a User record (l.performer exists). 
-                        // Staff only have OwnerStaff records (l.performer is null, and performedBy is their displayId e.g., STAFF-XXX)
-                        if (tabValue === "owner") return l.performer !== null;
-                        return l.performer === null;
+                        // The Owner has a User record (l.actor exists). 
+                        // Staff only have OwnerStaff records (l.actor is null, and actorId is their displayId e.g., STAFF-XXX)
+                        if (tabValue === "owner") return l.actor !== null;
+                        return l.actor === null;
                     });
 
                     return (
@@ -141,7 +141,7 @@ export default function OwnerActivityLogPage() {
                                                 <tr>
                                                     <th className="p-4 text-left font-medium w-40">When</th>
                                                     <th className="p-4 text-left font-medium w-48">Action</th>
-                                                    <th className="p-4 text-left font-medium">Target</th>
+                                                    <th className="p-4 text-left font-medium">Entity</th>
                                                     <th className="p-4 text-left font-medium">Notes / Reason</th>
                                                     <th className="p-4 w-10"></th>
                                                 </tr>
@@ -153,9 +153,9 @@ export default function OwnerActivityLogPage() {
                                                     <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No activity found in this tab. Actions will appear here.</td></tr>
                                                 ) : (
                                                     activeLogs.map((log) => {
-                                                        const info = actionLabels[log.action] || { label: log.action, color: "bg-gray-100 text-gray-800 border-gray-200", icon: "📌" };
+                                                        const info = actionLabels[log.actionType] || { label: log.actionType, color: "bg-gray-100 text-gray-800 border-gray-200", icon: "📌" };
                                                         const isExpanded = expandedRows.has(log.id);
-                                                        const hasDetails = log.details && log.details.length > 0;
+                                                        const hasDetails = log.description && log.description.length > 0;
                                                         return (
                                                             <Fragment key={log.id}>
                                                                 <tr
@@ -165,10 +165,10 @@ export default function OwnerActivityLogPage() {
                                                                 >
                                                                     <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">
                                                                         <div className="font-medium text-foreground">
-                                                                            {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                            {new Date(log.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                                         </div>
                                                                         <div>
-                                                                            {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                                            {new Date(log.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                                                                         </div>
                                                                     </td>
                                                                     <td className="p-4">
@@ -177,17 +177,17 @@ export default function OwnerActivityLogPage() {
                                                                         </span>
                                                                     </td>
                                                                     <td className="p-4">
-                                                                        <div className="text-xs font-medium uppercase text-muted-foreground">{log.targetType || "SYSTEM"}</div>
-                                                                        <div className="font-mono text-xs text-foreground truncate max-w-[120px]" title={log.targetId}>{log.targetId || "N/A"}</div>
+                                                                        <div className="text-xs font-medium uppercase text-muted-foreground">{log.entityType || "SYSTEM"}</div>
+                                                                        <div className="font-mono text-xs text-foreground truncate max-w-[120px]" title={log.entityId}>{log.entityId || "N/A"}</div>
                                                                     </td>
                                                                     <td className="p-4">
                                                                         {tabValue === "staff" && (
-                                                                            <div className="text-[10px] font-bold text-blue-600 mb-1">
-                                                                                By: {log.performedBy}
+                                                                            <div>
+                                                                                By: {log.actorId}
                                                                             </div>
                                                                         )}
                                                                         {hasDetails ? (
-                                                                            <p className="text-sm text-foreground line-clamp-2">{log.details}</p>
+                                                                            <p className="text-sm text-foreground line-clamp-2">{log.description}</p>
                                                                         ) : (
                                                                             <span className="text-xs text-muted-foreground italic">No notes recorded</span>
                                                                         )}
@@ -203,7 +203,7 @@ export default function OwnerActivityLogPage() {
                                                                                 <div className="flex-1">
                                                                                     <div className="text-xs font-bold uppercase text-amber-700 mb-1">📝 Full Notes / Reason</div>
                                                                                     <p className="text-sm text-foreground bg-white border border-amber-200 rounded-lg p-3 leading-relaxed">
-                                                                                        {log.details}
+                                                                                        {log.description}
                                                                                     </p>
                                                                                 </div>
                                                                                 <div className="text-xs space-y-2 min-w-[180px]">
@@ -212,12 +212,12 @@ export default function OwnerActivityLogPage() {
                                                                                         <div className="mt-0.5 font-medium">{info.icon} {info.label}</div>
                                                                                     </div>
                                                                                     <div>
-                                                                                        <span className="font-bold text-muted-foreground uppercase">Target ID</span>
-                                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.targetId || "N/A"}</div>
+                                                                                        <span className="font-bold text-muted-foreground uppercase">Entity ID</span>
+                                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.entityId || "N/A"}</div>
                                                                                     </div>
                                                                                     <div>
                                                                                         <span className="font-bold text-muted-foreground uppercase">Exact Time</span>
-                                                                                        <div className="text-[10px] mt-0.5">{new Date(log.timestamp).toLocaleString('en-IN')}</div>
+                                                                                        <div className="text-[10px] mt-0.5">{new Date(log.createdAt).toLocaleString('en-IN')}</div>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>

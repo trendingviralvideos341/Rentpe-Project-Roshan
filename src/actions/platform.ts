@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 // ── Get or create the singleton settings row ──────────
 export async function getPlatformSettings() {
@@ -34,14 +35,14 @@ export async function updatePlatformSettings(data: {
         update: data,
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PLATFORM_SETTINGS_UPDATED',
-            targetId: 'singleton',
-            targetType: 'PLATFORM',
-            details: `Fees ${data.feesEnabled !== undefined ? (data.feesEnabled ? 'ENABLED' : 'DISABLED') : 'rates updated'}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'ADMIN',
+        entityId: 'singleton',
+        description: `Fees ${data.feesEnabled !== undefined ? (data.feesEnabled ? 'ENABLED' : 'DISABLED') : 'rates updated'}`,
     });
 
     revalidatePath('/dashboard/admin/platform-fees');
@@ -182,8 +183,8 @@ export async function getPlatformChangeLogs() {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     return await prisma.auditLog.findMany({
-        where: { targetType: 'PLATFORM' },
-        orderBy: { timestamp: 'desc' },
+        where: { entityType: 'ADMIN' },
+        orderBy: { createdAt: 'desc' },
         take: 100
     });
 }
@@ -212,14 +213,14 @@ export async function addFeeExemption(data: {
 
     const exemption = await (prisma as any).feeExemption.create({ data });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'FEE_EXEMPTION_ADDED',
-            targetId: exemption.id,
-            targetType: 'PLATFORM',
-            details: `Exemption added: ${data.propertyName || 'All PGs'} / ${data.userId || 'All Users'} — Customer: ${data.exemptCustomer}, Owner: ${data.exemptOwner}. Reason: ${data.reason}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'CREATE',
+        entityType: 'ADMIN',
+        entityId: exemption.id,
+        description: `Exemption added: ${data.propertyName || 'All PGs'} / ${data.userId || 'All Users'} — Customer: ${data.exemptCustomer}, Owner: ${data.exemptOwner}. Reason: ${data.reason}`,
     });
 
     revalidatePath('/dashboard/admin/platform-fees');
@@ -232,14 +233,14 @@ export async function removeFeeExemption(id: string) {
 
     await (prisma as any).feeExemption.delete({ where: { id } });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'FEE_EXEMPTION_REMOVED',
-            targetId: id,
-            targetType: 'PLATFORM',
-            details: `Fee exemption ${id} removed.`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'ADMIN',
+        entityId: id,
+        description: `Fee exemption ${id} removed.`,
     });
 
     revalidatePath('/dashboard/admin/platform-fees');

@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { createNotification } from "@/actions/notifications";
+import { logAuditEvent } from "@/lib/audit";
 
 /**
  * Owner Team Management
@@ -68,14 +69,14 @@ export async function createStaffMember(data: {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'STAFF_CREATED',
-            targetId: staff.id,
-            targetType: 'USER',
-            details: `Staff ${data.name} created by owner ${ownerId} with permissions: ${data.permissions.join(', ')}`,
-            performedBy: ownerId
-        }
+    logAuditEvent({
+        actorId: ownerId,
+        actorRole: 'OWNER',
+        actorName: 'Owner',
+        actionType: 'CREATE',
+        entityType: 'USER',
+        entityId: staff.id,
+        description: `Staff ${data.name} created by owner ${ownerId} with permissions: ${data.permissions.join(', ')}`,
     });
 
     revalidatePath('/dashboard/owner/team');
@@ -97,14 +98,14 @@ export async function updateStaffMemberPermissions(staffId: string, permissions:
         data: { staffPermissions: JSON.stringify(permissions) }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'STAFF_PERMISSIONS_UPDATED',
-            targetId: staffId,
-            targetType: 'USER',
-            details: `New permissions: ${permissions.join(', ')}`,
-            performedBy: ownerId
-        }
+    logAuditEvent({
+        actorId: ownerId,
+        actorRole: 'OWNER',
+        actorName: 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: staffId,
+        description: `New permissions: ${permissions.join(', ')}`,
     });
 
     revalidatePath('/dashboard/owner/team');
@@ -126,14 +127,14 @@ export async function deleteStaffMember(staffId: string) {
         data: { deletedAt: new Date(), status: 'REMOVED' }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'STAFF_REMOVED',
-            targetId: staffId,
-            targetType: 'USER',
-            details: `Staff member ${staff.name} removed by owner`,
-            performedBy: ownerId
-        }
+    logAuditEvent({
+        actorId: ownerId,
+        actorRole: 'OWNER',
+        actorName: 'Owner',
+        actionType: 'DELETE',
+        entityType: 'USER',
+        entityId: staffId,
+        description: `Staff member ${staff.name} removed by owner`,
     });
 
     revalidatePath('/dashboard/owner/team');

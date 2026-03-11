@@ -415,21 +415,21 @@ export default function AdminDashboard() {
                             {securityLogs.map((log: any) => (
                                 <Card key={log.id} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                                     <div className="p-5 flex items-start gap-4">
-                                        <div className={`mt-1 p-2 rounded-full shrink-0 ${log.action === 'LOGIN_FAILURE' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                                            {log.action === 'LOGIN_FAILURE' ? <AlertTriangle className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
+                                        <div className={`mt-1 p-2 rounded-full shrink-0 ${log.actionType === 'LOGIN_FAILURE' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            {log.actionType === 'LOGIN_FAILURE' ? <AlertTriangle className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-start gap-2">
-                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{log.action.replace(/_/g, ' ')}</h4>
+                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{(log.actionType || "LOG").replace(/_/g, ' ')}</h4>
                                                 <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded uppercase">
                                                     {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-slate-700 mt-1">{log.details}</p>
+                                            <p className="text-sm text-slate-700 mt-1">{log.description}</p>
                                             <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100">
                                                 <div>
                                                     <p className="text-[9px] font-black text-slate-400 uppercase">Target Entity</p>
-                                                    <p className="text-xs font-bold text-slate-900">{log.targetType}: {log.targetId}</p>
+                                                    <p className="text-xs font-bold text-slate-900">{log.entityType}: {log.entityId}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-[9px] font-black text-slate-400 uppercase">Event ID</p>

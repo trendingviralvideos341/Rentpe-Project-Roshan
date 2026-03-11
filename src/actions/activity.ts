@@ -10,21 +10,21 @@ export async function getOwnerActivityLog() {
 
         const userId = (session as any).userId;
 
-        // Fetch staff display IDs to include their actions in the owner's log
-        const staff = await prisma.ownerStaff.findMany({
-            where: { ownerId: userId },
-            select: { displayId: true }
+        // Fetch staff User IDs to include their actions in the owner's log
+        const staff = await (prisma.user as any).findMany({
+            where: { parentOwnerId: userId },
+            select: { id: true }
         });
-        const staffIds = staff.map(s => s.displayId);
+        const staffIds = staff.map((s: any) => s.id);
 
         return await prisma.auditLog.findMany({
             where: {
-                performedBy: { in: [userId, ...staffIds] }
+                actorId: { in: [userId, ...staffIds] }
             },
-            orderBy: { timestamp: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 200,
             include: {
-                performer: {
+                actor: {
                     select: { name: true, role: true, displayId: true }
                 }
             }

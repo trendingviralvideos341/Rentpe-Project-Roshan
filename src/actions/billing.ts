@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 /**
  * Financial System: Core Billing & Deposit Actions
@@ -50,14 +51,14 @@ export async function createBillingProfile(tenantId: string) {
             }
         });
 
-        await tx.auditLog.create({
-            data: {
-                action: 'BILLING_PROFILE_CREATED',
-                targetId: tenantId,
-                targetType: 'TENANT',
-                details: `Billing profile initialized. Monthly Rent: ₹${rentAmount}, Deposit: ₹${depositAmount}.`,
-                performedBy: (session as any).userId
-            }
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'User',
+            actionType: 'CREATE',
+            entityType: 'TENANT',
+            entityId: tenantId,
+            description: `Billing profile initialized. Monthly Rent: ₹${rentAmount}, Deposit: ₹${depositAmount}.`,
         });
 
         return profile;
@@ -98,14 +99,14 @@ export async function internalGenerateInvoice(tenantId: string, month: string, p
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'INVOICE_GENERATED',
-            targetId: tenantId,
-            targetType: 'TENANT',
-            details: `Invoice ${displayId} generated for ${month} (₹${profile.monthlyRent})`,
-            performedBy
-        }
+    logAuditEvent({
+        actorId: performedBy,
+        actorRole: (performedBy === 'SYSTEM' ? 'SYSTEM' : 'ADMIN'),
+        actorName: (performedBy === 'SYSTEM' ? 'System' : 'Admin'),
+        actionType: 'CREATE',
+        entityType: 'TENANT',
+        entityId: tenantId,
+        description: `Invoice ${displayId} generated for ${month} (₹${profile.monthlyRent})`,
     });
 
     return invoice;

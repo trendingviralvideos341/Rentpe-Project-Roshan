@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 // --- Food Menu ---
 export async function getFoodMenu(propertyId: string) {
@@ -30,14 +31,14 @@ export async function updateFoodMenu(propertyId: string, day: string, meals: { b
 
     await Promise.all(updateCalls);
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'FOOD_MENU_UPDATED',
-            targetId: propertyId,
-            targetType: 'PROPERTY',
-            details: `Food menu updated for ${day}: ${Object.entries(meals).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}`).join(', ')}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Food menu updated for ${day}: ${Object.entries(meals).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}`).join(', ')}`,
     });
 
     revalidatePath('/dashboard/owner/food-menu');
@@ -208,14 +209,14 @@ export async function resolveTicket(id: string, notes?: string) {
         data: { status: 'RESOLVED' }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'TICKET_RESOLVED',
-            targetId: id,
-            targetType: 'TICKET',
-            details: notes || `Ticket #${id.slice(0, 8)} resolved by ${session.role}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'TICKET',
+        entityId: id,
+        description: notes || `Ticket #${id.slice(0, 8)} resolved by ${session.role}`,
     });
 
     revalidatePath('/dashboard/owner/tickets');
@@ -233,14 +234,14 @@ export async function escalateTicketToAdmin(id: string) {
         data: { targetTeam: 'ADMIN', status: 'ESCALATED' }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'TICKET_ESCALATED',
-            targetId: id,
-            targetType: 'TICKET',
-            details: `Ticket escalated to Admin by Owner`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'TICKET',
+        entityId: id,
+        description: `Ticket escalated to Admin by Owner`,
     });
 
     revalidatePath('/dashboard/owner/tickets');

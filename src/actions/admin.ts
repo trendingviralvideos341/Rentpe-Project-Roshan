@@ -78,10 +78,10 @@ export async function getAuditLogs() {
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
         return await prisma.auditLog.findMany({
-            orderBy: { timestamp: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 200,
             include: {
-                performer: {
+                actor: {
                     select: {
                         name: true,
                         role: true,
@@ -181,14 +181,14 @@ export async function updateUserPoints(userId: string, points: number, reason: s
         data: { loyaltyPoints: points }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'USER_POINTS_UPDATED',
-            targetId: userId,
-            targetType: 'USER',
-            details: `Points set to ${points}. Reason: ${reason}`,
-            performedBy: (session as any).userId as string
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        description: `Points set to ${points}. Reason: ${reason}`,
     });
 
     revalidatePath('/dashboard/admin/users');
@@ -231,14 +231,14 @@ export async function adminDeleteUser(userId: string) {
         data: { deletedAt: new Date() }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_ARCHIVE_USER',
-            targetId: userId,
-            targetType: 'USER',
-            details: `User ${userId} archived (soft-deleted) by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'USER',
+        entityId: userId,
+        description: `User ${userId} archived (soft-deleted) by admin`,
     });
 
     revalidatePath('/dashboard/admin/data-management');
@@ -253,14 +253,14 @@ export async function adminRestoreUser(userId: string) {
         data: { deletedAt: null }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_RESTORE_USER',
-            targetId: userId,
-            targetType: 'USER',
-            details: `User ${userId} restored from archive by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        description: `User ${userId} restored from archive by admin`,
     });
 
     revalidatePath('/dashboard/admin/data-management');
@@ -276,14 +276,14 @@ export async function adminPurgeUser(userId: string) {
     await prisma.ticket.deleteMany({ where: { userId } });
     await prisma.user.delete({ where: { id: userId } });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_PURGE_USER',
-            targetId: userId,
-            targetType: 'USER',
-            details: `User ${userId} PERMANENTLY PURGED by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'USER',
+        entityId: userId,
+        description: `User ${userId} PERMANENTLY PURGED by admin`,
     });
 
     revalidatePath('/dashboard/admin/data-management');
@@ -299,14 +299,14 @@ export async function adminDeleteBooking(bookingId: string) {
         data: { deletedAt: new Date() }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_ARCHIVE_BOOKING',
-            targetId: bookingId,
-            targetType: 'BOOKING',
-            details: `Booking ${bookingId} archived (soft-deleted) by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Booking ${bookingId} archived (soft-deleted) by admin`,
     });
 
     revalidatePath('/dashboard/admin/data-management');
@@ -321,14 +321,14 @@ export async function adminRestoreBooking(bookingId: string) {
         data: { deletedAt: null }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_RESTORE_BOOKING',
-            targetId: bookingId,
-            targetType: 'BOOKING',
-            details: `Booking ${bookingId} restored from archive by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Booking ${bookingId} restored from archive by admin`,
     });
 
     revalidatePath('/dashboard/admin/data-management');
@@ -342,14 +342,14 @@ export async function adminPurgeBooking(bookingId: string) {
     await prisma.tenantDocument.deleteMany({ where: { bookingId } });
     await prisma.booking.delete({ where: { id: bookingId } });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_PURGE_BOOKING',
-            targetId: bookingId,
-            targetType: 'BOOKING',
-            details: `Booking ${bookingId} PERMANENTLY PURGED by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Booking ${bookingId} PERMANENTLY PURGED by admin`,
     });
 
     revalidatePath('/dashboard/admin/data-management');
@@ -362,14 +362,14 @@ export async function adminDeleteTenant(tenantId: string) {
     await prisma.rentRecord.deleteMany({ where: { tenantId } });
     await prisma.tenant.delete({ where: { id: tenantId } });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_DELETE_TENANT',
-            targetId: tenantId,
-            targetType: 'TENANT',
-            details: `Tenant ${tenantId} permanently deleted by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'TENANT',
+        entityId: tenantId,
+        description: `Tenant ${tenantId} permanently deleted by admin`,
     });
 
     revalidatePath('/dashboard/admin');
@@ -384,14 +384,14 @@ export async function adminDeleteProperty(propertyId: string) {
     await prisma.tenant.deleteMany({ where: { propertyId } });
     await prisma.property.delete({ where: { id: propertyId } });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_DELETE_PROPERTY',
-            targetId: propertyId,
-            targetType: 'PROPERTY',
-            details: `Property ${propertyId} permanently deleted by admin`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'DELETE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Property ${propertyId} permanently deleted by admin`,
     });
 
     revalidatePath('/dashboard/admin');
@@ -440,14 +440,14 @@ export async function assignRole(targetUserId: string, newRole: "ONBOARDER" | "V
         data: { role: newRole, displayId },
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_ASSIGN_ROLE',
-            targetId: targetUserId,
-            targetType: 'USER',
-            details: `Role assigned: ${newRole} (${displayId})`,
-            performedBy: (session as any).userId,
-        },
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: targetUserId,
+        description: `Role assigned: ${newRole} (${displayId})`,
     });
 
     revalidatePath('/dashboard/admin/team');
@@ -466,14 +466,14 @@ export async function revokeRole(targetUserId: string) {
         data: { role: 'USER', displayId: `TNT-${target.displayId?.split('-')[1] || '000001'}` },
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_REVOKE_ROLE',
-            targetId: targetUserId,
-            targetType: 'USER',
-            details: `Role revoked from ${target.role} → USER`,
-            performedBy: (session as any).userId,
-        },
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: targetUserId,
+        description: `Role revoked from ${target.role} → USER`,
     });
 
     revalidatePath('/dashboard/admin/team');

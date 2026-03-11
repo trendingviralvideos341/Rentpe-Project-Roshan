@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function getOwnerStaff() {
     const session = await getSession();
@@ -72,14 +73,14 @@ export async function addOwnerStaff(data: {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'STAFF_ADDED',
-            targetId: staff.id,
-            targetType: 'OWNER_STAFF',
-            details: `${staff.name} (${staff.designation})`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (session as any).name || 'Owner',
+        actionType: 'CREATE',
+        entityType: 'OWNER_STAFF' as any,
+        entityId: staff.id,
+        description: `${staff.name} (${staff.designation})`,
     });
 
     revalidatePath('/dashboard/owner/staff');
@@ -107,14 +108,14 @@ export async function updateStaffStatus(id: string, status: 'ACTIVE' | 'BLOCKED'
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: action === 'BLOCKED' ? 'STAFF_BLOCKED' : 'STAFF_UNBLOCKED',
-            targetId: id,
-            targetType: 'OWNER_STAFF',
-            details: reason,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (session as any).name || 'Owner',
+        actionType: action === 'BLOCKED' ? 'REJECT' : 'APPROVE',
+        entityType: 'OWNER_STAFF' as any,
+        entityId: id,
+        description: reason,
     });
 
     revalidatePath('/dashboard/owner/staff');

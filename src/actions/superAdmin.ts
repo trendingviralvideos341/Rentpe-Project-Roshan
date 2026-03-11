@@ -13,6 +13,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/actions/rbac";
+import { logAuditEvent } from "@/lib/audit";
 
 async function isSuperAdmin() {
     const session = await getSession();
@@ -310,8 +311,8 @@ export async function getAdminTeamActivityReport() {
 
     const result = await Promise.all(admins.map(async (admin: any) => {
         const [auditCount, lastAudit, loginCount] = await Promise.all([
-            prisma.auditLog.count({ where: { performedBy: admin.id } }),
-            prisma.auditLog.findFirst({ where: { performedBy: admin.id }, orderBy: { timestamp: 'desc' }, select: { action: true, timestamp: true } }),
+            prisma.auditLog.count({ where: { actorId: admin.id } }),
+            prisma.auditLog.findFirst({ where: { actorId: admin.id }, orderBy: { createdAt: 'desc' }, select: { actionType: true, createdAt: true } }),
             (prisma as any).loginLog.count({ where: { userId: admin.id, success: true, createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
         ]);
         return { ...admin, auditActions: auditCount, lastAction: lastAudit, loginsLast30Days: loginCount };
@@ -348,14 +349,14 @@ export async function updatePlatformConfig(config: {
         update: config as any
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PLATFORM_CONFIG_UPDATED',
-            targetId: 'singleton',
-            targetType: 'PLATFORM',
-            details: `Config changed: ${Object.entries(config).map(([k, v]) => `${k}=${v}`).join(', ')}`,
-            performedBy: adminId
-        }
+    logAuditEvent({
+        actorId: adminId,
+        actorRole: 'ADMIN',
+        actorName: 'Super Admin',
+        actionType: 'UPDATE',
+        entityType: 'ADMIN',
+        entityId: 'singleton',
+        description: `Config changed: ${Object.entries(config).map(([k, v]) => `${k}=${v}`).join(', ')}`,
     });
 
     revalidatePath('/dashboard/admin/platform-fees');

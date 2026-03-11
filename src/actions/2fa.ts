@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { generate2FASecret, generate2FAQRCode, verify2FAToken } from "@/lib/2fa";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 /**
  * Initialize 2FA setup for the current admin
@@ -47,14 +48,14 @@ export async function confirm2FA(token: string) {
         data: { twoFactorEnabled: true }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: '2FA_ENABLED',
-            targetId: userId,
-            targetType: 'USER',
-            details: 'Two-factor authentication enabled successfully.',
-            performedBy: userId
-        }
+    logAuditEvent({
+        actorId: userId,
+        actorRole: 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        description: 'Two-factor authentication enabled successfully.',
     });
 
     revalidatePath('/dashboard/admin/settings');
@@ -80,14 +81,14 @@ export async function disable2FA(token: string) {
         data: { twoFactorEnabled: false, twoFactorSecret: null }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: '2FA_DISABLED',
-            targetId: userId,
-            targetType: 'USER',
-            details: 'Two-factor authentication disabled by user.',
-            performedBy: userId
-        }
+    logAuditEvent({
+        actorId: userId,
+        actorRole: 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        description: 'Two-factor authentication disabled by user.',
     });
 
     revalidatePath('/dashboard/admin/settings');

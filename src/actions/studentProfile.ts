@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { logAuditEvent } from "@/lib/audit";
 
 /** Get full student profile for the current user */
 export async function getStudentProfile() {
@@ -54,14 +55,14 @@ export async function updateStudentProfile(data: {
     // Sensitive field protection: Email change requires a different flow (SIMULATED)
     if (data.email && data.email !== user?.email) {
         // In a real app, this triggers an OTP flow. Here we log it and reject direct update.
-        await prisma.auditLog.create({
-            data: {
-                action: 'SENSITIVE_UPDATE_ATTEMPT',
-                targetId: userId,
-                targetType: 'USER',
-                details: `Attempted email change to ${data.email}. Direct update blocked.`,
-                performedBy: userId
-            }
+        logAuditEvent({
+            actorId: userId,
+            actorRole: 'USER',
+            actorName: user?.name || 'Student',
+            actionType: 'UPDATE',
+            entityType: 'USER',
+            entityId: userId,
+            description: `Attempted email change to ${data.email}. Direct update blocked.`,
         });
         throw new Error("Email change requires OTP verification. Please contact support.");
     }
@@ -160,14 +161,14 @@ export async function requestAccountDeactivation(reason: string) {
         await createNotification(admin.id, 'TICKET', `Account deactivation requested by ${(session as any).userId}. Reason: ${reason}`);
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'DEACTIVATION_REQUESTED',
-            targetId: (session as any).userId,
-            targetType: 'USER',
-            details: `Reason: ${reason}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'USER',
+        actorName: (session as any).name || 'Student',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: (session as any).userId,
+        description: `Reason: ${reason}`,
     });
 
     return { success: true, message: "Deactivation request submitted. Our team will process it within 24-48 hours." };

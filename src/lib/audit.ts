@@ -7,8 +7,8 @@ export type AuditLogParams = {
     actorId: string;
     actorRole: string;
     actorName: string;
-    actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'LOGIN' | 'LOGOUT';
-    entityType: 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKING' | 'PAYMENT' | 'KYC';
+    actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'LOGIN' | 'LOGOUT' | string;
+    entityType: 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKING' | 'PAYMENT' | 'KYC' | 'TENANT' | 'ADMIN' | string;
     entityId: string;
     entityName?: string;
     description: string;
@@ -23,7 +23,7 @@ export type AuditLogParams = {
  */
 export async function logAuditEvent(params: AuditLogParams) {
     try {
-        const headersList = headers();
+        const headersList = await headers();
         const ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown';
         const userAgent = headersList.get('user-agent') || 'unknown';
 

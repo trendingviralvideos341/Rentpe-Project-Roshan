@@ -250,14 +250,14 @@ export async function updateProperty(propertyId: string, data: {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PROPERTY_UPDATED',
-            targetId: propertyId,
-            targetType: 'PROPERTY',
-            details: `Fields updated: ${Object.keys(data).join(', ')}. Status: ${newStatus}`,
-            performedBy: userId
-        }
+    logAuditEvent({
+        actorId: userId,
+        actorRole: 'OWNER',
+        actorName: 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Fields updated: ${Object.keys(data).join(', ')}. Status: ${newStatus}`,
     });
 
     revalidatePath(`/dashboard/owner/properties/${propertyId}`);
@@ -412,6 +412,9 @@ export async function deletePropertyDocument(propertyId: string, docType: string
 }
 
 export async function togglePropertyDocumentVerification(propertyId: string, docKey: string, verified: boolean) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
     try {
         const property = await prisma.property.findUnique({
             where: { id: propertyId },
@@ -440,6 +443,17 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
             data: { verifiedDocs: JSON.stringify(verifiedDocs) }
         });
 
+        // Audit Logging
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'Admin',
+            actionType: verified ? 'APPROVE' : 'REJECT',
+            entityType: 'PROPERTY',
+            entityId: propertyId,
+            description: `${verified ? 'Verified' : 'Unverified'} document: ${docKey}`,
+        });
+
         return { success: true };
     } catch (e: any) {
         return { success: false, error: e.message };
@@ -447,6 +461,9 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
 }
 
 export async function requestDocumentReupload(propertyId: string, docType: string, note: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
     try {
         const property = await prisma.property.findUnique({
             where: { id: propertyId },
@@ -490,7 +507,6 @@ export async function requestDocumentReupload(propertyId: string, docType: strin
 }
 
 // ── P8: Owner Onboarding Fee Payment Simulation ──
-import { revalidatePath } from "next/cache";
 
 export async function payOnboardingFee(propertyId: string) {
     const session = await getSession();
@@ -512,14 +528,14 @@ export async function payOnboardingFee(propertyId: string) {
     });
 
     // 2. Add to Audit Log
-    await prisma.auditLog.create({
-        data: {
-            action: 'ONBOARDING_FEE_PAID',
-            targetId: propertyId,
-            targetType: 'PROPERTY',
-            details: `Owner paid onboarding fee for property ${property.name}. Status is now LIVE.`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Owner paid onboarding fee for property ${property.name}. Status is now LIVE.`,
     });
 
     revalidatePath('/dashboard/owner/properties');

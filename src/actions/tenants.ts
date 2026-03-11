@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function getTenants() {
     const session = await getSession();
@@ -89,14 +90,14 @@ export async function createTenantFromBooking(bookingId: string) {
         }
 
         // 3. Log event
-        await tx.auditLog.create({
-            data: {
-                action: 'TENANT_CREATED',
-                targetId: tenant.id,
-                targetType: 'TENANT',
-                details: `Tenant record created for booking ${booking.displayId}. Status: UPCOMING_MOVE_IN.`,
-                performedBy: 'SYSTEM'
-            }
+        logAuditEvent({
+            actorId: 'SYSTEM',
+            actorRole: 'SYSTEM',
+            actorName: 'System',
+            actionType: 'CREATE',
+            entityType: 'TENANT',
+            entityId: tenant.id,
+            description: `Tenant record created for booking ${booking.displayId}. Status: UPCOMING_MOVE_IN.`,
         });
 
         return tenant;
@@ -162,14 +163,14 @@ export async function confirmMoveIn(tenantId: string) {
             }
         });
 
-        await tx.auditLog.create({
-            data: {
-                action: 'TENANT_MOVE_IN',
-                targetId: tenantId,
-                targetType: 'TENANT',
-                details: `Tenant ${tenant.name} moved in. Financial profile initialized.`,
-                performedBy: (session as any).userId
-            }
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'Owner',
+            actionType: 'UPDATE',
+            entityType: 'TENANT',
+            entityId: tenantId,
+            description: `Tenant ${tenant.name} moved in. Financial profile initialized.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -201,14 +202,14 @@ export async function markRentAsPaid(recordId: string, note?: string) {
         });
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'RENT_PAID',
-            targetId: record.tenantId,
-            targetType: 'TENANT',
-            details: `Rent for ${record.month} marked as paid${note ? `. Note: ${note}` : ''}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'TENANT',
+        entityId: record.tenantId,
+        description: `Rent for ${record.month} marked as paid${note ? `. Note: ${note}` : ''}`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
@@ -237,14 +238,14 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
         });
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'RENT_UNPAID',
-            targetId: record.tenantId,
-            targetType: 'TENANT',
-            details: `Rent for ${record.month} reversed to Unpaid${note ? `. Note: ${note}` : ''}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'TENANT',
+        entityId: record.tenantId,
+        description: `Rent for ${record.month} reversed to Unpaid${note ? `. Note: ${note}` : ''}`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
@@ -272,14 +273,14 @@ export async function blockTenant(tenantId: string, note: string) {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'TENANT_BLOCKED',
-            targetId: tenantId,
-            targetType: 'TENANT',
-            details: `Blocked on ${timestamp}. Reason: ${note}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'DELETE',
+        entityType: 'TENANT',
+        entityId: tenantId,
+        description: `Blocked on ${timestamp}. Reason: ${note}`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
@@ -305,14 +306,14 @@ export async function unblockTenant(tenantId: string, note: string) {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'TENANT_UNBLOCKED',
-            targetId: tenantId,
-            targetType: 'TENANT',
-            details: `Unblocked. Reason: ${note}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'TENANT',
+        entityId: tenantId,
+        description: `Unblocked. Reason: ${note}`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
@@ -349,14 +350,14 @@ export async function generateNextRentRecord(tenantId: string, month: string) {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'RENT_GENERATED',
-            targetId: tenantId,
-            targetType: 'TENANT',
-            details: `Generated rent invoice for ${month} (₹${tenant.rent})`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'CREATE',
+        entityType: 'TENANT',
+        entityId: tenantId,
+        description: `Generated rent invoice for ${month} (₹${tenant.rent})`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
@@ -392,14 +393,14 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
             data: { status: 'MOVE_OUT_SCHEDULED', expectedMoveOutDate: data.date }
         });
 
-        await tx.auditLog.create({
-            data: {
-                action: 'MOVE_OUT_REQUESTED',
-                targetId: tenantId,
-                targetType: 'TENANT',
-                details: `Move-out requested for ${data.date}. Reason: ${data.reason}`,
-                performedBy: (session as any).userId
-            }
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'User',
+            actionType: 'UPDATE',
+            entityType: 'TENANT',
+            entityId: tenantId,
+            description: `Move-out requested for ${data.date}. Reason: ${data.reason}`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -437,14 +438,14 @@ export async function approveMoveOutRequest(requestId: string, approved: boolean
             });
         }
 
-        await tx.auditLog.create({
-            data: {
-                action: approved ? 'MOVE_OUT_APPROVED' : 'MOVE_OUT_REJECTED',
-                targetId: request.tenantId,
-                targetType: 'TENANT',
-                details: `Move-out request ${status} by ${(session as any).role}.`,
-                performedBy: (session as any).userId
-            }
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'Owner',
+            actionType: approved ? 'APPROVE' : 'REJECT',
+            entityType: 'TENANT',
+            entityId: request.tenantId,
+            description: `Move-out request ${status} by ${(session as any).role}.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -543,14 +544,14 @@ Note: ${note}
         });
 
         // 6. Log event
-        await tx.auditLog.create({
-            data: {
-                action: 'TENANT_MOVE_OUT',
-                targetId: tenantId,
-                targetType: 'TENANT',
-                details: `Move-out finalized. Settlement: Refund ₹${finalRefund}.`,
-                performedBy: (session as any).userId
-            }
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'Owner',
+            actionType: 'DELETE',
+            entityType: 'TENANT',
+            entityId: tenantId,
+            description: `Move-out finalized. Settlement: Refund ₹${finalRefund}.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');

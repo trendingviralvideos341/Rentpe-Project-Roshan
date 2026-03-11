@@ -6,7 +6,7 @@ import {
     CheckCircle, XCircle, LogIn, LogOut, ArrowRight, 
     Download, RefreshCw, ChevronLeft, ChevronRight,
     Eye, MoreVertical, FileText, Shield, HardDrive
-} from 'lucide';
+} from 'lucide-react';
 import { getAuditLogs } from '@/actions/audit';
 import { toast } from 'sonner';
 

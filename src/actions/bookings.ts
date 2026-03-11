@@ -589,8 +589,14 @@ export async function cancelBooking(id: string, reason?: string) {
         });
     }
 
-    await prisma.auditLog.create({
-        data: { action: 'BOOKING_CANCELLED', targetId: id, targetType: 'BOOKING', details: `Booking ${booking.displayId} cancelled. Reason: ${reason || 'N/A'}`, performedBy: (session as any).userId }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'USER',
+        actorName: (session as any).name || 'User',
+        actionType: 'DELETE',
+        entityType: 'BOOKING',
+        entityId: id,
+        description: `Booking ${booking.displayId} cancelled. Reason: ${reason || 'N/A'}`,
     });
 
     revalidatePath('/dashboard/student');
@@ -619,8 +625,14 @@ export async function signAgreement(id: string) {
         }
     }
 
-    await prisma.auditLog.create({
-        data: { action: 'AGREEMENT_SIGNED', targetId: id, targetType: 'BOOKING', details: `Digital agreement signed by ${(booking as any).guestName}.`, performedBy: (session as any).userId }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'USER',
+        actorName: (session as any).name || 'User',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: id,
+        description: `Digital agreement signed by ${(booking as any).guestName}.`,
     });
 
     revalidatePath('/dashboard/student');
@@ -701,8 +713,14 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
         console.error("Token Payment Notification Error:", e);
     }
 
-    await prisma.auditLog.create({
-        data: { action: 'TOKEN_PAID', targetId: bookingId, targetType: 'BOOKING', details: `Token paid via ${paymentMethod}. Reservation expires ${reservationExpiry.toDateString()}.`, performedBy: (session as any).userId }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'USER',
+        actorName: (session as any).name || 'User',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Token paid via ${paymentMethod}. Reservation expires ${reservationExpiry.toDateString()}.`,
     });
 
     revalidatePath('/dashboard/student');
@@ -736,7 +754,15 @@ export async function markTokenCashPaid(bookingId: string) {
         });
     }
 
-    await prisma.auditLog.create({ data: { action: 'TOKEN_CASH_PAID', targetId: bookingId, targetType: 'BOOKING', details: `Cash token marked by owner. Room reserved.`, performedBy: (session as any).userId } });
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (session as any).name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Cash token marked by owner. Room reserved.`,
+    });
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/student');
@@ -758,7 +784,15 @@ export async function verifyKycAndProceed(bookingId: string) {
         await NotificationService.onKycVerified(booking, (session as any).userId);
     }
 
-    await prisma.auditLog.create({ data: { action: 'KYC_VERIFIED', targetId: bookingId, targetType: 'BOOKING', details: `All KYC documents verified. Moved to AGREEMENT_PENDING.`, performedBy: (session as any).userId } });
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'APPROVE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `All KYC documents verified. Moved to AGREEMENT_PENDING.`,
+    });
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/student');
@@ -788,7 +822,15 @@ export async function markKycFailed(bookingId: string, reason: string) {
         });
     }
 
-    await prisma.auditLog.create({ data: { action: 'KYC_FAILED', targetId: bookingId, targetType: 'BOOKING', details: `KYC rejected. Reason: ${reason}`, performedBy: (session as any).userId } });
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'REJECT',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `KYC rejected. Reason: ${reason}`,
+    });
 
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/student');

@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function submitReview(
     propertyId: string,
@@ -73,14 +74,14 @@ export async function submitReview(
         });
 
         // Audit Logging
-        await tx.auditLog.create({
-            data: {
-                action: "SUBMIT_REVIEW",
-                targetId: review.id,
-                targetType: "REVIEW",
-                details: `Tenant ${tenantId} left a ${rating}-star review for Property ${propertyId}`,
-                performedBy: user.id
-            }
+        logAuditEvent({
+            actorId: user.id,
+            actorRole: user.role || 'USER',
+            actorName: user.name || 'Student',
+            actionType: 'CREATE',
+            entityType: 'REVIEW' as any,
+            entityId: review.id,
+            description: `Tenant ${tenantId} left a ${rating}-star review for Property ${propertyId}`,
         });
 
         revalidatePath(`/property/${propertyId}`);

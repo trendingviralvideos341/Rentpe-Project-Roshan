@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
+import { logAuditEvent } from "@/lib/audit";
 
 /**
  * Student or owner raises a dispute
@@ -52,14 +53,14 @@ export async function raiseDispute(data: {
         }
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'DISPUTE_RAISED',
-            targetId: dispute.id,
-            targetType: 'DISPUTE',
-            details: `${data.type} dispute raised by ${session.role}: ${data.subject}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'User',
+        actionType: 'CREATE',
+        entityType: 'DISPUTE',
+        entityId: dispute.id,
+        description: `${data.type} dispute raised by ${session.role}: ${data.subject}`,
     });
 
     revalidatePath('/dashboard/student');
@@ -115,14 +116,14 @@ export async function resolveDispute(disputeId: string, resolution: string) {
         }).catch(err => console.error('Failed to email dispute resolution:', err));
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'DISPUTE_RESOLVED',
-            targetId: disputeId,
-            targetType: 'DISPUTE',
-            details: `Dispute resolved. Resolution: ${resolution}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'DISPUTE',
+        entityId: disputeId,
+        description: `Dispute resolved. Resolution: ${resolution}`,
     });
 
     revalidatePath('/dashboard/admin/disputes');

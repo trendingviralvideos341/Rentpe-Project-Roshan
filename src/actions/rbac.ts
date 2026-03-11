@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 
 /**
  * Admin sub-roles and their permissions
@@ -123,14 +124,14 @@ export async function assignAdminRole(targetUserId: string, adminRole: string, r
         data: { adminRole, role: 'ADMIN', isAdmin: true }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'ADMIN_ROLE_ASSIGNED',
-            targetId: targetUserId,
-            targetType: 'USER',
-            details: `Admin role '${adminRole}' assigned. Reason: ${reason || 'N/A'}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: targetUserId,
+        description: `Admin role '${adminRole}' assigned. Reason: ${reason || 'N/A'}`,
     });
 
     return { success: true };
@@ -154,14 +155,14 @@ export async function setAdminPermissionOverride(adminId: string, permission: st
         });
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: granted ? 'PERMISSION_GRANTED' : 'PERMISSION_REVOKED',
-            targetId: adminId,
-            targetType: 'USER',
-            details: `Permission '${permission}' ${granted ? 'granted' : 'revoked'}. Reason: ${reason}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: granted ? 'APPROVE' : 'REJECT',
+        entityType: 'USER',
+        entityId: adminId,
+        description: `Permission '${permission}' ${granted ? 'granted' : 'revoked'}. Reason: ${reason}`,
     });
 
     return { success: true };

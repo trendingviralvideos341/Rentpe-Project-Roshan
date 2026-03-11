@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { logAuditEvent } from "@/lib/audit";
 
 // Generates a token, saves it to the user, and "sends" it (prints to console for MVP)
 export async function requestPasswordReset(email: string) {
@@ -81,14 +82,14 @@ export async function executePasswordReset(token: string, newPassword: string) {
         });
 
         // Log the security event
-        await prisma.auditLog.create({
-            data: {
-                action: 'PASSWORD_RESET',
-                targetId: user.id,
-                targetType: 'USER',
-                details: `User completed self-serve password reset via email token link.`,
-                performedBy: user.id
-            }
+        logAuditEvent({
+            actorId: user.id,
+            actorRole: user.role || 'USER',
+            actorName: user.name || 'User',
+            actionType: 'UPDATE', // Password reset
+            entityType: 'USER',
+            entityId: user.id,
+            description: `User completed self-serve password reset via email token link.`,
         });
 
         return { success: true, message: "Your password has been reset successfully. You can now log in." };

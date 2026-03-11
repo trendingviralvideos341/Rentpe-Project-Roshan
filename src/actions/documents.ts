@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { NotificationService } from "@/lib/notifications";
 import { uploadToCloudinary } from "@/lib/upload";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function uploadTenantDocument(data: {
     bookingId: string;
@@ -208,11 +209,11 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
     } catch (e) { }
 
     currentTrail.push({
-        action: status,
-        timestamp: new Date().toISOString(),
-        performedBy: userId,
-        role: userRole,
-        details: status === 'REJECTED' ? `Rejected: ${note}` : 'Document verified'
+        actionType: status,
+        createdAt: new Date().toISOString(),
+        actorId: userId,
+        actorRole: userRole,
+        description: status === 'REJECTED' ? `Rejected: ${note}` : 'Document verified'
     });
 
     const doc = await prisma.tenantDocument.update({
@@ -242,14 +243,14 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
         }
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: status === 'VERIFIED' ? 'DOCUMENT_VERIFIED' : 'DOCUMENT_REJECTED',
-            targetId: docId,
-            targetType: 'DOCUMENT',
-            details: status === 'REJECTED' ? `Rejected: ${note}` : `Document ${doc.type} verified`,
-            performedBy: userId
-        }
+    logAuditEvent({
+        actorId: userId,
+        actorRole: userRole as string,
+        actorName: (session as any).name || (userRole === 'ADMIN' ? 'Admin' : 'Owner'),
+        actionType: status === 'VERIFIED' ? 'APPROVE' : 'REJECT',
+        entityType: 'DOCUMENT',
+        entityId: docId,
+        description: status === 'REJECTED' ? `Rejected: ${note}` : `Document ${doc.type} verified`,
     });
 
     // Notify the student about doc verification result

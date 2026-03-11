@@ -228,16 +228,16 @@ export default function OwnerDashboard() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-start gap-2">
-                                                    <p className="text-sm font-bold">{log.action.replace(/_/g, ' ')}</p>
+                                                    <p className="text-sm font-bold">{log.actionType?.replace(/_/g, ' ') || 'ACTION'}</p>
                                                     <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                                                        {new Date(log.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                        {new Date(log.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground uppercase mt-0.5">{log.targetType}</p>
-                                                {log.details && (
+                                                <p className="text-xs text-muted-foreground uppercase mt-0.5">{log.entityType}</p>
+                                                {log.description && (
                                                     <div className="mt-2 bg-amber-50 border border-amber-200 rounded px-3 py-2">
                                                         <span className="text-[10px] font-bold text-amber-700 uppercase">📝 Notes: </span>
-                                                        <span className="text-xs text-amber-900">{log.details}</span>
+                                                        <span className="text-xs text-amber-900">{log.description}</span>
                                                     </div>
                                                 )}
                                             </div>

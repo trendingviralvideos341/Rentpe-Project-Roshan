@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import prisma from "@/lib/prisma";
 import { getSession, signJWT } from "@/lib/auth";
 import { revalidatePath } from 'next/cache';
+import { logAuditEvent } from "@/lib/audit";
 
 export async function impersonateUser(targetUserId: string) {
     const session = await getSession();
@@ -38,14 +39,14 @@ export async function impersonateUser(targetUserId: string) {
         maxAge: 60 * 60 * 24 // 24 hours
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'IMPERSONATION_STARTED',
-            targetId: targetUser.id,
-            targetType: 'USER',
-            details: `Admin ${(session as any).userId} started impersonating ${targetUser.email}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: targetUser.id,
+        description: `Admin ${(session as any).userId} started impersonating ${targetUser.email}`,
     });
 
     // Return the URL prefix
@@ -84,14 +85,14 @@ export async function stopImpersonation() {
         maxAge: 60 * 60 * 24
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'IMPERSONATION_STOPPED',
-            targetId: adminUser.id,
-            targetType: 'USER',
-            details: `Admin ${adminUser.email} safely returned to admin profile`,
-            performedBy: adminUser.id
-        }
+    logAuditEvent({
+        actorId: adminUser.id,
+        actorRole: 'ADMIN',
+        actorName: adminUser.name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: adminUser.id,
+        description: `Admin ${adminUser.email} safely returned to admin profile`,
     });
 
     return '/dashboard/admin/users';

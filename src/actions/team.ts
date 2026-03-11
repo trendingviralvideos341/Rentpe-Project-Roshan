@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function getTeamMembers() {
     const session = await getSession();
@@ -34,14 +35,14 @@ export async function addTeamMember(data: { name: string, email: string, phone: 
     });
 
     // Logging
-    await prisma.auditLog.create({
-        data: {
-            action: 'TEAM_MEMBER_ADDED',
-            targetId: member.id,
-            targetType: 'TEAM_MEMBER',
-            details: `${member.name} (${member.role})`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'CREATE',
+        entityType: 'TEAM_MEMBER',
+        entityId: member.id,
+        description: `${member.name} (${member.role})`,
     });
 
     revalidatePath('/dashboard/admin/team');
@@ -71,14 +72,14 @@ export async function updateTeamMemberStatus(id: string, status: 'ACTIVE' | 'REV
     });
 
     // Audit Log
-    await prisma.auditLog.create({
-        data: {
-            action: status === 'REVOKED' ? 'TEAM_ACCESS_REVOKED' : 'TEAM_ACCESS_RESTORED',
-            targetId: id,
-            targetType: 'TEAM_MEMBER',
-            details: reason,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: status === 'REVOKED' ? 'REJECT' : 'APPROVE',
+        entityType: 'TEAM_MEMBER',
+        entityId: id,
+        description: reason,
     });
 
     revalidatePath('/dashboard/admin/team');
@@ -100,14 +101,14 @@ export async function updateTeamMemberPermissions(id: string, permissions: strin
     });
 
     // Audit Log
-    await prisma.auditLog.create({
-        data: {
-            action: 'TEAM_PERMISSIONS_UPDATED',
-            targetId: id,
-            targetType: 'TEAM_MEMBER',
-            details: `Updated ${member.name}: role=${role}, permissions=${permissions.join(', ')}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'TEAM_MEMBER',
+        entityId: id,
+        description: `Updated ${member.name}: role=${role}, permissions=${permissions.join(', ')}`,
     });
 
     revalidatePath('/dashboard/admin/team');

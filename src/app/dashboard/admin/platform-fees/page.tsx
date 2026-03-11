@@ -353,14 +353,14 @@ export default function PlatformFeesPage() {
                                 ) : changeLogs.map(log => (
                                     <tr key={log.id} className="border-b hover:bg-muted/5">
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${log.action === 'PLATFORM_SETTINGS_UPDATED' ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}>
-                                                {log.action}
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${log.actionType === 'PLATFORM_SETTINGS_UPDATED' || log.actionType === 'UPDATE' ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}>
+                                                {log.actionType}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-sm">{log.details}</td>
-                                        <td className="p-4 text-xs font-mono text-muted-foreground">{log.performedBy}</td>
+                                        <td className="p-4 text-sm">{log.description}</td>
+                                        <td className="p-4 text-xs font-mono text-muted-foreground">{log.actorId}</td>
                                         <td className="p-4 text-xs text-muted-foreground font-mono">
-                                            🕐 {new Date(log.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' })}
+                                            🕐 {new Date(log.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' })}
                                         </td>
                                     </tr>
                                 ))}

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
+import { logAuditEvent } from "@/lib/audit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  OWNER DASHBOARD HOME — Single API call for all summary cards
@@ -308,14 +309,14 @@ export async function initiateRefund(data: {
         await createNotification(admin.id, 'PAYMENT', `Refund of ₹${data.amount} requested for booking ${data.bookingId}. Reason: ${data.reason}`);
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'REFUND_INITIATED',
-            targetId: data.bookingId,
-            targetType: 'BOOKING',
-            details: `₹${data.amount} ${data.refundType} refund. Reason: ${data.reason}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (session as any).name || 'Owner',
+        actionType: 'CREATE',
+        entityType: 'BOOKING',
+        entityId: data.bookingId,
+        description: `₹${data.amount} ${data.refundType} refund. Reason: ${data.reason}`,
     });
 
     revalidatePath('/dashboard/owner/payments');

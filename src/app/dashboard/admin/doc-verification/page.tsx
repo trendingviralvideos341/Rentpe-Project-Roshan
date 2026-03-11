@@ -383,17 +383,18 @@ export default function OwnerVerificationsPage() {
                                     let bg = "bg-indigo-500/20";
                                     let border = "border-indigo-500/30";
 
-                                    if (event.action === 'UPLOADED' || event.action === 'REUPLOADED') {
+                                    const action = event.actionType || event.action;
+                                    if (action === 'UPLOADED' || action === 'REUPLOADED') {
                                         icon = <Upload className="w-3.5 h-3.5" />;
                                         color = "text-indigo-400";
                                         bg = "bg-indigo-500/20";
                                         border = "border-indigo-500/30";
-                                    } else if (event.action === 'VERIFIED') {
+                                    } else if (action === 'VERIFIED') {
                                         icon = <CheckCircle className="w-3.5 h-3.5" />;
                                         color = "text-emerald-400";
                                         bg = "bg-emerald-500/20";
                                         border = "border-emerald-500/30";
-                                    } else if (event.action === 'REJECTED') {
+                                    } else if (action === 'REJECTED') {
                                         icon = <XCircle className="w-3.5 h-3.5" />;
                                         color = "text-rose-400";
                                         bg = "bg-rose-500/20";
@@ -409,21 +410,21 @@ export default function OwnerVerificationsPage() {
                                             <div className="flex-1 pt-1">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className={`text-[11px] font-black uppercase tracking-widest ${color}`}>
-                                                        {event.action}
+                                                        {action}
                                                     </span>
                                                     <span className="text-[9px] text-white/40 font-mono">
-                                                        {new Date(event.timestamp).toLocaleString(undefined, {
+                                                        {new Date(event.createdAt || event.timestamp).toLocaleString(undefined, {
                                                             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                                                         })}
                                                     </span>
                                                 </div>
-                                                <p className="text-[11px] text-white/60 mb-2 leading-relaxed">{event.details}</p>
+                                                <p className="text-[11px] text-white/60 mb-2 leading-relaxed">{event.description || event.details}</p>
                                                 <div className="flex items-center gap-2">
                                                     <Badge variant="outline" className="text-[8px] uppercase tracking-wider bg-white/5 border-white/10 text-white/50 px-2 py-0">
-                                                        Role: {event.role || 'System'}
+                                                        Role: {event.actorRole || event.role || 'System'}
                                                     </Badge>
-                                                    <span className="text-[8px] font-mono text-white/30 truncate max-w-[120px]" title={event.performedBy}>
-                                                        ID: {event.performedBy?.substring(0, 8)}...
+                                                    <span className="text-[8px] font-mono text-white/30 truncate max-w-[120px]" title={event.actorId || event.performedBy}>
+                                                        ID: {(event.actorId || event.performedBy)?.substring(0, 8)}...
                                                     </span>
                                                 </div>
                                             </div>

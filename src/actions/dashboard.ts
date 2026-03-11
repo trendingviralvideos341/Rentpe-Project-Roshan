@@ -30,8 +30,8 @@ export async function getOwnerDashboardStats() {
                 select: { amount: true }
             }),
             prisma.auditLog.findMany({
-                where: { performedBy: userId },
-                orderBy: { timestamp: 'desc' },
+                where: { actorId: userId },
+                orderBy: { createdAt: 'desc' },
                 take: 5
             })
         ]);
