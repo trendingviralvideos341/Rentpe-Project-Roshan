@@ -158,7 +158,7 @@ export default function AdminDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full max-w-md mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
+                <TabsList className="flex flex-wrap h-auto w-full max-w-2xl mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
                     <TabsTrigger
                         value="overview"
                         className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-blue-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"

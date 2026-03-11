@@ -324,15 +324,15 @@ export default function AdminUsersPage() {
                                                 </td>
                                                 <td className="p-4 text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        <Link href={`/dashboard/admin/users/${user.id}`}>
+                                                        <Link href={`/dashboard/admin/users/${user.id}`} title="View Detailed Profile">
                                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50">
                                                                 <Eye className="h-4 w-4" />
                                                             </Button>
                                                         </Link>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50" onClick={() => setPointsTarget(user)}>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50" onClick={() => setPointsTarget(user)} title="Manage Loyalty Points">
                                                             <Star className="h-4 w-4" />
                                                         </Button>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => setBlockTarget(user)}>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => setBlockTarget(user)} title={isBanned ? "Restore Account" : "Block Account"}>
                                                             <Ban className="h-4 w-4" />
                                                         </Button>
                                                     </div>
