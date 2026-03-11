@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { NotificationService } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function createBooking(data: {
     roomId?: string,
@@ -64,14 +65,16 @@ export async function createBooking(data: {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'BOOKING_REQUESTED',
-            targetId: booking.id,
-            targetType: 'BOOKING',
-            details: `Booking for ${data.propertyName} by ${data.guestName}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Student',
+        actionType: 'CREATE',
+        entityType: 'BOOKING',
+        entityId: booking.id,
+        entityName: data.propertyName,
+        description: `Booking for ${data.propertyName} requested by ${data.guestName}`,
+        newValue: booking
     });
     try {
         const property = await prisma.property.findFirst({ 
@@ -224,14 +227,15 @@ export async function approveBooking(id: string, data: {
 
 
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'BOOKING_APPROVED',
-            targetId: id,
-            targetType: 'BOOKING',
-            details: `Allocated Room ${data.roomAssigned}. Onboarding: ${data.onboardingDate || 'TBD'}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'APPROVE',
+        entityType: 'BOOKING',
+        entityId: id,
+        description: `Booking approved. Allocated Room ${data.roomAssigned}. Onboarding: ${data.onboardingDate || 'TBD'}`,
+        newValue: { roomAssigned: data.roomAssigned, onboardingDate: data.onboardingDate }
     });
 
     // Notify student about approval and room assignment
@@ -283,14 +287,15 @@ export async function rejectBooking(id: string, reason?: string) {
         }
     }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'BOOKING_REJECTED',
-            targetId: id,
-            targetType: 'BOOKING',
-            details: reason || 'No reason provided',
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner',
+        actionType: 'REJECT',
+        entityType: 'BOOKING',
+        entityId: id,
+        description: `Booking rejected. Reason: ${reason || 'No reason provided'}`,
+        newValue: { reason }
     });
     // Notify student about rejection
     try {
@@ -352,14 +357,15 @@ export async function markBookingPaid(id: string, method: string) {
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'BOOKING_PAID',
-            targetId: id,
-            targetType: 'BOOKING',
-            details: `Payment received via ${method} at ${new Date().toLocaleString('en-IN')}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Owner/Admin',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: id,
+        description: `Payment received via ${method}`,
+        newValue: { status: 'PAID', paymentMethod: method }
     });
 
     revalidatePath('/dashboard/owner/bookings');
@@ -463,14 +469,15 @@ export async function checkInBooking(id: string) {
         });
 
         // 7. Log check-in
-        await prisma.auditLog.create({
-            data: {
-                action: 'TENANT_CHECKED_IN',
-                targetId: tenant.id,
-                targetType: 'TENANT',
-                details: `Tenant ${booking.guestName} formally checked-in from booking ${booking.displayId}`,
-                performedBy: (session as any).userId
-            }
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'Owner/Admin',
+            actionType: 'UPDATE',
+            entityType: 'USER', // Tenant/User level
+            entityId: tenant.id,
+            description: `Tenant ${booking.guestName} formally checked-in from booking ${booking.displayId}`,
+            newValue: tenant
         });
     }
 

@@ -1,273 +1,283 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Search, RefreshCcw, ChevronDown, ChevronUp, Shield, Building, User, Activity } from "lucide-react";
-import { getAuditLogs } from "@/actions/admin";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+    Search, Filter, Calendar, User, Building, Landmark, 
+    CheckCircle, XCircle, LogIn, LogOut, ArrowRight, 
+    Download, RefreshCw, ChevronLeft, ChevronRight,
+    Eye, MoreVertical, FileText, Shield, HardDrive
+} from 'lucide';
+import { getAuditLogs } from '@/actions/audit';
+import { toast } from 'sonner';
 
-const actionLabels: Record<string, { label: string; color: string; icon: string }> = {
-    USER_BANNED: { label: "User Banned", color: "bg-red-100 text-red-800 border-red-200", icon: "🚫" },
-    USER_UNBANNED: { label: "User Unbanned", color: "bg-green-100 text-green-800 border-green-200", icon: "✅" },
-    TEAM_MEMBER_ADDED: { label: "Team Member Added", color: "bg-blue-100 text-blue-800 border-blue-200", icon: "👤" },
-    TEAM_ACCESS_REVOKED: { label: "Team Access Revoked", color: "bg-orange-100 text-orange-800 border-orange-200", icon: "🔒" },
-    TEAM_ACCESS_RESTORED: { label: "Team Access Restored", color: "bg-green-100 text-green-800 border-green-200", icon: "🔓" },
-    BOOKING_APPROVED: { label: "Booking Approved", color: "bg-green-100 text-green-800 border-green-200", icon: "✅" },
-    BOOKING_REJECTED: { label: "Booking Rejected", color: "bg-red-100 text-red-800 border-red-200", icon: "❌" },
-    BOOKING_REQUESTED: { label: "Booking Requested", color: "bg-blue-100 text-blue-800 border-blue-200", icon: "📋" },
-    TENANT_VACATED: { label: "Tenant Vacated", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: "🏠" },
-    TENANT_RESTORED: { label: "Tenant Restored", color: "bg-purple-100 text-purple-800 border-purple-200", icon: "🔄" },
-    STAFF_ADDED: { label: "Staff Added", color: "bg-blue-100 text-blue-800 border-blue-200", icon: "👥" },
-    STAFF_REMOVED: { label: "Staff Removed", color: "bg-orange-100 text-orange-800 border-orange-200", icon: "🔒" },
-    STAFF_RESTORED: { label: "Staff Restored", color: "bg-green-100 text-green-800 border-green-200", icon: "✅" },
-    RENT_PAID: { label: "Rent Marked Paid", color: "bg-green-100 text-green-800 border-green-200", icon: "💰" },
-    RENT_UNPAID: { label: "Rent Reversed Unpaid", color: "bg-red-100 text-red-800 border-red-200", icon: "↩️" },
-    PAYMENT_MARKED_PAID: { label: "Payment Marked", color: "bg-green-100 text-green-800 border-green-200", icon: "💰" },
-    TEAM_MEMBER_RESTORED: { label: "Team Restored", color: "bg-green-100 text-green-800 border-green-200", icon: "✅" },
-    TICKET_RESOLVED: { label: "Ticket Resolved", color: "bg-teal-100 text-teal-800 border-teal-200", icon: "🎫" },
-    FOOD_MENU_UPDATED: { label: "Food Menu Updated", color: "bg-amber-100 text-amber-800 border-amber-200", icon: "🍽️" },
-};
+const ROLE_OPTIONS = ['ALL', 'ADMIN', 'OWNER', 'USER', 'EMPLOYEE'];
+const ENTITY_OPTIONS = ['ALL', 'USER', 'PROPERTY', 'BOOKING', 'PAYMENT', 'KYC'];
+const ACTION_OPTIONS = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT'];
 
 export default function AuditLogPage() {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [filterAction, setFilterAction] = useState("ALL");
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-    const [activeTab, setActiveTab] = useState("admin");
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [actorRole, setActorRole] = useState('ALL');
+    const [entityType, setEntityType] = useState('ALL');
+    const [actionType, setActionType] = useState('ALL');
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await getAuditLogs();
-            setLogs(data);
-        } catch (e) {
-            console.error(e);
+            const res = await getAuditLogs({
+                actorRole,
+                actionType,
+                entityType,
+                search,
+                page,
+                limit: 20
+            });
+            setLogs(res.logs);
+            setTotal(res.total);
+        } catch (error) {
+            toast.error("Failed to fetch audit logs");
+            console.error(error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [actorRole, actionType, entityType, search, page]);
 
     useEffect(() => {
         fetchLogs();
-    }, []);
+    }, [fetchLogs]);
 
-    const toggleRow = (id: string) => {
-        setExpandedRows(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+    const getActionBadge = (action: string) => {
+        switch (action) {
+            case 'CREATE': return <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">CREATE</span>;
+            case 'UPDATE': return <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">UPDATE</span>;
+            case 'DELETE': return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">DELETE</span>;
+            case 'APPROVE': return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">APPROVE</span>;
+            case 'REJECT': return <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">REJECT</span>;
+            case 'LOGIN': return <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">LOGIN</span>;
+            default: return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{action}</span>;
+        }
     };
 
-    const filtered = logs
-        .filter(l => filterAction === "ALL" || l.action === filterAction)
-        .filter(l =>
-            (l.targetId || "").toLowerCase().includes(search.toLowerCase()) ||
-            (l.details || "").toLowerCase().includes(search.toLowerCase()) ||
-            (l.performedBy || "").toLowerCase().includes(search.toLowerCase()) ||
-            l.action.toLowerCase().includes(search.toLowerCase())
-        );
+    const getRoleIcon = (role: string) => {
+        switch (role) {
+            case 'ADMIN': return <Shield size={14} className="text-red-500" />;
+            case 'OWNER': return <Building size={14} className="text-blue-500" />;
+            case 'USER': return <User size={14} className="text-green-500" />;
+            default: return <User size={14} className="text-gray-500" />;
+        }
+    };
 
-    const uniqueActions = [...new Set(logs.map(l => l.action))].sort();
+    const exportToCSV = () => {
+        if (logs.length === 0) return;
+        const headers = ["Timestamp", "Actor", "Role", "Action", "Entity", "Description", "IP Address"];
+        const rows = logs.map(l => [
+            new Date(l.createdAt).toLocaleString(),
+            l.actorName,
+            l.actorRole,
+            l.actionType,
+            l.entityType,
+            l.description.replace(/,/g, ';'), // Escape commas
+            l.ipAddress
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `rentpe_audit_log_${new Date().toISOString()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-start">
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold">Audit Log</h1>
-                    <p className="text-muted-foreground">Complete record of all actions taken by admins, owners, and owner teams — with notes.</p>
+                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <HardDrive className="text-blue-600" />
+                        System Audit Logs
+                    </h1>
+                    <p className="text-gray-500 text-sm">Monitor platform activities and security events</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
-                    <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-                </Button>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={exportToCSV}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        <Download size={16} />
+                        Export CSV
+                    </button>
+                    <button 
+                        onClick={() => { setPage(1); fetchLogs(); }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                        Refresh
+                    </button>
+                </div>
             </div>
 
-            {/* Stats Bar */}
-            <div className="grid grid-cols-4 gap-3">
-                {[
-                    { label: "Total Logs", value: logs.length, color: "bg-blue-50 border-blue-200 text-blue-700" },
-                    { label: "Bans/Blocks", value: logs.filter(l => l.action.includes("BANNED") || l.action.includes("REVOKED") || l.action.includes("REMOVED")).length, color: "bg-red-50 border-red-200 text-red-700" },
-                    { label: "Approvals", value: logs.filter(l => l.action.includes("APPROVED") || l.action.includes("PAID") || l.action.includes("RESTORED")).length, color: "bg-green-50 border-green-200 text-green-700" },
-                    { label: "Today", value: logs.filter(l => new Date(l.timestamp).toDateString() === new Date().toDateString()).length, color: "bg-purple-50 border-purple-200 text-purple-700" },
-                ].map(stat => (
-                    <div key={stat.label} className={`p-3 rounded-lg border text-center ${stat.color}`}>
-                        <div className="text-2xl font-bold">{stat.value}</div>
-                        <div className="text-xs font-medium">{stat.label}</div>
-                    </div>
-                ))}
-            </div>
+            {/* Filters Bar */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap items-center gap-4">
+                <div className="flex-1 min-w-[200px] relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input 
+                        type="text" 
+                        placeholder="Search logs..." 
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
 
-            {/* Tabs */}
-            <Tabs defaultValue="admin" value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                <TabsList className="grid w-full lg:w-[600px] grid-cols-3 bg-muted p-1">
-                    <TabsTrigger value="admin" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-semibold">
-                        <Shield className="w-4 h-4 mr-2" /> Admin & Staff
-                    </TabsTrigger>
-                    <TabsTrigger value="owner" className="data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 font-semibold">
-                        <Building className="w-4 h-4 mr-2" /> PG Owners
-                    </TabsTrigger>
-                    <TabsTrigger value="system" className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-600 font-semibold">
-                        <Activity className="w-4 h-4 mr-2" /> System & Users
-                    </TabsTrigger>
-                </TabsList>
-
-                <div className="flex gap-4 items-center">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-10" placeholder="Search by ID, details, performer, or action..." value={search} onChange={e => setSearch(e.target.value)} />
-                    </div>
-                    <select className="border rounded-md p-2 bg-background text-sm min-w-[200px]" value={filterAction} onChange={e => setFilterAction(e.target.value)}>
-                        <option value="ALL">All Actions ({logs.length})</option>
-                        {uniqueActions.map(a => {
-                            const info = actionLabels[a];
-                            return (
-                                <option key={a} value={a}>
-                                    {info ? `${info.icon} ${info.label}` : a} ({logs.filter(l => l.action === a).length})
-                                </option>
-                            );
-                        })}
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</span>
+                    <select 
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={actorRole}
+                        onChange={(e) => setActorRole(e.target.value)}
+                    >
+                        {ROLE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                 </div>
 
-                {["admin", "owner", "system"].map(tabValue => {
-                    const activeLogs = filtered.filter(l => {
-                        const role = l.performer?.role || "USER";
-                        if (tabValue === "admin") return ["ADMIN", "ONBOARDER", "VERIFIER"].includes(role);
-                        if (tabValue === "owner") return role === "OWNER";
-                        return !["ADMIN", "ONBOARDER", "VERIFIER", "OWNER"].includes(role);
-                    });
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Entity</span>
+                    <select 
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={entityType}
+                        onChange={(e) => setEntityType(e.target.value)}
+                    >
+                        {ENTITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                </div>
 
-                    return (
-                        <TabsContent key={tabValue} value={tabValue}>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</span>
+                    <select 
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={actionType}
+                        onChange={(e) => setActionType(e.target.value)}
+                    >
+                        {ACTION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                </div>
+            </div>
 
-                            {/* Log Table */}
-                            <Card>
-                                <CardContent className="p-0">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead className="bg-muted border-b">
-                                                <tr>
-                                                    <th className="p-4 text-left font-medium w-40">Timestamp</th>
-                                                    <th className="p-4 text-left font-medium w-48">Action</th>
-                                                    <th className="p-4 text-left font-medium">Target</th>
-                                                    <th className="p-4 text-left font-medium">Notes / Reason</th>
-                                                    <th className="p-4 text-left font-medium w-32">Performed By</th>
-                                                    <th className="p-4 w-10"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y">
-                                                {loading ? (
-                                                    <tr><td colSpan={6} className="p-8 text-center animate-pulse">Loading audit logs...</td></tr>
-                                                ) : activeLogs.length === 0 ? (
-                                                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No audit logs found in this category.</td></tr>
-                                                ) : (
-                                                    activeLogs.map((log) => {
-                                                        const info = actionLabels[log.action] || { label: log.action, color: "bg-gray-100 text-gray-800 border-gray-200", icon: "📌" };
-                                                        const isExpanded = expandedRows.has(log.id);
-                                                        const hasDetails = log.details && log.details.length > 0;
-                                                        return (
-                                                            <React.Fragment key={log.id}>
-                                                                <tr
-                                                                    key={log.id}
-                                                                    className={`hover:bg-muted/5 cursor-pointer ${isExpanded ? "bg-muted/10" : ""}`}
-                                                                    onClick={() => hasDetails && toggleRow(log.id)}
-                                                                >
-                                                                    <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">
-                                                                        <div className="font-medium text-foreground">
-                                                                            {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                                        </div>
-                                                                        <div>
-                                                                            {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="p-4">
-                                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${info.color}`}>
-                                                                            {info.icon} {info.label}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="p-4">
-                                                                        <div className="text-xs font-medium uppercase text-muted-foreground">{log.targetType || "SYSTEM"}</div>
-                                                                        <div className="font-mono text-xs text-foreground truncate max-w-[120px]" title={log.targetId}>{log.targetId || "N/A"}</div>
-                                                                    </td>
-                                                                    <td className="p-4">
-                                                                        {hasDetails ? (
-                                                                            <div className="flex items-start gap-2">
-                                                                                <div className="flex-1">
-                                                                                    <p className="text-sm text-foreground line-clamp-2">{log.details}</p>
-                                                                                </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <span className="text-xs text-muted-foreground italic">No notes recorded</span>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="p-4">
-                                                                        <div className="flex flex-col">
-                                                                            <div className="text-xs font-mono bg-muted px-2 py-1 rounded truncate max-w-[120px]" title={log.performedBy}>
-                                                                                {log.performer?.name || log.performedBy ? log.performedBy.split('-')[0] + '...' : 'System'}
-                                                                            </div>
-                                                                            <div className="text-[10px] text-muted-foreground mt-1 uppercase font-bold tracking-wider">
-                                                                                {log.performer?.role || 'SYSTEM'}
-                                                                            </div>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="p-4 text-muted-foreground">
-                                                                        {hasDetails && (isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
-                                                                    </td>
-                                                                </tr>
-                                                                {isExpanded && (
-                                                                    <tr key={`${log.id}-expanded`} className="bg-amber-50/50 border-b border-amber-100">
-                                                                        <td colSpan={6} className="px-6 py-4">
-                                                                            <div className="flex gap-6">
-                                                                                <div className="flex-1">
-                                                                                    <div className="text-xs font-bold uppercase text-amber-700 mb-1">📝 Full Notes / Reason</div>
-                                                                                    <p className="text-sm text-foreground bg-white border border-amber-200 rounded-lg p-3 leading-relaxed">
-                                                                                        {log.details}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div className="text-xs space-y-2 min-w-[200px]">
-                                                                                    <div>
-                                                                                        <span className="font-bold text-muted-foreground uppercase">Action ID</span>
-                                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.id}</div>
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <span className="font-bold text-muted-foreground uppercase">Performed By (ID)</span>
-                                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.performedBy || "System"}</div>
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <span className="font-bold text-muted-foreground uppercase">Target ID</span>
-                                                                                        <div className="font-mono text-[10px] mt-0.5 break-all">{log.targetId || "N/A"}</div>
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <span className="font-bold text-muted-foreground uppercase">Exact Time</span>
-                                                                                        <div className="text-[10px] mt-0.5">{new Date(log.timestamp).toLocaleString('en-IN')}</div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </React.Fragment>
-                                                        );
-                                                    })
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    {activeLogs.length > 0 && (
-                                        <div className="p-4 border-t text-xs text-muted-foreground text-center">
-                                            Showing {activeLogs.length} matching log entries in this tab. Click any row to expand full notes.
+            {/* Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50 border-bottom border-gray-100">
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Timestamp</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actor</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Entity</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Client Info</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {logs.length === 0 && !loading ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-20 text-center">
+                                        <div className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-100 rounded-xl p-8 max-w-sm mx-auto">
+                                            <FileText size={48} className="text-gray-200" />
+                                            <p className="text-gray-400 text-sm">No logs found matching your filters.</p>
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    )
-                })}
-            </Tabs>
+                                    </td>
+                                </tr>
+                            ) : (
+                                logs.map((log) => (
+                                    <tr key={log.id} className="hover:bg-gray-50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">
+                                                {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                            <div className="text-xs text-gray-400">
+                                                {new Date(log.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' })}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                                    {getRoleIcon(log.actorRole)}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-semibold text-gray-900">{log.actorName}</div>
+                                                    <div className="text-[10px] text-gray-400 font-bold uppercase">{log.actorRole}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">{getActionBadge(log.actionType)}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase transition-colors">
+                                                {log.entityType}
+                                            </div>
+                                            {log.entityName && (
+                                                <div className="text-[11px] text-gray-400 mt-1 max-w-[120px] truncate">
+                                                    {log.entityName}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="text-sm text-gray-600 line-clamp-2 max-w-md">
+                                                {log.description}
+                                            </p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-[11px] text-gray-500 font-mono">
+                                                {log.ipAddress}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400 truncate max-w-[120px]" title={log.userAgent}>
+                                                {log.userAgent}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200 group-hover:block hidden">
+                                                <Eye size={16} className="text-gray-400 hover:text-blue-500" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="bg-white px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                    <p className="text-sm text-gray-500">
+                        Showing <span className="font-semibold text-gray-800">{logs.length > 0 ? (page - 1) * 20 + 1 : 0}</span> to <span className="font-semibold text-gray-800">{Math.min(page * 20, total)}</span> of <span className="font-semibold text-gray-800">{total}</span> results
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            className="p-2 border border-gray-200 rounded-lg enabled:hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <span className="text-sm font-semibold px-4 text-gray-700">Page {page}</span>
+                        <button 
+                            disabled={page * 20 >= total}
+                            onClick={() => setPage(p => p + 1)}
+                            className="p-2 border border-gray-200 rounded-lg enabled:hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

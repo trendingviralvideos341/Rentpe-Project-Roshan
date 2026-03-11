@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function getAdminStats() {
     try {
@@ -156,14 +157,15 @@ export async function updateUserStatus(userId: string, status: string, reason: s
         }
     });
 
-    await prisma.auditLog.create({
-        data: {
-            action: status === 'BANNED' ? 'USER_BANNED' : 'USER_UNBANNED',
-            targetId: userId,
-            targetType: 'USER',
-            details: reason,
-            performedBy: (session as any).userId as string
-        }
+    logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: status === 'BANNED' ? 'DELETE' : 'UPDATE', // Ban is effectively a soft-delete of access
+        entityType: 'USER',
+        entityId: userId,
+        description: `User status updated to ${status}. Reason: ${reason}`,
+        newValue: { status, reason }
     });
 
     revalidatePath('/dashboard/admin/users');
@@ -565,14 +567,16 @@ export async function approveProperty(propertyId: string, approved: boolean, not
         });
     } catch (e) { console.error("notify owner error", e); }
 
-    await prisma.auditLog.create({
-        data: {
-            action: approved ? 'PROPERTY_APPROVED' : 'PROPERTY_REJECTED',
-            targetId: propertyId,
-            targetType: 'PROPERTY',
-            details: `Property ${property.name} ${approved ? 'approved' : 'rejected'}. Admin Notes: ${notes}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: approved ? 'APPROVE' : 'REJECT',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        entityName: property.name,
+        description: `Property ${property.name} ${approved ? 'approved' : 'rejected'}. Admin Notes: ${notes}`,
+        newValue: { status, notes }
     });
 
     revalidatePath('/dashboard/admin/property-approval');
@@ -601,14 +605,16 @@ export async function markPropertyPending(propertyId: string, notes: string) {
         });
     } catch (e) { console.error("notify owner error", e); }
 
-    await prisma.auditLog.create({
-        data: {
-            action: 'PROPERTY_PENDING',
-            targetId: propertyId,
-            targetType: 'PROPERTY',
-            details: `Property ${property.name} marked as Pending. Admin Notes: ${notes}`,
-            performedBy: (session as any).userId
-        }
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        entityName: property.name,
+        description: `Property ${property.name} marked as Pending Approval. Admin Notes: ${notes}`,
+        newValue: { status: 'PENDING_APPROVAL', notes }
     });
 
     revalidatePath('/dashboard/admin/property-approval');

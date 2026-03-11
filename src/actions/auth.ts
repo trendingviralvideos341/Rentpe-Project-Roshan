@@ -8,6 +8,7 @@ import { verify2FAToken } from "@/lib/2fa";
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit';
 
 const SignupSchema = z.object({
     name: z.string().min(3),
@@ -80,14 +81,15 @@ export async function signup(formData: FormData) {
         });
 
         // Log T&C Consent for legal compliance (DPDP Phase 2/3)
-        await prisma.auditLog.create({
-            data: {
-                action: 'TC_CONSENT_GIVEN',
-                targetId: user.id,
-                targetType: 'USER',
-                details: `User agreed to: T&C: true, Marketing: ${marketingAgreed}, DataSharing: ${dataSharingAgreed}`,
-                performedBy: user.id
-            }
+        logAuditEvent({
+            actorId: user.id,
+            actorRole: user.role,
+            actorName: user.name || 'User',
+            actionType: 'CREATE',
+            entityType: 'USER',
+            entityId: user.id,
+            description: `User signed up and agreed to: T&C: true, Marketing: ${marketingAgreed}, DataSharing: ${dataSharingAgreed}`,
+            newValue: { marketingAgreed, dataSharingAgreed }
         });
 
         // Send Welcome Email (async, don't block redirect)
@@ -141,14 +143,15 @@ export async function login(formData: FormData) {
 
         if (!user) {
             // Security Phase 3: Log failed attempt
-            await prisma.auditLog.create({
-                data: {
-                    action: 'LOGIN_FAILURE',
-                    targetId: 'ANY',
-                    targetType: 'SYSTEM',
-                    details: `Failed login attempt for: ${email}`,
-                    performedBy: 'ANONYMOUS'
-                }
+            // Since we don't have a user, we use a system actor or dummy ID
+            logAuditEvent({
+                actorId: '00000000-0000-0000-0000-000000000000',
+                actorRole: 'USER',
+                actorName: 'Anonymous',
+                actionType: 'LOGIN',
+                entityType: 'USER',
+                entityId: 'ANY',
+                description: `Failed login attempt for: ${email}. Reason: Invalid email.`,
             });
             return { error: 'Invalid credentials' };
         }
@@ -160,14 +163,14 @@ export async function login(formData: FormData) {
         const isMatch = await comparePassword(password, (user as any).passwordHash);
         if (!isMatch) {
             // Security Phase 3: Log failed attempt for existing user
-            await prisma.auditLog.create({
-                data: {
-                    action: 'LOGIN_FAILURE',
-                    targetId: user.id || '?',
-                    targetType: 'USER',
-                    details: `Incorrect password for: ${email}`,
-                    performedBy: user.id || 'ANONYMOUS'
-                }
+            logAuditEvent({
+                actorId: user.id,
+                actorRole: user.role,
+                actorName: user.name || 'User',
+                actionType: 'LOGIN',
+                entityType: 'USER',
+                entityId: user.id,
+                description: `Failed login attempt for: ${email}. Reason: Incorrect password.`,
             });
             return { error: 'Invalid credentials' };
         }
@@ -494,14 +497,14 @@ export async function deleteUserAccount() {
         });
 
         // 2. Log final audit event (Legal Trail)
-        await prisma.auditLog.create({
-            data: {
-                action: 'ACCOUNT_PURGED',
-                targetId: userId,
-                targetType: 'USER',
-                details: `User requested complete account erasure. KYC data and PII purged.`,
-                performedBy: userId
-            }
+        logAuditEvent({
+            actorId: userId,
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'User',
+            actionType: 'DELETE',
+            entityType: 'USER',
+            entityId: userId,
+            description: `User requested complete account erasure. KYC data and PII purged.`,
         });
 
         const cookieStore = await cookies();

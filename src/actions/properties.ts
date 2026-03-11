@@ -3,6 +3,8 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
+import { logAuditEvent } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
@@ -194,6 +196,19 @@ export async function createProperty(formData: FormData) {
         }
 
         return newProperty;
+    });
+
+    // 3. Log Audit Event
+    logAuditEvent({
+        actorId: user?.id || (session as any).userId,
+        actorRole: session.role as string,
+        actorName: user?.name || (session as any).name || 'Owner',
+        actionType: 'CREATE',
+        entityType: 'PROPERTY',
+        entityId: property.id,
+        entityName: property.name,
+        description: `Owner created a new property listing: ${property.name}`,
+        newValue: property
     });
 
     return property;
@@ -453,6 +468,18 @@ export async function requestDocumentReupload(propertyId: string, docType: strin
                 adminNotes: newNotes,
                 status: 'PENDING_APPROVAL' // Set to pending to notify owner without rejecting the whole property
             }
+        });
+
+        // Log Audit Event
+        logAuditEvent({
+            actorId: (session as any).userId, // Admin ID from session
+            actorRole: session.role as string,
+            actorName: (session as any).name || 'Admin',
+            actionType: 'UPDATE',
+            entityType: 'PROPERTY',
+            entityId: propertyId,
+            description: `Admin requested a reupload for ${docType}. Reason: ${note}`,
+            newValue: { docType, note }
         });
 
         return { success: true };

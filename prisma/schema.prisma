@@ -463,14 +463,23 @@ model Notification {
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  action      String
-  targetId    String
-  targetType  String?
-  details     String?
-  performedBy String
-  timestamp   DateTime @default(now())
-  performer   User     @relation("PerformedBy", fields: [performedBy], references: [id])
+  id            String   @id @default(uuid())
+  actorId       String
+  actorRole     String   // ADMIN / OWNER / USER / EMPLOYEE
+  actorName      String
+  actionType    String   // CREATE / UPDATE / DELETE / APPROVE / REJECT / LOGIN / LOGOUT
+  entityType    String   // USER / OWNER / PROPERTY / ROOM / BED / BOOKING / PAYMENT
+  entityId      String
+  entityName    String?
+  description   String
+  previousValue Json?
+  newValue      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  // Relationships
+  actor         User     @relation("PerformedBy", fields: [actorId], references: [id])
 }
 
 model ActionNote {
