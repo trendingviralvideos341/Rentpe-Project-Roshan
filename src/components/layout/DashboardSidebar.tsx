@@ -11,6 +11,19 @@ import { getPendingOwnerActionCount } from "@/actions/properties";
 import { getPendingDocumentsCount } from "@/actions/documents";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 
+interface SidebarLink {
+    href: string;
+    label: string;
+    icon: any;
+    badge?: number;
+    reqPerm?: string[];
+}
+
+interface SidebarSection {
+    title: string;
+    links: SidebarLink[];
+}
+
 interface SidebarProps {
     role: "owner" | "admin" | "student" | "onboarder" | "verifier";
     permissions?: string[];
@@ -68,47 +81,103 @@ export default function DashboardSidebar(props: SidebarProps) {
         setMobileOpen(false);
     }, [pathname]);
 
-    const ownerLinks = [
-        { href: "/dashboard/owner", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/owner?tab=profile", label: "My Profile", icon: User },
-        { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
-        { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
-        { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
-        { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount },
-        { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar },
-        { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard },
-        { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils },
-        { href: "/dashboard/owner/staff", label: "Management Team", icon: UserPlus },
-        { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },
-        { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList },
-        { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings },
+    const ownerSections: SidebarSection[] = [
+        {
+            title: "Core",
+            links: [
+                { href: "/dashboard/owner", label: "Overview", icon: LayoutDashboard },
+                { href: "/dashboard/owner?tab=profile", label: "My Profile", icon: User },
+            ]
+        },
+        {
+            title: "Property Mgmt",
+            links: [
+                { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount },
+                { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils },
+            ]
+        },
+        {
+            title: "Tenant Operations",
+            links: [
+                { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount },
+                { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck },
+                { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount },
+                { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar },
+            ]
+        },
+        {
+            title: "Finance",
+            links: [
+                { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard },
+                { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings },
+            ]
+        },
+        {
+            title: "Team & Help",
+            links: [
+                { href: "/dashboard/owner/staff", label: "Management Team", icon: UserPlus },
+                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket },
+                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList },
+            ]
+        }
     ];
 
-    const adminLinks = [
-        { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/admin?tab=profile", label: "My Profile", icon: Shield },
-        { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
-        { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
-        { href: "/dashboard/admin/bookings", label: "Platform Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
-        { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },
-        { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "sub_admin", "verifier"] },
-        { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
-        { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "finance_admin"] },
-        { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
-        { href: "/dashboard/admin/employees", label: "Employee Hub", icon: UserCheck, reqPerm: ["super_admin", "hr_admin"] },
-        { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "sub_admin", "support"] },
-        { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Percent, reqPerm: ["super_admin", "finance_admin"] },
-        { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "security_audit"] },
-        { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
-        { href: "/dashboard/admin/settings", label: "Platform Settings", icon: Settings, reqPerm: ["super_admin"] },
+    const adminSections: SidebarSection[] = [
+        {
+            title: "Core",
+            links: [
+                { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
+                { href: "/dashboard/admin?tab=profile", label: "My Profile", icon: Shield },
+            ]
+        },
+        {
+            title: "User Hub",
+            links: [
+                { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
+                { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
+                { href: "/dashboard/admin/employees", label: "Employee Hub", icon: UserCheck, reqPerm: ["super_admin", "hr_admin"] },
+            ]
+        },
+        {
+            title: "Operations",
+            links: [
+                { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
+                { href: "/dashboard/admin/bookings", label: "Platform Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
+                { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },
+                { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "sub_admin", "verifier"] },
+                { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
+            ]
+        },
+        {
+            title: "Finance",
+            links: [
+                { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "finance_admin"] },
+                { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Percent, reqPerm: ["super_admin", "finance_admin"] },
+            ]
+        },
+        {
+            title: "System & Settings",
+            links: [
+                { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "sub_admin", "support"] },
+                { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "security_audit"] },
+                { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
+                { href: "/dashboard/admin/settings", label: "Platform Settings", icon: Settings, reqPerm: ["super_admin"] },
+            ]
+        }
     ];
 
-    const studentLinks = [
-        { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
-        { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
-        { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
-        { href: "/search", label: "Find PG", icon: Building },
-        { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
+    // Unified student links (wrapped in a single section for rendering consistency)
+    const studentSections: SidebarSection[] = [
+        {
+            title: "Menu",
+            links: [
+                { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
+                { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
+                { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
+                { href: "/search", label: "Find PG", icon: Building },
+                { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
+            ]
+        }
     ];
 
     const panelNames: Record<string, string> = {
@@ -117,30 +186,30 @@ export default function DashboardSidebar(props: SidebarProps) {
         student: "Student Dashboard",
     };
 
-    // Filter Admin Links based on RBAC Permissions
-    let filteredAdminLinks = adminLinks;
     const perms = props.permissions || [];
-    // If the user is the founding ADMIN (no specific granular permissions assigned yet) or explicitly has super_admin
     const isSuperAdmin =
         perms.includes("super_admin") ||
         perms.includes("sub_admin") ||
         (role === "admin" && perms.length === 0);
 
-    if (!isSuperAdmin) {
-        filteredAdminLinks = adminLinks.filter(link => {
-            if (!link.reqPerm) return true; // Overview and Profile have no reqPerm, always show
-            // If the link has required permissions, check if the user has any of them
-            return link.reqPerm.some(p => perms.includes(p));
-        });
-    }
-
-    const linkMap: Record<string, any[]> = {
-        owner: ownerLinks,
-        admin: filteredAdminLinks,
-        student: studentLinks,
+    const filterSectionLinks = (sections: SidebarSection[]) => {
+        return sections.map(section => ({
+            ...section,
+            links: section.links.filter(link => {
+                if (!link.reqPerm) return true;
+                if (isSuperAdmin) return true;
+                return link.reqPerm.some(p => perms.includes(p));
+            })
+        })).filter(section => section.links.length > 0);
     };
 
-    const links = linkMap[role] || studentLinks;
+    const sectionMap: Record<string, SidebarSection[]> = {
+        owner: ownerSections,
+        admin: filterSectionLinks(adminSections),
+        student: studentSections,
+    };
+
+    const currentSections = sectionMap[role] || studentSections;
 
     const navContent = (
         <>
@@ -149,40 +218,53 @@ export default function DashboardSidebar(props: SidebarProps) {
                     {panelNames[role] || "Dashboard"}
                 </h2>
             </div>
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-                {links.map((link) => {
-                    const Icon = link.icon;
-                    // Improved active state logic to handle query params
-                    const linkPath = link.href.split('?')[0];
-                    const linkTab = link.href.includes('tab=') ? link.href.split('tab=')[1] : null;
-                    const currentTab = searchParams.get('tab') || 'overview';
+            <nav className="flex-1 px-4 pb-8 space-y-6 overflow-y-auto no-scrollbar">
+                {currentSections.map((section) => (
+                    <div key={section.title} className="space-y-1">
+                        {role !== "student" && (
+                            <h3 className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">
+                                {section.title}
+                            </h3>
+                        )}
+                        <div className="space-y-1">
+                            {section.links.map((link) => {
+                                const Icon = link.icon;
+                                const linkPath = link.href.split('?')[0];
+                                const linkTab = link.href.includes('tab=') ? link.href.split('tab=')[1] : null;
+                                const currentTab = searchParams.get('tab') || 'overview';
 
-                    const isActive = pathname === linkPath && (
-                        linkTab ? currentTab === linkTab : currentTab === 'overview'
-                    );
+                                const isActive = pathname === linkPath && (
+                                    linkTab ? currentTab === linkTab : currentTab === 'overview'
+                                );
 
-                    const badge = (link as any).badge;
-                    return (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className={cn(
-                                "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors relative",
-                                isActive
-                                    ? "bg-primary/10 text-primary font-medium"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                        >
-                            <Icon className="h-5 w-5" />
-                            <span>{link.label}</span>
-                            {badge > 0 && (
-                                <span className="absolute right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
-                                    {badge}
-                                </span>
-                            )}
-                        </Link>
-                    );
-                })}
+                                const badge = link.badge;
+                                return (
+                                    <Link
+                                        key={link.href}
+                                        href={link.href}
+                                        className={cn(
+                                            "flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 relative group/link",
+                                            isActive
+                                                ? "bg-primary/10 text-primary font-bold shadow-sm ring-1 ring-primary/20"
+                                                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:translate-x-1"
+                                        )}
+                                    >
+                                        <Icon className={cn(
+                                            "h-5 w-5 transition-transform duration-300",
+                                            isActive ? "scale-110" : "group-hover/link:scale-110"
+                                        )} />
+                                        <span className="text-sm">{link.label}</span>
+                                        {badge !== undefined && badge > 0 && (
+                                            <span className="absolute right-2 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-red-200">
+                                                {badge}
+                                            </span>
+                                        )}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
             </nav>
             <div className="p-4 border-t">
                 <LogoutButton />
