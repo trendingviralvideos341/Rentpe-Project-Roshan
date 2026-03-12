@@ -43,6 +43,7 @@ const Footer = () => {
                             <li><Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link></li>
                             <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
                             <li><Link href="/refund" className="hover:text-primary transition-colors">Refund Policy</Link></li>
+                            <li><Link href="/safety" className="hover:text-primary transition-colors">Platform Safety</Link></li>
                             <li><Link href="/tenant-agreement" className="hover:text-primary transition-colors">Tenant Agreement</Link></li>
                             <li><Link href="/cookie-policy" className="hover:text-primary transition-colors">Cookie Policy</Link></li>
                             <li><Link href="/secure" className="hover:text-primary transition-colors">Security Practices</Link></li>

@@ -250,8 +250,8 @@ export default function SignupPage() {
                                 <Info className="h-4 w-4 text-blue-600 shrink-0" />
                                 <p className="text-[10px] text-blue-800 italic leading-relaxed">
                                     {role === "OWNER"
-                                        ? "Proprietary Statement: By registering as an Owner, you confirm you are 18+ and have authority to list rental units."
-                                        : "Proprietary Statement: By registering as a Student/Tenant, you confirm you are 18+ or have guardian consent."}
+                                        ? "Legal Eligibility: By registering as an Owner, you confirm you are 18+ and have full legal authority to list and manage rental accommodations."
+                                        : "Legal Eligibility: By registering as a Student/Tenant, you confirm you are 18+ or have express guardian consent to book accommodation."}
                                 </p>
                             </div>
                         </div>
@@ -437,8 +437,8 @@ export default function SignupPage() {
                                 />
                                 <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
                                     {role === "OWNER"
-                                        ? "I consent to RentPe sharing my verified profile with RentPe Business for background verification and fraud prevention. (Required)"
-                                        : "I consent to RentPe sharing my verified profile with property owners for background checks. (Required)"}
+                                        ? "I consent to RentPe sharing my verified owner profile and property details with potential tenants and RentPe Business for booking management and trust verification. (Required)"
+                                        : "I consent to RentPe sharing my verified tenant profile with property owners for faster background checks and booking reliability. (Required)"}
                                 </span>
                             </label>
                         </div>
