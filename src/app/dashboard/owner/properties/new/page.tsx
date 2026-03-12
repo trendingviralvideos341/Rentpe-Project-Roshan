@@ -41,6 +41,12 @@ export default function AddPropertyPage() {
     
     const amenityOptions = ["WiFi", "AC", "Laundry", "Power Backup", "CCTV", "Biometric", "Food", "Cleaning", "Parking", "Gym", "Hot Water", "TV"];
     
+    const suggestedAmenities = [
+        "Swimming Pool", "Attached Bathroom", "Visitor Parking", "Lift/Elevator", 
+        "Security Guard", "Library", "Study Room", "Induction/Gas", "Refrigerator", 
+        "Microwave", "Balcony", "Garden", "Daily Buffet", "Mess Facility"
+    ];
+    
     // Structured document state
     const [docs, setDocs] = useState<{
         buildingPhotos: File[];
@@ -713,6 +719,7 @@ export default function AddPropertyPage() {
                                         placeholder="Type amenity name (e.g. Swimming Pool, Library...)" 
                                         value={customAmenityInput} 
                                         onChange={(e) => setCustomAmenityInput(e.target.value)}
+                                        list="amenity-suggestions"
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
@@ -721,6 +728,11 @@ export default function AddPropertyPage() {
                                         }}
                                         className="h-10 text-sm font-bold"
                                     />
+                                    <datalist id="amenity-suggestions">
+                                        {suggestedAmenities.map(a => (
+                                            <option key={a} value={a} />
+                                        ))}
+                                    </datalist>
                                     <Button type="button" onClick={addCustomAmenity} className="bg-purple-600 hover:bg-purple-700 h-10 px-6 font-black">
                                         ADD
                                     </Button>
