@@ -114,6 +114,7 @@ model Property {
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
   ownerName              String?
+  businessName           String?
   pgLicence              String?
   licenseNumber          String?
   reraId                 String?

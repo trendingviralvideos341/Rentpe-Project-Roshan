@@ -28,6 +28,7 @@ export default function AddPropertyPage() {
     const [description, setDescription] = useState("");
     const [ownerName, setOwnerName] = useState("");
     const [ownerEmail, setOwnerEmail] = useState("");
+    const [businessName, setBusinessName] = useState("");
     const [pgLicence, setPgLicence] = useState("");
     const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
     const [licenseNumber, setLicenseNumber] = useState("");
@@ -380,6 +381,7 @@ export default function AddPropertyPage() {
             formData.set("address", fullAddress);
             formData.set("city", city);
             formData.set("description", description);
+            formData.set("businessName", businessName);
             formData.set("amenities", JSON.stringify(amenities));
             
             // Convert images to base64 for each category
@@ -530,7 +532,14 @@ export default function AddPropertyPage() {
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Business / Entity Name <span className="text-[10px] text-muted-foreground">(Optional)</span></label>
+                                <Input placeholder="e.g. SkyLiv Properties Pvt Ltd" value={businessName}
+                                    onChange={e => setBusinessName(e.target.value)}
+                                    className="h-10 text-sm font-medium" />
+                                <p className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Enter legal business name if applicable.</p>
+                            </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">Contact Email</label>
                                 <Input placeholder="owner@example.com" value={ownerEmail}

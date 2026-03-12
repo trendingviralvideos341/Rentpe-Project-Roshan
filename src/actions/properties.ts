@@ -81,6 +81,7 @@ export async function createProperty(formData: FormData) {
     const propertyType = formData.get("propertyType") as string;
     const licenseNumber = formData.get("licenseNumber") as string;
     const reraId = formData.get("reraId") as string;
+    const businessName = formData.get("businessName") as string;
 
     const buildingPhotos = formData.get("buildingPhotos") as string;
     const commonAreaPhotos = formData.get("commonAreaPhotos") as string;
@@ -166,6 +167,7 @@ export async function createProperty(formData: FormData) {
                 propertyType: propertyType || "PG",
                 licenseNumber: licenseNumber || null,
                 reraId: reraId || null,
+                businessName: businessName || null,
                 // Structured Category Mapping
                 buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
                 commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
