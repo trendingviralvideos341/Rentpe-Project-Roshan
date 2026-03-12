@@ -556,7 +556,7 @@ export default function PropertyManagePage() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {property.rooms?.map((room: any) => (
+                                    {property.rooms && [...property.rooms].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map((room: any) => (
                                         <div key={room.id} className="border rounded-md p-4 flex flex-col justify-between">
                                             <div className="flex justify-between items-center mb-4 border-b pb-2">
                                                 <span className="font-bold text-lg">Room {room.roomNumber}</span>

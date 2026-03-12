@@ -56,7 +56,7 @@ export function InventoryGrid({ properties }: InventoryGridProps) {
                     </CardHeader>
                     <CardContent className="p-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {property.rooms?.map((room: any) => (
+                            {property.rooms && [...property.rooms].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map((room: any) => (
                                 <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all group">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>

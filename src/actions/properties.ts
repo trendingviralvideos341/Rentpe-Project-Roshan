@@ -183,15 +183,30 @@ export async function createProperty(formData: FormData) {
         if (roomsJson) {
             const rooms = JSON.parse(roomsJson);
             if (Array.isArray(rooms) && rooms.length > 0) {
-                await tx.room.createMany({
-                    data: rooms.map((r: any) => ({
-                        propertyId: newProperty.id,
-                        roomNumber: r.roomNumber.toString(),
-                        type: r.type,
-                        price: parseFloat(r.price),
-                        availability: parseInt(r.availability),
-                    }))
-                });
+                for (const r of rooms) {
+                    const room = await tx.room.create({
+                        data: {
+                            propertyId: newProperty.id,
+                            roomNumber: r.roomNumber.toString(),
+                            type: r.type,
+                            price: parseFloat(r.price),
+                            availability: parseInt(r.availability),
+                        }
+                    });
+
+                    // Generate beds for this room
+                    const bedsToCreate = [];
+                    for (let i = 1; i <= room.availability; i++) {
+                        bedsToCreate.push({
+                            roomId: room.id,
+                            bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
+                            status: 'AVAILABLE'
+                        });
+                    }
+                    if (bedsToCreate.length > 0) {
+                        await tx.bed.createMany({ data: bedsToCreate });
+                    }
+                }
             }
         }
 
@@ -341,6 +356,20 @@ export async function addRoomToProperty(propertyId: string, roomData: { roomNumb
         }
     });
 
+    // Auto-generate beds
+    const bedsToCreate = [];
+    for (let i = 1; i <= room.availability; i++) {
+        bedsToCreate.push({
+            roomId: room.id,
+            bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
+            status: 'AVAILABLE'
+        });
+    }
+    if (bedsToCreate.length > 0) {
+        await (prisma as any).bed.createMany({ data: bedsToCreate });
+    }
+
+    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
     return room;
 }
 
@@ -357,10 +386,31 @@ export async function editRoom(roomId: string, roomData: { roomNumber: string, t
         throw new Error("Room not found or unauthorized");
     }
 
-    return prisma.room.update({
+    const oldAvailability = room.availability;
+    const newAvailability = roomData.availability;
+
+    const updated = await prisma.room.update({
         where: { id: roomId },
         data: roomData
     });
+
+    // If availability increased, add more beds
+    if (newAvailability > oldAvailability) {
+        const bedsToCreate = [];
+        for (let i = oldAvailability + 1; i <= newAvailability; i++) {
+            bedsToCreate.push({
+                roomId: roomId,
+                bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + i)}`,
+                status: 'AVAILABLE'
+            });
+        }
+        if (bedsToCreate.length > 0) {
+            await (prisma as any).bed.createMany({ data: bedsToCreate });
+        }
+    }
+
+    revalidatePath(`/dashboard/owner/properties/${room.propertyId}`);
+    return updated;
 }
 
 export async function deletePropertyDocument(propertyId: string, docType: string, index?: number) {
