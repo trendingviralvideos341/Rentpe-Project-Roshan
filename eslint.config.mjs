@@ -18,6 +18,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone Node.js utility scripts (not part of Next.js build)
+    "check-users.js",
+    "list-users.js",
+    "test-resolve.js",
+    "scripts/**",
   ]),
 ]);
 

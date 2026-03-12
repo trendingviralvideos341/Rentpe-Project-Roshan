@@ -39,31 +39,22 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-webpack-plugin#options
+  org: process.env.SENTRY_ORG || "placeholder-org",
+  project: process.env.SENTRY_PROJECT || "rentpe-nextjs",
 
-  org: "placeholder-org",
-  project: "rentpe-nextjs",
+  silent: true,
 
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
+  // Disable source map uploads unless SENTRY_AUTH_TOKEN is configured
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
 
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-nextjs/blob/main/src/config/types.ts
-  widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: "/monitoring",
-
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,
 
-  // Enables automatic instrumentation of Vercel Cron Monitors.
-  // See the following for more information:
-  // https://docs.sentry.io/product/crons/
-  // https://vercel.com/docs/cron-jobs
-  automaticVercelMonitors: true,
+  // Only enable advanced features when auth token is present
+  ...(process.env.SENTRY_AUTH_TOKEN ? {
+    widenClientFileUpload: true,
+    tunnelRoute: "/monitoring",
+    automaticVercelMonitors: true,
+  } : {}),
 });

@@ -293,7 +293,7 @@ export async function unblockTenant(tenantId: string, note: string) {
 
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
-        data: { status: 'ACTIVE_TENANT', vacatedOn: null }
+        data: { status: 'ACTIVE_TENANT', actualMoveOutDate: null }
     });
 
     await prisma.actionNote.create({
@@ -372,6 +372,8 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
 
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant || (tenant.studentId !== session.userId && session.role !== 'OWNER' && session.role !== 'ADMIN')) {
+        throw new Error("Unauthorized or tenant not found");
+    }
 
     return await prisma.$transaction(async (tx) => {
         // 1. Create Move-Out Request
@@ -410,7 +412,7 @@ export async function approveMoveOutRequest(requestId: string, approved: boolean
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const request = await (prisma.moveOutRequest as any).findUnique({
+    const request = await prisma.moveOutRequest.findUnique({
         where: { id: requestId },
         include: { tenant: true }
     });
@@ -420,30 +422,30 @@ export async function approveMoveOutRequest(requestId: string, approved: boolean
     return await prisma.$transaction(async (tx) => {
         const status = approved ? 'APPROVED' : 'REJECTED';
         
-        await (tx.moveOutRequest as any).update({
+        await tx.moveOutRequest.update({
             where: { id: requestId },
             data: {
                 status,
-                approvedBy: (session as any).userId,
+                approvedBy: session.userId,
                 approvedAt: new Date()
             }
         });
 
         if (approved) {
-            await (tx.tenant as any).update({
+            await tx.tenant.update({
                 where: { id: request.tenantId },
                 data: { status: 'MOVE_OUT_SCHEDULED' }
             });
         }
 
         logAuditEvent({
-            actorId: (session as any).userId,
+            actorId: session.userId,
             actorRole: session.role as string,
-            actorName: (session as any).name || 'Owner',
+            actorName: session.name || 'Owner',
             actionType: approved ? 'APPROVE' : 'REJECT',
             entityType: 'TENANT',
             entityId: request.tenantId,
-            description: `Move-out request ${status} by ${(session as any).role}.`,
+            description: `Move-out request ${status} by ${session.role}.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -455,12 +457,12 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const tenant = await (prisma.tenant as any).findUnique({
+    const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         include: {
             property: true,
             bed: true,
-            rentRecords: { where: { paid: false } }
+            rentRecords: true
         }
     });
 
@@ -473,9 +475,10 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
         // 1. Financial Settlement logic
-        const unpaidRent = tenant.rentRecords.reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0);
+        const unpaidRent = tenant.rentRecords.filter(r => !r.paid).reduce((acc: number, r: any) => acc + r.amount, 0);
+        const totalPaidRent = tenant.rentRecords.filter(r => r.paid).reduce((acc: number, r: any) => acc + r.amount, 0);
         // We use the rent as deposit here for migration support, but real flow should use deposit table
-        const depositAmount = parseFloat(tenant.rent); 
+        const depositAmount = tenant.rent; 
         const finalRefund = depositAmount - unpaidRent - deductions;
 
         const settlementSummary = `
@@ -490,7 +493,7 @@ Note: ${note}
 `.trim();
 
         // 2. Create formal Settlement Record
-        await (tx.settlementRecord as any).create({
+        await tx.settlementRecord.create({
             data: {
                 tenantId,
                 finalRentPending: unpaidRent,
@@ -502,7 +505,7 @@ Note: ${note}
         });
 
         // 3. Create History Record
-        await (tx.tenantHistory as any).create({
+        await tx.tenantHistory.create({
             data: {
                 tenantId: tenant.id,
                 studentId: tenant.studentId,
@@ -512,13 +515,13 @@ Note: ${note}
                 moveInDate: moveInDate,
                 moveOutDate: moveOutDate,
                 stayDurationDays: duration,
-                totalPaid: parseFloat(tenant.totalPaid || "0") + (depositAmount - (finalRefund > 0 ? finalRefund : 0))
+                totalPaid: totalPaidRent + (depositAmount - (finalRefund > 0 ? finalRefund : 0))
             }
         });
 
         // 4. Clear Bed & Close Booking
         if (tenant.bedId) {
-            await (tx.bed as any).update({
+            await tx.bed.update({
                 where: { id: tenant.bedId },
                 data: { status: 'AVAILABLE', tenantId: null }
             });
@@ -532,7 +535,7 @@ Note: ${note}
         }
 
         // 5. Update Tenant
-        await (tx.tenant as any).update({
+        await tx.tenant.update({
             where: { id: tenantId },
             data: { 
                 status: 'MOVE_OUT_COMPLETED', 
@@ -543,9 +546,9 @@ Note: ${note}
 
         // 6. Log event
         logAuditEvent({
-            actorId: (session as any).userId,
+            actorId: session.userId,
             actorRole: session.role as string,
-            actorName: (session as any).name || 'Owner',
+            actorName: session.name || 'Owner',
             actionType: 'DELETE',
             entityType: 'TENANT',
             entityId: tenantId,
@@ -574,7 +577,7 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
     const properties = await prisma.property.findMany({ where: { ownerId }, select: { id: true } });
     const pIds = properties.map(p => p.id);
 
-    return await (prisma.tenant as any).findMany({
+    return await prisma.tenant.findMany({
         where: { propertyId: { in: pIds }, status: { in: statusFilter } },
         include: { property: { select: { name: true } } },
         orderBy: { createdAt: 'desc' }

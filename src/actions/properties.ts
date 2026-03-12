@@ -8,14 +8,14 @@ import { revalidatePath } from "next/cache";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
-    const where: any = {};
+    const where: { ownerId?: string } = {};
 
     if (ownerId) {
         where.ownerId = ownerId;
     } else if (session?.role === 'OWNER') {
-        const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
+        const user = await prisma.user.findUnique({ where: { id: session.userId } });
         // If staff, show parent's properties
-        where.ownerId = user?.parentOwnerId || (session as any).userId;
+        where.ownerId = user?.parentOwnerId || session.userId;
     }
 
     return prisma.property.findMany({
@@ -40,7 +40,7 @@ export async function getPendingOwnerActionCount() {
     if (!session || session.role !== 'OWNER') return 0;
 
     const properties = await prisma.property.findMany({
-        where: { ownerId: (session as any).userId },
+        where: { ownerId: session.userId },
         select: { status: true, adminNotes: true }
     });
 
@@ -108,7 +108,7 @@ export async function createProperty(formData: FormData) {
     const folder = `properties/${name.replace(/\s+/g, '_')}_${Date.now()}`;
     
     const uploadTasks = async () => {
-        const results: any = {};
+        const results: Record<string, any> = {};
         
         // Helper for batch uploads
         const processBatch = async (field: string, data: string) => {
@@ -148,7 +148,7 @@ export async function createProperty(formData: FormData) {
     const uploaded = await uploadTasks();
 
     // 2. Create property and rooms in a transaction
-    const property = await (prisma as any).$transaction(async (tx: any) => {
+    const property = await prisma.$transaction(async (tx) => {
         const newProperty = await tx.property.create({
             data: {
                 name,
@@ -162,7 +162,7 @@ export async function createProperty(formData: FormData) {
                 ]),
                 ownerName: finalOwnerName,
                 pgLicence: pgLicence || null,
-                ownerId: user?.parentOwnerId || (session as any).userId,
+                ownerId: user?.parentOwnerId || session.userId,
                 status: "PENDING_APPROVAL",
                 propertyType: propertyType || "PG",
                 licenseNumber: licenseNumber || null,
@@ -217,9 +217,9 @@ export async function createProperty(formData: FormData) {
 
     // 3. Log Audit Event
     logAuditEvent({
-        actorId: user?.id || (session as any).userId,
+        actorId: user?.id || session.userId,
         actorRole: session.role as string,
-        actorName: user?.name || (session as any).name || 'Owner',
+        actorName: user?.name || session.name || 'Owner',
         actionType: 'CREATE',
         entityType: 'PROPERTY',
         entityId: property.id,
@@ -247,7 +247,7 @@ export async function updateProperty(propertyId: string, data: {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-    const userId = (session as any).userId;
+    const userId = session.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const ownerId = user?.parentOwnerId || userId;
 
@@ -336,7 +336,7 @@ export async function savePropertyDocuments(propertyId: string, docs: {
     }
 
     await prisma.property.update({
-        where: { id: propertyId, ownerId: (session as any).userId },
+        where: { id: propertyId, ownerId: session.userId },
         data: uploadData
     });
 
@@ -348,7 +348,7 @@ export async function addRoomToProperty(propertyId: string, roomData: { roomNumb
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
     // Verify ownership
-    const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: (session as any).userId } });
+    const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: session.userId } });
     if (!property) throw new Error("Property not found or unauthorized");
 
     const room = await prisma.room.create({
@@ -368,7 +368,7 @@ export async function addRoomToProperty(propertyId: string, roomData: { roomNumb
         });
     }
     if (bedsToCreate.length > 0) {
-        await (prisma as any).bed.createMany({ data: bedsToCreate });
+        await prisma.bed.createMany({ data: bedsToCreate });
     }
 
     revalidatePath(`/dashboard/owner/properties/${propertyId}`);
@@ -384,7 +384,7 @@ export async function editRoom(roomId: string, roomData: { roomNumber: string, t
         include: { property: true }
     });
 
-    if (!room || room.property.ownerId !== (session as any).userId) {
+    if (!room || room.property.ownerId !== session.userId) {
         throw new Error("Room not found or unauthorized");
     }
 
@@ -407,7 +407,7 @@ export async function editRoom(roomId: string, roomData: { roomNumber: string, t
             });
         }
         if (bedsToCreate.length > 0) {
-            await (prisma as any).bed.createMany({ data: bedsToCreate });
+            await prisma.bed.createMany({ data: bedsToCreate });
         }
     }
 
@@ -419,14 +419,14 @@ export async function deletePropertyDocument(propertyId: string, docType: string
     try {
         const property = await prisma.property.findUnique({
             where: { id: propertyId },
-            select: { [docType]: true, verifiedDocs: true } as any
+            select: { [docType]: true, verifiedDocs: true } as Record<string, any>
         });
 
         if (!property) return { success: false, error: "Property not found" };
 
         const updateData: any = {};
-        const currentValue = (property as any)[docType];
-        let verifiedDocs = JSON.parse((property as any).verifiedDocs || "[]");
+        const currentValue = (property as Record<string, any>)[docType];
+        let verifiedDocs = JSON.parse((property as Record<string, any>).verifiedDocs || "[]");
 
         if (index !== undefined && currentValue) {
             // Handle JSON array fields (buildingPhotos, commonAreaPhotos)
@@ -497,9 +497,9 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
 
         // Audit Logging
         logAuditEvent({
-            actorId: (session as any).userId,
+            actorId: session.userId,
             actorRole: session.role as string,
-            actorName: (session as any).name || 'Admin',
+            actorName: session.name || 'Admin',
             actionType: verified ? 'APPROVE' : 'REJECT',
             entityType: 'PROPERTY',
             entityId: propertyId,
@@ -508,7 +508,8 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
 
         return { success: true };
     } catch (e: any) {
-        return { success: false, error: e.message };
+        const error = e as Error;
+        return { success: false, error: error.message };
     }
 }
 
@@ -541,9 +542,9 @@ export async function requestDocumentReupload(propertyId: string, docType: strin
 
         // Log Audit Event
         logAuditEvent({
-            actorId: (session as any).userId, // Admin ID from session
+            actorId: session.userId, // Admin ID from session
             actorRole: session.role as string,
-            actorName: (session as any).name || 'Admin',
+            actorName: session.name || 'Admin',
             actionType: 'UPDATE',
             entityType: 'PROPERTY',
             entityId: propertyId,
@@ -565,7 +566,7 @@ export async function payOnboardingFee(propertyId: string) {
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
     const property = await prisma.property.findUnique({
-        where: { id: propertyId, ownerId: (session as any).userId },
+        where: { id: propertyId, ownerId: session.userId },
         select: { status: true, name: true }
     });
 
@@ -581,9 +582,9 @@ export async function payOnboardingFee(propertyId: string) {
 
     // 2. Add to Audit Log
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: session.userId,
         actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorName: session.name || 'Owner',
         actionType: 'UPDATE',
         entityType: 'PROPERTY',
         entityId: propertyId,
