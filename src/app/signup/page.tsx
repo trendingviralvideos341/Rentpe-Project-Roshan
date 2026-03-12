@@ -93,6 +93,10 @@ export default function SignupPage() {
             setError("Password must include uppercase, lowercase and a number.");
             return;
         }
+        if (!city.trim()) {
+            setError("Please select or enter your city.");
+            return;
+        }
         if (!agreed) {
             setError("Please agree to the Terms of Service and Privacy Policy to continue.");
             return;

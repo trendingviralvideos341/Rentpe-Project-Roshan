@@ -13,7 +13,7 @@ import { logAuditEvent } from '@/lib/audit';
 const SignupSchema = z.object({
     name: z.string().min(3),
     email: z.string().email(),
-    password: z.string().min(6),
+    password: z.string().min(8, "Password must be at least 8 characters long"),
     phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
     city: z.string().min(2, "City is required"),
