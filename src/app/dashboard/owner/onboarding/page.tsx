@@ -370,7 +370,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 <div className="flex">
                                     {citizenMode === "indian" && (
                                         <span className="inline-flex items-center px-2 rounded-l-md border border-r-0 bg-muted text-xs font-semibold text-muted-foreground select-none">
-                                            🇮🇳 +91
+                                            +91
                                         </span>
                                     )}
                                     <input type="tel" placeholder={citizenMode === "indian" ? "10-digit number" : "Phone number"}
@@ -434,7 +434,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Country</label>
                                 {citizenMode === "indian" ? (
                                     <div className="w-full border-2 border-purple-50 rounded-lg p-2 text-sm bg-muted text-muted-foreground flex items-center gap-2 select-none">
-                                        🇮🇳 India (Domestic)
+                                        India (Domestic)
                                     </div>
                                 ) : (
                                     <input type="text" placeholder="e.g. United Kingdom"

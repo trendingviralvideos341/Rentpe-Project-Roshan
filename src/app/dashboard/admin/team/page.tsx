@@ -322,7 +322,7 @@ export default function AdminTeamPage() {
                                         <label className="text-sm font-medium">Phone Number *</label>
                                         <div className="flex rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
                                             <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-muted border-r border-input text-sm font-semibold text-foreground select-none whitespace-nowrap shrink-0">
-                                                🇮🇳 <span className="text-muted-foreground">+91</span>
+                                            <span className="text-muted-foreground">+91</span>
                                             </span>
                                             <input
                                                 placeholder="9876543210"
