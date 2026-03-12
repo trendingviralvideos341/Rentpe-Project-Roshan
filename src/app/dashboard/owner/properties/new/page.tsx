@@ -91,6 +91,15 @@ export default function AddPropertyPage() {
                 let p = user.phone || "";
                 if (p && !p.startsWith("+91")) p = "+91" + p;
                 setPhone(p);
+                
+                // Clear errors for auto-filled fields upon success
+                setErrors(prev => {
+                    const next = { ...prev };
+                    delete next.ownerName;
+                    delete next.ownerEmail;
+                    delete next.phone;
+                    return next;
+                });
             }
         };
         loadProfile();
@@ -535,6 +544,7 @@ export default function AddPropertyPage() {
                                     readOnly={true}
                                     className={`${inputErr("ownerName")} ${readOnlyCls}`} />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
+                                {errors.ownerName && <p className="text-xs text-red-600 font-semibold">{errors.ownerName}</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -558,6 +568,7 @@ export default function AddPropertyPage() {
                                     readOnly={true}
                                     maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to verified mobile number.</p>
+                                {errors.phone && <p className="text-xs text-red-600 font-semibold">{errors.phone}</p>}
                             </div>
                         </div>
 
