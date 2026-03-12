@@ -53,7 +53,7 @@ export default function SafetyPage() {
                                 </li>
                                 <li className="flex gap-2">
                                     <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                                    <span>Verify the owner's original ID and property ownership documents.</span>
+                                    <span>Verify the owner&apos;s original ID and property ownership documents.</span>
                                 </li>
                                 <li className="flex gap-2">
                                     <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
@@ -94,12 +94,12 @@ export default function SafetyPage() {
                         </div>
                         <div className="grid md:grid-cols-3 gap-6 text-sm">
                             <div className="space-y-2">
-                                <p className="font-bold text-blue-400">Avoid "Wire" Transfers</p>
-                                <p className="text-slate-300">Never send money via direct bank transfer to someone you haven't met. Use RentPe's secure portal for booking tokens.</p>
+                                <p className="font-bold text-blue-400">Avoid &quot;Wire&quot; Transfers</p>
+                                <p className="text-slate-300">Never send money via direct bank transfer to someone you haven&apos;t met. Use RentPe&apos;s secure portal for booking tokens.</p>
                             </div>
                             <div className="space-y-2">
                                 <p className="font-bold text-blue-400">Suspicious Listings</p>
-                                <p className="text-slate-300">Report listings that look "too good to be true" or where the owner refuses a physical visit.</p>
+                                <p className="text-slate-300">Report listings that look &quot;too good to be true&quot; or where the owner refuses a physical visit.</p>
                             </div>
                             <div className="space-y-2">
                                 <p className="font-bold text-blue-400">Off-Platform Deals</p>

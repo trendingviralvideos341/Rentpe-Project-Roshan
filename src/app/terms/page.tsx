@@ -68,7 +68,7 @@ export default function TermsPage() {
                             <li>Post fraudulent or illegal content.</li>
                             <li>Circumvent the platform to avoid paying service fees.</li>
                             <li>Harass or discriminate against other users.</li>
-                            <li>Attempt to disrupt the platform's security or integrity.</li>
+                            <li>Attempt to disrupt the platform&apos;s security or integrity.</li>
                         </ul>
                     </section>
 

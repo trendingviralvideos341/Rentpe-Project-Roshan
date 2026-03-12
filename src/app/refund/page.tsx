@@ -21,12 +21,41 @@ export default function RefundPage() {
                 <div className="space-y-10 text-slate-700 leading-relaxed text-sm">
 
                     <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">1. Booking Payment Terms</h2>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li>To reserve a bed or room, Tenants must pay a <strong>Booking Token</strong> as specified on the listing.</li>
-                            <li>The balance of the security deposit and rent must be paid directly to the Owner at the time of move-in.</li>
-                            <li>RentPe facilitates the collection of the Booking Token and a platform service fee.</li>
-                        </ul>
+                        <h2 className="text-xl font-bold text-slate-900 mb-4">1. Booking Token (Seat Hold Fee)</h2>
+                        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-4 text-sm">
+                            <p className="font-bold text-orange-800 mb-1">⚡ What is a Booking Token?</p>
+                            <p>A Booking Token (₹99-₹499) is a small, refundable fee paid to temporarily reserve a bed while the owner reviews your request. It is held for a maximum of 48 hours.</p>
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm">
+                                <thead>
+                                    <tr className="bg-slate-100">
+                                        <th className="border border-slate-200 px-4 py-2 text-left font-bold">Scenario</th>
+                                        <th className="border border-slate-200 px-4 py-2 text-left font-bold">Refund</th>
+                                        <th className="border border-slate-200 px-4 py-2 text-left font-bold">Timeline</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        ["Owner rejects your booking request", "100% Full Refund", "3-5 business days"],
+                                        ["You cancel within 2 hours of token payment", "100% Full Refund", "3-5 business days"],
+                                        ["You cancel after 2 hours but within 24 hours", "50% Refund", "3-5 business days"],
+                                        ["You cancel after 24 hours", "No Refund", "-"],
+                                        ["Owner confirms but you don't complete KYC in 48h", "Token Forfeited", "-"],
+                                        ["RentPe technical error / double charge", "100% Full Refund", "3-5 business days"],
+                                    ].map(([scenario, refund, timeline]) => (
+                                        <tr key={scenario} className="border-b border-slate-100">
+                                            <td className="border border-slate-200 px-4 py-2">{scenario}</td>
+                                            <td className={`border border-slate-200 px-4 py-2 font-bold ${refund.includes("Full") ? "text-green-700" : refund.includes("50%") ? "text-yellow-700" : "text-red-700"}`}>
+                                                {refund}
+                                            </td>
+                                            <td className="border border-slate-200 px-4 py-2 text-muted-foreground">{timeline}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
 
                     <section>

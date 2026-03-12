@@ -205,7 +205,7 @@ export default function SignupPage() {
                                     />
                                     {otpError && <p className="text-[10px] text-red-500 text-center font-semibold">{otpError}</p>}
                                 </div>
-                                <p className="text-[10px] text-muted-foreground text-center">Didn't receive code? <button type="button" className="text-violet-600 font-bold hover:underline">Resend</button></p>
+                                <p className="text-[10px] text-muted-foreground text-center">Didn&apos;t receive code? <button type="button" className="text-violet-600 font-bold hover:underline">Resend</button></p>
                             </div>
                         )}
 
