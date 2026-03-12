@@ -98,7 +98,7 @@ function JoinTeamContent() {
                     </div>
                     <CardTitle className="text-3xl font-black tracking-tight">Join Your Team</CardTitle>
                     <CardDescription className="text-base">
-                        You've been invited to join an organization on RentPe. Create a secure password to activate your dashboard.
+                        You&apos;ve been invited to join an organization on RentPe. Create a secure password to activate your dashboard.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="pb-8">

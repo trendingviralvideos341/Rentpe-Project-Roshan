@@ -100,7 +100,7 @@ export default function StudentTicketsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium mb-2 block">What's your issue about?</label>
+                            <label className="text-sm font-medium mb-2 block">What&apos;s your issue about?</label>
 
                             <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                                 <Building className="h-3 w-3" /> <strong>Property Issues</strong> — goes to your PG Owner
@@ -276,7 +276,7 @@ export default function StudentTicketsPage() {
                 {tickets.length === 0 && (
                     <div className="p-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        No tickets yet. Click "New Ticket" to raise an issue.
+                        No tickets yet. Click &quot;New Ticket&quot; to raise an issue.
                     </div>
                 )}
             </div>

@@ -159,7 +159,7 @@ export default function PropertyManagePage() {
 
             if (res.ok && data.url) {
                 let updateData: any = { [docType]: data.url };
-                let newPropertyState = { ...property };
+                const newPropertyState = { ...property };
 
                 if (cat?.isArray) {
                     const existingPhotos = property[docType] ? JSON.parse(property[docType]) : [];

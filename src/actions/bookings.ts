@@ -26,7 +26,7 @@ export async function createBooking(data: {
     const session = await getSession();
     if (!session) throw new Error("You must be logged in to book.");
 
-    const userId = (session as any).userId;
+    const userId = session.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     // Auto-fill from profile if not provided
@@ -42,10 +42,10 @@ export async function createBooking(data: {
         throw new Error("Move-in date cannot be in the past.");
     }
 
-    const booking = await (prisma.booking as any).create({
+    const booking = await prisma.booking.create({
         data: {
             displayId: `REQ-${Math.floor(Math.random() * 90000000) + 10000000}`,
-            userId: (session as any).userId,
+            userId: session.userId,
             roomId: data.roomId,
             propertyName: data.propertyName,
             occupancy: data.occupancy,
@@ -66,9 +66,9 @@ export async function createBooking(data: {
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: session.userId,
         actorRole: session.role as string,
-        actorName: (session as any).name || 'Student',
+        actorName: session.name || 'Student',
         actionType: 'CREATE',
         entityType: 'BOOKING',
         entityId: booking.id,
@@ -99,7 +99,7 @@ export async function getBookings() {
         const session = await getSession();
         if (!session) return [];
 
-        const userId = (session as any).userId;
+        const userId = session.userId;
         const role = session.role;
 
         // Security Patch: If the JWT is malformed or lacks a userId, reject the query.
@@ -112,13 +112,13 @@ export async function getBookings() {
                 select: { id: true }
             });
             const propertyIds = ownerProperties.map(p => p.id);
-            return await (prisma.booking as any).findMany({
+            return await prisma.booking.findMany({
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
                 include: { user: { select: { name: true, email: true } } }
             });
         } else {
-            const bookings: any[] = await (prisma.booking as any).findMany({
+            const bookings = await prisma.booking.findMany({
                 where: { userId },
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -130,7 +130,7 @@ export async function getBookings() {
                 }
             });
 
-            return bookings.map((b: any) => {
+            return bookings.map((b) => {
                 return {
                     ...b,
                     tenantId: b.tenantId || null, // Direct link from schema
@@ -179,7 +179,7 @@ export async function approveBooking(id: string, data: {
 
     const existingBooking = await prisma.booking.findUnique({ where: { id } });
 
-    const booking = await (prisma as any).booking.update({
+    const booking = await prisma.booking.update({
         where: { id },
         data: {
             status: 'APPROVED_PENDING_TOKEN',
@@ -228,9 +228,9 @@ export async function approveBooking(id: string, data: {
 
 
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: session.userId,
         actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorName: session.name || 'Owner',
         actionType: 'APPROVE',
         entityType: 'BOOKING',
         entityId: id,
@@ -288,9 +288,9 @@ export async function rejectBooking(id: string, reason?: string) {
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: session.userId,
         actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorName: session.name || 'Owner',
         actionType: 'REJECT',
         entityType: 'BOOKING',
         entityId: id,
@@ -358,9 +358,9 @@ export async function markBookingPaid(id: string, method: string) {
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: session.userId,
         actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner/Admin',
+        actorName: session.name || 'Owner/Admin',
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
@@ -411,7 +411,7 @@ export async function checkInBooking(id: string) {
     }
 
     // 4. Update booking status to CHECKED_IN
-    const updatedBooking = await (prisma as any).booking.update({
+    const updatedBooking = await prisma.booking.update({
         where: { id },
         data: {
             status: 'CHECKED_IN',
@@ -429,9 +429,10 @@ export async function checkInBooking(id: string) {
         const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
         const tenantDisplayId = `TNT-${Math.floor(Math.random() * 900000) + 100000}`;
 
-        const tenant = await (prisma as any).tenant.create({
+        const tenant = await prisma.tenant.create({
             data: {
                 displayId: tenantDisplayId,
+                studentId: booking.userId,
                 name: booking.guestName,
                 phone: booking.guestPhone || '',
                 email: booking.guestEmail || null,
@@ -446,13 +447,13 @@ export async function checkInBooking(id: string) {
                 roomNumber: room.roomNumber,
                 roomType: room.type,
                 rent: booking.amount,
-                startDate: updatedBooking.onboardingDate,
+                startDate: updatedBooking.onboardingDate || new Date().toLocaleDateString('en-IN'),
                 status: 'ACTIVE',
             }
         });
 
         // 5. Link Tenant back to Booking for robust review system
-        await (prisma as any).booking.update({
+        await prisma.booking.update({
             where: { id: booking.id },
             data: { tenantId: tenant.id }
         });
@@ -470,9 +471,9 @@ export async function checkInBooking(id: string) {
 
         // 7. Log check-in
         logAuditEvent({
-            actorId: (session as any).userId,
+            actorId: session.userId,
             actorRole: session.role as string,
-            actorName: (session as any).name || 'Owner/Admin',
+            actorName: session.name || 'Owner/Admin',
             actionType: 'UPDATE',
             entityType: 'USER', // Tenant/User level
             entityId: tenant.id,
@@ -512,7 +513,7 @@ export async function getBookingById(id: string) {
     });
 
     if (!booking) throw new Error("Booking not found");
-    if (booking.userId !== (session as any).userId && session.role !== 'OWNER' && session.role !== 'ADMIN') {
+    if (booking.userId !== session.userId && session.role !== 'OWNER' && session.role !== 'ADMIN') {
         throw new Error("Unauthorized");
     }
 
@@ -524,7 +525,7 @@ export async function getPendingBookingsCount() {
         const session = await getSession();
         if (!session || session.role !== 'OWNER') return 0;
 
-        const userId = (session as any).userId as string;
+        const userId = session.userId as string;
 
         const ownerProperties = await prisma.property.findMany({
             where: { ownerId: userId },
@@ -532,7 +533,7 @@ export async function getPendingBookingsCount() {
         });
         const propertyIds = ownerProperties.map(p => p.id);
 
-        return await (prisma.booking as any).count({
+        return await prisma.booking.count({
             where: {
                 propertyId: { in: propertyIds },
                 status: 'PENDING_APPROVAL'
@@ -626,13 +627,13 @@ export async function signAgreement(id: string) {
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'USER',
-        actorName: (session as any).name || 'User',
+        actorId: session.userId,
+        actorRole: session.role || 'USER',
+        actorName: session.name || 'User',
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
-        description: `Digital agreement signed by ${(booking as any).guestName}.`,
+        description: `Digital agreement signed by ${booking.guestName}.`,
     });
 
     revalidatePath('/dashboard/student');
@@ -714,9 +715,9 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'USER',
-        actorName: (session as any).name || 'User',
+        actorId: session.userId,
+        actorRole: session.role || 'USER',
+        actorName: session.name || 'User',
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: bookingId,
@@ -755,9 +756,9 @@ export async function markTokenCashPaid(bookingId: string) {
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'OWNER',
-        actorName: (session as any).name || 'Owner',
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: session.name || 'Owner',
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: bookingId,
@@ -785,9 +786,9 @@ export async function verifyKycAndProceed(bookingId: string) {
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'ADMIN',
-        actorName: (session as any).name || 'Admin',
+        actorId: session.userId,
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'APPROVE',
         entityType: 'BOOKING',
         entityId: bookingId,
@@ -804,7 +805,7 @@ export async function markKycFailed(bookingId: string, reason: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const updated = await (prisma as any).booking.update({
+    const updated = await prisma.booking.update({
         where: { id: bookingId },
         data: { status: 'KYC_FAILED', kycNotes: reason, kycRejectedAt: new Date() }
     });
@@ -823,9 +824,9 @@ export async function markKycFailed(bookingId: string, reason: string) {
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'ADMIN',
-        actorName: (session as any).name || 'Admin',
+        actorId: session.userId,
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'REJECT',
         entityType: 'BOOKING',
         entityId: bookingId,
@@ -844,8 +845,8 @@ export async function addToWaitlist(data: { propertyId: string; roomType?: strin
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    const entry = await (prisma as any).waitlist.create({
-        data: { userId: (session as any).userId, ...data, status: 'WAITING' }
+    const entry = await prisma.waitlist.create({
+        data: { userId: session.userId, ...data, status: 'WAITING' }
     });
 
     const property = await prisma.property.findUnique({ where: { id: data.propertyId } });
@@ -868,7 +869,7 @@ export async function addToWaitlist(data: { propertyId: string; roomType?: strin
 export async function getOwnerAnalytics() {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
-    const ownerId = (session as any).userId;
+    const ownerId = session.userId;
 
     const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true } })).map(p => p.id);
 
@@ -876,7 +877,7 @@ export async function getOwnerAnalytics() {
         prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: 'PENDING_APPROVAL' } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
-        (prisma.room as any).aggregate({ _sum: { availability: true }, where: { propertyId: { in: propertyIds } } }),
+        prisma.room.aggregate({ _sum: { availability: true }, where: { propertyId: { in: propertyIds } } }),
         prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
     ]);
 

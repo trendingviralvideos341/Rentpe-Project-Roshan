@@ -159,7 +159,7 @@ export default function OwnerVerificationsPage() {
             ) : filteredDocs.length === 0 ? (
                 <Card className="border-slate-100">
                     <CardContent className="p-12 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">
-                        No matches found for "{search}"
+                        No matches found for &quot;{search}&quot;
                     </CardContent>
                 </Card>
             ) : (
@@ -655,7 +655,7 @@ function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {
                         <div className="absolute top-4 left-4 right-4 bg-rose-600/90 backdrop-blur-md p-3 rounded-xl border border-white/20 shadow-2xl">
                             <p className="text-[10px] font-black text-white leading-relaxed uppercase tracking-tighter italic flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 shrink-0" />
-                                "{doc.rejectedNote}"
+                                &quot;{doc.rejectedNote}&quot;
                             </p>
                         </div>
                     )}

@@ -16,7 +16,10 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
     });
 
     if (!booking) throw new Error("Booking not found");
-    if (booking.userId !== (session as any).userId) throw new Error("Unauthorized");
+    
+    const userId = (session as { userId: string }).userId;
+    if (booking.userId !== userId) throw new Error("Unauthorized");
+
     try {
         const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
         const studentFee = (settings?.feesEnabled && settings?.studentRentFeeFlat) || 0;
@@ -25,10 +28,10 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
         let baseAmount = Number(booking.amount);
         
         if (extras?.invoiceId) {
-            const invoice = await (prisma.rentInvoice as any).findUnique({ where: { id: extras.invoiceId } });
+            const invoice = await prisma.rentInvoice.findUnique({ where: { id: extras.invoiceId } });
             if (invoice) baseAmount = invoice.amount;
         } else if (extras?.depositId) {
-            const deposit = await (prisma.securityDeposit as any).findUnique({ where: { id: extras.depositId } });
+            const deposit = await prisma.securityDeposit.findUnique({ where: { id: extras.depositId } });
             if (deposit) baseAmount = deposit.amount;
         }
 
@@ -42,27 +45,28 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
         const ownerAccountId = room?.property.owner.razorpayAccountId;
         const ownerFee = (settings?.feesEnabled && settings?.ownerRentFeeFlat) || 0;
 
-        const options: any = {
+        const options = {
             amount: finalCharge,
             currency: "INR",
             receipt: `receipt_${booking.id.slice(0, 5)}`,
         };
 
-        if (ownerAccountId) {
-            options.transfers = [
-                {
-                    account: ownerAccountId,
-                    amount: (baseAmount - ownerFee) * 100,
-                    currency: "INR",
-                    on_linked_account_payout: "immediately"
-                }
-            ];
-        }
-
-        let order: any;
+        let order: { id: string; amount: number; currency: string };
         try {
-            order = await razorpay.orders.create(options);
+            const rzpOrder = await (razorpay.orders as any).create(ownerAccountId ? {
+                ...options,
+                transfers: [
+                    {
+                        account: ownerAccountId,
+                        amount: (baseAmount - ownerFee) * 100,
+                        currency: "INR",
+                        on_linked_account_payout: "immediately"
+                    }
+                ]
+            } : options);
+            order = { id: rzpOrder.id, amount: rzpOrder.amount as number, currency: rzpOrder.currency };
         } catch (apiError: any) {
+            console.warn("Razorpay API Error, using mock:", apiError);
             order = {
                 id: `order_mock_${Math.random().toString(36).substring(2, 9)}`,
                 amount: finalCharge,
@@ -103,6 +107,22 @@ export async function verifyPayment(data: {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
+    // 🛡️ SECURITY: Verify Razorpay Signature
+    if (!data.razorpay_order_id.startsWith("order_mock_")) {
+        const crypto = await import("crypto");
+        const secret = process.env.RAZORPAY_KEY_SECRET;
+        if (!secret) throw new Error("Razorpay secret not configured");
+
+        const generated_signature = crypto
+            .createHmac("sha256", secret)
+            .update(data.razorpay_order_id + "|" + data.razorpay_payment_id)
+            .digest("hex");
+
+        if (generated_signature !== data.razorpay_signature) {
+            throw new Error("Invalid payment signature. Potential fraud detected.");
+        }
+    }
+
     const payment = await prisma.payment.findFirst({
         where: { razorpayOrderId: data.razorpay_order_id }
     });
@@ -122,14 +142,14 @@ export async function verifyPayment(data: {
 
         // 2. Clear related records
         if (payment.invoiceId) {
-            await (tx.rentInvoice as any).update({
+            await tx.rentInvoice.update({
                 where: { id: payment.invoiceId },
                 data: { status: 'PAID', paidAt: new Date(), paidAmount: payment.amount }
             });
         }
         
         if (payment.depositId) {
-            await (tx.securityDeposit as any).update({
+            await tx.securityDeposit.update({
                 where: { id: payment.depositId },
                 data: { status: 'PAID', paidAt: new Date() }
             });

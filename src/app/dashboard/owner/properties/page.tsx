@@ -64,7 +64,7 @@ export default function OwnerPropertiesPage() {
                                     )}
                                 </div>
                                 {(() => {
-                                    let mergedImages: string[] = [];
+                                    const mergedImages: string[] = [];
 
                                     // 1. Gather Building Photos
                                     if (property.buildingPhotos) {

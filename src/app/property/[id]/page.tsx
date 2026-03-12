@@ -66,7 +66,7 @@ export default function PropertyDetailPage() {
             try {
                 const data = await getPropertyById(id);
                 if (data) {
-                    let allImages: string[] = [];
+                    const allImages: string[] = [];
                     if (data.buildingPhotos) {
                         try {
                             const parsed = JSON.parse(data.buildingPhotos);

@@ -29,7 +29,7 @@ export default function Home() {
               Find your perfect <span className="text-primary">student home</span> away from home.
             </h1>
             <p className="text-xl text-muted-foreground">
-              India's most trusted aggregator for PGs and Hostels. Verified listings, hygienic food, and a vibrant community waiting for you.
+              India&apos;s most trusted aggregator for PGs and Hostels. Verified listings, hygienic food, and a vibrant community waiting for you.
             </p>
 
             {/* Search Box */}
@@ -71,7 +71,7 @@ export default function Home() {
         <div className="container px-4 mx-auto">
           <div className="text-center mb-16 space-y-2">
             <h2 className="text-3xl font-bold">Why choose RentPe?</h2>
-            <p className="text-muted-foreground">We don't just find you a room, we find you a home.</p>
+            <p className="text-muted-foreground">We don&apos;t just find you a room, we find you a home.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">

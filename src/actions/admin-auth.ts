@@ -9,7 +9,7 @@ import { logAuditEvent } from "@/lib/audit";
 export async function impersonateUser(targetUserId: string) {
     const session = await getSession();
     // Only genuine Admins can trigger impersonation, not someone who is already impersonating
-    if (!session || session.role !== 'ADMIN' || (session as any).impersonatorId) {
+    if (!session || session.role !== 'ADMIN' || session.impersonatorId) {
         throw new Error("Unauthorized: Only authentic Admins can impersonate users.");
     }
 
@@ -26,7 +26,8 @@ export async function impersonateUser(targetUserId: string) {
         email: targetUser.email,
         name: targetUser.name,
         // The magic trace that proves this is a God Mode override:
-        impersonatorId: (session as any).userId
+        impersonatorId: session.userId,
+        roles: targetUser.roles, // Added for completeness
     };
 
     const token = await signJWT(payload);
@@ -40,13 +41,13 @@ export async function impersonateUser(targetUserId: string) {
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'ADMIN',
-        actorName: (session as any).name || 'Admin',
+        actorId: session.userId,
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'UPDATE',
         entityType: 'USER',
         entityId: targetUser.id,
-        description: `Admin ${(session as any).userId} started impersonating ${targetUser.email}`,
+        description: `Admin ${session.userId} started impersonating ${targetUser.email}`,
     });
 
     // Return the URL prefix
@@ -56,11 +57,11 @@ export async function impersonateUser(targetUserId: string) {
 
 export async function stopImpersonation() {
     const session = await getSession();
-    if (!session || !(session as any).impersonatorId) {
+    if (!session || !session.impersonatorId) {
         throw new Error("Not currently impersonating anyone");
     }
 
-    const adminId = (session as any).impersonatorId;
+    const adminId = session.impersonatorId;
 
     const adminUser = await prisma.user.findUnique({
         where: { id: adminId }
@@ -72,7 +73,8 @@ export async function stopImpersonation() {
         userId: adminUser.id,
         role: adminUser.role,
         email: adminUser.email,
-        name: adminUser.name
+        name: adminUser.name,
+        roles: adminUser.roles,
     };
 
     const token = await signJWT(payload);

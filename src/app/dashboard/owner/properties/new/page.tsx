@@ -916,7 +916,7 @@ export default function AddPropertyPage() {
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center gap-3">
                     <ShieldCheck className="h-5 w-5 text-purple-600" />
                     <p className="text-sm text-purple-800 font-medium">
-                        Property will be listed as <span className="font-bold">Pending Approval</span>. It will go live after <span className="font-bold">Verification Team's final approval</span>.
+                        Property will be listed as <span className="font-bold">Pending Approval</span>. It will go live after <span className="font-bold">Verification Team&apos;s final approval</span>.
                     </p>
                 </div>
 

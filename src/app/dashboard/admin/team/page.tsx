@@ -362,7 +362,7 @@ export default function AdminTeamPage() {
                     {loading && team.length === 0 ? (
                         <div className="p-8 text-center animate-pulse">Loading team members...</div>
                     ) : team.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground">No team members found. Click "Add Member" to get started.</div>
+                        <div className="p-8 text-center text-muted-foreground">No team members found. Click &quot;Add Member&quot; to get started.</div>
                     ) : (
                         <table className="w-full">
                             <thead className="bg-muted border-b">

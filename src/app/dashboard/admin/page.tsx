@@ -359,11 +359,11 @@ export default function AdminDashboard() {
                                                         ))}
                                                     </span>
                                                 </div>
-                                                <p className="text-slate-700 italic">"{review.comment}"</p>
+                                                <p className="text-slate-700 italic">&quot;{review.comment}&quot;</p>
                                             </div>
 
                                             <div>
-                                                <h5 className="text-xs font-bold uppercase text-red-600 tracking-wider mb-1">Owner's Reason for Flagging:</h5>
+                                                <h5 className="text-xs font-bold uppercase text-red-600 tracking-wider mb-1">Owner&apos;s Reason for Flagging:</h5>
                                                 <p className="text-sm text-slate-800 bg-red-100/50 p-3 rounded-lg">{review.flagReason}</p>
                                             </div>
                                         </div>

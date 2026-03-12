@@ -117,7 +117,7 @@ function PaymentPortal() {
                                         <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
                                         <div>
                                             <p className="text-red-700 font-bold text-sm">⚠️ Important: Please inform the building management team to mark as paid.</p>
-                                            <p className="text-red-600 text-xs mt-1">Your booking will remain in "Waiting Payment" status until the owner or manager confirms your cash payment. Please hand over the cash directly to the property manager.</p>
+                                            <p className="text-red-600 text-xs mt-1">Your booking will remain in &quot;Waiting Payment&quot; status until the owner or manager confirms your cash payment. Please hand over the cash directly to the property manager.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -215,7 +215,7 @@ function PaymentPortal() {
                         onClick={handlePay}
                         disabled={isPaying}
                     >
-                        {isPaying ? "Processing..." : method === "cash" ? "Confirm — I'll Pay Cash at Property" : `Pay ${booking.amount}`}
+                        {isPaying ? "Processing..." : method === "cash" ? "Confirm — I&apos;ll Pay Cash at Property" : `Pay ${booking.amount}`}
                     </Button>
                     <p className="text-xs text-center text-muted-foreground">
                         {method !== "cash" ? "Transaction encrypted with 256-bit SSL security." : "Cash payments must be confirmed by the property owner."}

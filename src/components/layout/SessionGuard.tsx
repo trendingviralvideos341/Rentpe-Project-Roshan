@@ -100,7 +100,8 @@ export default function SessionGuard() {
     // Auto-redirect countdown when an alert is triggered
     useEffect(() => {
         if (!alert) return;
-        setCountdown(AUTO_REDIRECT_SECONDS);
+        // setCountdown is already initialized at 3s by state default or during alert trigger.
+        // We only need to start the interval here.
 
         const timer = setInterval(() => {
             setCountdown(prev => {

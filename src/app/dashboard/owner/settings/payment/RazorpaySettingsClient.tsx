@@ -116,9 +116,9 @@ export default function RazorpaySettingsClient({ initialAccountId }: { initialAc
             <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300">
                 <h4 className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-tight">Technical Note for Dev</h4>
                 <p className="text-xs text-slate-600 leading-relaxed italic">
-                   // DUMMY INTEGRATION: This page currently simulates the Razorpay Route onboarding.
-                // To finalize: Integrate Razorpay OAuth or Account API here to get the real merchant account ID.
-                // File: src/app/dashboard/owner/settings/payment/RazorpaySettingsClient.tsx
+                   DUMMY INTEGRATION: This page currently simulates the Razorpay Route onboarding.
+                   To finalize: Integrate Razorpay OAuth or Account API here to get the real merchant account ID.
+                   File: src/app/dashboard/owner/settings/payment/RazorpaySettingsClient.tsx
                 </p>
             </div>
         </div>

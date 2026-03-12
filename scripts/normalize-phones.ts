@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 function normalizePhone(raw: string): string {
     if (!raw) return raw;
-    let v = raw.trim().replace(/\s+/g, ""); // Remove spaces
+    const v = raw.trim().replace(/\s+/g, ""); // Remove spaces
 
     // If it's already in the correct format, don't touch it
     if (/^\+91[6-9]\d{9}$/.test(v)) {

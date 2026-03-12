@@ -82,7 +82,7 @@ export default async function RootLayout({
                     {maintenanceMessage}
                 </h1>
                 <p className="text-lg text-slate-400 font-medium max-w-sm mb-10 leading-relaxed">
-                    We're making things better for you. Our systems will be back online very soon!
+                    We&apos;re making things better for you. Our systems will be back online very soon!
                 </p>
                 <div className="flex gap-4">
                     <a href="/status" className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm tracking-tight hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">

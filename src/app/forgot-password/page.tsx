@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
                         <CardHeader className="space-y-2 pb-6">
                             <CardTitle className="text-2xl font-bold text-center">Forgot Password?</CardTitle>
                             <CardDescription className="text-center">
-                                Enter the email address associated with your account and we'll send you a secure link to reset your password.
+                                Enter the email address associated with your account and we&apos;ll send you a secure link to reset your password.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
                         <div>
                             <h2 className="text-2xl font-bold mb-2">Check your email</h2>
                             <p className="text-slate-600">
-                                We've sent a secure password reset link to <strong>{email}</strong>.
+                                We&apos;ve sent a secure password reset link to <strong>{email}</strong>.
                                 <br /><br />
                                 <span className="text-xs text-amber-600 font-medium p-2 bg-amber-50 rounded">
                                     🚨 MVP Note: Since email is disabled, please check your Terminal/Server Console to click the link.

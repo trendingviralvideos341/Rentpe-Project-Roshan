@@ -62,7 +62,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
 }> {
     const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
 
-    let settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+    const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
 
     if (!settings || !settings.feesEnabled) {
         return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0, commissionRate: 0 };

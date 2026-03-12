@@ -224,7 +224,7 @@ export default function SearchPage() {
                                 <Building className="h-10 w-10 text-muted-foreground" />
                             </div>
                             <h2 className="text-2xl font-semibold">No properties found</h2>
-                            <p className="text-muted-foreground max-w-sm mx-auto">Try adjusting your search query, or removing some filters to find what you're looking for.</p>
+                            <p className="text-muted-foreground max-w-sm mx-auto">Try adjusting your search query, or removing some filters to find what you&apos;re looking for.</p>
                             <Button variant="outline" className="mt-2" onClick={clearFilters}>Clear all filters</Button>
                         </div>
                     )}
@@ -245,7 +245,7 @@ export default function SearchPage() {
                                 in just a few clicks.
                             </h2>
                             <p className="text-lg text-blue-100 max-w-2xl leading-relaxed font-medium">
-                                RentPe is India's fastest-growing platform for student housing. 
+                                RentPe is India&apos;s fastest-growing platform for student housing. 
                                 List your property today and get verified instantly to start receiving bookings.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-2">

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
+import { UserRole } from '@/types/auth';
 import { stopImpersonation } from '@/actions/admin-auth';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -15,7 +16,6 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 const Navbar = ({ session }: { session: any }) => {
-    const pathname = usePathname();
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
@@ -28,7 +28,7 @@ const Navbar = ({ session }: { session: any }) => {
     const rolesList = session?.roles?.split(',') || [];
     const hasMultipleRoles = rolesList.length > 1;
 
-    const handleSwitch = (target: string) => {
+    const handleSwitch = (target: UserRole) => {
         startTransition(async () => {
             try {
                 await switchRole(target);

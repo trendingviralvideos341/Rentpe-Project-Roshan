@@ -22,9 +22,17 @@ export default function NotificationBell() {
     };
 
     useEffect(() => {
-        fetchData();
+        // Fetch initially - Defer to avoid synchronous setState in effect
+        const timer = setTimeout(() => {
+            fetchData();
+        }, 0);
+        
+        // Polling loop
         const interval = setInterval(fetchData, 10000);
-        return () => clearInterval(interval);
+        return () => {
+            clearTimeout(timer);
+            clearInterval(interval);
+        };
     }, []);
 
     // Close on outside click

@@ -685,7 +685,7 @@ export default function AdminEmployeesPage() {
             {loading ? (
                 <div className="py-12 text-center animate-pulse text-muted-foreground">Loading employees...</div>
             ) : filtered.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground">No employees found. Click "Add Employee" to get started.</div>
+                <div className="py-12 text-center text-muted-foreground">No employees found. Click &quot;Add Employee&quot; to get started.</div>
             ) : (
                 <div className="space-y-3">
                     {filtered.map(emp => {

@@ -29,7 +29,7 @@ export async function createPayoutBatch(data: {
         ? await prisma.property.findUnique({ where: { id: data.propertyId } })
         : null;
 
-    const payout = await (prisma as any).ownerPayout.create({
+    const payout = await prisma.ownerPayout.create({
         data: {
             displayId: `PAY-${Math.floor(Math.random() * 900000) + 100000}`,
             ownerId: data.ownerId,
@@ -42,18 +42,18 @@ export async function createPayoutBatch(data: {
             status: 'PENDING',
             paymentMode: data.paymentMode,
             scheduledFor: data.scheduledFor,
-            bankAccountNo: (property as any)?.bankAccountNo,
-            bankIfsc: (property as any)?.bankIfsc,
+            bankAccountNo: property?.bankAccountNo,
+            bankIfsc: property?.bankIfsc,
             notes: data.notes,
         }
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'ADMIN',
-        actorName: (session as any).name || 'Admin',
+        actorId: session.userId,
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'CREATE',
-        entityType: 'PAYOUT' as any,
+        entityType: 'PAYOUT',
         entityId: payout.id,
         description: `Payout ₹${netAmount} created for owner ${data.ownerId} — Period: ${data.period}`,
     });
@@ -69,17 +69,17 @@ export async function approvePayoutBatch(payoutId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const payout = await (prisma as any).ownerPayout.update({
+    const payout = await prisma.ownerPayout.update({
         where: { id: payoutId },
-        data: { status: 'APPROVED', approvedBy: (session as any).userId }
+        data: { status: 'APPROVED', approvedBy: session.userId }
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'ADMIN',
-        actorName: (session as any).name || 'Admin',
+        actorId: session.userId,
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'APPROVE',
-        entityType: 'PAYOUT' as any,
+        entityType: 'PAYOUT',
         entityId: payoutId,
         description: `Payout ${payout.displayId} approved. Net: ₹${payout.netAmount}`,
     });
@@ -95,17 +95,17 @@ export async function markPayoutPaid(payoutId: string, txnReference: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const payout = await (prisma as any).ownerPayout.update({
+    const payout = await prisma.ownerPayout.update({
         where: { id: payoutId },
         data: { status: 'PAID', txnReference, paidAt: new Date() }
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'ADMIN',
-        actorName: (session as any).name || 'Admin',
+        actorId: session.userId,
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'UPDATE', // Marked as paid
-        entityType: 'PAYOUT' as any,
+        entityType: 'PAYOUT',
         entityId: payoutId,
         description: `Payout ${payout.displayId} marked PAID. Txn: ${txnReference}`,
     });
@@ -122,7 +122,7 @@ export async function getAllPayouts(status?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return (prisma as any).ownerPayout.findMany({
+    return prisma.ownerPayout.findMany({
         where: status ? { status } : {},
         orderBy: { createdAt: 'desc' }
     });
@@ -135,8 +135,8 @@ export async function getMyPayouts() {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-    return (prisma as any).ownerPayout.findMany({
-        where: { ownerId: (session as any).userId },
+    return prisma.ownerPayout.findMany({
+        where: { ownerId: session.userId },
         orderBy: { createdAt: 'desc' }
     });
 }
@@ -153,7 +153,7 @@ export async function calculateOwnerEarnings(ownerId: string, period: string) {
     const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
 
     // Per-owner commission rate override
-    const commissionRate = (owner as any)?.commissionRate ?? settings?.ownerRentFeeFlat ?? 9;
+    const commissionRate = owner?.commissionRate ?? settings?.ownerRentFeeFlat ?? 9;
 
     const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true } })).map(p => p.id);
 
@@ -165,7 +165,7 @@ export async function calculateOwnerEarnings(ownerId: string, period: string) {
         select: { id: true, amount: true, propertyName: true }
     });
 
-    const grossAmount = confirmedBookings.reduce((sum, b) => sum + (Number((b as any).amount) || 0), 0);
+    const grossAmount = confirmedBookings.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
     const commissionAmount = Math.round((grossAmount * commissionRate) / 100 * 100) / 100;
     const netAmount = grossAmount - commissionAmount;
 

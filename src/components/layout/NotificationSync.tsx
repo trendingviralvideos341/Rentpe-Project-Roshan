@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { markNotificationRead } from "@/actions/notifications";
-import { Bell, ExternalLink } from "lucide-react";
+import { Bell } from "lucide-react";
 
 export default function NotificationSync() {
   const lastFetchedRef = useRef<string[]>([]);
@@ -26,7 +26,7 @@ export default function NotificationSync() {
             if (notification.metadata) {
               metadata = JSON.parse(notification.metadata);
             }
-          } catch (e) {}
+          } catch {}
 
           toast.info(notification.message, {
             id: notification.id,
@@ -47,7 +47,7 @@ export default function NotificationSync() {
             }
           });
         });
-      } catch (error) {
+      } catch {
         // Silent fail on network errors during polling
       }
     };

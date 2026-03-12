@@ -276,7 +276,7 @@ export default function AdminPropertyApprovalPage() {
                                                         <AlertCircle className="h-4 w-4" /> Last Admin Note (Owner Feedback)
                                                     </h4>
                                                     <p className="text-sm bg-amber-50 text-amber-900 p-4 rounded-lg italic border border-amber-200 shadow-sm">
-                                                        "{property.adminNotes}"
+                                                        &quot;{property.adminNotes}&quot;
                                                     </p>
                                                 </div>
                                             )}

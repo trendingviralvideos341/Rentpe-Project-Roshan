@@ -9,11 +9,11 @@ import { logAuditEvent } from "@/lib/audit";
 export async function getTenants() {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
-    const userId = (session as any).userId;
+    const userId = session.userId;
 
     const whereClause = session.role === 'ADMIN' ? {} : { property: { ownerId: userId } };
 
-    const tenants = await (prisma.tenant as any).findMany({
+    const tenants = await prisma.tenant.findMany({
         where: whereClause,
         include: {
             property: { select: { name: true } },
@@ -23,7 +23,7 @@ export async function getTenants() {
     });
 
     // Attach action notes for each tenant
-    const withNotes = await Promise.all(tenants.map(async (t: any) => {
+    const withNotes = await Promise.all(tenants.map(async (t) => {
         const notes = await prisma.actionNote.findMany({
             where: { targetId: t.id, targetType: 'TENANT' },
             orderBy: { timestamp: 'desc' }
@@ -52,7 +52,7 @@ export async function createTenantFromBooking(bookingId: string) {
     // Find a bed to assign (if not already assigned)
     let bedId = null;
     if (booking.roomId) {
-        const availableBed = await (prisma.bed as any).findFirst({
+        const availableBed = await prisma.bed.findFirst({
             where: { roomId: booking.roomId, status: 'AVAILABLE' }
         });
         if (availableBed) {
@@ -62,7 +62,7 @@ export async function createTenantFromBooking(bookingId: string) {
 
     return await prisma.$transaction(async (tx) => {
         // 1. Create Tenant record
-        const tenant = await (tx.tenant as any).create({
+        const tenant = await tx.tenant.create({
             data: {
                 displayId: `TNT-${Math.floor(Math.random() * 900000) + 100000}`,
                 studentId: booking.userId,
@@ -76,14 +76,14 @@ export async function createTenantFromBooking(bookingId: string) {
                 roomNumber: booking.roomAssigned || "TBD",
                 roomType: booking.occupancy,
                 rent: booking.amount,
-                startDate: booking.moveInDate,
+                startDate: booking.moveInDate || new Date().toLocaleDateString('en-IN'),
                 status: 'UPCOMING_MOVE_IN'
             }
         });
 
         // 2. Update Bed status to RESERVED
         if (bedId) {
-            await (tx.bed as any).update({
+            await tx.bed.update({
                 where: { id: bedId },
                 data: { status: 'RESERVED', tenantId: tenant.id }
             });
@@ -108,7 +108,7 @@ export async function confirmMoveIn(tenantId: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const tenant = await (prisma.tenant as any).findUnique({
+    const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         include: { bed: true }
     });
@@ -119,14 +119,14 @@ export async function confirmMoveIn(tenantId: string) {
 
     return await prisma.$transaction(async (tx) => {
         // 1. Update Tenant
-        await (tx.tenant as any).update({
+        await tx.tenant.update({
             where: { id: tenantId },
             data: { status: 'ACTIVE_TENANT' }
         });
 
         // 2. Update Bed to OCCUPIED
         if (tenant.bedId) {
-            await (tx.bed as any).update({
+            await tx.bed.update({
                 where: { id: tenant.bedId },
                 data: { status: 'OCCUPIED' }
             });
@@ -141,8 +141,8 @@ export async function confirmMoveIn(tenantId: string) {
         }
 
         // 4. Financial Integration: Create Billing Profile & Generate Initial Deposit Invoice
-        const rentAmount = parseFloat(tenant.rent.replace(/[^0-9.]/g, ''));
-        const profile = await (tx.billingProfile as any).create({
+        const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : tenant.rent;
+        const profile = await tx.billingProfile.create({
             data: {
                 tenantId,
                 propertyId: tenant.propertyId,
@@ -154,7 +154,7 @@ export async function confirmMoveIn(tenantId: string) {
             }
         });
 
-        await (tx.securityDeposit as any).create({
+        await tx.securityDeposit.create({
             data: {
                 billingProfileId: profile.id,
                 tenantId,
@@ -258,9 +258,9 @@ export async function blockTenant(tenantId: string, note: string) {
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
-    const tenant = await (prisma.tenant as any).update({
+    const tenant = await prisma.tenant.update({
         where: { id: tenantId },
-        data: { status: 'VACATED', vacatedOn: timestamp }
+        data: { status: 'VACATED', actualMoveOutDate: timestamp }
     });
 
     await prisma.actionNote.create({
@@ -274,9 +274,9 @@ export async function blockTenant(tenantId: string, note: string) {
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: session.userId,
         actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorName: session.name || 'Owner',
         actionType: 'DELETE',
         entityType: 'TENANT',
         entityId: tenantId,
@@ -291,7 +291,7 @@ export async function unblockTenant(tenantId: string, note: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const tenant = await (prisma.tenant as any).update({
+    const tenant = await prisma.tenant.update({
         where: { id: tenantId },
         data: { status: 'ACTIVE_TENANT', vacatedOn: null }
     });
@@ -370,17 +370,15 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    const tenant = await (prisma.tenant as any).findUnique({ where: { id: tenantId } });
-    if (!tenant || (tenant.studentId !== (session as any).userId && session.role !== 'OWNER' && session.role !== 'ADMIN')) {
-        throw new Error("Unauthorized or tenant not found");
-    }
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant || (tenant.studentId !== session.userId && session.role !== 'OWNER' && session.role !== 'ADMIN')) {
 
     return await prisma.$transaction(async (tx) => {
         // 1. Create Move-Out Request
-        const request = await (tx.moveOutRequest as any).create({
+        const request = await tx.moveOutRequest.create({
             data: {
                 tenantId,
-                requestedBy: (session as any).userId,
+                requestedBy: session.userId,
                 requestedDate: data.date,
                 reason: data.reason,
                 status: 'PENDING'
@@ -388,15 +386,15 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
         });
 
         // 2. Update Tenant Status
-        await (tx.tenant as any).update({
+        await tx.tenant.update({
             where: { id: tenantId },
             data: { status: 'MOVE_OUT_SCHEDULED', expectedMoveOutDate: data.date }
         });
 
         logAuditEvent({
-            actorId: (session as any).userId,
+            actorId: session.userId,
             actorRole: session.role as string,
-            actorName: (session as any).name || 'User',
+            actorName: session.name || 'User',
             actionType: 'UPDATE',
             entityType: 'TENANT',
             entityId: tenantId,

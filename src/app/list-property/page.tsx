@@ -239,7 +239,7 @@ export default function ListPropertyPage() {
                                 <textarea
                                     value={form.description}
                                     onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                                    placeholder="Describe your property — rules, nearby landmarks, target residents..."
+                                    placeholder="Describe your property &mdash; rules, nearby landmarks, target residents..."
                                     rows={4}
                                     className={`w-full border rounded-md p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? "border-red-400" : "border-input"}`}
                                 />
@@ -267,7 +267,7 @@ export default function ListPropertyPage() {
                     <Card className="border-2 border-purple-100">
                         <CardContent className="p-6 space-y-4">
                             <h2 className="text-xl font-bold">✨ Amenities</h2>
-                            <p className="text-sm text-muted-foreground">Select all that apply. Use "Others" for anything not listed.</p>
+                            <p className="text-sm text-muted-foreground">Select all that apply. Use &quot;Others&quot; for anything not listed.</p>
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {AMENITIES_LIST.map(a => (

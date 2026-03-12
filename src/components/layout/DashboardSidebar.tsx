@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, Search, CheckCircle2, Eye, UserCheck, Menu, X, User, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
@@ -79,8 +79,11 @@ export default function DashboardSidebar(props: SidebarProps) {
 
     // Close mobile drawer on route change
     useEffect(() => {
-        setMobileOpen(false);
-    }, [pathname]);
+        if (mobileOpen) {
+            const timer = setTimeout(() => setMobileOpen(false), 0);
+            return () => clearTimeout(timer);
+        }
+    }, [pathname, mobileOpen]);
 
     const ownerSections: SidebarSection[] = [
         {

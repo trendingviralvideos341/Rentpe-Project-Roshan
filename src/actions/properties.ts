@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
-    let where: any = {};
+    const where: any = {};
 
     if (ownerId) {
         where.ownerId = ownerId;
@@ -424,7 +424,7 @@ export async function deletePropertyDocument(propertyId: string, docType: string
 
         if (!property) return { success: false, error: "Property not found" };
 
-        let updateData: any = {};
+        const updateData: any = {};
         const currentValue = (property as any)[docType];
         let verifiedDocs = JSON.parse((property as any).verifiedDocs || "[]");
 

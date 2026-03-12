@@ -77,7 +77,7 @@ export default function OwnerDashboard() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">Owner Dashboard</h1>
-                    <p className="text-muted-foreground">Welcome back, here's what's happening today.</p>
+                    <p className="text-muted-foreground">Welcome back, here&apos;s what&apos;s happening today.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={fetchStats}>

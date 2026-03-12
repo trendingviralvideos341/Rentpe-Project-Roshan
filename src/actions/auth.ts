@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
+import { Session, UserRole } from '@/types/auth';
 
 const SignupSchema = z.object({
     name: z.string().min(3),
@@ -160,11 +161,11 @@ export async function login(formData: FormData) {
             return { error: 'Invalid credentials' };
         }
 
-        if ((user as any).status === 'BANNED' || (user as any).status === 'INACTIVE') {
+        if (user.status === 'BANNED' || user.status === 'INACTIVE') {
             return { error: 'Your account has been suspended. Please contact support.' };
         }
 
-        const isMatch = await comparePassword(password, (user as any).passwordHash);
+        const isMatch = await comparePassword(password, user.passwordHash);
         if (!isMatch) {
             // Security Phase 3: Log failed attempt for existing user
             logAuditEvent({
@@ -180,7 +181,7 @@ export async function login(formData: FormData) {
         }
 
         // 2FA Check
-        if ((user as any).twoFactorEnabled) {
+        if (user.twoFactorEnabled) {
             return { require2FA: true, userId: user.id };
         }
 
@@ -204,15 +205,15 @@ export async function login(formData: FormData) {
 
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         const token = await signJWT({
-            userId: (user as any).id,
-            email: (user as any).email,
-            role: (user as any).role,
-            roles: (user as any).roles,
-            name: (user as any).name,
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            roles: user.roles,
+            name: user.name,
             permissions,
-            adminRole: (user as any).adminRole ?? null,
-            displayId: (user as any).displayId ?? null,
-            phone: (user as any).phone ?? null,
+            adminRole: user.adminRole ?? null,
+            displayId: user.displayId ?? null,
+            phone: user.phone ?? null,
             expiresAt,
         });
 
@@ -226,13 +227,13 @@ export async function login(formData: FormData) {
         });
 
         // Redirect based on active role
-        if ((user as any).role === 'ADMIN') {
+        if (user.role === 'ADMIN') {
             redirect('/dashboard/admin');
-        } else if ((user as any).role === 'OWNER') {
+        } else if (user.role === 'OWNER') {
             redirect('/dashboard/owner');
-        } else if ((user as any).role === 'ONBOARDER') {
+        } else if (user.role === 'ONBOARDER') {
             redirect('/dashboard/onboarder');
-        } else if ((user as any).role === 'VERIFIER') {
+        } else if (user.role === 'VERIFIER') {
             redirect('/dashboard/verifier');
         } else {
             redirect('/');
@@ -261,11 +262,11 @@ export async function verify2FALogin(userId: string, token: string) {
             }
         });
 
-        if (!user || !(user as any).twoFactorEnabled || !(user as any).twoFactorSecret) {
+        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
             return { error: 'Invalid session or 2FA not enabled' };
         }
 
-        const isValid = verify2FAToken((user as any).twoFactorSecret, token);
+        const isValid = verify2FAToken(user.twoFactorSecret, token);
         if (!isValid) {
             return { error: 'Invalid verification code' };
         }
@@ -323,7 +324,7 @@ export async function logout() {
     // Do NOT call redirect() here — LogoutButton handles client-side redirect.
 }
 
-export async function switchRole(targetRole: string) {
+export async function switchRole(targetRole: UserRole) {
     const session = await getSession();
     if (!session || !session.userId) {
         throw new Error("Unauthorized");
@@ -456,7 +457,7 @@ export async function getCurrentUser() {
                 id: true, email: true, name: true, role: true, roles: true,
                 phone: true, twoFactorEnabled: true, businessName: true, profilePhoto: true,
                 staffPermissions: true, parentOwnerId: true
-            } as any
+            }
         });
 
         if (!user) {
@@ -473,8 +474,8 @@ export async function getCurrentUser() {
 
         return {
             ...user,
-            name: (user as any).name || (session as any).name || null,
-            email: (user as any).email || (session as any).email || null,
+            name: user.name || session.name || null,
+            email: user.email || session.email || null,
         };
     } catch (e) {
         console.error("getCurrentUser Error:", e);
