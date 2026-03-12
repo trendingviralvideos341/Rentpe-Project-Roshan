@@ -774,9 +774,6 @@ export default function AddPropertyPage() {
                                         <select className="mt-1 w-full border rounded-md p-2 text-sm bg-background" value={room.type} onChange={e => {
                                             const type = e.target.value;
                                             let autoAvail = "1";
-                                            if (type === "Double") autoAvail = "2";
-                                            if (type === "Triple") autoAvail = "3";
-                                            if (type === "Four") autoAvail = "4";
                                             if (type === "Double Sharing") autoAvail = "2";
                                             if (type === "Three Sharing") autoAvail = "3";
                                             if (type === "Four Sharing") autoAvail = "4";
@@ -789,11 +786,12 @@ export default function AddPropertyPage() {
                                             setRooms(updated);
                                         }}>
                                             <option value="Single Sharing">Single Sharing</option>
-                                            <option value="Double Sharing">Double Sharing</option>
-                                            <option value="Three Sharing">Three Sharing</option>
-                                            <option value="Four Sharing">Four Sharing</option>
-                                            <option value="Five Sharing">Five Sharing</option>
-                                            <option value="Six Sharing">Six Sharing</option>
+                                            <option value="Private Room">Private Room (1)</option>
+                                            <option value="Double Sharing">Double Sharing (2)</option>
+                                            <option value="Three Sharing">Three Sharing (3)</option>
+                                            <option value="Four Sharing">Four Sharing (4)</option>
+                                            <option value="Five Sharing">Five Sharing (5)</option>
+                                            <option value="Six Sharing">Six Sharing (6)</option>
                                         </select>
                                     </div>
                                     <div>
@@ -802,7 +800,13 @@ export default function AddPropertyPage() {
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Beds Available <span className="text-red-500">*</span></label>
-                                        <Input type="number" className={`mt-1 ${errors[`room_${i}_avail`] ? "border-red-500" : ""}`} placeholder="1" min={1} value={room.availability} onChange={e => updateRoom(i, "availability", e.target.value)} />
+                                        <Input 
+                                            type="number" 
+                                            readOnly 
+                                            className={`mt-1 bg-gray-50 cursor-not-allowed font-bold ${errors[`room_${i}_avail`] ? "border-red-500" : ""}`} 
+                                            placeholder="1" 
+                                            value={room.availability} 
+                                        />
                                     </div>
                                 </div>
                             </div>
