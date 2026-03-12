@@ -905,13 +905,15 @@ export default function PropertyManagePage() {
                                 <Label>Select Bed Type</Label>
                                 <select className="w-full border rounded-md p-2 text-sm bg-background" value={roomForm.type} onChange={e => {
                                     const type = e.target.value;
-                                    let avail = "1";
-                                    if (type === "Double Sharing") avail = "2";
-                                    if (type === "Three Sharing") avail = "3";
-                                    if (type === "Four Sharing") avail = "4";
-                                    if (type === "Five Sharing") avail = "5";
-                                    if (type === "Six Sharing") avail = "6";
-                                    setRoomForm({ ...roomForm, type, availability: avail });
+                                    const availMap: Record<string, string> = {
+                                        "Single Sharing": "1",
+                                        "Double Sharing": "2",
+                                        "Three Sharing": "3",
+                                        "Four Sharing": "4",
+                                        "Five Sharing": "5",
+                                        "Six Sharing": "6"
+                                    };
+                                    setRoomForm({ ...roomForm, type, availability: availMap[type] || "1" });
                                 }}>
                                     <option value="Single Sharing">Single Sharing</option>
                                     <option value="Double Sharing">Double Sharing</option>
@@ -927,8 +929,8 @@ export default function PropertyManagePage() {
                             </div>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="avail">Available Beds</Label>
-                            <Input id="avail" type="number" min="1" value={roomForm.availability} onChange={e => setRoomForm({ ...roomForm, availability: e.target.value })} />
+                            <Label htmlFor="avail">Available Beds <span className="text-[10px] text-muted-foreground">(Locked to Bed Type)</span></Label>
+                            <Input id="avail" type="number" disabled className="bg-slate-50 font-bold" value={roomForm.availability} />
                         </div>
                     </div>
                     <DialogFooter>
@@ -958,13 +960,15 @@ export default function PropertyManagePage() {
                                 <Label>Select Bed Type</Label>
                                 <select className="w-full border rounded-md p-2 text-sm bg-background" value={editRoomForm.type} onChange={e => {
                                     const type = e.target.value;
-                                    let avail = "1";
-                                    if (type === "Double Sharing") avail = "2";
-                                    if (type === "Three Sharing") avail = "3";
-                                    if (type === "Four Sharing") avail = "4";
-                                    if (type === "Five Sharing") avail = "5";
-                                    if (type === "Six Sharing") avail = "6";
-                                    setEditRoomForm({ ...editRoomForm, type, availability: avail });
+                                    const availMap: Record<string, string> = {
+                                        "Single Sharing": "1",
+                                        "Double Sharing": "2",
+                                        "Three Sharing": "3",
+                                        "Four Sharing": "4",
+                                        "Five Sharing": "5",
+                                        "Six Sharing": "6"
+                                    };
+                                    setEditRoomForm({ ...editRoomForm, type, availability: availMap[type] || "1" });
                                 }}>
                                     <option value="Single Sharing">Single Sharing</option>
                                     <option value="Double Sharing">Double Sharing</option>
@@ -980,8 +984,8 @@ export default function PropertyManagePage() {
                             </div>
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="editAvail">Available Beds</Label>
-                            <Input id="editAvail" type="number" min="1" value={editRoomForm.availability} onChange={e => setEditRoomForm({ ...editRoomForm, availability: e.target.value })} />
+                            <Label htmlFor="editAvail">Available Beds <span className="text-[10px] text-muted-foreground">(Locked to Bed Type)</span></Label>
+                            <Input id="editAvail" type="number" disabled className="bg-slate-50 font-bold" value={editRoomForm.availability} />
                         </div>
                     </div>
                     <DialogFooter>
