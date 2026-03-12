@@ -62,7 +62,6 @@ export default function SignupPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [phone, setPhone] = useState("");
-    const [city, setCity] = useState("");
     const [role, setRole] = useState("USER");
     const [showPassword, setShowPassword] = useState(false);
     const [agreed, setAgreed] = useState(false);
@@ -91,10 +90,6 @@ export default function SignupPage() {
         if (password.length < 8) { setError("Password must be at least 8 characters long."); return; }
         if (!checks.upper || !checks.lower || !checks.number) {
             setError("Password must include uppercase, lowercase and a number.");
-            return;
-        }
-        if (!city.trim()) {
-            setError("Please select or enter your city.");
             return;
         }
         if (!agreed) {
@@ -127,7 +122,6 @@ export default function SignupPage() {
             formData.set("password", password);
             formData.set("phone", `+91${phone}`);
             formData.set("role", role);
-            formData.set("city", city);
             formData.set("agreed", agreed ? "true" : "false");
 
             const result = await signup(formData);
@@ -342,18 +336,6 @@ export default function SignupPage() {
                             </div>
                             {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
                             <p className="text-[10px] text-muted-foreground italic">Standard Indian 10-digit mobile number</p>
-                        </div>
-
-                        {/* City Selection */}
-                        <div className="space-y-1">
-                            <label htmlFor="city" className="text-sm font-medium">City / Location</label>
-                            <Input 
-                                id="city" 
-                                placeholder="e.g. Pune, Bangalore..." 
-                                required
-                                value={city}
-                                onChange={e => setCity(e.target.value)}
-                            />
                         </div>
 
                         {/* Password */}
