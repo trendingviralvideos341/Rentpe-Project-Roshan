@@ -91,7 +91,7 @@ const Navbar = ({ session }: { session: any }) => {
                             </button>
                         </Link>
                         <Link href="/list-property">
-                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-sm group">
+                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group">
                                 <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
                                 List Your PG
                             </button>
@@ -171,7 +171,7 @@ const Navbar = ({ session }: { session: any }) => {
                             </div>
                         </Link>
                         <Link href="/list-property" className="block" onClick={() => setIsOpen(false)}>
-                            <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-500 text-white shadow-sm">
+                            <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
                                 <Building className="h-4 w-4" />
                                 List Your PG
                             </div>
