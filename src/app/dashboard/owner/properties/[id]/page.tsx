@@ -29,13 +29,11 @@ export default function PropertyManagePage() {
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
     const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
-    const [roomPhoto, setRoomPhoto] = useState<File | null>(null);
     const [savingRoom, setSavingRoom] = useState(false);
 
     // Edit Room State
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
     const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
-    const [editRoomPhoto, setEditRoomPhoto] = useState<File | null>(null);
     const [editingRoom, setEditingRoom] = useState(false);
 
     // Live Capture State
@@ -292,29 +290,18 @@ export default function PropertyManagePage() {
 
         setSavingRoom(true);
         try {
-            let photoUrl = "";
-            if (roomPhoto) {
-                if (roomPhoto.size > 5 * 1024 * 1024) throw new Error("Room photo exceeds 5MB");
-                const fd = new FormData(); fd.append('file', roomPhoto);
-                const res = await fetch('/api/upload', { method: 'POST', body: fd });
-                const d = await res.json();
-                if (res.ok) photoUrl = d.url;
-            }
-
             const newRoom = await addRoomToProperty(propertyId, {
                 roomNumber: roomForm.roomNumber,
                 type: roomForm.type,
                 price: parseFloat(roomForm.price),
-                availability: parseInt(roomForm.availability),
-                photoUrl: photoUrl || undefined
+                availability: parseInt(roomForm.availability)
             });
 
             setProperty({ ...property, rooms: [...(property.rooms || []), newRoom] });
             setIsAddRoomOpen(false);
             setRoomForm({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
-            setRoomPhoto(null);
         } catch (e: any) {
-            alert(`Error: ${e.message} `);
+            alert(`Error: ${e.message}`);
         } finally {
             setSavingRoom(false);
         }
@@ -328,21 +315,11 @@ export default function PropertyManagePage() {
 
         setEditingRoom(true);
         try {
-            let photoUrl = "";
-            if (editRoomPhoto) {
-                if (editRoomPhoto.size > 5 * 1024 * 1024) throw new Error("Room photo exceeds 5MB");
-                const fd = new FormData(); fd.append('file', editRoomPhoto);
-                const res = await fetch('/api/upload', { method: 'POST', body: fd });
-                const d = await res.json();
-                if (res.ok) photoUrl = d.url;
-            }
-
             const updatedRoom = await editRoom(editRoomForm.id, {
                 roomNumber: editRoomForm.roomNumber,
                 type: editRoomForm.type,
                 price: parseFloat(editRoomForm.price),
-                availability: parseInt(editRoomForm.availability),
-                ...(photoUrl ? { photoUrl } : {})
+                availability: parseInt(editRoomForm.availability)
             });
 
             setProperty({
@@ -350,9 +327,8 @@ export default function PropertyManagePage() {
                 rooms: property.rooms.map((r: any) => r.id === editRoomForm.id ? { ...r, ...updatedRoom } : r)
             });
             setIsEditRoomOpen(false);
-            setEditRoomPhoto(null);
         } catch (e: any) {
-            alert(`Error: ${e.message} `);
+            alert(`Error: ${e.message}`);
         } finally {
             setEditingRoom(false);
         }
@@ -366,7 +342,6 @@ export default function PropertyManagePage() {
             price: room.price.toString(),
             availability: room.availability.toString(),
         });
-        setEditRoomPhoto(null);
         setIsEditRoomOpen(true);
     };
 
@@ -917,7 +892,7 @@ export default function PropertyManagePage() {
                     <DialogHeader>
                         <DialogTitle>Add a New Room</DialogTitle>
                         <DialogDescription>
-                            Enter standard room details and an optional photo.
+                            Enter standard room details.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -951,15 +926,9 @@ export default function PropertyManagePage() {
                                 <Input id="rent" type="number" placeholder="5000" min="0" value={roomForm.price} onChange={e => setRoomForm({ ...roomForm, price: e.target.value })} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="avail">Available Beds</Label>
-                                <Input id="avail" type="number" min="1" value={roomForm.availability} onChange={e => setRoomForm({ ...roomForm, availability: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="photo">Room Photo <span className="text-xs text-muted-foreground">(opt)</span></Label>
-                                <Input id="photo" type="file" accept="image/*" onChange={e => setRoomPhoto(e.target.files?.[0] || null)} />
-                            </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="avail">Available Beds</Label>
+                            <Input id="avail" type="number" min="1" value={roomForm.availability} onChange={e => setRoomForm({ ...roomForm, availability: e.target.value })} />
                         </div>
                     </div>
                     <DialogFooter>
@@ -976,7 +945,7 @@ export default function PropertyManagePage() {
                     <DialogHeader>
                         <DialogTitle>Edit Room {editRoomForm.roomNumber}</DialogTitle>
                         <DialogDescription>
-                            Update the details of this room or upload a new photo.
+                            Update the details of this room.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -1010,15 +979,9 @@ export default function PropertyManagePage() {
                                 <Input id="editRent" type="number" placeholder="5000" min="0" value={editRoomForm.price} onChange={e => setEditRoomForm({ ...editRoomForm, price: e.target.value })} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="editAvail">Available Beds</Label>
-                                <Input id="editAvail" type="number" min="1" value={editRoomForm.availability} onChange={e => setEditRoomForm({ ...editRoomForm, availability: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="editPhoto">Update Photo <span className="text-xs text-muted-foreground">(opt)</span></Label>
-                                <Input id="editPhoto" type="file" accept="image/*" onChange={e => setEditRoomPhoto(e.target.files?.[0] || null)} />
-                            </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="editAvail">Available Beds</Label>
+                            <Input id="editAvail" type="number" min="1" value={editRoomForm.availability} onChange={e => setEditRoomForm({ ...editRoomForm, availability: e.target.value })} />
                         </div>
                     </div>
                     <DialogFooter>
