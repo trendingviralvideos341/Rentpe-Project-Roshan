@@ -16,6 +16,7 @@ const SignupSchema = z.object({
     password: z.string().min(6),
     phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
+    city: z.string().min(2, "City is required"),
     agreed: z.boolean().refine(v => v === true, "You must agree to the Terms of Service"),
     marketingAgreed: z.boolean().optional(),
     dataSharingAgreed: z.boolean().optional(),
@@ -35,6 +36,7 @@ export async function signup(formData: FormData) {
         password: data.password,
         phone: data.phone,
         role: data.role,
+        city: data.city,
         agreed: data.agreed === 'true' || data.agreed === 'on',
         marketingAgreed: data.marketingAgreed === 'true' || data.marketingAgreed === 'on',
         dataSharingAgreed: data.dataSharingAgreed === 'true' || data.dataSharingAgreed === 'on',
@@ -45,7 +47,7 @@ export async function signup(formData: FormData) {
         return { error: `Validation failed: ${JSON.stringify(errs)}` };
     }
 
-    const { name, email, password, phone, role, marketingAgreed, dataSharingAgreed } = validated.data;
+    const { name, email, password, phone, role, city, marketingAgreed, dataSharingAgreed } = validated.data;
 
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -72,6 +74,8 @@ export async function signup(formData: FormData) {
                 email,
                 passwordHash: hashedPassword,
                 phone,
+                phoneVerified: true, // They verified OTP in Signup UI
+                city,
                 role: roleUp,
                 roles: roleUp,          // comma-separated for future multi-role
                 isStudent,

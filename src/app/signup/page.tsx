@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { signup } from "@/actions/auth";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Info } from "lucide-react";
 import { validateEmail, validateName, validatePhone } from "@/lib/validators";
 import { useRouter } from "next/navigation";
 
@@ -62,9 +62,13 @@ export default function SignupPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [phone, setPhone] = useState("");
+    const [city, setCity] = useState("");
     const [role, setRole] = useState("USER");
     const [showPassword, setShowPassword] = useState(false);
     const [agreed, setAgreed] = useState(false);
+    const [otpStep, setOtpStep] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [otpError, setOtpError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     const { checks, passed } = getStrength(password);
@@ -96,6 +100,22 @@ export default function SignupPage() {
 
         setLoading(true);
         try {
+            // Simulate sending OTP
+            if (!otpStep) {
+                setTimeout(() => {
+                    setOtpStep(true);
+                    setLoading(false);
+                }, 1000);
+                return;
+            }
+
+            // Verify OTP (simulated)
+            if (otp !== "123456") {
+                setOtpError("Invalid OTP. Try 123456 for testing.");
+                setLoading(false);
+                return;
+            }
+
             const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
             const formData = new FormData();
             formData.set("name", fullName);
@@ -103,6 +123,7 @@ export default function SignupPage() {
             formData.set("password", password);
             formData.set("phone", `+91${phone}`);
             formData.set("role", role);
+            formData.set("city", city);
             formData.set("agreed", agreed ? "true" : "false");
 
             const result = await signup(formData);
@@ -163,6 +184,31 @@ export default function SignupPage() {
                             </div>
                         )}
 
+                        {otpStep && (
+                            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 space-y-3 animate-in fade-in zoom-in duration-300">
+                                <h3 className="text-sm font-bold text-violet-900 border-b border-violet-100 pb-2 flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-white text-[10px]">OTP</span>
+                                    Verify your mobile number
+                                </h3>
+                                <p className="text-xs text-violet-700">A verification code has been sent to <strong>+91 {phone}</strong></p>
+                                <div className="space-y-1">
+                                    <Input 
+                                        placeholder="Enter 6-digit OTP" 
+                                        className={`text-center text-lg tracking-[0.5em] font-black ${otpError ? "border-red-400" : "border-violet-300 focus:ring-violet-400"}`}
+                                        value={otp}
+                                        maxLength={6}
+                                        onChange={e => {
+                                            const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                            setOtp(v);
+                                            setOtpError(null);
+                                        }}
+                                    />
+                                    {otpError && <p className="text-[10px] text-red-500 text-center font-semibold">{otpError}</p>}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground text-center">Didn't receive code? <button type="button" className="text-violet-600 font-bold hover:underline">Resend</button></p>
+                            </div>
+                        )}
+
                         {/* Role Chip Selector */}
                         <div className="space-y-3">
                             <label className="text-sm font-bold text-foreground block text-center w-full bg-muted/50 py-1.5 rounded-lg border border-border/50 shadow-sm">
@@ -175,7 +221,10 @@ export default function SignupPage() {
                                         <button
                                             key={opt.value}
                                             type="button"
-                                            onClick={() => setRole(opt.value)}
+                                            onClick={() => {
+                                                setRole(opt.value);
+                                                setAgreed(false);
+                                            }}
                                             className={`relative flex flex-col items-center justify-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer min-h-[110px]
                                                 ${isSelected
                                                     ? `${opt.selectedBg} border-transparent text-white shadow-lg scale-[1.02] ring-4 ${opt.ring}`
@@ -196,6 +245,14 @@ export default function SignupPage() {
                                         </button>
                                     );
                                 })}
+                            </div>
+                            <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 flex gap-3 items-center">
+                                <Info className="h-4 w-4 text-blue-600 shrink-0" />
+                                <p className="text-[10px] text-blue-800 italic leading-relaxed">
+                                    {role === "OWNER"
+                                        ? "Proprietary Statement: By registering as an Owner, you confirm you are 18+ and have authority to list rental units."
+                                        : "Proprietary Statement: By registering as a Student/Tenant, you confirm you are 18+ or have guardian consent."}
+                                </p>
                             </div>
                         </div>
 
@@ -283,6 +340,18 @@ export default function SignupPage() {
                             <p className="text-[10px] text-muted-foreground italic">Standard Indian 10-digit mobile number</p>
                         </div>
 
+                        {/* City Selection */}
+                        <div className="space-y-1">
+                            <label htmlFor="city" className="text-sm font-medium">City / Location</label>
+                            <Input 
+                                id="city" 
+                                placeholder="e.g. Pune, Bangalore..." 
+                                required
+                                value={city}
+                                onChange={e => setCity(e.target.value)}
+                            />
+                        </div>
+
                         {/* Password */}
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-sm font-medium">Password</label>
@@ -368,8 +437,8 @@ export default function SignupPage() {
                                 />
                                 <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
                                     {role === "OWNER"
-                                        ? "I consent to RentPe sharing my business profile with RentPe Business for verification and trust-building with tenants. (Optional)"
-                                        : "I consent to RentPe sharing my verified profile with property owners for faster background checks. (Optional)"}
+                                        ? "I consent to RentPe sharing my verified profile with RentPe Business for background verification and fraud prevention. (Required)"
+                                        : "I consent to RentPe sharing my verified profile with property owners for background checks. (Required)"}
                                 </span>
                             </label>
                         </div>
@@ -382,9 +451,11 @@ export default function SignupPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                     </svg>
-                                    Creating Account...
+                                    {otpStep ? "Verifying..." : "Sending OTP..."}
                                 </span>
-                            ) : "🚀 Create My Account"}
+                            ) : (
+                                <span>{otpStep ? "✅ Verify & Create Account" : "🚀 Get Started & Send OTP"}</span>
+                            )}
                         </Button>
                         <div className="text-center text-sm text-muted-foreground">
                             Already have an account?{" "}

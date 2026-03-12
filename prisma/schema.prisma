@@ -22,6 +22,8 @@ model User {
   isVerifier            Boolean           @default(false)
   name                  String?
   phone                 String?
+  phoneVerified         Boolean           @default(false)
+  city                  String?
   status                String            @default("ACTIVE")
   loyaltyPoints         Int               @default(0)
   lastLoginAt           DateTime?         @default(now())
