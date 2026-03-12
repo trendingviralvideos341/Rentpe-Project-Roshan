@@ -28,7 +28,6 @@ export default function AddPropertyPage() {
     const [description, setDescription] = useState("");
     const [ownerName, setOwnerName] = useState("");
     const [ownerEmail, setOwnerEmail] = useState("");
-    const [businessName, setBusinessName] = useState("");
     const [pgLicence, setPgLicence] = useState("");
     const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
     const [licenseNumber, setLicenseNumber] = useState("");
@@ -83,7 +82,6 @@ export default function AddPropertyPage() {
             if (user) {
                 setOwnerName(user.name || "");
                 setOwnerEmail(user.email || "");
-                setBusinessName((user as any).businessName || "");
                 let p = user.phone || "";
                 if (p && !p.startsWith("+91")) p = "+91" + p;
                 setPhone(p);
@@ -532,14 +530,7 @@ export default function AddPropertyPage() {
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">Business / Entity Name</label>
-                                <Input placeholder="e.g. SkyLiv Properties Pvt Ltd" value={businessName}
-                                    readOnly={true}
-                                    className={`${readOnlyCls}`} />
-                                <p className="text-[10px] text-blue-600 font-medium italic">Syncs from your Business Profile.</p>
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">Contact Email</label>
                                 <Input placeholder="owner@example.com" value={ownerEmail}
