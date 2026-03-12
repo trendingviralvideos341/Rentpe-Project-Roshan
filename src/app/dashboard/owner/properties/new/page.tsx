@@ -29,7 +29,6 @@ export default function AddPropertyPage() {
     const [ownerName, setOwnerName] = useState("");
     const [ownerEmail, setOwnerEmail] = useState("");
     const [businessName, setBusinessName] = useState("");
-    const [pgLicence, setPgLicence] = useState("");
     const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
     const [licenseNumber, setLicenseNumber] = useState("");
     const [reraId, setReraId] = useState("");
@@ -338,9 +337,9 @@ export default function AddPropertyPage() {
         if (amenities.length === 0) errs.amenities = "Select at least one amenity";
         if (rooms.length === 0) errs.rooms = "Add at least one room";
 
-        // Conditional Mandatory for PG/Hostel text field
-        if ((propertyType === "PG" || propertyType === "Hostel") && !pgLicence.trim()) {
-            errs.pgLicence = "PG/Hostel Licence Number is required";
+        // Conditional Mandatory for PG/Hostel Licence
+        if ((propertyType === "PG" || propertyType === "Hostel") && !licenseNumber.trim()) {
+            errs.licenseNumber = "PG/Hostel Licence Number is required";
         }
 
         // Conditional Mandatory for Other type description
@@ -359,7 +358,7 @@ export default function AddPropertyPage() {
         
         // Conditional Mandatory for PG/Hostel
         if (propertyType === "PG" || propertyType === "Hostel") {
-            if (!pgLicence.trim()) errs.pgLicence = "PG/Hostel Licence Number is required";
+            if (!licenseNumber.trim()) errs.licenseNumber = "PG/Hostel Licence Number is required";
             if (docs.pgLicenceUrl.length < 1) errs.pgLicenceUrl = "PG/Hostel Licence photo is mandatory";
         }
         
