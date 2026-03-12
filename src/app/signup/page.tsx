@@ -354,7 +354,9 @@ export default function SignupPage() {
                                     className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
                                 />
                                 <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                                    I consent to receiving property alerts, offers, and marketing updates via Email/SMS/WhatsApp. (Optional)
+                                    {role === "OWNER" 
+                                        ? "I consent to receiving leads, platform updates, and business marketing via Email/SMS/WhatsApp. (Optional)"
+                                        : "I consent to receiving property alerts, offers, and marketing updates via Email/SMS/WhatsApp. (Optional)"}
                                 </span>
                             </label>
 
@@ -365,7 +367,9 @@ export default function SignupPage() {
                                     className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
                                 />
                                 <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                                    I consent to RentPe sharing my verified profile with property owners for faster background checks. (Optional)
+                                    {role === "OWNER"
+                                        ? "I consent to RentPe sharing my business profile with RentPe Business for verification and trust-building with tenants. (Optional)"
+                                        : "I consent to RentPe sharing my verified profile with property owners for faster background checks. (Optional)"}
                                 </span>
                             </label>
                         </div>
