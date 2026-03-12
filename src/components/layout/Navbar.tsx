@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building } from 'lucide-react';
+import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { UserRole } from '@/types/auth';
@@ -83,15 +83,25 @@ const Navbar = ({ session }: { session: any }) => {
                     </Link>
 
                     {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center space-x-6">
-                        <Link href="/search" className="text-sm font-medium hover:text-primary transition-colors">Find PG</Link>
+                    <div className="hidden md:flex items-center space-x-3">
+                        <Link href="/search">
+                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group">
+                                <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                Find PG
+                            </button>
+                        </Link>
                         <Link href="/list-property">
                             <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-sm group">
                                 <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
                                 List Your PG
                             </button>
                         </Link>
-                        <Link href="/about" className="text-sm font-medium hover:text-primary transition-colors">About Us</Link>
+                        <Link href="/about">
+                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group">
+                                <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                About Us
+                            </button>
+                        </Link>
                     </div>
 
                     {/* Auth Buttons */}
@@ -153,12 +163,17 @@ const Navbar = ({ session }: { session: any }) => {
 
                 {/* Mobile Menu */}
                 {isOpen && (
-                    <div className="md:hidden border-t bg-background p-4 space-y-4 animate-in slide-in-from-top-2">
-                        <Link href="/search" className="block text-sm font-medium hover:text-primary" onClick={() => setIsOpen(false)}>Find PG</Link>
+                    <div className="md:hidden border-t bg-background p-4 space-y-3 animate-in slide-in-from-top-2">
+                        <Link href="/search" className="block" onClick={() => setIsOpen(false)}>
+                            <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
+                                <Search className="h-4 w-4" />
+                                Find PG
+                            </div>
+                        </Link>
                         <Link href="/list-property" className="block" onClick={() => setIsOpen(false)}>
                             <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-500 text-white shadow-sm">
                                 <Building className="h-4 w-4" />
-                                List Your Property
+                                List Your PG
                             </div>
                         </Link>
                         <div className="pt-4 border-t flex flex-col space-y-2">
