@@ -1,3 +1,11 @@
+'use server';
+
+import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { NotificationService } from "@/lib/notifications";
+import { uploadToCloudinary } from "@/lib/upload";
+import { logAuditEvent } from "@/lib/audit";
 import { randomUUID } from "crypto";
 
 export async function uploadTenantDocument(data: {
