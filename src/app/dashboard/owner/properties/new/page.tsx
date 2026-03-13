@@ -10,6 +10,10 @@ import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
 import { validateName, validatePhone, validateEmail, normalizePhone } from "@/lib/validators";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useResumableUpload } from "@/hooks/useResumableUpload";
+import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
+import { DraftRecoveryAlert } from "@/components/ui/DraftRecoveryAlert";
 
 export default function AddPropertyPage() {
     const router = useRouter();
@@ -82,6 +86,27 @@ export default function AddPropertyPage() {
 
     const [rooms, setRooms] = useState<{ roomNumber: string; type: string; price: string; availability: string }[]>([]);
 
+    // Resilience Hooks
+    const { 
+        status: saveStatus, 
+        lastSaved, 
+        restoredData, 
+        updateData, 
+        clearDraft 
+    } = useAutoSave({
+        entityType: 'PROPERTY',
+        entityId: undefined, // undefined for new property
+        interval: 5000
+    });
+
+    const { 
+        status: uploadStatus, 
+        progress: uploadProgress, 
+        uploadFile 
+    } = useResumableUpload();
+
+    const [showRecoveryAlert, setShowRecoveryAlert] = useState(false);
+
     useEffect(() => {
         const loadProfile = async () => {
             const user = await getCurrentUser();
@@ -104,6 +129,52 @@ export default function AddPropertyPage() {
         };
         loadProfile();
     }, []);
+
+    // Sync latest form state to auto-save hook
+    useEffect(() => {
+        const formData = {
+            name, address, pincode, city, state, postOffice, phone,
+            description, ownerName, ownerEmail, businessName,
+            propertyType, licenseNumber, reraId, otherPropertyType,
+            gender, amenities, rooms
+            // Note: We don't save raw File objects to drafts; they are handled by useResumableUpload
+        };
+        updateData(formData);
+    }, [
+        name, address, pincode, city, state, postOffice, phone,
+        description, ownerName, ownerEmail, businessName,
+        propertyType, licenseNumber, reraId, otherPropertyType,
+        gender, amenities, rooms, updateData
+    ]);
+
+    // Check for draft recovery
+    useEffect(() => {
+        if (restoredData && !name) {
+            setShowRecoveryAlert(true);
+        }
+    }, [restoredData, name]);
+
+    const handleRestoreDraft = () => {
+        if (!restoredData) return;
+        const d = restoredData;
+        setName(d.name || "");
+        setAddress(d.address || "");
+        setPincode(d.pincode || "");
+        setCity(d.city || "");
+        setState(d.state || "");
+        setPostOffice(d.postOffice || "");
+        setDescription(d.description || "");
+        setBusinessName(d.businessName || "");
+        setPropertyType(d.propertyType || "PG");
+        setLicenseNumber(d.licenseNumber || "");
+        setReraId(d.reraId || "");
+        setOtherPropertyType(d.otherPropertyType || "");
+        setGender(d.gender || "");
+        setAmenities(d.amenities || []);
+        setRooms(d.rooms || []);
+        setShowRecoveryAlert(false);
+        toast.success("Draft restored successfully!");
+    };
 
     const toggleAmenity = (a: string) => {
         setAmenities(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
@@ -382,42 +453,59 @@ export default function AddPropertyPage() {
         if (!validate()) return;
 
         setSaving(true);
+        const progressToast = toast.loading("Initializing secure resilient upload...");
+        
         try {
-            // 1. Basic Info
+            // 1. Process Files via Resumable Upload
+            const uploadedUrls: Record<string, string[]> = {};
+            
+            for (const [category, files] of Object.entries(docs)) {
+                uploadedUrls[category] = [];
+                for (const file of files) {
+                    toast.loading(`Uploading ${file.name}...`, { id: progressToast });
+                    const result = await uploadFile(file);
+                    uploadedUrls[category].push(result.url);
+                }
+            }
+
+            toast.loading("Finalizing property registration...", { id: progressToast });
+
+            // 2. Prepare Data
             const fullAddress = [address, postOffice, city, state].filter(Boolean).join(", ") + ` - ${pincode}, India`;
-            const formData = new FormData();
-            formData.set("name", name);
-            formData.set("address", fullAddress);
-            formData.set("city", city);
-            formData.set("description", description);
-            formData.set("businessName", businessName);
-            formData.set("amenities", JSON.stringify(amenities));
-            formData.set("ownerName", ownerName);
-            formData.set("propertyType", propertyType);
-            formData.set("licenseNumber", licenseNumber);
-            formData.set("reraId", reraId);
+            const propertyData = {
+                name,
+                address: fullAddress,
+                city,
+                description,
+                businessName,
+                amenities: JSON.stringify(amenities),
+                ownerName,
+                propertyType,
+                licenseNumber,
+                reraId,
+                rooms: JSON.stringify(rooms),
+                ...uploadedUrls
+            };
 
-            // Add Rooms
-            formData.set("rooms", JSON.stringify(rooms));
-
-            // 2. Add Files
-            Object.entries(docs).forEach(([key, files]) => {
-                files.forEach((file: File) => formData.append(key, file));
+            // Use individual fields as expected by createProperty (refactoring FormData usage if needed)
+            const submissionFormData = new FormData();
+            Object.entries(propertyData).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                    value.forEach(v => submissionFormData.append(key, v));
+                } else {
+                    submissionFormData.append(key, value as string);
+                }
             });
 
-            const totalFiles = Object.values(docs).reduce((acc, curr) => acc + curr.length, 0);
-            const progressToast = toast.loading(`Processing ${totalFiles} images sequentially for maximum stability...`);
-
-            // Send to server action
-            const res = await createProperty(formData);
+            const res = await createProperty(submissionFormData);
             
             if (res) {
                 toast.success("Success! Property listing submitted.", { id: progressToast });
+                clearDraft(); // Clean up successfully submitted draft
                 setSuccessData({ displayId: res.displayId || "PENDING", name: res.name });
-                // We don't redirect immediately so they can see the registration number
             }
         } catch (e: any) {
-            toast.error(e.message || "Upload failed. Please try again.", { duration: 5000 });
+            toast.error(e.message || "Upload failed. Please try again.", { id: progressToast });
         } finally {
             setSaving(false);
         }
@@ -466,8 +554,28 @@ export default function AddPropertyPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <div>
-                <h1 className="text-3xl font-bold">Add New Property</h1>
-                <p className="text-muted-foreground">List your PG or Hostel. All fields marked with <span className="text-red-500">*</span> are mandatory.</p>
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h1 className="text-3xl font-bold">Add New Property</h1>
+                        <p className="text-muted-foreground">List your PG or Hostel. All fields marked with <span className="text-red-500">*</span> are mandatory.</p>
+                    </div>
+                    <ResilienceIndicator 
+                        status={uploadStatus !== 'IDLE' ? uploadStatus : saveStatus} 
+                        lastSaved={lastSaved}
+                        progress={uploadProgress.percent}
+                    />
+                </div>
+                
+                {showRecoveryAlert && (
+                    <DraftRecoveryAlert 
+                        entityName="Property Listing"
+                        onRestore={handleRestoreDraft}
+                        onDismiss={() => {
+                            setShowRecoveryAlert(false);
+                            clearDraft();
+                        }}
+                    />
+                )}
             </div>
 
             {hasErr && (

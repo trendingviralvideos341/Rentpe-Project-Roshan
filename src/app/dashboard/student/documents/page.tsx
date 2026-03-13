@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Camera, Upload, CheckCircle, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { getBookings } from "@/actions/bookings";
 import { uploadTenantDocument, getTenantDocuments } from "@/actions/documents";
+import { useResumableUpload } from "@/hooks/useResumableUpload";
+import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
 
 const DOC_TYPES = [
     { key: "ID_PROOF", label: "ID Proof", desc: "Aadhaar / PAN / Passport", icon: "🪪" },
@@ -45,6 +47,12 @@ export default function StudentDocumentsPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+    const { 
+        status: uploadStatus, 
+        progress: uploadProgress, 
+        uploadFile 
+    } = useResumableUpload();
 
     useEffect(() => {
         const load = async () => {
@@ -94,7 +102,17 @@ export default function StudentDocumentsPage() {
             return;
         }
 
-        await uploadTenantDocument({ bookingId: booking.id, type, fileData, fileName });
+        // Use resumable upload instead of direct action
+        const result = await uploadFile(fileData as File);
+        
+        // Store the result URL with existing document management logic
+        await uploadTenantDocument({ 
+            bookingId: booking.id, 
+            type, 
+            fileData: result.url,
+            fileName 
+        });
+
         const docs = await getTenantDocuments(booking.id);
         setDocuments(docs);
         setUploading(null);
@@ -156,9 +174,15 @@ export default function StudentDocumentsPage() {
 
     return (
         <div className="container mx-auto max-w-3xl py-8 px-4 space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold">Document Verification</h1>
-                <p className="text-muted-foreground">Upload your documents for verification. Booking: <strong>{booking.displayId}</strong></p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold">Document Verification</h1>
+                    <p className="text-muted-foreground">Upload your documents for verification. Booking: <strong>{booking.displayId}</strong></p>
+                </div>
+                <ResilienceIndicator 
+                    status={uploadStatus} 
+                    progress={uploadProgress.percent}
+                />
             </div>
 
             {allVerified && (

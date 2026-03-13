@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Upload, FileCheck, AlertCircle, Trash2, Eye, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useResumableUpload } from "@/hooks/useResumableUpload";
+import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
+import { uploadTenantDocument } from "@/actions/documents";
 
 interface StudentKYCUploaderProps {
     bookingId: string;
@@ -14,6 +17,11 @@ interface StudentKYCUploaderProps {
 
 export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSuccess }: StudentKYCUploaderProps) {
     const [uploading, setUploading] = useState<string | null>(null);
+    const { 
+        status: uploadStatus, 
+        progress: uploadProgress, 
+        uploadFile 
+    } = useResumableUpload();
 
     const docTypes = [
         { key: 'AADHAAR_FRONT', label: 'Aadhaar Card (Front)', desc: 'Clear photo of the front side', required: true },
@@ -32,25 +40,23 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
 
         setUploading(type);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            const res = await fetch('/api/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-
-            if (res.ok && data.url) {
-                // Call server action to link doc to booking
-                const linkRes = await fetch('/api/booking/document', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId, url: data.url, type, fileName: file.name })
+            // Use resumable upload instead of direct fetch
+            const result = await uploadFile(file);
+            
+            if (result.url) {
+                // Use server action to link doc to booking
+                await uploadTenantDocument({ 
+                    bookingId, 
+                    type, 
+                    fileData: result.url,
+                    fileName: file.name 
                 });
 
-                if (linkRes.ok) {
-                    toast.success(`${type.replace('_', ' ')} uploaded!`);
-                    onUploadSuccess?.();
-                }
+                toast.success(`${type.split('_').join(' ')} uploaded!`);
+                onUploadSuccess?.();
             }
         } catch (e) {
+            console.error("KYC Upload Error:", e);
             toast.error("Upload failed");
         } finally {
             setUploading(null);
@@ -60,9 +66,15 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
     return (
         <Card className="border-indigo-100 shadow-sm overflow-hidden bg-white">
             <CardHeader className="bg-indigo-50/50 border-b border-indigo-100">
-                <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck className="h-5 w-5 text-indigo-600" />
-                    <span className="text-xs font-bold text-indigo-700 uppercase">Secure KYC Verification</span>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5 text-indigo-600" />
+                        <span className="text-xs font-bold text-indigo-700 uppercase">Secure KYC Verification</span>
+                    </div>
+                    <ResilienceIndicator 
+                        status={uploadStatus} 
+                        progress={uploadProgress.percent}
+                    />
                 </div>
                 <CardTitle className="text-xl font-bold">Document Verification</CardTitle>
                 <CardDescription>
