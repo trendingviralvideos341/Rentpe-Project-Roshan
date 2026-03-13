@@ -1,4 +1,3 @@
-// Deployment Verification: GitHub Migration to Roshan Account Successful
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
