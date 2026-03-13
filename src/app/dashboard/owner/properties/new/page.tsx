@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud } from "lucide-react";
+import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
@@ -14,6 +14,20 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { useResumableUpload } from "@/hooks/useResumableUpload";
 import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
 import { DraftRecoveryAlert } from "@/components/ui/DraftRecoveryAlert";
+
+// UPLOAD-ON-SELECT: Each photo uploads immediately when selected
+type DocEntry = { file: File; previewUrl: string; cloudUrl: string | null; uploading: boolean; error?: string };
+type DocsState = {
+    buildingPhotos: DocEntry[];
+    commonAreaPhotos: DocEntry[];
+    roomsAndBathroomPhotos: DocEntry[];
+    parkingPhotos: DocEntry[];
+    amenitiesPhotos: DocEntry[];
+    aadhaarProof: DocEntry[];
+    panProof: DocEntry[];
+    pgLicenceUrl: DocEntry[];
+    livePhotoUrl: DocEntry[];
+};
 
 export default function AddPropertyPage() {
     const router = useRouter();
@@ -50,18 +64,7 @@ export default function AddPropertyPage() {
         "Microwave", "Balcony", "Garden", "Daily Buffet", "Mess Facility"
     ];
     
-    // Structured document state
-    const [docs, setDocs] = useState<{
-        buildingPhotos: File[];
-        commonAreaPhotos: File[];
-        roomsAndBathroomPhotos: File[];
-        parkingPhotos: File[];
-        amenitiesPhotos: File[];
-        aadhaarProof: File[];
-        panProof: File[];
-        pgLicenceUrl: File[];
-        livePhotoUrl: File[];
-    }>({
+    const [docs, setDocs] = useState<DocsState>({
         buildingPhotos: [],
         commonAreaPhotos: [],
         roomsAndBathroomPhotos: [],
@@ -205,120 +208,135 @@ export default function AddPropertyPage() {
         setRooms(updated);
     };
 
-    // --- PHASE 3: High-Performance Batch Upload Worker ---
-    const uploadCategoryFiles = async (
-        files: File[], 
-        category: 'images' | 'documents',
-        subCategory?: string
-    ) => {
-        if (files.length === 0) return [];
-
-        const BATCH_SIZE = 3; // Limit simultaneous uploads to prevent network saturation
-        const uploadResults: { url: string }[] = [];
-        
-        for (let i = 0; i < files.length; i += BATCH_SIZE) {
-            const batch = files.slice(i, i + BATCH_SIZE);
-            const batchResults = await Promise.all(
-                batch.map(file => uploadFile(file))
-            );
-            uploadResults.push(...batchResults as { url: string }[]);
-            
-            // UI Feedback during batch
-            if (files.length > BATCH_SIZE) {
-                const progress = Math.min(i + BATCH_SIZE, files.length);
-                toast.info(`Uploaded ${progress}/${files.length} ${category}...`, { id: 'upload-batch' });
-            }
-        }
-        return uploadResults.map(res => res.url);
-    };
-
-    const handleDocChange = (category: keyof typeof docs, isMultiple: boolean) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    // UPLOAD-ON-SELECT: Upload immediately when user picks a file
+    const handleDocChange = (category: keyof DocsState, isMultiple: boolean) => async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
+        e.target.value = ''; // reset input so same file can be re-selected
 
         let newTotalSize = totalSize;
-        const currentFiles = docs[category];
-        
-        // If single and already has file, subtract its size before adding new one (reupload)
-        if (!isMultiple && currentFiles.length > 0) {
-            newTotalSize -= currentFiles[0].size;
+        const currentEntries = docs[category];
+
+        // Single-slot: replace existing
+        if (!isMultiple && currentEntries.length > 0) {
+            newTotalSize -= currentEntries[0].file.size;
         }
 
         const validFiles: File[] = [];
-        files.forEach(file => {
+        for (const file of files) {
             if (newTotalSize + file.size <= MAX_TOTAL_SIZE) {
                 validFiles.push(file);
                 newTotalSize += file.size;
             } else {
-                toast.error(`Limit 25MB reached. Cannot add ${file.name}`);
+                toast.error(`25MB limit reached. Cannot add "${file.name}"`);
             }
-        });
+        }
+        if (validFiles.length === 0) return;
+        setTotalSize(newTotalSize);
 
-        if (validFiles.length === 0 && files.length > 0) return;
-
-        if (validFiles.length === 0 && files.length > 0) return;
+        // Add entries immediately with uploading=true for instant UI feedback
+        const newEntries: DocEntry[] = validFiles.map(file => ({
+            file,
+            previewUrl: URL.createObjectURL(file),
+            cloudUrl: null,
+            uploading: true,
+        }));
 
         setDocs(prev => ({
             ...prev,
-            [category]: isMultiple ? [...prev[category], ...validFiles] : [validFiles[0]]
+            [category]: isMultiple ? [...prev[category], ...newEntries] : [newEntries[0]]
         }));
-        setTotalSize(newTotalSize);
+
+        // Upload each file to Cloudinary in the background
+        for (const entry of newEntries) {
+            try {
+                const result = await uploadFile(entry.file) as { url: string };
+                setDocs(prev => ({
+                    ...prev,
+                    [category]: prev[category].map(e =>
+                        e.previewUrl === entry.previewUrl
+                            ? { ...e, cloudUrl: result.url, uploading: false }
+                            : e
+                    )
+                }));
+            } catch (err: any) {
+                setDocs(prev => ({
+                    ...prev,
+                    [category]: prev[category].map(e =>
+                        e.previewUrl === entry.previewUrl
+                            ? { ...e, uploading: false, error: 'Upload failed' }
+                            : e
+                    )
+                }));
+                toast.error(`Failed to upload ${entry.file.name}. Please remove and re-add it.`);
+            }
+        }
     };
 
-    const removeDoc = (category: keyof typeof docs, index?: number) => {
+    const removeDoc = (category: keyof DocsState, index?: number) => {
         const current = docs[category];
         if (index !== undefined) {
             const removed = current[index];
-            setDocs(prev => ({
-                ...prev,
-                [category]: prev[category].filter((_, i) => i !== index)
-            }));
-            setTotalSize(prev => prev - removed.size);
+            setTotalSize(prev => prev - removed.file.size);
+            setDocs(prev => ({ ...prev, [category]: prev[category].filter((_, i) => i !== index) }));
         } else if (current.length > 0) {
-            setTotalSize(prev => prev - current[0].size);
+            setTotalSize(prev => prev - current[0].file.size);
             setDocs(prev => ({ ...prev, [category]: [] }));
         }
     };
 
 
-    // Sub-component for upload cards
+    // Sub-component for upload cards — shows spinner on each thumbnail while uploading
     const UploadCard = ({ label, sub, category, isMultiple = true, slotsCount = 4, isRequired = false, minRequired }: { 
         label: string; 
         sub: string; 
-        category: keyof typeof docs; 
+        category: keyof DocsState; 
         isMultiple?: boolean; 
         slotsCount?: number;
         isRequired?: boolean;
         minRequired?: number;
     }) => {
-        const item = docs[category];
-        const files = Array.isArray(item) ? item : (item ? [item] : []);
+        const entries = docs[category];
         const effectiveMinRequired = minRequired ?? (isRequired ? slotsCount : 0);
+
+        const renderThumbnail = (entry: DocEntry, i: number) => (
+            <div key={i} className="relative group/img aspect-square border-2 border-purple-200 rounded-xl bg-white overflow-hidden shadow-sm">
+                <img src={entry.previewUrl} alt="preview" className={`w-full h-full object-cover ${entry.uploading ? 'opacity-40' : ''}`} />
+                {entry.uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                        <Loader2 className="h-6 w-6 text-purple-600 animate-spin" />
+                    </div>
+                )}
+                {entry.error && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-red-50/80">
+                        <span className="text-[9px] text-red-600 font-black text-center px-1">FAILED<br/>Tap to retry</span>
+                    </div>
+                )}
+                {!entry.uploading && !entry.error && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]">
+                        <button type="button" onClick={() => setViewImage(entry.previewUrl)} 
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-black shadow-lg">
+                            <Eye className="h-3 w-3" /> VIEW
+                        </button>
+                        <button type="button" onClick={() => removeDoc(category, i)} 
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-black shadow-lg">
+                            <X className="h-3 w-3" /> DELETE
+                        </button>
+                    </div>
+                )}
+                {entry.cloudUrl && (
+                    <div className="absolute bottom-1 right-1 bg-green-600/80 text-[7px] text-white px-1 rounded-sm font-mono">✓ SAVED</div>
+                )}
+            </div>
+        );
 
         const renderGrid = (limit: number) => {
             const slots = [];
             for (let i = 0; i < limit; i++) {
-                if (files[i]) {
-                    slots.push(
-                        <div key={i} className="relative group/img aspect-square border-2 border-purple-200 rounded-xl bg-white overflow-hidden shadow-sm">
-                            <img src={URL.createObjectURL(files[i])} alt="preview" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-[1px]">
-                                <button type="button" onClick={() => setViewImage(URL.createObjectURL(files[i]))} 
-                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-black shadow-lg">
-                                    <Eye className="h-3 w-3" /> VIEW
-                                </button>
-                                <button type="button" onClick={() => removeDoc(category, i)} 
-                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-black shadow-lg">
-                                    <X className="h-3 w-3" /> DELETE
-                                </button>
-                            </div>
-                            <div className="absolute bottom-1 right-1 bg-black/60 text-[7px] text-white px-1 rounded-sm font-mono">
-                                {(files[i].size / (1024 * 1024)).toFixed(1)}MB
-                            </div>
-                        </div>
-                    );
+                if (entries[i]) {
+                    slots.push(renderThumbnail(entries[i], i));
                 } else {
-                    const isExtraOptional = files.length >= effectiveMinRequired;
+                    const isExtraOptional = entries.length >= effectiveMinRequired;
                     slots.push(
                         <label key={i} className="aspect-square border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400 cursor-pointer transition-all group/label">
                             <Plus className={`h-5 w-5 ${isExtraOptional ? "text-slate-300" : "text-slate-400"} group-hover/label:text-purple-600`} />
@@ -356,22 +374,29 @@ export default function AddPropertyPage() {
 
                 <div className="min-h-[140px] flex flex-col items-center justify-center relative">
                     {isMultiple || slotsCount > 1 ? renderGrid(slotsCount) : (
-                        files.length > 0 ? (
+                        entries.length > 0 ? (
                             <div className="w-full h-36 relative group border-2 border-purple-200 rounded-xl overflow-hidden shadow-sm">
-                                <img src={URL.createObjectURL(files[0])} alt="preview" className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
-                                    <button type="button" onClick={() => setViewImage(URL.createObjectURL(files[0]))} 
-                                        className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-xl">
-                                        <Eye className="h-3 w-3" /> VIEW PHOTO
-                                    </button>
-                                    <button type="button" onClick={() => removeDoc(category)} 
-                                        className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-xl">
-                                        <X className="h-3 w-3" /> DELETE PHOTO
-                                    </button>
-                                </div>
-                                <div className="absolute bottom-1 right-1 bg-black/60 text-[8px] text-white px-1.5 py-0.5 rounded font-mono">
-                                    {(files[0].size / (1024 * 1024)).toFixed(1)}MB
-                                </div>
+                                <img src={entries[0].previewUrl} alt="preview" className={`w-full h-full object-cover ${entries[0].uploading ? 'opacity-40' : ''}`} />
+                                {entries[0].uploading && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                                        <Loader2 className="h-8 w-8 text-purple-600 animate-spin" />
+                                    </div>
+                                )}
+                                {!entries[0].uploading && !entries[0].error && (
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
+                                        <button type="button" onClick={() => setViewImage(entries[0].previewUrl)} 
+                                            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-xl">
+                                            <Eye className="h-3 w-3" /> VIEW PHOTO
+                                        </button>
+                                        <button type="button" onClick={() => removeDoc(category)} 
+                                            className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black shadow-xl">
+                                            <X className="h-3 w-3" /> DELETE PHOTO
+                                        </button>
+                                    </div>
+                                )}
+                                {entries[0].cloudUrl && (
+                                    <div className="absolute bottom-1 right-1 bg-green-600/80 text-[8px] text-white px-1.5 py-0.5 rounded font-mono">✓ SAVED</div>
+                                )}
                             </div>
                         ) : (
                             <label className={`w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all group/single ${error ? "border-red-400 bg-red-50/50 hover:bg-red-100/50" : "border-slate-300 bg-slate-50/30 hover:bg-purple-50 hover:border-purple-400"}`}>
@@ -481,70 +506,58 @@ export default function AddPropertyPage() {
         e.preventDefault();
         if (!validate()) return;
 
+        // Block submit if any photo is still uploading
+        const allEntries = Object.values(docs).flat();
+        const stillUploading = allEntries.filter(e => e.uploading);
+        const failedUploads = allEntries.filter(e => e.error);
+
+        if (stillUploading.length > 0) {
+            toast.error(`Please wait — ${stillUploading.length} photo(s) still uploading...`);
+            return;
+        }
+        if (failedUploads.length > 0) {
+            toast.error(`${failedUploads.length} photo(s) failed to upload. Please remove and re-add them.`);
+            return;
+        }
+
         setSaving(true);
-        const progressToast = toast.loading("Initializing secure resilient upload...");
+        const progressToast = toast.loading("Saving property...");
         
         try {
-            // 1. Process Files via Fast-Path Batch Worker (Parallelized & Concurrent)
+            // All photos are already uploaded — just collect the URLs instantly
             const uploadedUrls: Record<string, string[]> = {};
-            const totalFiles = Object.values(docs).flat().length;
-            let currentFileIndex = 0;
-
-            toast.loading(`Starting extreme-speed batch upload of ${totalFiles} files...`, { id: progressToast });
-
-            const categories = Object.keys(docs) as (keyof typeof docs)[];
+            const categories = Object.keys(docs) as (keyof DocsState)[];
             for (const category of categories) {
-                const files = docs[category];
-                if (files.length === 0) {
-                    uploadedUrls[category] = [];
-                    continue;
-                }
-
-                // Identify if it's an image or document category
-                const type = ['aadhaarProof', 'panProof', 'pgLicenceUrl', 'livePhotoUrl'].includes(category as string) ? 'documents' : 'images';
-                
-                // Use the high-performance batch worker
-                const urls = await uploadCategoryFiles(files, type, category as string);
-                uploadedUrls[category] = urls;
-                
-                currentFileIndex += files.length;
-                toast.loading(`Progress: ${currentFileIndex}/${totalFiles} files completed...`, { id: progressToast });
+                uploadedUrls[category] = docs[category]
+                    .filter(e => e.cloudUrl)
+                    .map(e => e.cloudUrl as string);
             }
 
-            toast.loading("Finalizing property registration...", { id: progressToast });
-
-            // 2. Prepare Data
+            // Prepare and submit
             const fullAddress = [address, postOffice, city, state].filter(Boolean).join(", ") + ` - ${pincode}, India`;
-            const propertyData = {
-                name,
-                address: fullAddress,
-                city,
-                description,
-                businessName,
-                amenities: JSON.stringify(amenities),
-                ownerName,
-                propertyType,
-                licenseNumber,
-                reraId,
-                rooms: JSON.stringify(rooms),
-                ...uploadedUrls
-            };
-
-            // Use individual fields as expected by createProperty (refactoring FormData usage if needed)
             const submissionFormData = new FormData();
-            Object.entries(propertyData).forEach(([key, value]) => {
-                if (Array.isArray(value)) {
-                    value.forEach(v => submissionFormData.append(key, v));
-                } else {
-                    submissionFormData.append(key, value as string);
-                }
+            submissionFormData.append("name", name);
+            submissionFormData.append("address", fullAddress);
+            submissionFormData.append("city", city);
+            submissionFormData.append("description", description);
+            submissionFormData.append("businessName", businessName);
+            submissionFormData.append("amenities", JSON.stringify(amenities));
+            submissionFormData.append("ownerName", ownerName);
+            submissionFormData.append("propertyType", propertyType);
+            submissionFormData.append("licenseNumber", licenseNumber);
+            submissionFormData.append("reraId", reraId);
+            submissionFormData.append("rooms", JSON.stringify(rooms));
+
+            // Append pre-uploaded URLs (pass-through to createProperty)
+            Object.entries(uploadedUrls).forEach(([key, urls]) => {
+                urls.forEach(url => submissionFormData.append(key, url));
             });
 
             const res = await createProperty(submissionFormData);
             
             if (res) {
-                toast.success("Success! Property listing submitted.", { id: progressToast });
-                clearDraft(); // Clean up successfully submitted draft
+                toast.success("Property listing submitted!", { id: progressToast });
+                clearDraft();
                 setSuccessData({ displayId: res.displayId || "PENDING", name: res.name });
             }
         } catch (e: any) {
