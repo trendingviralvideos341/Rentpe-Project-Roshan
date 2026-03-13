@@ -3,9 +3,9 @@
 import { useState, useCallback } from 'react';
 import { initiateUploadAction, uploadChunkAction, completeUploadAction, quickUploadAction } from '@/actions/uploads';
 
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (Optimal for Vercel/NextJS limits)
-const FAST_PATH_THRESHOLD = 2 * 1024 * 1024; // Use quick upload for files < 2MB
-const CONCURRENCY_LIMIT = 3; // Number of simultaneous chunks per file
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
+const FAST_PATH_THRESHOLD = 25 * 1024 * 1024; // ALL photos (up to 25MB) use the direct zero-DB path
+const CONCURRENCY_LIMIT = 3;
 
 type UploadProgress = {
     percent: number;

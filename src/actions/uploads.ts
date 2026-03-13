@@ -175,8 +175,9 @@ export async function completeUploadAction(sessionId: string) {
 }
 
 /**
- * Quick upload for small files (Fast-Path).
- * Handles the entire file in a single request to eliminate handshake overhead.
+ * ZERO-LATENCY Direct Upload to Cloudinary.
+ * NO database roundtrip. File goes straight to cloud storage.
+ * Fastest possible path for all property photos and documents.
  */
 export async function quickUploadAction(formData: FormData) {
     const session = await getSession();
@@ -190,10 +191,10 @@ export async function quickUploadAction(formData: FormData) {
         throw new Error("Invalid upload parameters");
     }
 
-    // Security Validation
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit for single-shot upload
+    // Security Validation (no DB needed)
+    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB limit
     if (file.size > MAX_FILE_SIZE) {
-        throw new Error("File too large for quick upload");
+        throw new Error("File too large for upload (max 25MB)");
     }
 
     const allowedTypes = [
@@ -205,33 +206,16 @@ export async function quickUploadAction(formData: FormData) {
         throw new Error(`File type ${mimeType} is not allowed`);
     }
 
-    // --- PHASE 3: Cloudinary Elite Restoration ---
+    // DIRECT TO CLOUDINARY — Zero DB overhead
     try {
-        const cloudinaryUrl = await uploadToCloudinary(file, `uploads/${session.userId}`);
-        
-        // Create a completed session in the DB for consistency
-        const uploadSession = await (prisma as any).uploadSession.create({
-            data: {
-                userId: session.userId,
-                fileName,
-                fileSize: file.size,
-                mimeType,
-                totalChunks: 1,
-                storageKey: cloudinaryUrl, // Store Cloudinary URL as key
-                status: 'COMPLETED',
-                uploadedChunks: [0]
-            }
-        });
-
+        const cloudinaryUrl = await uploadToCloudinary(file, `rentpe/properties/${session.userId}`);
         return { 
-            id: uploadSession.id, 
-            storageKey: uploadSession.storageKey, 
             url: cloudinaryUrl,
             fileName: fileName,
             success: true
         };
     } catch (error) {
-        console.error("Fast-path Cloudinary upload failed:", error);
+        console.error("Direct Cloudinary upload failed:", error);
         throw new Error("Cloud storage upload failed. Please try again.");
     }
 }
