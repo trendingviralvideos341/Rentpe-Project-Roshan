@@ -1,11 +1,4 @@
-'use server';
-
-import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
-import { NotificationService } from "@/lib/notifications";
-import { uploadToCloudinary } from "@/lib/upload";
-import { logAuditEvent } from "@/lib/audit";
+import { randomUUID } from "crypto";
 
 export async function uploadTenantDocument(data: {
     bookingId: string;
@@ -15,6 +8,14 @@ export async function uploadTenantDocument(data: {
 }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
+
+    // Security & Reliability Polish
+    if (data.fileData instanceof File) {
+        if (!data.fileData.type.startsWith('image/') && !data.fileData.type.includes('pdf')) {
+             throw new Error("Only images and PDFs are allowed for KYC.");
+        }
+        if (data.fileData.size > 10 * 1024 * 1024) throw new Error("File size limit 10MB exceeded.");
+    }
 
     const userId = (session as any).userId;
     const userRole = session.role || 'USER';
@@ -28,7 +29,9 @@ export async function uploadTenantDocument(data: {
     };
 
     // 1. Upload to Cloudinary with private access
-    const cloudUrl = await uploadToCloudinary(data.fileData, `kyc/${data.bookingId}`, true);
+    // Randomized folder to prevent IDOR path guessing
+    const folder = `kyc/${data.bookingId}_${randomUUID().slice(0, 8)}`;
+    const cloudUrl = await uploadToCloudinary(data.fileData, folder, true);
 
     // Upsert: if doc of this type already exists for this booking, replace it
     const existing = await prisma.tenantDocument.findFirst({

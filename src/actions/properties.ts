@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "crypto";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
@@ -103,47 +104,76 @@ export async function createProperty(formData: FormData) {
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
     // 1. Process Structured Documents & Photos
-    const folder = `properties/${name.replace(/\s+/g, '_')}_${Date.now()}`;
+    // Use UUID to prevent path guessing
+    const folder = `properties/${name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${crypto.randomUUID()}`;
     
     const uploadTasks = async () => {
         const results: Record<string, any> = {};
+        const errors: string[] = [];
         
-        // Helper for raw File uploads
+        // Helper for raw File uploads with sequential logic and security checks
         const processBatch = async (field: string, files: File[]) => {
             if (files && files.length > 0) {
-                // Filter out empty entries if any (sometimes happens with empty inputs)
                 const validFiles = files.filter(f => f.size > 0);
                 if (validFiles.length > 0) {
-                    results[field] = await batchUploadToCloudinary(validFiles, `${folder}/${field}`);
+                    const urls: string[] = [];
+                    // SEQUENTIAL PROCESSING: Prevents memory exhaustion and connection timeouts
+                    for (const file of validFiles) {
+                        try {
+                            // MIME Safety Check
+                            if (!file.type.startsWith('image/')) {
+                                throw new Error(`Invalid file type for ${field}: ${file.name}`);
+                            }
+                            // Size Polish: Max 10MB per file for server safety
+                            if (file.size > 10 * 1024 * 1024) {
+                                throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB): ${file.name}`);
+                            }
+                            
+                            const url = await uploadToCloudinary(file, `${folder}/${field}`);
+                            urls.push(url);
+                        } catch (err: any) {
+                            console.error(`Upload error for ${field}:`, err.message);
+                            errors.push(`${field}: ${err.message}`);
+                        }
+                    }
+                    results[field] = urls;
                 }
             }
         };
 
         const processSingle = async (field: string, file: File | null) => {
             if (file && file.size > 0) {
-                results[field] = await uploadToCloudinary(file, folder);
+                try {
+                    if (file.size > 10 * 1024 * 1024) throw new Error(`${field} exceeds 10MB`);
+                    results[field] = await uploadToCloudinary(file, folder);
+                } catch (err: any) {
+                    errors.push(`${field}: ${err.message}`);
+                }
             }
         };
 
-        // Batch uploads for all categories
-        await Promise.all([
-            processBatch("buildingPhotos", buildingPhotos),
-            processBatch("commonAreaPhotos", commonAreaPhotos),
-            processBatch("roomsAndBathroomPhotos", roomsAndBathroomPhotos),
-            processBatch("parkingPhotos", parkingPhotos),
-            processBatch("amenitiesPhotos", amenitiesPhotos),
-            processBatch("aadhaarProof", aadhaarProof),
-            processBatch("panProof", panProof),
-            processBatch("pgLicenceUrl", pgLicenceUrl),
-        ]);
-
-        // Single uploads
+        // SEQUENTIAL BATCHING: We process each category one after the other
+        // This is the "Zero-Exhaustion" pattern
+        await processBatch("buildingPhotos", buildingPhotos);
+        await processBatch("commonAreaPhotos", commonAreaPhotos);
+        await processBatch("roomsAndBathroomPhotos", roomsAndBathroomPhotos);
+        await processBatch("parkingPhotos", parkingPhotos);
+        await processBatch("amenitiesPhotos", amenitiesPhotos);
+        await processBatch("aadhaarProof", aadhaarProof);
+        await processBatch("panProof", panProof);
+        await processBatch("pgLicenceUrl", pgLicenceUrl);
         await processSingle("livePhotoUrl", livePhotoUrl);
 
-        return results;
+        return { results, errors };
     };
 
-    const uploaded = await uploadTasks();
+    const { results: uploaded, errors: uploadErrors } = await uploadTasks();
+
+    if (uploadErrors.length > 0) {
+        // Log failures but we might continue if they are non-critical? 
+        // For NEW property, failure in mandatory docs is fatal.
+        throw new Error(`Critical uploads failed: ${uploadErrors.join(", ")}`);
+    }
 
     // 2. Create property and rooms in a transaction
     const property = await prisma.$transaction(async (tx) => {

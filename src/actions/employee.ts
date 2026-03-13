@@ -5,6 +5,7 @@ import { getSession, encryptPassword } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { uploadToCloudinary } from "@/lib/upload";
 import { logAuditEvent } from "@/lib/audit";
+import { randomUUID } from "crypto";
 
 // ── Helpers ──────────────────────────────────────────────
 async function generateEoreqId(): Promise<string> {
@@ -214,8 +215,17 @@ export async function uploadEmployeeDoc(id: string, docField: string, docData: s
 
     const auditTrail = appendAudit(existing.auditTrail, "DOC_UPLOADED", (session as any).userId, (session as any).name || "Admin", `Uploaded: ${docField} — ${docName}`);
 
+    // Security & Reliability Polish
+    if (docData instanceof File) {
+        if (!docData.type.startsWith('image/') && !docData.type.includes('pdf')) {
+            throw new Error("Invalid file type: Only images and PDFs allowed.");
+        }
+        if (docData.size > 10 * 1024 * 1024) throw new Error("File size exceeds 10MB limit.");
+    }
+
     // 1. Upload to Cloudinary with private access
-    const cloudUrl = await uploadToCloudinary(docData, `employees/${id}/${docField}`, true);
+    const folder = `employees/${id}_${randomUUID().slice(0, 8)}/${docField}`;
+    const cloudUrl = await uploadToCloudinary(docData, folder, true);
 
     const updateData: any = { auditTrail };
     updateData[fieldMap.dataField] = cloudUrl;
