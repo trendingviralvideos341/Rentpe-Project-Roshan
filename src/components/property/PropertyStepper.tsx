@@ -11,34 +11,34 @@ interface PropertyStepperProps {
 const steps = [
     { id: 'SUBMITTED', label: 'Submitted', icon: Clock, desc: 'Awaiting initial review' },
     { id: 'VERIFYING', label: 'Verifying', icon: ShieldCheck, desc: 'Documents checking' },
-    { id: 'PAYMENT', label: 'Payment', icon: CreditCard, desc: 'Onboarding fee' },
+    { id: 'APPROVED', label: 'Approved', icon: CreditCard, desc: 'Onboarding fee' },
     { id: 'LIVE', label: 'Live', icon: ExternalLink, desc: 'Property is visible' },
 ];
 
 const STATUS_MESSAGES: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    PENDING_APPROVAL: { label: '⏳ Verification in Progress', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-300' },
-    PAYMENT_PENDING: { label: '💳 Verification Success! Pay Fee to go Live', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-400' },
+    SUBMITTED: { label: '📩 Property Submitted', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-300' },
+    PENDING_VERIFICATION: { label: '⏳ Verification in Progress', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-300' },
+    APPROVED: { label: '💳 Verification Success! Pay Fee to go Live', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-400' },
     LIVE: { label: '✅ Property is Live and Booking', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    INACTIVE: { label: '🚫 Property Inactive', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300' },
     REJECTED: { label: '❌ Property Rejected', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300' },
 };
 
 export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
     const getActiveIndex = (s: string) => {
-        if (s === 'PENDING_APPROVAL') {
-            // If there are admin notes with [REUPLOAD], it's still in verification but flagged
-            return 1;
-        }
-        if (s === 'PAYMENT_PENDING') return 2;
+        if (s === 'SUBMITTED' || s === 'DRAFT') return 0;
+        if (s === 'PENDING_VERIFICATION') return 1;
+        if (s === 'APPROVED') return 2;
         if (s === 'LIVE') return 3;
-        if (s === 'REJECTED') return 1; // Show at verification step
+        if (s === 'INACTIVE' || s === 'REJECTED') return 1; // Show at verification step
         return 0;
     };
 
     const getStepStatus = (stepIndex: number, activeIndex: number, currentStatus: string) => {
         if (stepIndex < activeIndex) return 'completed';
         if (stepIndex === activeIndex) {
-            if (currentStatus === 'REJECTED') return 'error';
-            if (currentStatus === 'PENDING_APPROVAL' && adminNotes?.includes('[REUPLOAD')) return 'warning';
+            if (currentStatus === 'INACTIVE' || currentStatus === 'REJECTED') return 'error';
+            if (currentStatus === 'PENDING_VERIFICATION' && adminNotes?.includes('[REUPLOAD')) return 'warning';
             return 'active';
         }
         return 'pending';
@@ -46,7 +46,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
 
     const activeIndex = getActiveIndex(status);
     const statusMsg = STATUS_MESSAGES[status];
-    const isReupload = status === 'PENDING_APPROVAL' && adminNotes?.includes('[REUPLOAD');
+    const isReupload = status === 'PENDING_VERIFICATION' && adminNotes?.includes('[REUPLOAD');
 
     return (
         <div className="w-full space-y-6">

@@ -28,6 +28,8 @@ interface SidebarProps {
     role: "owner" | "admin" | "student" | "onboarder" | "verifier";
     permissions?: string[];
     isStaff?: boolean;
+    displayId?: string;
+    userName?: string;
 }
 
 export default function DashboardSidebar(props: SidebarProps) {
@@ -222,6 +224,11 @@ export default function DashboardSidebar(props: SidebarProps) {
                 <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
                     {panelNames[role] || "Dashboard"}
                 </h2>
+                {props.displayId && (
+                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest mt-1 group-hover:text-primary transition-colors">
+                        🆔 {props.displayId}
+                    </p>
+                )}
             </div>
             <nav className="flex-1 px-4 pb-8 space-y-6 overflow-y-auto no-scrollbar">
                 {currentSections.map((section) => (

@@ -14,7 +14,12 @@ export default async function OwnerLayout({
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)]">
-            <DashboardSidebar role="owner" permissions={permissions} isStaff={isStaff} />
+            <DashboardSidebar 
+                role="owner" 
+                permissions={permissions} 
+                isStaff={isStaff} 
+                displayId={user?.displayId} 
+            />
             <main className="flex-1 p-8 bg-muted/10">
                 {children}
             </main>

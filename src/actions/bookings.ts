@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { NotificationService } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
+import { generateSequentialId } from "@/lib/ids";
 
 export async function createBooking(data: {
     roomId?: string,
@@ -42,9 +43,10 @@ export async function createBooking(data: {
         throw new Error("Move-in date cannot be in the past.");
     }
 
+    const displayId = await generateSequentialId('BOOKING');
     const booking = await prisma.booking.create({
         data: {
-            displayId: `REQ-${Math.floor(Math.random() * 90000000) + 10000000}`,
+            displayId,
             userId: session.userId,
             roomId: data.roomId,
             propertyName: data.propertyName,
@@ -52,7 +54,7 @@ export async function createBooking(data: {
             guestName,
             moveInDate: data.moveInDate,
             amount: data.amount,
-            status: 'PENDING_APPROVAL',
+            status: 'REQUESTED',
             paymentStatus: 'UNPAID',
             guestEmail,
             guestPhone,
@@ -182,7 +184,7 @@ export async function approveBooking(id: string, data: {
     const booking = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'APPROVED_PENDING_TOKEN',
+            status: 'APPROVED',
             roomId: data.roomId,
             amount: data.amount,
             occupancy: data.occupancy,

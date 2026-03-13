@@ -55,12 +55,12 @@ export default function OwnerPropertiesPage() {
                                 <div className="absolute top-2 right-2 z-10 shadow-md">
                                     {property.status === 'LIVE' ? (
                                         <Badge className="bg-green-600 hover:bg-green-700 text-white font-bold border-2 border-green-800">Live</Badge>
-                                    ) : property.status === 'PENDING_APPROVAL' ? (
-                                        <Badge className="bg-amber-400 text-amber-900 border-2 border-amber-600 hover:bg-amber-500 font-bold">Pending Approval</Badge>
-                                    ) : property.status === 'PAYMENT_PENDING' ? (
+                                    ) : property.status === 'SUBMITTED' || property.status === 'PENDING_VERIFICATION' ? (
+                                        <Badge className="bg-amber-400 text-amber-900 border-2 border-amber-600 hover:bg-amber-500 font-bold">Verification Pending</Badge>
+                                    ) : property.status === 'APPROVED' ? (
                                         <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-2 border-indigo-800 animate-pulse">Payment Required</Badge>
                                     ) : (
-                                        <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold border-2 border-red-800">Rejected</Badge>
+                                        <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold border-2 border-red-800">{property.status === 'INACTIVE' ? 'Inactive' : 'Rejected'}</Badge>
                                     )}
                                 </div>
                                 {(() => {
@@ -107,7 +107,7 @@ export default function OwnerPropertiesPage() {
                             <CardContent className="space-y-4">
                                 <PropertyStepper status={property.status} adminNotes={property.adminNotes} />
 
-                                {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
+                                {(property.status === 'INACTIVE' || property.status === 'REJECTED' || (property.status === 'PENDING_VERIFICATION' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
                                     <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                                         <p className="text-xs font-bold text-red-800 uppercase mb-2 flex items-center gap-1 border-b border-red-200 pb-1">
                                             <AlertCircle className="h-4 w-4" /> Admin Feedback / Action Required
@@ -151,12 +151,12 @@ export default function OwnerPropertiesPage() {
                                 <div className="flex justify-between items-center text-sm pt-2 border-t mt-4">
                                     <span className="font-bold flex items-center gap-1"><Building className="h-4 w-4 text-purple-600" /> {property.rooms?.length || 0} Rooms</span>
                                     <div className="flex items-center gap-2">
-                                        {property.status === 'PAYMENT_PENDING' && (
+                                        {property.status === 'APPROVED' && (
                                             <Button variant="default" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase text-[10px] h-7 px-3" asChild>
                                                 <Link href={`/dashboard/owner/pay-onboarding/${property.id}`}>Pay Onboarding Fee</Link>
                                             </Button>
                                         )}
-                                        {(property.adminNotes?.includes('[REUPLOAD') && property.status !== 'LIVE' && property.status !== 'PAYMENT_PENDING') && (
+                                        {(property.adminNotes?.includes('[REUPLOAD') && property.status !== 'LIVE' && property.status !== 'APPROVED') && (
                                             <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-300 bg-red-100 animate-pulse shadow-sm px-2 py-0.5">
                                                 Action Required
                                             </Badge>

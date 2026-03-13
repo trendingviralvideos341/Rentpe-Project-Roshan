@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, AlertCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, markBookingPaid, checkInBooking, markTokenCashPaid, verifyKycAndProceed, markKycFailed, cancelBooking } from "@/actions/bookings";
+import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { toast } from "sonner";
@@ -27,24 +27,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    PENDING_APPROVAL:       { label: '🔴 New Request',        cls: 'bg-red-100 text-red-700 border-red-300' },
-    WAITLISTED:             { label: '📋 Waitlisted',          cls: 'bg-blue-100 text-blue-700 border-blue-300' },
-    APPROVED_PENDING_TOKEN: { label: '💳 Awaiting Token Pay', cls: 'bg-purple-100 text-purple-700 border-purple-300' },
-    TOKEN_PAID:             { label: '💰 Token Paid',          cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-    ROOM_RESERVED:          { label: '🏠 Room Reserved',       cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-    KYC_PENDING:            { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    KYC_VERIFIED:           { label: '✅ KYC Verified',        cls: 'bg-teal-100 text-teal-700 border-teal-300' },
-    KYC_FAILED:             { label: '❌ KYC Failed',          cls: 'bg-rose-100 text-rose-700 border-rose-300' },
-    AGREEMENT_PENDING:      { label: '✍️ Agreement Pending',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    BOOKING_CONFIRMED:      { label: '✅ Confirmed',           cls: 'bg-green-100 text-green-700 border-green-300' },
-    CHECKED_IN:             { label: '🏡 Checked In',          cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    APPROVED_KYC_PENDING:   { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    APPROVED_PAYMENT_PENDING:{ label: '💳 Payment Pending',    cls: 'bg-purple-100 text-purple-700 border-purple-300' },
-    PAID:                   { label: '✅ Paid',                cls: 'bg-green-100 text-green-700 border-green-300' },
-    CASH_PAID:              { label: '✅ Cash Paid',           cls: 'bg-green-100 text-green-700 border-green-300' },
-    REJECTED:               { label: '❌ Rejected',            cls: 'bg-gray-100 text-gray-600 border-gray-300' },
-    CANCELLED:              { label: '🚫 Cancelled',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
-    EXPIRED:                { label: '⏰ Expired',             cls: 'bg-orange-100 text-orange-700 border-orange-300' },
+    REQUESTED:             { label: '🔴 New Request',        cls: 'bg-red-100 text-red-700 border-red-300' },
+    APPROVED:              { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    CHECKIN_CONFIRMED:     { label: '🏡 Checked In',          cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    CHECKED_OUT:           { label: '🏠 Checked Out',         cls: 'bg-slate-100 text-slate-500 border-slate-300' },
+    REJECTED:              { label: '❌ Rejected',            cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+    CANCELLED:             { label: '🚫 Cancelled',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -88,9 +76,7 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
         } catch { toast.error("Failed to reject."); }
     };
 
-
-    const room = rooms.find(r => booking.roomAssigned?.includes(r.roomNumber));
-    const contactInfo = booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "PAID" || booking.status === "CASH_PAID";
+    const contactInfo = booking.status === "APPROVED" || booking.status === "CHECKIN_CONFIRMED";
 
     const pendingDocs = docs.filter(d => d.status === "PENDING");
     const verifiedDocs = docs.filter(d => d.status === "VERIFIED");
@@ -251,8 +237,6 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                             {docs.length === 0 && !docsLoading && (
                                 <div className="text-center text-sm text-muted-foreground py-4 bg-white border rounded">No documents uploaded yet by student.</div>
                             )}
-
-
                         </div>
                     )}
 
@@ -323,7 +307,7 @@ export default function BookingsPage() {
     };
 
     const handleApprove = async (booking: any) => {
-        if (!confirm(`Approve booking for ${booking.guestName} at ${booking.propertyName}? \n\nRoom allocation and detailed onboarding can be done in the Onboarding section after approval.`)) return;
+        if (!confirm(`Approve booking for ${booking.guestName} at ${booking.propertyName}?`)) return;
         try {
             await approveBooking(booking.id, {});
             toast.success("Booking Approved successfully.");
@@ -350,12 +334,10 @@ export default function BookingsPage() {
         } catch { toast.error("Failed to mark as paid."); }
     };
 
-    const pendingCount = bookings.filter(b => b.status === "PENDING_APPROVAL").length;
-
     const filteredBookings = bookings.filter(b => {
-        if (activeTab === "PENDING") return b.status === "PENDING_APPROVAL";
-        if (activeTab === "APPROVED") return b.status === "APPROVED_KYC_PENDING" || b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED";
-        if (activeTab === "PAID") return b.status === "PAID" || b.status === "CASH_PAID";
+        if (activeTab === "PENDING") return b.status === "REQUESTED";
+        if (activeTab === "APPROVED") return b.status === "APPROVED";
+        if (activeTab === "PAID") return b.status === "CHECKIN_CONFIRMED" || b.status === "CHECKED_OUT";
         if (activeTab === "REJECTED") return b.status === "REJECTED";
         if (activeTab === "CANCELLED") return b.status === "CANCELLED";
         return true;
@@ -371,32 +353,11 @@ export default function BookingsPage() {
                     <p className="text-muted-foreground">Manage requests, onboarding and document verification.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {pendingCount > 0 && (
-                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
-                            🔴 {pendingCount} New
-                        </span>
-                    )}
                     <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
                         <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
                     </Button>
                 </div>
             </div>
-
-            {/* 🔴 Red Alert: KYC Pending Bookings */}
-            {bookings.filter(b => b.status === "APPROVED_KYC_PENDING").length > 0 && (
-                <div className="flex items-center gap-3 bg-red-50 border-2 border-red-400 rounded-xl px-5 py-4 animate-pulse-slow shadow-md">
-                    <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-                    <div className="flex-1">
-                        <p className="font-bold text-red-700 text-sm">
-                            🔴 {bookings.filter(b => b.status === "APPROVED_KYC_PENDING").length} Booking{bookings.filter(b => b.status === "APPROVED_KYC_PENDING").length > 1 ? "s" : ""} Awaiting KYC Verification
-                        </p>
-                        <p className="text-red-600 text-xs mt-0.5">Student documents have been submitted and are waiting for your review.</p>
-                    </div>
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold shrink-0" onClick={() => router.push('/dashboard/owner/verifications')}>
-                        Verify KYC Now →
-                    </Button>
-                </div>
-            )}
 
             {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
@@ -406,18 +367,13 @@ export default function BookingsPage() {
                         size="sm"
                         onClick={() => setActiveTab(t)}
                         className={activeTab === t
-                            ? t === "PENDING" ? "bg-red-600 hover:bg-red-700 text-white"
-                                : t === "APPROVED" ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                    : t === "PAID" ? "bg-green-600 hover:bg-green-700 text-white"
-                                        : t === "REJECTED" ? "bg-gray-600 hover:bg-gray-700 text-white"
-                                            : t === "CANCELLED" ? "bg-slate-600 hover:bg-slate-700 text-white"
-                                                : "bg-purple-600 hover:bg-purple-700 text-white"
+                            ? "bg-purple-600 hover:bg-purple-700 text-white"
                             : "bg-white border hover:bg-muted text-foreground"}
                     >
                         {t === "ALL" ? `📋 All (${bookings.length})`
-                            : t === "PENDING" ? `🔴 New (${bookings.filter(b => b.status === "PENDING_APPROVAL").length})`
-                                : t === "APPROVED" ? `⏳ Onboarding (${bookings.filter(b => b.status === "APPROVED_KYC_PENDING" || b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED").length})`
-                                    : t === "PAID" ? `✅ Paid (${bookings.filter(b => b.status === "PAID" || b.status === "CASH_PAID").length})`
+                            : t === "PENDING" ? `🔴 New (${bookings.filter(b => b.status === "REQUESTED").length})`
+                                : t === "APPROVED" ? `⏳ Approved (${bookings.filter(b => b.status === "APPROVED").length})`
+                                    : t === "PAID" ? `✅ Completed (${bookings.filter(b => b.status === "CHECKIN_CONFIRMED" || b.status === "CHECKED_OUT").length})`
                                         : t === "REJECTED" ? `❌ Rejected (${bookings.filter(b => b.status === "REJECTED").length})`
                                             : `🚫 Cancelled (${bookings.filter(b => b.status === "CANCELLED").length})`}
                     </Button>
@@ -442,15 +398,13 @@ export default function BookingsPage() {
                             <tbody>
                                 {filteredBookings.map((booking) => (
                                     <React.Fragment key={booking.id}>
-                                        <tr className={`border-b hover:bg-muted/5 ${booking.status === "PENDING_APPROVAL" ? "bg-red-50/50" : ""}`}>
+                                        <tr className="border-b hover:bg-muted/5">
                                             <td className="p-4 font-medium">{booking.displayId}</td>
                                             <td className="p-4">
                                                 <div className="font-medium">{booking.guestName}</div>
-                                                {booking.guestEmail && <div className="text-[10px] text-muted-foreground">{booking.guestEmail}</div>}
-                                                {booking.guestPhone && <div className="text-[10px] text-muted-foreground">{booking.guestPhone}</div>}
-                                                {(booking as any).occupationType && <div className="text-[10px] text-blue-600 font-medium">{(booking as any).occupationType}</div>}
+                                                <div className="text-[10px] text-muted-foreground">{booking.guestEmail}</div>
+                                                <div className="text-[10px] text-muted-foreground">{booking.guestPhone}</div>
                                             </td>
-                                            {/* PG Name column */}
                                             <td className="p-4">
                                                 <div className="font-medium text-purple-700">{booking.propertyName || "—"}</div>
                                                 <div className="text-[10px] text-muted-foreground">{booking.occupancy}</div>
@@ -465,76 +419,34 @@ export default function BookingsPage() {
                                                 {new Date(booking.createdAt).toLocaleString()}
                                             </td>
                                             <td className="p-4">
-                                                {booking.status === "PENDING_APPROVAL" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-red-100 text-red-800">🔴 NEW</span>}
-                                                {booking.status === "APPROVED_KYC_PENDING" && (
-                                                    <span className="px-2 py-1 rounded text-[10px] font-bold bg-blue-100 text-blue-800">📝 KYC PENDING</span>
-                                                )}
-                                                {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && (
-                                                    <div className="space-y-1">
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-amber-100 text-amber-800">⏳ AWAITING PAYMENT</span>
-                                                        {booking.paymentMethod === "CASH" && (
-                                                            <div className="text-[10px] text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded border border-orange-200">💵 Cash Pending</div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
-                                                    <div>
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-blue-100 text-blue-800">🅿️ PAID (RESERVED)</span>
-                                                        <div className="text-[10px] text-muted-foreground mt-1">Awaiting Check-in</div>
-                                                    </div>
-                                                )}
-                                                {booking.status === "CHECKED_IN" && (
-                                                    <div>
-                                                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-green-100 text-green-800">🏠 CHECKED-IN</span>
-                                                        <div className="text-[10px] text-muted-foreground mt-1">Tenancy Active</div>
-                                                    </div>
-                                                )}
-                                                {booking.status === "REJECTED" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-800">❌ REJECTED</span>}
-                                                {booking.status === "CANCELLED" && <span className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">🚫 Cancelled by User</span>}
+                                                <StatusBadge status={booking.status} />
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex gap-2">
-                                                        {booking.status === "PENDING_APPROVAL" && (
+                                                        {booking.status === "REQUESTED" && (
                                                             <>
                                                                 <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-xs" onClick={() => handleApprove(booking)}>✓ Approve</Button>
                                                                 <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => handleReject(booking.id)}>Reject</Button>
                                                             </>
                                                         )}
-                                                        {booking.status === "APPROVED_KYC_PENDING" && (
-                                                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 font-bold" onClick={() => router.push('/dashboard/owner/doc-verification')}>
-                                                                📎 Verify KYC
-                                                            </Button>
-                                                        )}
-                                                        {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && (
-                                                            <Button size="sm" variant="outline" className="h-8 text-xs border-amber-500 text-amber-700" onClick={() => setExpandedBooking(booking.id)}>
-                                                                ⏳ Payment Wait
-                                                            </Button>
-                                                        )}
-                                                        {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
+                                                        {booking.status === "APPROVED" && (
                                                             <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
                                                                 🚀 Confirm Check-in
                                                             </Button>
                                                         )}
-                                                        {/* Expand/collapse detail rows */}
                                                         <Button
                                                             variant="outline" size="sm" className="h-8 w-8 p-0"
-                                                            onClick={() => { setExpandedTab("onboarding"); setExpandedBooking(expandedBooking === booking.id ? null : booking.id); }}
+                                                            onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
                                                         >
                                                             {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                                         </Button>
                                                     </div>
-                                                    {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
-                                                        <Button size="sm" className="h-8 text-xs bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
-                                                            ✅ Mark Cash Paid
-                                                        </Button>
-                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
-                                        {/* Expandable detail row */}
                                         {expandedBooking === booking.id && (
-                                            <BookingDetail key={`detail-${booking.id}-${expandedTab}`} booking={booking} rooms={rooms} onRefresh={fetchData} defaultTab={expandedTab} />
+                                            <BookingDetail booking={booking} rooms={rooms} onRefresh={fetchData} />
                                         )}
                                     </React.Fragment>
                                 ))}

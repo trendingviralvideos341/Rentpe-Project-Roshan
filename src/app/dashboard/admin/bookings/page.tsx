@@ -37,24 +37,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    PENDING_APPROVAL:       { label: '🔴 New Request',        cls: 'bg-red-100 text-red-700 border-red-300' },
-    WAITLISTED:             { label: '📋 Waitlisted',          cls: 'bg-blue-100 text-blue-700 border-blue-300' },
-    APPROVED_PENDING_TOKEN: { label: '💳 Awaiting Token Pay', cls: 'bg-purple-100 text-purple-700 border-purple-300' },
-    TOKEN_PAID:             { label: '💰 Token Paid',          cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-    ROOM_RESERVED:          { label: '🏠 Room Reserved',       cls: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-    KYC_PENDING:            { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    KYC_VERIFIED:           { label: '✅ KYC Verified',        cls: 'bg-teal-100 text-teal-700 border-teal-300' },
-    KYC_FAILED:             { label: '❌ KYC Failed',          cls: 'bg-rose-100 text-rose-700 border-rose-300' },
-    AGREEMENT_PENDING:      { label: '✍️ Agreement Pending',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    BOOKING_CONFIRMED:      { label: '✅ Confirmed',           cls: 'bg-green-100 text-green-700 border-green-300' },
-    CHECKED_IN:             { label: '🏡 Checked In',          cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    APPROVED_KYC_PENDING:   { label: '📄 KYC Pending',         cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    APPROVED_PAYMENT_PENDING:{ label: '💳 Payment Pending',    cls: 'bg-purple-100 text-purple-700 border-purple-300' },
-    PAID:                   { label: '✅ Paid',                cls: 'bg-green-100 text-green-700 border-green-300' },
-    CASH_PAID:              { label: '✅ Cash Paid',           cls: 'bg-green-100 text-green-700 border-green-300' },
-    REJECTED:               { label: '❌ Rejected',            cls: 'bg-gray-100 text-gray-600 border-gray-300' },
-    CANCELLED:              { label: '🚫 Cancelled',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
-    EXPIRED:                { label: '⏰ Expired',             cls: 'bg-orange-100 text-orange-700 border-orange-300' },
+    REQUESTED:              { label: '🔴 New Request',      cls: 'bg-red-100 text-red-700 border-red-300' },
+    APPROVED:               { label: '💳 Awaiting Token',   cls: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+    CHECKIN_CONFIRMED:      { label: '🏡 Checked In',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    CHECKED_OUT:            { label: '🏠 Checked Out',      cls: 'bg-gray-100 text-gray-700 border-gray-300' },
+    REJECTED:               { label: '❌ Rejected',          cls: 'bg-slate-100 text-slate-600 border-slate-300' },
+    CANCELLED:              { label: '🚫 Cancelled',         cls: 'bg-orange-100 text-orange-700 border-orange-300' },
 };
 
 const PAYMENT_STATUS_COLORS: Record<string, string> = {
@@ -363,11 +351,10 @@ export default function AdminBookingsPage() {
                     onChange={(e) => setFilterStatus(e.target.value)}
                 >
                     <option value="ALL">All Statuses</option>
-                    <option value="PENDING_APPROVAL">Pending Approval</option>
-                    <option value="APPROVED_KYC_PENDING">KYC Verification</option>
-                    <option value="APPROVED_PAYMENT_PENDING">Awaiting Payment</option>
-                    <option value="PAID">Paid (Reserved)</option>
-                    <option value="CHECKED_IN">Checked-in</option>
+                    <option value="REQUESTED">Pending Approval</option>
+                    <option value="APPROVED">Awaiting Payment</option>
+                    <option value="CHECKIN_CONFIRMED">Checked-in</option>
+                    <option value="CHECKED_OUT">Checked-out</option>
                     <option value="REJECTED">Rejected</option>
                     <option value="CANCELLED">Cancelled</option>
                 </select>
@@ -415,13 +402,13 @@ export default function AdminBookingsPage() {
                                                     </td>
                                                     <td className="p-4">
                                                         <div className="flex justify-end gap-1">
-                                                            {booking.status === "PENDING_APPROVAL" && (
+                                                            {booking.status === "REQUESTED" && (
                                                                 <>
                                                                     <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
                                                                     <Button size="sm" variant="destructive" className="h-7 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
                                                                 </>
                                                             )}
-                                                            {(booking.status === "APPROVED_PAYMENT_PENDING" || booking.status === "APPROVED") && booking.paymentMethod === "CASH" && (
+                                                            {booking.status === "APPROVED" && (
                                                                 <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
                                                                     💵 Mark Cash Paid
                                                                 </Button>

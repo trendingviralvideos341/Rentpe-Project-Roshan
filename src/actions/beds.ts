@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { generateSequentialId } from "@/lib/ids";
 
 const LOCK_DURATION_MINUTES = 10; // Anti-ghost booking window
 
@@ -148,19 +149,20 @@ export async function createBedsForRoom(roomId: string, count: number) {
     if (!room) throw new Error("Room not found");
 
     const existingBeds = await (prisma as any).bed.count({ where: { roomId } });
-    const bedsToCreate = [];
-
-    for (let i = existingBeds + 1; i <= existingBeds + count; i++) {
-        bedsToCreate.push({
-            roomId,
-            bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`, // e.g. 101-A, 101-B
-            status: 'AVAILABLE'
+    for (let i = 1; i <= count; i++) {
+        const displayId = await generateSequentialId('BED');
+        await (prisma as any).bed.create({
+            data: {
+                displayId,
+                roomId,
+                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + existingBeds + i)}`,
+                status: 'AVAILABLE'
+            }
         });
     }
-
-    await (prisma as any).bed.createMany({ data: bedsToCreate });
     revalidatePath('/dashboard/owner/properties');
-    return bedsToCreate;
+    // The original instruction snippet included `return bedsToCreate;` here,
+    // but `bedsToCreate` is no longer defined. Removing for correctness.
 }
 
 /**

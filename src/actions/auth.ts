@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
+import { generateSequentialId } from "@/lib/ids";
+import { NotificationService } from "@/lib/notifications";
 import { Session, UserRole } from '@/types/auth';
 
 const SignupSchema = z.object({
@@ -55,16 +57,11 @@ export async function signup(formData: FormData) {
 
         const hashedPassword = await encryptPassword(password);
 
-        // Generate unique human-readable ID based on role
         const roleUp = role.toUpperCase();
-        const count = await prisma.user.count({ where: { role: roleUp } });
-        const seq = String(count + 1).padStart(6, '0');
-        const prefixMap: Record<string, string> = { OWNER: 'OW', USER: 'TNT', ADMIN: 'ADM', ONBOARDER: 'ONB', VERIFIER: 'VER' };
-        const prefix = prefixMap[roleUp] || 'USR';
-        const displayId = `${prefix}-${seq}`;
-
         const isOwner = roleUp === "OWNER";
         const isStudent = roleUp === "USER";
+
+        const displayId = await generateSequentialId(role === 'OWNER' ? 'OWNER' : 'USER');
 
         const user = await prisma.user.create({
             data: {

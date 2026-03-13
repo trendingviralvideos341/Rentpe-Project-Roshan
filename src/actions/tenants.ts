@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
+import { generateSequentialId } from "@/lib/ids";
 
 export async function getTenants() {
     const session = await getSession();
@@ -62,9 +63,10 @@ export async function createTenantFromBooking(bookingId: string) {
 
     return await prisma.$transaction(async (tx) => {
         // 1. Create Tenant record
+        const displayId = await generateSequentialId('TENANT');
         const tenant = await tx.tenant.create({
             data: {
-                displayId: `TNT-${Math.floor(Math.random() * 900000) + 100000}`,
+                displayId,
                 studentId: booking.userId,
                 bookingId: booking.id,
                 propertyId: booking.propertyId!,
@@ -77,7 +79,7 @@ export async function createTenantFromBooking(bookingId: string) {
                 roomType: booking.occupancy,
                 rent: booking.amount,
                 startDate: booking.moveInDate || new Date().toLocaleDateString('en-IN'),
-                status: 'UPCOMING_MOVE_IN'
+                status: 'Upcoming'
             }
         });
 
@@ -113,7 +115,7 @@ export async function confirmMoveIn(tenantId: string) {
         include: { bed: true }
     });
 
-    if (!tenant || tenant.status !== 'UPCOMING_MOVE_IN') {
+    if (!tenant || tenant.status !== 'Upcoming') {
         throw new Error("Invalid tenant status for move-in.");
     }
 
@@ -121,7 +123,7 @@ export async function confirmMoveIn(tenantId: string) {
         // 1. Update Tenant
         await tx.tenant.update({
             where: { id: tenantId },
-            data: { status: 'ACTIVE_TENANT' }
+            data: { status: 'Active' }
         });
 
         // 2. Update Bed to OCCUPIED
@@ -136,7 +138,7 @@ export async function confirmMoveIn(tenantId: string) {
         if (tenant.bookingId) {
             await tx.booking.update({
                 where: { id: tenant.bookingId },
-                data: { status: 'CHECKED_IN' }
+                data: { status: 'CHECKIN_CONFIRMED' }
             });
         }
 
@@ -260,7 +262,7 @@ export async function blockTenant(tenantId: string, note: string) {
     const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
-        data: { status: 'VACATED', actualMoveOutDate: timestamp }
+        data: { status: 'Blocked', actualMoveOutDate: timestamp }
     });
 
     await prisma.actionNote.create({
@@ -293,7 +295,7 @@ export async function unblockTenant(tenantId: string, note: string) {
 
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
-        data: { status: 'ACTIVE_TENANT', actualMoveOutDate: null }
+        data: { status: 'Active', actualMoveOutDate: null }
     });
 
     await prisma.actionNote.create({
@@ -387,10 +389,10 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
             }
         });
 
-        // 2. Update Tenant Status
+        // 2. Update Tenant Status (No internal status change yet, just date)
         await tx.tenant.update({
             where: { id: tenantId },
-            data: { status: 'MOVE_OUT_SCHEDULED', expectedMoveOutDate: data.date }
+            data: { expectedMoveOutDate: data.date }
         });
 
         logAuditEvent({
@@ -432,10 +434,7 @@ export async function approveMoveOutRequest(requestId: string, approved: boolean
         });
 
         if (approved) {
-            await tx.tenant.update({
-                where: { id: request.tenantId },
-                data: { status: 'MOVE_OUT_SCHEDULED' }
-            });
+            // No status change needed yet, just keep as Active
         }
 
         logAuditEvent({
@@ -467,7 +466,7 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
     });
 
     if (!tenant) throw new Error("Tenant not found");
-    if (tenant.status === 'MOVE_OUT_COMPLETED') throw new Error("Tenant already moved out");
+    if (tenant.status === 'Checked Out') throw new Error("Tenant already moved out");
 
     return await prisma.$transaction(async (tx) => {
         const moveOutDate = new Date();
@@ -530,7 +529,7 @@ Note: ${note}
         if (tenant.bookingId) {
             await tx.booking.update({
                 where: { id: tenant.bookingId },
-                data: { status: 'BOOKING_CLOSED' }
+                data: { status: 'CHECKED_OUT' }
             });
         }
 
@@ -538,7 +537,7 @@ Note: ${note}
         await tx.tenant.update({
             where: { id: tenantId },
             data: { 
-                status: 'MOVE_OUT_COMPLETED', 
+                status: 'Checked Out', 
                 actualMoveOutDate: moveOutDate.toISOString(), 
                 vacateNote: settlementSummary 
             }
@@ -567,10 +566,10 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
 
     let statusFilter: string[] = [];
     switch (category) {
-        case 'UPCOMING': statusFilter = ['UPCOMING_MOVE_IN']; break;
-        case 'ACTIVE': statusFilter = ['ACTIVE_TENANT']; break;
-        case 'MOVE_OUT': statusFilter = ['MOVE_OUT_SCHEDULED']; break;
-        case 'PAST': statusFilter = ['MOVE_OUT_COMPLETED']; break;
+        case 'UPCOMING': statusFilter = ['Upcoming']; break;
+        case 'ACTIVE': statusFilter = ['Active']; break;
+        case 'MOVE_OUT': statusFilter = ['Active']; break; 
+        case 'PAST': statusFilter = ['Checked Out']; break;
     }
 
     // If owner, get properties first

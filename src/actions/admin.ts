@@ -587,9 +587,9 @@ export async function getAdminPropertyAnalytics() {
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
         const [pending, approved, rejected] = await Promise.all([
-            prisma.property.count({ where: { status: 'PENDING_APPROVAL' } }),
+            prisma.property.count({ where: { status: 'PENDING_VERIFICATION' } }),
             prisma.property.count({ where: { status: 'LIVE' } }),
-            prisma.property.count({ where: { status: 'REJECTED' } })
+            prisma.property.count({ where: { status: 'INACTIVE' } })
         ]);
 
         return { pending, approved, rejected };
@@ -602,7 +602,7 @@ export async function getPendingPropertiesCount() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') return 0;
-        return await prisma.property.count({ where: { status: 'PENDING_APPROVAL' } });
+        return await prisma.property.count({ where: { status: 'SUBMITTED' } });
     } catch (e) {
         return 0;
     }
@@ -615,8 +615,8 @@ export async function approveProperty(propertyId: string, approved: boolean, not
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
     const isFeeEnabled = settings?.feesEnabled && (settings?.ownerOnboardingFeeFlat > 0);
 
-    // Phase 31: Industry Standard - Admin Approves Docs -> Payment Pending -> Live
-    const status = approved ? (isFeeEnabled ? 'PAYMENT_PENDING' : 'LIVE') : 'REJECTED';
+    // Phase 31: Industry Standard - Admin Approves Docs -> APPROVED (Payment Pending) -> LIVE
+    const status = approved ? (isFeeEnabled ? 'APPROVED' : 'LIVE') : 'INACTIVE';
 
     const property = await prisma.property.update({
         where: { id: propertyId },
@@ -662,7 +662,7 @@ export async function markPropertyPending(propertyId: string, notes: string) {
 
     const property = await prisma.property.update({
         where: { id: propertyId },
-        data: { status: 'PENDING_APPROVAL', adminNotes: notes || null }
+        data: { status: 'PENDING_VERIFICATION', adminNotes: notes || null }
     });
 
     try {

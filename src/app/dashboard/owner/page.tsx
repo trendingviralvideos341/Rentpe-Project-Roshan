@@ -269,7 +269,7 @@ export default function OwnerDashboard() {
                                     <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Premium Partner"}</h2>
                                     <div className="flex flex-col md:flex-row items-center md:justify-start gap-2 mt-2">
                                         <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/30 uppercase tracking-widest">
-                                            Property Owner
+                                            {stats.user?.displayId || "OWNER"}
                                         </span>
                                         <div className="flex items-center gap-2">
                                             <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>

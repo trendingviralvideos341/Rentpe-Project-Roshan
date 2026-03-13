@@ -17,7 +17,7 @@ export default function AdminPropertyApprovalPage() {
     const [properties, setProperties] = useState<any[]>([]);
     const [analytics, setAnalytics] = useState({ pending: 0, approved: 0, rejected: 0 });
     const [loading, setLoading] = useState(true);
-    const [filterStatus, setFilterStatus] = useState("PENDING_APPROVAL");
+    const [filterStatus, setFilterStatus] = useState("SUBMITTED");
 
     // Dialog state
     const [actionDialog, setActionDialog] = useState<{ isOpen: boolean; propertyId: string; propertyName: string; isApprove: boolean; currentStatus?: string } | null>(null);
@@ -77,7 +77,7 @@ export default function AdminPropertyApprovalPage() {
         setProcessing(true);
         try {
             await markPropertyPending(actionDialog.propertyId, adminNotes);
-            toast({ title: "Status Updated", description: "Property moved to Pending Approval." });
+            toast({ title: "Status Updated", description: "Property moved to Pending Verification." });
             setActionDialog(null);
             setAdminNotes("");
             fetchData();
@@ -141,12 +141,12 @@ export default function AdminPropertyApprovalPage() {
             {/* Analytics Cards acting as Filters */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <Card
-                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'PENDING_APPROVAL' ? 'bg-amber-100 border-amber-400 shadow-md scale-[1.02]' : 'bg-amber-50 border-amber-200 hover:bg-amber-100/50'}`}
-                    onClick={() => setFilterStatus('PENDING_APPROVAL')}
+                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'SUBMITTED' ? 'bg-amber-100 border-amber-400 shadow-md scale-[1.02]' : 'bg-amber-50 border-amber-200 hover:bg-amber-100/50'}`}
+                    onClick={() => setFilterStatus('SUBMITTED')}
                 >
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-amber-800">Pending Approval</p>
+                            <p className="text-sm font-medium text-amber-800">Submitted (New)</p>
                             <h3 className="text-2xl font-bold text-amber-900">{analytics.pending}</h3>
                         </div>
                         <AlertCircle className="h-8 w-8 text-amber-500 opacity-50" />
@@ -165,12 +165,12 @@ export default function AdminPropertyApprovalPage() {
                     </CardContent>
                 </Card>
                 <Card
-                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'REJECTED' ? 'bg-red-100 border-red-400 shadow-md scale-[1.02]' : 'bg-red-50 border-red-200 hover:bg-red-100/50'}`}
-                    onClick={() => setFilterStatus('REJECTED')}
+                    className={`cursor-pointer transition-all border-2 ${filterStatus === 'INACTIVE' ? 'bg-red-100 border-red-400 shadow-md scale-[1.02]' : 'bg-red-50 border-red-200 hover:bg-red-100/50'}`}
+                    onClick={() => setFilterStatus('INACTIVE')}
                 >
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-red-800">Total Rejected</p>
+                            <p className="text-sm font-medium text-red-800">Inactive / Removed</p>
                             <h3 className="text-2xl font-bold text-red-900">{analytics.rejected}</h3>
                         </div>
                         <XCircle className="h-8 w-8 text-red-500 opacity-50" />
@@ -201,8 +201,10 @@ export default function AdminPropertyApprovalPage() {
                                             {property.name}
                                             <Badge variant="secondary" className={`
                                                 ${property.status === 'LIVE' ? 'bg-green-100 text-green-700' : ''}
-                                                ${property.status === 'REJECTED' ? 'bg-red-100 text-red-700' : ''}
-                                                ${property.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-700' : ''}
+                                                ${property.status === 'INACTIVE' ? 'bg-red-100 text-red-700' : ''}
+                                                ${property.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-700' : ''}
+                                                ${property.status === 'PENDING_VERIFICATION' ? 'bg-amber-100 text-amber-700' : ''}
+                                                ${property.status === 'APPROVED' ? 'bg-purple-100 text-purple-700' : ''}
                                             `}>
                                                 {property.status.replace('_', ' ')}
                                             </Badge>
@@ -212,7 +214,7 @@ export default function AdminPropertyApprovalPage() {
                                         </CardDescription>
                                     </div>
                                     <div className="flex gap-2">
-                                        {property.status === 'PENDING_APPROVAL' ? (
+                                        {(property.status === 'SUBMITTED' || property.status === 'PENDING_VERIFICATION') ? (
                                             <>
                                                 <Button size="sm" variant="destructive" className="h-8" onClick={() => setActionDialog({ isOpen: true, propertyId: property.id, propertyName: property.name, isApprove: false, currentStatus: property.status })}>
                                                     <XCircle className="h-4 w-4 mr-1" /> Reject
@@ -238,10 +240,10 @@ export default function AdminPropertyApprovalPage() {
                                         <TabsTrigger value="rooms">Rooms ({property.rooms?.length || 0})</TabsTrigger>
                                         <TabsTrigger
                                             value="verification"
-                                            className={`relative transition-all ${property.status === 'PENDING_APPROVAL' ? 'bg-amber-50 text-amber-700 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900 border border-amber-200' : ''}`}
+                                            className={`relative transition-all ${property.status === 'SUBMITTED' || property.status === 'PENDING_VERIFICATION' ? 'bg-amber-50 text-amber-700 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900 border border-amber-200' : ''}`}
                                         >
                                             Verification Documents
-                                            {property.status === 'PENDING_APPROVAL' && (
+                                            {(property.status === 'SUBMITTED' || property.status === 'PENDING_VERIFICATION') && (
                                                 <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5" title="Action Required">
                                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                                                     <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 border-2 border-white shadow-sm"></span>
@@ -519,14 +521,14 @@ export default function AdminPropertyApprovalPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setActionDialog(null)} disabled={processing}>Cancel</Button>
-                        {actionDialog?.currentStatus === 'REJECTED' && (
+                        {(actionDialog?.currentStatus === 'INACTIVE' || actionDialog?.currentStatus === 'REJECTED') && (
                             <Button
                                 variant="secondary"
                                 className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
                                 onClick={handleMarkPending}
                                 disabled={processing}
                             >
-                                {processing ? "Processing..." : "Move to Pending Approval"}
+                                {processing ? "Processing..." : "Move to Pending Verification"}
                             </Button>
                         )}
                         <Button

@@ -133,11 +133,14 @@ model Property {
 
 model Room {
   id           String    @id @default(uuid())
+  displayId    String?   @unique
   propertyId   String
   roomNumber   String
   type         String
   price        Float
   availability Int
+  totalBeds    Int       @default(1)
+  status       String    @default("AVAILABLE")
   photoUrl     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -149,6 +152,7 @@ model Room {
 
 model Bed {
   id                String    @id @default(uuid())
+  displayId         String?   @unique
   roomId            String
   bedNumber         String
   status            String    @default("AVAILABLE")

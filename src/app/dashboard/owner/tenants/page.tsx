@@ -124,6 +124,9 @@ export default function TenantsPage() {
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
 
     const filteredTenants = tenants.filter(t => {
+        const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
+        const isPaid = latestRent?.paid ?? false;
+
         const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
             t.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
             t.displayId.toLowerCase().includes(search.toLowerCase());
@@ -131,19 +134,15 @@ export default function TenantsPage() {
         const matchType = filterType === "ALL" || t.roomType === filterType;
         const matchProperty = filterProperty === "ALL" || t.property?.name === filterProperty;
 
-        const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
-        const isPaid = latestRent?.paid ?? false;
-
-        if (filterPayment === "BLOCKED") return matchSearch && matchType && matchProperty && (t.status === "VACATED" || t.status === "MOVED_OUT");
-        if (filterPayment !== "ALL" && (t.status === "VACATED" || t.status === "MOVED_OUT")) return false;
-
+        if (filterPayment === ("BLOCKED" as any)) return matchSearch && matchType && matchProperty && t.status === "Blocked";
+        
         const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
-        return matchSearch && matchType && matchProperty && matchPayment;
+        return matchSearch && matchType && matchProperty && matchPayment && t.status !== "Blocked";
     });
 
     const unpaidCount = tenants.filter(t => {
         const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
-        return !latestRent?.paid && t.status !== "VACATED";
+        return !latestRent?.paid && t.status === "Active";
     }).length;
 
     if (loading) return <div className="p-8 text-center animate-pulse">Loading tenants...</div>;
@@ -184,9 +183,9 @@ export default function TenantsPage() {
                     <CardContent className="p-4">
                         <p className="text-xs font-bold text-rose-600 uppercase tracking-wider">Pending This Month</p>
                         <p className="text-2xl font-black text-rose-900 mt-1">
-                            ₹{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status !== "VACATED").reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                            ₹{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status === "Active").reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
                         </p>
-                        <p className="text-[10px] text-rose-500 mt-1">{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status !== "VACATED").length} Unpaid tenants</p>
+                        <p className="text-[10px] text-rose-500 mt-1">{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status === "Active").length} Unpaid tenants</p>
                     </CardContent>
                 </Card>
             </div>
@@ -240,15 +239,16 @@ export default function TenantsPage() {
                                 {filteredTenants.map(t => {
                                     const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
                                     const isPaid = latestRent?.paid ?? false;
-                                    const isBlocked = t.status === "VACATED" || t.status === "MOVED_OUT";
+                                    const isBlocked = t.status === "Blocked";
+                                    const isCheckedOut = t.status === "Checked Out";
                                     const historyExpanded = expandedHistory.has(t.id);
 
                                     return (
                                         <Fragment key={t.id}>
-                                            <tr className={`border-b hover:bg-muted/5 ${t.status === 'MOVED_OUT' ? "bg-slate-50/60 opactiy-80" : isBlocked ? "bg-red-50/40" : ""}`}>
-                                                <td className="p-4 font-mono text-xs">{t.displayId}</td>
+                                        <tr className={`border-b hover:bg-muted/5 ${isCheckedOut ? "bg-slate-50 opacity-80" : isBlocked ? "bg-red-50" : ""}`}>
+                                            <td className="p-4 font-mono text-xs text-purple-700 font-bold">{t.displayId}</td>
                                                 <td className="p-4">
-                                                    <div className={`font-medium ${isBlocked ? "line-through text-red-400" : ""}`}>{t.name}</div>
+                                                    <div className={`font-medium ${isCheckedOut ? "text-slate-500 italic" : isBlocked ? "text-red-500" : ""}`}>{t.name}</div>
                                                     <div className="text-[10px] text-indigo-600 font-bold uppercase">{t.property?.name || "Unknown PG"}</div>
                                                     <div className="text-xs text-muted-foreground">{t.phone}</div>
                                                 </td>
@@ -258,10 +258,10 @@ export default function TenantsPage() {
 
                                                 {/* Payment Status */}
                                                 <td className="p-4">
-                                                    {t.status === 'MOVED_OUT' ? (
-                                                        <span className="text-xs text-slate-500 font-bold">🏠 Moved Out</span>
+                                                    {isCheckedOut ? (
+                                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">🏠 Checked Out</span>
                                                     ) : isBlocked ? (
-                                                        <span className="text-xs text-red-500 font-bold">🚫 Blocked</span>
+                                                        <span className="text-xs text-red-500 font-bold uppercase tracking-wider">🚫 Blocked</span>
                                                     ) : (
                                                         <div className="space-y-2">
                                                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${isPaid ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
@@ -307,8 +307,8 @@ export default function TenantsPage() {
                                                 {/* Status & History */}
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${t.status === 'MOVED_OUT' ? "bg-slate-100 text-slate-600" : isBlocked ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
-                                                            {t.status === 'MOVED_OUT' ? "🏠 Moved Out" : isBlocked ? "🚫 Blocked" : "✅ Active"}
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isCheckedOut ? "bg-slate-100 text-slate-600" : isBlocked ? "bg-red-100 text-red-800" : t.status === 'Upcoming' ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
+                                                            {isCheckedOut ? "Checked Out" : isBlocked ? "Blocked" : t.status === 'Upcoming' ? "Upcoming" : "Active"}
                                                         </span>
                                                         {t.actionNotes?.length > 0 && (
                                                             <button onClick={() => toggleHistory(t.id)} className="text-muted-foreground hover:text-foreground">

@@ -6,6 +6,7 @@ import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
+import { generateSequentialId } from "@/lib/ids";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
@@ -178,8 +179,7 @@ export async function createProperty(formData: FormData) {
     // 2. Create property and rooms in a transaction
     const property = await prisma.$transaction(async (tx) => {
         // Generate a user-friendly Registration Number (displayId)
-        const count = await tx.property.count();
-        const displayId = `PROP-${1001 + count}`;
+        const displayId = await generateSequentialId('PROPERTY');
 
         const newProperty = await tx.property.create({
             data: {
@@ -195,7 +195,7 @@ export async function createProperty(formData: FormData) {
                 ]),
                 ownerName: finalOwnerName,
                 ownerId: user?.parentOwnerId || session.userId,
-                status: "PENDING_APPROVAL",
+                status: "SUBMITTED",
                 propertyType: propertyType || "PG",
                 licenseNumber: licenseNumber || null,
                 reraId: reraId || null,
@@ -218,27 +218,31 @@ export async function createProperty(formData: FormData) {
             const rooms = JSON.parse(roomsJson);
             if (Array.isArray(rooms) && rooms.length > 0) {
                 for (const r of rooms) {
+                    const roomDisplayId = await generateSequentialId('ROOM');
                     const room = await tx.room.create({
                         data: {
+                            displayId: roomDisplayId,
                             propertyId: newProperty.id,
                             roomNumber: r.roomNumber.toString(),
                             type: r.type,
                             price: parseFloat(r.price),
                             availability: parseInt(r.availability),
+                            totalBeds: parseInt(r.availability), // Initialize totalBeds
+                            status: 'AVAILABLE'
                         }
                     });
 
                     // Generate beds for this room
-                    const bedsToCreate = [];
                     for (let i = 1; i <= room.availability; i++) {
-                        bedsToCreate.push({
-                            roomId: room.id,
-                            bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
-                            status: 'AVAILABLE'
+                        const bedDisplayId = await generateSequentialId('BED');
+                        await tx.bed.create({
+                            data: {
+                                displayId: bedDisplayId,
+                                roomId: room.id,
+                                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
+                                status: 'AVAILABLE'
+                            }
                         });
-                    }
-                    if (bedsToCreate.length > 0) {
-                        await tx.bed.createMany({ data: bedsToCreate });
                     }
                 }
             }
@@ -383,24 +387,28 @@ export async function addRoomToProperty(propertyId: string, roomData: { roomNumb
     const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: session.userId } });
     if (!property) throw new Error("Property not found or unauthorized");
 
+    const roomDisplayId = await generateSequentialId('ROOM');
     const room = await prisma.room.create({
         data: {
             ...roomData,
-            propertyId
+            displayId: roomDisplayId,
+            propertyId,
+            totalBeds: roomData.availability,
+            status: 'AVAILABLE'
         }
     });
 
     // Auto-generate beds
-    const bedsToCreate = [];
     for (let i = 1; i <= room.availability; i++) {
-        bedsToCreate.push({
-            roomId: room.id,
-            bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
-            status: 'AVAILABLE'
+        const bedDisplayId = await generateSequentialId('BED');
+        await prisma.bed.create({
+            data: {
+                displayId: bedDisplayId,
+                roomId: room.id,
+                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
+                status: 'AVAILABLE'
+            }
         });
-    }
-    if (bedsToCreate.length > 0) {
-        await prisma.bed.createMany({ data: bedsToCreate });
     }
 
     revalidatePath(`/dashboard/owner/properties/${propertyId}`);
@@ -430,16 +438,16 @@ export async function editRoom(roomId: string, roomData: { roomNumber: string, t
 
     // If availability increased, add more beds
     if (newAvailability > oldAvailability) {
-        const bedsToCreate = [];
         for (let i = oldAvailability + 1; i <= newAvailability; i++) {
-            bedsToCreate.push({
-                roomId: roomId,
-                bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + i)}`,
-                status: 'AVAILABLE'
+            const bedDisplayId = await generateSequentialId('BED');
+            await prisma.bed.create({
+                data: {
+                    displayId: bedDisplayId,
+                    roomId: roomId,
+                    bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + i)}`,
+                    status: 'AVAILABLE'
+                }
             });
-        }
-        if (bedsToCreate.length > 0) {
-            await prisma.bed.createMany({ data: bedsToCreate });
         }
     }
 
@@ -626,5 +634,36 @@ export async function payOnboardingFee(propertyId: string) {
     revalidatePath('/dashboard/owner/properties');
     revalidatePath('/search');
 
+    return { success: true };
+}
+
+export async function deleteProperty(propertyId: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+
+    if (session.role === 'OWNER' && property.ownerId !== session.userId) throw new Error("Unauthorized");
+
+    // Soft delete: Change status to INACTIVE
+    await prisma.property.update({
+        where: { id: propertyId },
+        data: { status: 'INACTIVE' }
+    });
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role as string,
+        actorName: session.name || 'User',
+        actionType: 'DELETE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        entityName: property.name,
+        description: `Property status set to INACTIVE (Soft Delete): ${property.name}`,
+    });
+
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/dashboard/admin/properties');
     return { success: true };
 }
