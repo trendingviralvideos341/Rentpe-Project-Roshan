@@ -1,7 +1,5 @@
 "use client";
 
-// GitHub Push Verification Test
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ShieldCheck, Utensils, Users, ArrowRight } from "lucide-react";
