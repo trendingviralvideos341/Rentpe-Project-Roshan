@@ -365,6 +365,12 @@ export default function PropertyManagePage() {
 `}>
                             {property.status.replace('_', ' ')}
                         </Badge>
+                        {property.displayId && (
+                            <div className="flex flex-col items-center px-3 py-1 bg-slate-900 text-white rounded-lg ml-auto shadow-lg border border-slate-700 group hover:scale-105 transition-transform cursor-help" title="Official Property Registration Number">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.5">Reg ID</span>
+                                <span className="text-sm font-black font-mono tracking-tighter">{property.displayId}</span>
+                            </div>
+                        )}
                     </h1>
                     <p className="text-muted-foreground flex items-center gap-1 mt-1">
                         <MapPin className="h-4 w-4" /> {property.city}, {property.address}

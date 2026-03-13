@@ -90,9 +90,18 @@ export default function OwnerPropertiesPage() {
                                 })()}
                             </div>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-xl">{property.name}</CardTitle>
-                                <div className="flex items-center text-sm text-muted-foreground">
-                                    <MapPin className="h-3 w-3 mr-1" /> {property.city}
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <CardTitle className="text-xl">{property.name}</CardTitle>
+                                        <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                            <MapPin className="h-3 w-3 mr-1" /> {property.city}
+                                        </div>
+                                    </div>
+                                    {property.displayId && (
+                                        <Badge variant="outline" className="text-[10px] bg-slate-50 font-mono font-bold text-slate-500 border-slate-200">
+                                            {property.displayId}
+                                        </Badge>
+                                    )}
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">

@@ -436,7 +436,7 @@ export default function AddPropertyPage() {
                 
                 <Card className="border-2 border-purple-100 overflow-hidden shadow-2xl mb-8">
                     <div className="bg-purple-600 p-4">
-                        <p className="text-white text-[10px] font-black uppercase tracking-widest leading-none">Official Registration ID</p>
+                        <p className="text-white text-[10px] font-black uppercase tracking-widest leading-none">Property Registration ID</p>
                     </div>
                     <CardContent className="p-8">
                         <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 mb-4">
