@@ -220,7 +220,7 @@ export async function uploadEmployeeDoc(id: string, docField: string, docData: s
         if (!docData.type.startsWith('image/') && !docData.type.includes('pdf')) {
             throw new Error("Invalid file type: Only images and PDFs allowed.");
         }
-        if (docData.size > 10 * 1024 * 1024) throw new Error("File size exceeds 10MB limit.");
+        if (docData.size > 25 * 1024 * 1024) throw new Error("File size exceeds 25MB limit.");
     }
 
     // 1. Upload to Cloudinary with private access

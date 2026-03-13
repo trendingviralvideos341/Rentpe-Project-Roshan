@@ -22,7 +22,7 @@ export async function uploadTenantDocument(data: {
         if (!data.fileData.type.startsWith('image/') && !data.fileData.type.includes('pdf')) {
              throw new Error("Only images and PDFs are allowed for KYC.");
         }
-        if (data.fileData.size > 10 * 1024 * 1024) throw new Error("File size limit 10MB exceeded.");
+        if (data.fileData.size > 25 * 1024 * 1024) throw new Error("File size limit 25MB exceeded.");
     }
 
     const userId = (session as any).userId;

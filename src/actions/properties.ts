@@ -165,8 +165,8 @@ export async function createProperty(formData: FormData) {
                             if (!file.type.startsWith('image/')) {
                                 throw new Error(`Invalid file type for ${field}: ${file.name}`);
                             }
-                            // Size Polish: Max 10MB per file for server safety
-                            if (file.size > 10 * 1024 * 1024) {
+                            // Size Polish: Max 25MB per file (Global 25MB still enforced below)
+                            if (file.size > 25 * 1024 * 1024) {
                                 throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB): ${file.name}`);
                             }
                             
@@ -185,7 +185,7 @@ export async function createProperty(formData: FormData) {
         const processSingle = async (field: string, file: File | null) => {
             if (file && file.size > 0) {
                 try {
-                    if (file.size > 10 * 1024 * 1024) throw new Error(`${field} exceeds 10MB`);
+                    if (file.size > 25 * 1024 * 1024) throw new Error(`${field} exceeds 25MB`);
                     results[field] = await uploadToCloudinary(file, folder);
                 } catch (err: any) {
                     errors.push(`${field}: ${err.message}`);
@@ -207,6 +207,19 @@ export async function createProperty(formData: FormData) {
 
         return { results, errors };
     };
+
+    const allFiles = [
+        ...buildingPhotos, ...commonAreaPhotos, ...roomsAndBathroomPhotos, 
+        ...parkingPhotos, ...amenitiesPhotos, ...aadhaarProof, 
+        ...panProof, ...pgLicenceUrl, livePhotoUrl
+    ].filter(f => f && f.size > 0);
+
+    const totalUploadedSize = allFiles.reduce((sum, f) => sum + f.size, 0);
+    const GLOBAL_MAX_SIZE = 25 * 1024 * 1024; // 25MB Total
+
+    if (totalUploadedSize > GLOBAL_MAX_SIZE) {
+        throw new Error(`Total upload size (${(totalUploadedSize / (1024 * 1024)).toFixed(1)}MB) exceeds 25MB global limit.`);
+    }
 
     const { results: uploaded, errors: uploadErrors } = await uploadTasks();
 
