@@ -123,16 +123,42 @@ export async function createProperty(formData: FormData) {
     const reraId = formData.get("reraId") as string;
     const businessName = formData.get("businessName") as string;
 
-    const buildingPhotos = formData.getAll("buildingPhotos") as File[];
-    const commonAreaPhotos = formData.getAll("commonAreaPhotos") as File[];
-    const roomsAndBathroomPhotos = formData.getAll("roomsAndBathroomPhotos") as File[];
-    const parkingPhotos = formData.getAll("parkingPhotos") as File[];
-    const amenitiesPhotos = formData.getAll("amenitiesPhotos") as File[];
+    // --- SMART DETECTION: Pre-uploaded URLs vs Raw Files ---
+    // The frontend may pre-upload files via quickUploadAction and send Cloudinary URLs as strings,
+    // OR it may send raw File objects. We handle both cases.
+    const isCloudinaryUrl = (val: any): val is string => 
+        typeof val === 'string' && (val.startsWith('https://res.cloudinary.com') || val.startsWith('http'));
 
-    const aadhaarProof = formData.getAll("aadhaarProof") as File[];
-    const panProof = formData.getAll("panProof") as File[];
-    const pgLicenceUrl = formData.getAll("pgLicenceUrl") as File[];
-    const livePhotoUrl = formData.get("livePhotoUrl") as File;
+    const extractUrlsOrFiles = (fieldName: string): { urls: string[], files: File[] } => {
+        const values = formData.getAll(fieldName);
+        const urls: string[] = [];
+        const files: File[] = [];
+        for (const val of values) {
+            if (isCloudinaryUrl(val)) {
+                urls.push(val);
+            } else if (val instanceof File && val.size > 0) {
+                files.push(val);
+            }
+        }
+        return { urls, files };
+    };
+
+    const extractSingleUrlOrFile = (fieldName: string): { url: string | null, file: File | null } => {
+        const val = formData.get(fieldName);
+        if (isCloudinaryUrl(val)) return { url: val as string, file: null };
+        if (val instanceof File && val.size > 0) return { url: null, file: val };
+        return { url: null, file: null };
+    };
+
+    const buildingPhotos = extractUrlsOrFiles("buildingPhotos");
+    const commonAreaPhotos = extractUrlsOrFiles("commonAreaPhotos");
+    const roomsAndBathroomPhotos = extractUrlsOrFiles("roomsAndBathroomPhotos");
+    const parkingPhotos = extractUrlsOrFiles("parkingPhotos");
+    const amenitiesPhotos = extractUrlsOrFiles("amenitiesPhotos");
+    const aadhaarProof = extractUrlsOrFiles("aadhaarProof");
+    const panProof = extractUrlsOrFiles("panProof");
+    const pgLicenceUrl = extractUrlsOrFiles("pgLicenceUrl");
+    const livePhotoData = extractSingleUrlOrFile("livePhotoUrl");
 
     const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
 
@@ -144,57 +170,53 @@ export async function createProperty(formData: FormData) {
     // Auto-fill owner info from profile if not in form
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
-    // 1. Process Structured Documents & Photos
-    // Use UUID to prevent path guessing
+    // 1. Process ONLY raw File objects that haven't been pre-uploaded
     const folder = `properties/${name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${crypto.randomUUID()}`;
     
     const uploadTasks = async () => {
         const results: Record<string, any> = {};
         const errors: string[] = [];
         
-        // Helper for raw File uploads with sequential logic and security checks
-        const processBatch = async (field: string, files: File[]) => {
-            if (files && files.length > 0) {
-                const validFiles = files.filter(f => f.size > 0);
-                if (validFiles.length > 0) {
-                    const urls: string[] = [];
-                    // SEQUENTIAL PROCESSING: Prevents memory exhaustion and connection timeouts
-                    for (const file of validFiles) {
-                        try {
-                            // MIME Safety Check
-                            if (!file.type.startsWith('image/')) {
-                                throw new Error(`Invalid file type for ${field}: ${file.name}`);
-                            }
-                            // Size Polish: Max 25MB per file (Global 25MB still enforced below)
-                            if (file.size > 25 * 1024 * 1024) {
-                                throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB): ${file.name}`);
-                            }
-                            
-                            const url = await uploadToCloudinary(file, `${folder}/${field}`);
-                            urls.push(url);
-                        } catch (err: any) {
-                            console.error(`Upload error for ${field}:`, err.message);
-                            errors.push(`${field}: ${err.message}`);
-                        }
+        const processBatch = async (field: string, data: { urls: string[], files: File[] }) => {
+            // Start with any pre-uploaded URLs
+            const allUrls = [...data.urls];
+            
+            // Only upload raw File objects that weren't pre-uploaded
+            for (const file of data.files) {
+                try {
+                    if (!file.type.startsWith('image/') && !file.type.includes('pdf')) {
+                        throw new Error(`Invalid file type for ${field}: ${file.name}`);
                     }
-                    results[field] = urls;
+                    if (file.size > 25 * 1024 * 1024) {
+                        throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB): ${file.name}`);
+                    }
+                    const url = await uploadToCloudinary(file, `${folder}/${field}`);
+                    allUrls.push(url);
+                } catch (err: any) {
+                    console.error(`Upload error for ${field}:`, err.message);
+                    errors.push(`${field}: ${err.message}`);
                 }
+            }
+            
+            if (allUrls.length > 0) {
+                results[field] = allUrls;
             }
         };
 
-        const processSingle = async (field: string, file: File | null) => {
-            if (file && file.size > 0) {
+        const processSingle = async (field: string, data: { url: string | null, file: File | null }) => {
+            if (data.url) {
+                // Already uploaded — use directly
+                results[field] = data.url;
+            } else if (data.file) {
                 try {
-                    if (file.size > 25 * 1024 * 1024) throw new Error(`${field} exceeds 25MB`);
-                    results[field] = await uploadToCloudinary(file, folder);
+                    if (data.file.size > 25 * 1024 * 1024) throw new Error(`${field} exceeds 25MB`);
+                    results[field] = await uploadToCloudinary(data.file, folder);
                 } catch (err: any) {
                     errors.push(`${field}: ${err.message}`);
                 }
             }
         };
 
-        // SEQUENTIAL BATCHING: We process each category one after the other
-        // This is the "Zero-Exhaustion" pattern
         await processBatch("buildingPhotos", buildingPhotos);
         await processBatch("commonAreaPhotos", commonAreaPhotos);
         await processBatch("roomsAndBathroomPhotos", roomsAndBathroomPhotos);
@@ -203,29 +225,14 @@ export async function createProperty(formData: FormData) {
         await processBatch("aadhaarProof", aadhaarProof);
         await processBatch("panProof", panProof);
         await processBatch("pgLicenceUrl", pgLicenceUrl);
-        await processSingle("livePhotoUrl", livePhotoUrl);
+        await processSingle("livePhotoUrl", livePhotoData);
 
         return { results, errors };
     };
 
-    const allFiles = [
-        ...buildingPhotos, ...commonAreaPhotos, ...roomsAndBathroomPhotos, 
-        ...parkingPhotos, ...amenitiesPhotos, ...aadhaarProof, 
-        ...panProof, ...pgLicenceUrl, livePhotoUrl
-    ].filter(f => f && f.size > 0);
-
-    const totalUploadedSize = allFiles.reduce((sum, f) => sum + f.size, 0);
-    const GLOBAL_MAX_SIZE = 25 * 1024 * 1024; // 25MB Total
-
-    if (totalUploadedSize > GLOBAL_MAX_SIZE) {
-        throw new Error(`Total upload size (${(totalUploadedSize / (1024 * 1024)).toFixed(1)}MB) exceeds 25MB global limit.`);
-    }
-
     const { results: uploaded, errors: uploadErrors } = await uploadTasks();
 
     if (uploadErrors.length > 0) {
-        // Log failures but we might continue if they are non-critical? 
-        // For NEW property, failure in mandatory docs is fatal.
         throw new Error(`Critical uploads failed: ${uploadErrors.join(", ")}`);
     }
 
