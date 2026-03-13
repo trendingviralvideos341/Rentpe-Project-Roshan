@@ -10,14 +10,27 @@ import { generateSequentialId } from "@/lib/ids";
 
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
-    const where: { ownerId?: string } = {};
+    const where: any = {};
 
     if (ownerId) {
         where.ownerId = ownerId;
     } else if (session?.role === 'OWNER') {
-        const user = await prisma.user.findUnique({ where: { id: session.userId } });
-        // If staff, show parent's properties
-        where.ownerId = user?.parentOwnerId || session.userId;
+        const user = await prisma.user.findUnique({ 
+            where: { id: session.userId },
+            include: { employeeProfile: true }
+        });
+        
+        if (user?.employeeProfile) {
+            // For Owner Staff, restrict to assigned properties
+            const assignedIds = await prisma.employeePropertyAssignment.findMany({
+                where: { employeeId: user.employeeProfile.id },
+                select: { propertyId: true }
+            });
+            where.id = { in: assignedIds.map((a: any) => a.propertyId) };
+        } else {
+            // Primary owner sees all their properties
+            where.ownerId = user?.parentOwnerId || session.userId;
+        }
     }
 
     return prisma.property.findMany({
@@ -50,7 +63,8 @@ export async function getPendingOwnerActionCount() {
 }
 
 export async function getPropertyById(id: string) {
-    return prisma.property.findUnique({
+    const session = await getSession();
+    const property = await prisma.property.findUnique({
         where: { id },
         include: {
             rooms: true,
@@ -63,6 +77,32 @@ export async function getPropertyById(id: string) {
             }
         }
     });
+
+    if (!property) return null;
+
+    // Access control for owners/staff
+    if (session?.role === 'OWNER') {
+        const user = await prisma.user.findUnique({ 
+            where: { id: session.userId },
+            include: { employeeProfile: true }
+        });
+        
+        if (user?.employeeProfile) {
+            const isAssigned = await prisma.employeePropertyAssignment.findUnique({
+                where: {
+                    employeeId_propertyId: {
+                        employeeId: user.employeeProfile.id,
+                        propertyId: id
+                    }
+                }
+            });
+            if (!isAssigned) throw new Error("Access denied: Not assigned to this property");
+        } else if (property.ownerId !== (user?.parentOwnerId || session.userId)) {
+             throw new Error("Access denied: Not your property");
+        }
+    }
+
+    return property;
 }
 
 export async function createProperty(formData: FormData) {

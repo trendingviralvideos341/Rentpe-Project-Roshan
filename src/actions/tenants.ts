@@ -12,7 +12,25 @@ export async function getTenants() {
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
     const userId = session.userId;
 
-    const whereClause = session.role === 'ADMIN' ? {} : { property: { ownerId: userId } };
+    let whereClause: any = {};
+
+    if (session.role === 'OWNER') {
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            include: { employeeProfile: true }
+        });
+        
+        if (user?.employeeProfile) {
+            // For staff, restrict to assigned properties
+            const assignments = await prisma.employeePropertyAssignment.findMany({
+                where: { employeeId: user.employeeProfile.id },
+                select: { propertyId: true }
+            });
+            whereClause.propertyId = { in: assignments.map((a: any) => a.propertyId) };
+        } else {
+            whereClause.property = { ownerId: user?.parentOwnerId || userId };
+        }
+    }
 
     const tenants = await prisma.tenant.findMany({
         where: whereClause,
@@ -572,9 +590,27 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
         case 'PAST': statusFilter = ['Checked Out']; break;
     }
 
-    // If owner, get properties first
-    const properties = await prisma.property.findMany({ where: { ownerId }, select: { id: true } });
-    const pIds = properties.map(p => p.id);
+    // If owner/staff, get allowed properties
+    const user = await prisma.user.findUnique({ 
+        where: { id: session.userId },
+        include: { employeeProfile: true }
+    });
+    
+    let pIds: string[] = [];
+    
+    if (user?.employeeProfile) {
+        const assignments = await prisma.employeePropertyAssignment.findMany({
+            where: { employeeId: user.employeeProfile.id },
+            select: { propertyId: true }
+        });
+        pIds = assignments.map((a: any) => a.propertyId);
+    } else {
+        const properties = await prisma.property.findMany({ 
+            where: { ownerId: user?.parentOwnerId || session.userId }, 
+            select: { id: true } 
+        });
+        pIds = properties.map(p => p.id);
+    }
 
     return await prisma.tenant.findMany({
         where: { propertyId: { in: pIds }, status: { in: statusFilter } },

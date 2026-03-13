@@ -69,6 +69,8 @@ model User {
   parentOwner           User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
   staffMembers          User[]            @relation("OwnerToStaff")
   sessions              UserSession[]
+  ownerEmployees        OwnerEmployee[]   @relation("OwnerEmployees")
+  employeeProfile       OwnerEmployee?    @relation("UserAsEmployee")
 }
 
 model Property {
@@ -129,6 +131,7 @@ model Property {
   savedBy                SavedProperty[]
   tenants                Tenant[]
   tickets                Ticket[]
+  employeeAssignments    EmployeePropertyAssignment[]
 }
 
 model Room {
@@ -857,4 +860,37 @@ model RefundRecord {
   notes        String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+model OwnerEmployee {
+  id           String   @id @default(uuid())
+  displayId    String   @unique // OWN-EMP-XXXX
+  ownerId      String
+  name         String
+  email        String   @unique
+  phone        String
+  role         String   @default("Staff") // Manager, Caretaker, Warden, etc.
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner        User     @relation("OwnerEmployees", fields: [ownerId], references: [id])
+  assignments  EmployeePropertyAssignment[]
+  userId       String?  @unique
+  user         User?    @relation("UserAsEmployee", fields: [userId], references: [id])
+
+  @@map("owner_employees")
+}
+
+model EmployeePropertyAssignment {
+  id          String   @id @default(uuid())
+  employeeId  String
+  propertyId  String
+  assignedBy  String
+  assignedAt  DateTime @default(now())
+
+  employee    OwnerEmployee @relation(fields: [employeeId], references: [id])
+  property    Property      @relation(fields: [propertyId], references: [id])
+
+  @@unique([employeeId, propertyId])
+  @@map("employee_property_assignment")
 }

@@ -109,11 +109,29 @@ export async function getBookings() {
         if (!userId) return [];
 
         if (role === 'OWNER') {
-            const ownerProperties = await prisma.property.findMany({
-                where: { ownerId: userId },
-                select: { id: true }
+            const user = await prisma.user.findUnique({ 
+                where: { id: userId },
+                include: { employeeProfile: true }
             });
-            const propertyIds = ownerProperties.map(p => p.id);
+            
+            let propertyIds: string[] = [];
+            
+            if (user?.employeeProfile) {
+                // For staff, get assigned properties
+                const assignments = await prisma.employeePropertyAssignment.findMany({
+                    where: { employeeId: user.employeeProfile.id },
+                    select: { propertyId: true }
+                });
+                propertyIds = assignments.map((a: any) => a.propertyId);
+            } else {
+                // Primary owner sees all their properties
+                const ownerProperties = await prisma.property.findMany({
+                    where: { ownerId: user?.parentOwnerId || userId },
+                    select: { id: true }
+                });
+                propertyIds = ownerProperties.map(p => p.id);
+            }
+
             return await prisma.booking.findMany({
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
@@ -529,11 +547,28 @@ export async function getPendingBookingsCount() {
 
         const userId = session.userId as string;
 
-        const ownerProperties = await prisma.property.findMany({
-            where: { ownerId: userId },
-            select: { id: true }
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            include: { employeeProfile: true }
         });
-        const propertyIds = ownerProperties.map(p => p.id);
+        
+        let propertyIds: string[] = [];
+        
+        if (user?.employeeProfile) {
+            // For staff, get assigned properties
+            const assignments = await prisma.employeePropertyAssignment.findMany({
+                where: { employeeId: user.employeeProfile.id },
+                select: { propertyId: true }
+            });
+            propertyIds = assignments.map((a: any) => a.propertyId);
+        } else {
+            // Primary owner sees all their properties
+            const ownerProperties = await prisma.property.findMany({
+                where: { ownerId: user?.parentOwnerId || userId },
+                select: { id: true }
+            });
+            propertyIds = ownerProperties.map(p => p.id);
+        }
 
         return await prisma.booking.count({
             where: {
