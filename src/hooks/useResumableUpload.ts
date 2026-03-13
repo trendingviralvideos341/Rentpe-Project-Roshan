@@ -3,7 +3,8 @@
 import { useState, useCallback } from 'react';
 import { initiateUploadAction, uploadChunkAction, completeUploadAction } from '@/actions/uploads';
 
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (Optimal for Vercel/NextJS limits)
+const CONCURRENCY_LIMIT = 3; // Number of simultaneous chunks per file
 
 type UploadProgress = {
     percent: number;
@@ -32,43 +33,43 @@ export function useResumableUpload() {
             });
 
             const sessionId = session.id;
-            let uploadedChunks = session.uploadedChunks;
+            let uploadedChunkIndices = session.uploadedChunks || [];
 
-            // 2. Upload Chunks
-            for (let i = 0; i < totalChunks; i++) {
-                // Skip if already uploaded (resumption logic)
-                if (uploadedChunks.includes(i)) continue;
+            // 2. Prepare Chunks
+            const chunkIndices = Array.from({ length: totalChunks }, (_, i) => i)
+                .filter(i => !uploadedChunkIndices.includes(i));
 
-                const start = i * CHUNK_SIZE;
+            // Function to upload a single chunk
+            const uploadSingleChunk = async (index: number) => {
+                const start = index * CHUNK_SIZE;
                 const end = Math.min(file.size, start + CHUNK_SIZE);
                 const chunk = file.slice(start, end);
 
-                // Convert to Base64 (simplest for Server Actions)
-                const reader = new FileReader();
-                const base64ChunkPromise = new Promise<string>((resolve) => {
-                    reader.onload = () => {
-                        const base64 = (reader.result as string).split(',')[1];
-                        resolve(base64);
-                    };
-                    reader.readAsDataURL(chunk);
-                });
+                const formData = new FormData();
+                formData.append('sessionId', sessionId);
+                formData.append('chunkIndex', index.toString());
+                formData.append('chunk', chunk, `chunk-${index}`);
 
-                const base64Chunk = await base64ChunkPromise;
+                const result = await uploadChunkAction(formData);
+                return result.uploadedChunks;
+            };
 
-                // Upload chunk
-                const result = await uploadChunkAction(sessionId, i, base64Chunk);
-                uploadedChunks = result.uploadedChunks;
-
-                // Update Progress
-                const percent = Math.round((uploadedChunks.length / totalChunks) * 100);
+            // 3. Upload Chunks with Concurrency Limit
+            for (let i = 0; i < chunkIndices.length; i += CONCURRENCY_LIMIT) {
+                const batch = chunkIndices.slice(i, i + CONCURRENCY_LIMIT);
+                const results = await Promise.all(batch.map(index => uploadSingleChunk(index)));
+                
+                // Use the latest uploadedChunks from any of the results in the batch
+                const latestUploaded = results[results.length - 1];
+                const percent = Math.round((latestUploaded.length / totalChunks) * 100);
                 setProgress({
                     percent,
-                    uploadedChunks: uploadedChunks.length,
+                    uploadedChunks: latestUploaded.length,
                     totalChunks
                 });
             }
 
-            // 3. Complete Upload
+            // 4. Complete Upload
             const finalResult = await completeUploadAction(sessionId);
             setStatus('SUCCESS');
             return finalResult;

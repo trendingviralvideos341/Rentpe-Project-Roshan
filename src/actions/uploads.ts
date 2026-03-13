@@ -38,21 +38,40 @@ export async function initiateUploadAction(params: {
 }
 
 /**
- * Handles an individual chunk upload.
- * In this implementation, we simulate storage by writing to a local tmp directory.
  */
 export async function uploadChunkAction(
-    sessionId: string, 
-    chunkIndex: number, 
-    chunkData: string // Base64 or Blob as string? Let's use Base64 for ease in server actions if needed
+    formData: FormData
 ) {
     const session = await getSession();
     if (!session || !session.userId) throw new Error("Unauthorized");
+
+    const sessionId = formData.get('sessionId') as string;
+    const chunkIndex = parseInt(formData.get('chunkIndex') as string);
+    const chunkFile = formData.get('chunk') as File;
+
+    if (!sessionId || isNaN(chunkIndex) || !chunkFile) {
+        throw new Error("Invalid upload parameters");
+    }
 
     const upload = await prisma.uploadSession.findUnique({
         where: { id: sessionId, userId: session.userId }
     });
     if (!upload) throw new Error("Upload session not found");
+
+    // Security Validation
+    const MAX_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB limit for a single chunk
+    if (chunkFile.size > MAX_CHUNK_SIZE) {
+        throw new Error("Chunk size exceeds limit");
+    }
+
+    const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+        'application/pdf', 'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (!allowedTypes.includes(chunkFile.type)) {
+        throw new Error(`File type ${chunkFile.type} is not allowed`);
+    }
 
     // Write chunk to local filesystem (simulation of object storage)
     const chunkDir = path.join(process.cwd(), 'tmp', 'uploads', sessionId);
@@ -61,7 +80,8 @@ export async function uploadChunkAction(
     }
 
     const chunkPath = path.join(chunkDir, `chunk-${chunkIndex}`);
-    const buffer = Buffer.from(chunkData, 'base64');
+    const arrayBuffer = await chunkFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     fs.writeFileSync(chunkPath, buffer);
 
     // Update session tracking
