@@ -389,6 +389,7 @@ export default function AddPropertyPage() {
 
         setSaving(true);
         try {
+            // 1. Basic Info
             const fullAddress = [address, postOffice, city, state].filter(Boolean).join(", ") + ` - ${pincode}, ${country}`;
             const formData = new FormData();
             formData.set("name", name);
@@ -398,39 +399,20 @@ export default function AddPropertyPage() {
             formData.set("businessName", businessName);
             formData.set("amenities", JSON.stringify(amenities));
             
-            // Convert images to base64 for each category
+            // 2. Process Files categories (Send raw File objects)
             const categories = Object.keys(docs) as (keyof typeof docs)[];
-            const processedDocs: any = {};
-
             for (const cat of categories) {
-                const value = docs[cat];
-                if (Array.isArray(value)) {
-                    processedDocs[cat] = await Promise.all(value.map(f => fileToBase64(f)));
-                } else if (value) {
-                    processedDocs[cat] = await fileToBase64(value);
-                } else {
-                    processedDocs[cat] = null;
+                const files = docs[cat];
+                if (Array.isArray(files)) {
+                    files.forEach(file => {
+                        formData.append(cat, file);
+                    });
+                } else if (files) {
+                    formData.append(cat, files);
                 }
             }
 
-            // Map UI docs to backend schema fields
-            formData.set("buildingPhotos", JSON.stringify(processedDocs.buildingPhotos || []));
-            formData.set("commonAreaPhotos", JSON.stringify(processedDocs.commonAreaPhotos || []));
-            formData.set("roomsAndBathroomPhotos", JSON.stringify(processedDocs.roomsAndBathroomPhotos || []));
-            formData.set("parkingPhotos", JSON.stringify(processedDocs.parkingPhotos || []));
-            formData.set("amenitiesPhotos", JSON.stringify(processedDocs.amenitiesPhotos || []));
-            
-            formData.set("aadhaarProof", JSON.stringify(processedDocs.aadhaarProof || []));
-            formData.set("panProof", JSON.stringify(processedDocs.panProof || []));
-            formData.set("pgLicenceUrl", JSON.stringify(processedDocs.pgLicenceUrl || []));
-            formData.set("livePhotoUrl", processedDocs.livePhotoUrl?.[0] || "");
-            
-            // Legacy 'images' for backward compatibility
-            formData.set("images", JSON.stringify([
-                ...(processedDocs.buildingPhotos || []),
-                ...(processedDocs.roomsAndBathroomPhotos || [])
-            ]));
-
+            // Other fields
             formData.set("ownerName", ownerName);
             formData.set("licenseNumber", licenseNumber);
             formData.set("reraId", reraId);

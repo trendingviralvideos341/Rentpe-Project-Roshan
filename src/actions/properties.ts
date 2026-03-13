@@ -74,25 +74,23 @@ export async function createProperty(formData: FormData) {
     const city = formData.get("city") as string;
     const description = formData.get("description") as string;
     const amenities = formData.get("amenities") as string; // JSON string
-    const images = formData.get("images") as string; // JSON string
     const ownerName = formData.get("ownerName") as string;
-    const pgLicence = formData.get("pgLicence") as string;
     const roomsJson = formData.get("rooms") as string;
     const propertyType = formData.get("propertyType") as string;
     const licenseNumber = formData.get("licenseNumber") as string;
     const reraId = formData.get("reraId") as string;
     const businessName = formData.get("businessName") as string;
 
-    const buildingPhotos = formData.get("buildingPhotos") as string;
-    const commonAreaPhotos = formData.get("commonAreaPhotos") as string;
-    const roomsAndBathroomPhotos = formData.get("roomsAndBathroomPhotos") as string;
-    const parkingPhotos = formData.get("parkingPhotos") as string;
-    const amenitiesPhotos = formData.get("amenitiesPhotos") as string;
+    const buildingPhotos = formData.getAll("buildingPhotos") as File[];
+    const commonAreaPhotos = formData.getAll("commonAreaPhotos") as File[];
+    const roomsAndBathroomPhotos = formData.getAll("roomsAndBathroomPhotos") as File[];
+    const parkingPhotos = formData.getAll("parkingPhotos") as File[];
+    const amenitiesPhotos = formData.getAll("amenitiesPhotos") as File[];
 
-    const aadhaarProof = formData.get("aadhaarProof") as string;
-    const panProof = formData.get("panProof") as string;
-    const pgLicenceUrl = formData.get("pgLicenceUrl") as string;
-    const livePhotoUrl = formData.get("livePhotoUrl") as string;
+    const aadhaarProof = formData.getAll("aadhaarProof") as File[];
+    const panProof = formData.getAll("panProof") as File[];
+    const pgLicenceUrl = formData.getAll("pgLicenceUrl") as File[];
+    const livePhotoUrl = formData.get("livePhotoUrl") as File;
 
     const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
 
@@ -110,20 +108,20 @@ export async function createProperty(formData: FormData) {
     const uploadTasks = async () => {
         const results: Record<string, any> = {};
         
-        // Helper for batch uploads
-        const processBatch = async (field: string, data: string) => {
-            if (data) {
-                const parsed = JSON.parse(data);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    results[field] = await batchUploadToCloudinary(parsed, `${folder}/${field}`);
+        // Helper for raw File uploads
+        const processBatch = async (field: string, files: File[]) => {
+            if (files && files.length > 0) {
+                // Filter out empty entries if any (sometimes happens with empty inputs)
+                const validFiles = files.filter(f => f.size > 0);
+                if (validFiles.length > 0) {
+                    results[field] = await batchUploadToCloudinary(validFiles, `${folder}/${field}`);
                 }
             }
         };
 
-        // Helper for single uploads (base64)
-        const processSingle = async (field: string, data: string) => {
-            if (data && data.startsWith('data:')) {
-                results[field] = await uploadToCloudinary(data, folder);
+        const processSingle = async (field: string, file: File | null) => {
+            if (file && file.size > 0) {
+                results[field] = await uploadToCloudinary(file, folder);
             }
         };
 
@@ -156,12 +154,11 @@ export async function createProperty(formData: FormData) {
                 city,
                 description,
                 amenities: amenities || "[]",
-                images: images || JSON.stringify([
+                images: JSON.stringify([
                     ...(uploaded.buildingPhotos || []),
                     ...(uploaded.roomsAndBathroomPhotos || [])
                 ]),
                 ownerName: finalOwnerName,
-                pgLicence: pgLicence || null,
                 ownerId: user?.parentOwnerId || session.userId,
                 status: "PENDING_APPROVAL",
                 propertyType: propertyType || "PG",
