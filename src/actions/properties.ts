@@ -236,11 +236,26 @@ export async function createProperty(formData: FormData) {
         throw new Error(`Critical uploads failed: ${uploadErrors.join(", ")}`);
     }
 
-    // 2. Create property and rooms in a transaction
-    const property = await prisma.$transaction(async (tx) => {
-        // Generate a user-friendly Registration Number (displayId)
-        const displayId = await generateSequentialId('PROPERTY');
+    // 2. Pre-fetch counts OUTSIDE the transaction — avoids nested sequential DB queries inside an open transaction
+    let roomCount = 0;
+    let bedCount = 0;
+    const parsedRooms = roomsJson ? (() => { try { return JSON.parse(roomsJson); } catch { return []; } })() : [];
+    const hasRooms = Array.isArray(parsedRooms) && parsedRooms.length > 0;
 
+    const [propertyCount] = await Promise.all([
+        prisma.property.count(),
+        ...(hasRooms ? [
+            prisma.room.count().then(c => { roomCount = c; }),
+            prisma.bed.count().then(c => { bedCount = c; }),
+        ] : [])
+    ]);
+
+    // Generate displayId locally — no DB roundtrip
+    const displayId = `REN-PROP-${(propertyCount + 1).toString().padStart(4, '0')}`;
+
+    // 3. Create property and rooms in a transaction
+
+    const property = await prisma.$transaction(async (tx) => {
         const newProperty = await tx.property.create({
             data: {
                 displayId,
@@ -260,13 +275,11 @@ export async function createProperty(formData: FormData) {
                 licenseNumber: licenseNumber || null,
                 reraId: reraId || null,
                 businessName: businessName || null,
-                // Structured Category Mapping
                 buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
                 commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
                 roomsAndBathroomPhotos: uploaded.roomsAndBathroomPhotos ? JSON.stringify(uploaded.roomsAndBathroomPhotos) : null,
                 parkingPhotos: uploaded.parkingPhotos ? JSON.stringify(uploaded.parkingPhotos) : null,
                 amenitiesPhotos: uploaded.amenitiesPhotos ? JSON.stringify(uploaded.amenitiesPhotos) : null,
-                
                 aadhaarProof: uploaded.aadhaarProof ? JSON.stringify(uploaded.aadhaarProof) : null,
                 panProof: uploaded.panProof ? JSON.stringify(uploaded.panProof) : null,
                 pgLicenceUrl: uploaded.pgLicenceUrl ? JSON.stringify(uploaded.pgLicenceUrl) : null,
@@ -274,42 +287,44 @@ export async function createProperty(formData: FormData) {
             }
         });
 
-        if (roomsJson) {
-            const rooms = JSON.parse(roomsJson);
-            if (Array.isArray(rooms) && rooms.length > 0) {
-                for (const r of rooms) {
-                    const roomDisplayId = await generateSequentialId('ROOM');
-                    const room = await tx.room.create({
-                        data: {
-                            displayId: roomDisplayId,
-                            propertyId: newProperty.id,
-                            roomNumber: r.roomNumber.toString(),
-                            type: r.type,
-                            price: parseFloat(r.price),
-                            availability: parseInt(r.availability),
-                            totalBeds: parseInt(r.availability), // Initialize totalBeds
-                            status: 'AVAILABLE'
-                        }
-                    });
+        if (hasRooms) {
+            let curRoomCount = roomCount;
+            let curBedCount = bedCount;
 
-                    // Generate beds for this room
-                    for (let i = 1; i <= room.availability; i++) {
-                        const bedDisplayId = await generateSequentialId('BED');
-                        await tx.bed.create({
-                            data: {
-                                displayId: bedDisplayId,
-                                roomId: room.id,
-                                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
-                                status: 'AVAILABLE'
-                            }
-                        });
+            for (const r of parsedRooms) {
+                curRoomCount++;
+                const room = await tx.room.create({
+                    data: {
+                        displayId: `REN-ROOM-${curRoomCount.toString().padStart(4, '0')}`,
+                        propertyId: newProperty.id,
+                        roomNumber: r.roomNumber.toString(),
+                        type: r.type,
+                        price: parseFloat(r.price),
+                        availability: parseInt(r.availability),
+                        totalBeds: parseInt(r.availability),
+                        status: 'AVAILABLE'
                     }
+                });
+
+                // Bulk-insert ALL beds for this room in ONE query (was N separate queries)
+                const bedsPayload = Array.from({ length: room.availability }, (_, i) => {
+                    curBedCount++;
+                    return {
+                        displayId: `REN-BED-${curBedCount.toString().padStart(4, '0')}`,
+                        roomId: room.id,
+                        bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
+                        status: 'AVAILABLE' as const,
+                    };
+                });
+
+                if (bedsPayload.length > 0) {
+                    await tx.bed.createMany({ data: bedsPayload });
                 }
             }
         }
 
         return newProperty;
-    });
+    }, { timeout: 30000 });
 
     // 3. Log Audit Event
     logAuditEvent({

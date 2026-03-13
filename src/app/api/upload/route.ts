@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
+import { getSession } from "@/lib/auth";
+import { uploadToCloudinary } from "@/lib/upload";
 
+/**
+ * POST /api/upload
+ * Streams the file directly to Cloudinary — no local filesystem writes.
+ * This is required for Vercel (read-only filesystem) and any cloud environment.
+ */
 export async function POST(req: NextRequest) {
     try {
+        const session = await getSession();
+        if (!session || !session.userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const formData = await req.formData();
         const file = formData.get("file") as File | null;
 
@@ -12,31 +21,29 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
         }
 
-        if (file.size > 5 * 1024 * 1024) {
-            return NextResponse.json({ error: "File exceeds 5MB limit" }, { status: 400 });
+        // Reject oversized files (5MB cap for document uploads via this route)
+        const MAX_SIZE = 25 * 1024 * 1024; // 25MB — matches global limit
+        if (file.size > MAX_SIZE) {
+            return NextResponse.json({ error: "File exceeds 25MB limit" }, { status: 400 });
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        // Ensure upload directory exists
-        const uploadDir = join(process.cwd(), "public", "uploads");
-        if (!existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
+        // Security: only allow real image/PDF types
+        const ALLOWED_TYPES = [
+            "image/jpeg", "image/png", "image/webp", "image/gif",
+            "application/pdf",
+        ];
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            return NextResponse.json({ error: `File type "${file.type}" is not allowed` }, { status: 400 });
         }
 
-        // Clean filename, append timestamp to prevent overwrites
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        const cleanedName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
-        const filename = `${uniqueSuffix}-${cleanedName}`;
-        const filepath = join(uploadDir, filename);
+        // Stream file directly to Cloudinary — zero disk I/O
+        const folder = `rentpe/properties/${session.userId}`;
+        const cloudUrl = await uploadToCloudinary(file, folder);
 
-        await writeFile(filepath, buffer);
-
-        // Return the public URL path
-        return NextResponse.json({ url: `/uploads/${filename}` });
+        return NextResponse.json({ url: cloudUrl });
 
     } catch (e: any) {
-        console.error("Upload error:", e);
-        return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
+        console.error("[/api/upload] Error:", e);
+        return NextResponse.json({ error: e.message || "Upload failed" }, { status: 500 });
     }
 }

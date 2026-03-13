@@ -478,7 +478,7 @@ export default function PropertyManagePage() {
                             <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
                                 <div>
                                     <p className="text-sm text-muted-foreground font-semibold uppercase">Amenities</p>
-                                    <p className="mt-1">{property.amenities.split(',').join(', ')}</p>
+                                    <p className="mt-1">{(property.amenities || '').split(',').filter(Boolean).join(', ') || 'None listed'}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-muted-foreground font-semibold uppercase">Rules</p>
@@ -494,7 +494,7 @@ export default function PropertyManagePage() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                {property.images && JSON.parse(property.images).map((img: string, i: number) => (
+                                {property.images && (() => { try { return JSON.parse(property.images); } catch { return []; } })().map((img: string, i: number) => (
                                     <div key={i} className="aspect-video bg-muted rounded-md overflow-hidden relative">
                                         <img src={img} alt={`Property image ${i + 1} `} className="object-cover w-full h-full" />
                                     </div>
@@ -505,7 +505,7 @@ export default function PropertyManagePage() {
                                 <div className="mt-8 border-t pt-6">
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Verified Building Photos</h4>
                                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                                        {property.buildingPhotos && JSON.parse(property.buildingPhotos).map((img: any, i: number) => (
+                                        {property.buildingPhotos && (() => { try { return JSON.parse(property.buildingPhotos); } catch { return []; } })().map((img: any, i: number) => (
                                             <div key={i} className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Building Photo {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
@@ -513,7 +513,7 @@ export default function PropertyManagePage() {
                                                 </div>
                                             </div>
                                         ))}
-                                        {property.commonAreaPhotos && JSON.parse(property.commonAreaPhotos).map((img: any, i: number) => (
+                                        {property.commonAreaPhotos && (() => { try { return JSON.parse(property.commonAreaPhotos); } catch { return []; } })().map((img: any, i: number) => (
                                             <div key={i} className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Common Area {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
@@ -726,7 +726,7 @@ export default function PropertyManagePage() {
                                                     </div>
                                                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                                                         <div className={`h-full ${cat.colorClass.replace('text-', 'bg-')} transition-all duration-700 ease-out`} style={{
-                                                            width: `${Math.min(100, (JSON.parse(property[cat.key] || '[]').reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}%`
+                                                            width: `${Math.min(100, ((() => { try { return JSON.parse(property[cat.key] || '[]'); } catch { return []; } })().reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}%`
                                                         }} />
                                                     </div>
                                                 </div>
