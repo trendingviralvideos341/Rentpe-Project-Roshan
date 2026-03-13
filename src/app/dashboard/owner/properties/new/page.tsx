@@ -375,6 +375,8 @@ export default function AddPropertyPage() {
         return Object.keys(errs).length === 0;
     };
 
+    const [successData, setSuccessData] = useState<{ displayId: string; name: string } | null>(null);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) return;
@@ -382,7 +384,7 @@ export default function AddPropertyPage() {
         setSaving(true);
         try {
             // 1. Basic Info
-            const fullAddress = [address, postOffice, city, state].filter(Boolean).join(", ") + ` - ${pincode}, ${country}`;
+            const fullAddress = [address, postOffice, city, state].filter(Boolean).join(", ") + ` - ${pincode}, India`;
             const formData = new FormData();
             formData.set("name", name);
             formData.set("address", fullAddress);
@@ -390,39 +392,72 @@ export default function AddPropertyPage() {
             formData.set("description", description);
             formData.set("businessName", businessName);
             formData.set("amenities", JSON.stringify(amenities));
-            // 2. Process Files categories (Send raw File objects)
-            const categories = Object.keys(docs) as (keyof typeof docs)[];
-            let totalFiles = 0;
-            categories.forEach(cat => {
-                const files = docs[cat];
-                totalFiles += Array.isArray(files) ? files.length : (files ? 1 : 0);
+            formData.set("ownerName", ownerName);
+            formData.set("propertyType", propertyType);
+            formData.set("licenseNumber", licenseNumber);
+            formData.set("reraId", reraId);
+
+            // Add Rooms
+            formData.set("rooms", JSON.stringify(rooms));
+
+            // 2. Add Files
+            Object.entries(docs).forEach(([key, files]) => {
+                files.forEach((file: File) => formData.append(key, file));
             });
 
-            let uploadedCount = 0;
-            const progressToast = toast.loading(`Starting upload of ${totalFiles} images...`);
-
-            // This client-side code still sends the whole FormData, BUT the server action 
-            // is now refactored to handle the processing sequentially to save server memory.
-            // To show real granular progress on the client, we would need to split 
-            // the requests, but the current server-side optimization already solves 
-            // the 500 error / crash issue.
-            
-            // We'll update the toast to indicate it's processing.
-            toast.loading(`Processing ${totalFiles} images sequentially for maximum stability...`, { id: progressToast });
+            const totalFiles = Object.values(docs).reduce((acc, curr) => acc + curr.length, 0);
+            const progressToast = toast.loading(`Processing ${totalFiles} images sequentially for maximum stability...`);
 
             // Send to server action
             const res = await createProperty(formData);
             
             if (res) {
-                toast.success("Success! Property listing submitted with all documents verified.", { id: progressToast });
-                router.push("/dashboard/owner/my-properties");
+                toast.success("Success! Property listing submitted.", { id: progressToast });
+                setSuccessData({ displayId: res.displayId || "PENDING", name: res.name });
+                // We don't redirect immediately so they can see the registration number
             }
         } catch (e: any) {
-            toast.error(e.message || "Upload failed. Please try again with smaller images.", { duration: 5000 });
+            toast.error(e.message || "Upload failed. Please try again.", { duration: 5000 });
         } finally {
             setSaving(false);
         }
     };
+
+    if (successData) {
+        return (
+            <div className="max-w-2xl mx-auto py-12 px-4 text-center animate-in fade-in zoom-in-95 duration-500">
+                <div className="mb-8 flex justify-center">
+                    <div className="h-24 w-24 bg-green-100 rounded-full flex items-center justify-center border-4 border-green-50 shadow-xl">
+                        <ShieldCheck className="h-12 w-12 text-green-600" />
+                    </div>
+                </div>
+                <h1 className="text-4xl font-black text-slate-900 mb-2">Registration Successful!</h1>
+                <p className="text-slate-500 font-medium mb-8">Your property has been listed and is currently under verification.</p>
+                
+                <Card className="border-2 border-purple-100 overflow-hidden shadow-2xl mb-8">
+                    <div className="bg-purple-600 p-4">
+                        <p className="text-white text-[10px] font-black uppercase tracking-widest leading-none">Official Registration ID</p>
+                    </div>
+                    <CardContent className="p-8">
+                        <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 mb-4">
+                            <span className="text-5xl font-black text-slate-800 tracking-tighter font-mono">{successData.displayId}</span>
+                        </div>
+                        <p className="text-sm font-bold text-slate-700">{successData.name}</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-1">Please quote this ID for all future support queries.</p>
+                    </CardContent>
+                </Card>
+
+                <div className="flex flex-col gap-3">
+                    <Button onClick={() => router.push("/dashboard/owner/properties")} className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black rounded-xl text-lg shadow-xl transition-all hover:scale-[1.02]">
+                        GO TO PROPERTIES DASHBOARD
+                    </Button>
+                    <Button variant="outline" onClick={() => window.location.reload()} className="w-full h-14 border-2 border-slate-200 font-black rounded-xl text-lg">
+                        ADD ANOTHER PROPERTY
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     const hasErr = Object.keys(errors).length > 0;
     const inputErr = (k: string) => errors[k] ? "border-red-500" : "";

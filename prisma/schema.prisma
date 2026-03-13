@@ -73,6 +73,7 @@ model User {
 
 model Property {
   id                     String          @id @default(uuid())
+  displayId              String?         @unique
   ownerId                String
   name                   String
   address                String

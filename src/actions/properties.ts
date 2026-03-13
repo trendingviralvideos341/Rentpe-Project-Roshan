@@ -177,8 +177,13 @@ export async function createProperty(formData: FormData) {
 
     // 2. Create property and rooms in a transaction
     const property = await prisma.$transaction(async (tx) => {
+        // Generate a user-friendly Registration Number (displayId)
+        const count = await tx.property.count();
+        const displayId = `PROP-${1001 + count}`;
+
         const newProperty = await tx.property.create({
             data: {
+                displayId,
                 name,
                 address,
                 city,
