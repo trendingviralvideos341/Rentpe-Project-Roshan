@@ -458,7 +458,7 @@ export async function getCurrentUser() {
                     }
                 }
             }
-        });
+        } as any);
 
         if (!user) {
             // Return session data at least
@@ -474,9 +474,10 @@ export async function getCurrentUser() {
 
         // Parse admin permissions if they exist
         let adminPermissions: string[] = [];
-        if (user.adminProfile?.permissions) {
+        const adminProfile = (user as any).adminProfile;
+        if (adminProfile?.permissions) {
             try {
-                adminPermissions = JSON.parse(user.adminProfile.permissions);
+                adminPermissions = JSON.parse(adminProfile.permissions);
             } catch (e) {
                 console.error("Failed to parse admin permissions", e);
             }
