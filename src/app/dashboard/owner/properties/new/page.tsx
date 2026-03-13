@@ -456,17 +456,29 @@ export default function AddPropertyPage() {
         const progressToast = toast.loading("Initializing secure resilient upload...");
         
         try {
-            // 1. Process Files via Resumable Upload
+            // 1. Process Files via Resumable Upload (Parallelized & Order-Preserved)
             const uploadedUrls: Record<string, string[]> = {};
-            
-            for (const [category, files] of Object.entries(docs)) {
-                uploadedUrls[category] = [];
-                for (const file of files) {
-                    toast.loading(`Uploading ${file.name}...`, { id: progressToast });
-                    const result = await uploadFile(file);
-                    uploadedUrls[category].push(result.url);
+            const totalFiles = Object.values(docs).flat().length;
+            let completedFiles = 0;
+
+            toast.loading(`Starting batch upload of ${totalFiles} files...`, { id: progressToast });
+
+            // Using Promise.all on categories, then internal Promise.all for photo order
+            await Promise.all(Object.entries(docs).map(async ([category, files]) => {
+                if (files.length === 0) {
+                    uploadedUrls[category] = [];
+                    return;
                 }
-            }
+                
+                const urls = await Promise.all(files.map(async (file) => {
+                    const result = await uploadFile(file);
+                    completedFiles++;
+                    toast.loading(`Progress: ${completedFiles}/${totalFiles} photo(s) uploaded...`, { id: progressToast });
+                    return result.url;
+                }));
+                
+                uploadedUrls[category] = urls;
+            }));
 
             toast.loading("Finalizing property registration...", { id: progressToast });
 

@@ -101,17 +101,24 @@ export async function completeUploadAction(sessionId: string) {
     }
 
     // Assemble file
-    const writeStream = fs.createWriteStream(finalPath);
-    for (let i = 0; i < upload.totalChunks; i++) {
-        const chunkPath = path.join(chunkDir, `chunk-${i}`);
-        const data = fs.readFileSync(chunkPath);
-        writeStream.write(data);
-        fs.unlinkSync(chunkPath); // Clean up chunk
-    }
-    writeStream.end();
+    await new Promise<void>((resolve, reject) => {
+        const writeStream = fs.createWriteStream(finalPath);
+        writeStream.on('error', reject);
+        writeStream.on('finish', resolve);
+
+        for (let i = 0; i < upload.totalChunks; i++) {
+            const chunkPath = path.join(chunkDir, `chunk-${i}`);
+            const data = fs.readFileSync(chunkPath);
+            writeStream.write(data);
+            fs.unlinkSync(chunkPath); // Clean up chunk
+        }
+        writeStream.end();
+    });
 
     // Clean up directory
-    fs.rmdirSync(chunkDir);
+    if (fs.existsSync(chunkDir)) {
+        fs.rmdirSync(chunkDir);
+    }
 
     await (prisma as any).uploadSession.update({
         where: { id: sessionId },
