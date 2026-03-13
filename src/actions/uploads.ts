@@ -161,3 +161,71 @@ export async function completeUploadAction(sessionId: string) {
         fileName: upload.fileName 
     };
 }
+
+/**
+ * Quick upload for small files (Fast-Path).
+ * Handles the entire file in a single request to eliminate handshake overhead.
+ */
+export async function quickUploadAction(formData: FormData) {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+
+    const file = formData.get('file') as File;
+    const fileName = formData.get('fileName') as string;
+    const mimeType = formData.get('mimeType') as string;
+
+    if (!file || !fileName || !mimeType) {
+        throw new Error("Invalid upload parameters");
+    }
+
+    // Security Validation
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit for single-shot upload
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File too large for quick upload");
+    }
+
+    const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+        'application/pdf', 'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (!allowedTypes.includes(mimeType)) {
+        throw new Error(`File type ${mimeType} is not allowed`);
+    }
+
+    // Generate storage key
+    const storageKey = `uploads/${session.userId}/${Date.now()}-${fileName}`;
+    const finalPath = path.join(process.cwd(), 'public', 'uploads', storageKey);
+    const finalDir = path.dirname(finalPath);
+    
+    if (!fs.existsSync(finalDir)) {
+        fs.mkdirSync(finalDir, { recursive: true });
+    }
+
+    // Write file directly
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    fs.writeFileSync(finalPath, buffer);
+
+    // Create a completed session in the DB for consistency
+    const uploadSession = await (prisma as any).uploadSession.create({
+        data: {
+            userId: session.userId,
+            fileName,
+            fileSize: file.size,
+            mimeType,
+            totalChunks: 1,
+            storageKey,
+            status: 'COMPLETED',
+            uploadedChunks: [0]
+        }
+    });
+
+    return { 
+        id: uploadSession.id, 
+        storageKey: uploadSession.storageKey, 
+        url: `/uploads/${storageKey}`,
+        fileName: fileName,
+        success: true
+    };
+}

@@ -205,6 +205,33 @@ export default function AddPropertyPage() {
         setRooms(updated);
     };
 
+    // --- PHASE 3: High-Performance Batch Upload Worker ---
+    const uploadCategoryFiles = async (
+        files: File[], 
+        category: 'images' | 'documents',
+        subCategory?: string
+    ) => {
+        if (files.length === 0) return [];
+
+        const BATCH_SIZE = 3; // Limit simultaneous uploads to prevent network saturation
+        const uploadResults: { url: string }[] = [];
+        
+        for (let i = 0; i < files.length; i += BATCH_SIZE) {
+            const batch = files.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(
+                batch.map(file => uploadFile(file))
+            );
+            uploadResults.push(...batchResults as { url: string }[]);
+            
+            // UI Feedback during batch
+            if (files.length > BATCH_SIZE) {
+                const progress = Math.min(i + BATCH_SIZE, files.length);
+                toast.info(`Uploaded ${progress}/${files.length} ${category}...`, { id: 'upload-batch' });
+            }
+        }
+        return uploadResults.map(res => res.url);
+    };
+
     const handleDocChange = (category: keyof typeof docs, isMultiple: boolean) => (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
@@ -226,6 +253,8 @@ export default function AddPropertyPage() {
                 toast.error(`Limit 25MB reached. Cannot add ${file.name}`);
             }
         });
+
+        if (validFiles.length === 0 && files.length > 0) return;
 
         if (validFiles.length === 0 && files.length > 0) return;
 
@@ -456,29 +485,31 @@ export default function AddPropertyPage() {
         const progressToast = toast.loading("Initializing secure resilient upload...");
         
         try {
-            // 1. Process Files via Resumable Upload (Parallelized & Order-Preserved)
+            // 1. Process Files via Fast-Path Batch Worker (Parallelized & Concurrent)
             const uploadedUrls: Record<string, string[]> = {};
             const totalFiles = Object.values(docs).flat().length;
-            let completedFiles = 0;
+            let currentFileIndex = 0;
 
-            toast.loading(`Starting batch upload of ${totalFiles} files...`, { id: progressToast });
+            toast.loading(`Starting extreme-speed batch upload of ${totalFiles} files...`, { id: progressToast });
 
-            // Using Promise.all on categories, then internal Promise.all for photo order
-            await Promise.all(Object.entries(docs).map(async ([category, files]) => {
+            const categories = Object.keys(docs) as (keyof typeof docs)[];
+            for (const category of categories) {
+                const files = docs[category];
                 if (files.length === 0) {
                     uploadedUrls[category] = [];
-                    return;
+                    continue;
                 }
+
+                // Identify if it's an image or document category
+                const type = ['aadhaarProof', 'panProof', 'pgLicenceUrl', 'livePhotoUrl'].includes(category as string) ? 'documents' : 'images';
                 
-                const urls = await Promise.all(files.map(async (file) => {
-                    const result = await uploadFile(file);
-                    completedFiles++;
-                    toast.loading(`Progress: ${completedFiles}/${totalFiles} photo(s) uploaded...`, { id: progressToast });
-                    return result.url;
-                }));
-                
+                // Use the high-performance batch worker
+                const urls = await uploadCategoryFiles(files, type, category as string);
                 uploadedUrls[category] = urls;
-            }));
+                
+                currentFileIndex += files.length;
+                toast.loading(`Progress: ${currentFileIndex}/${totalFiles} files completed...`, { id: progressToast });
+            }
 
             toast.loading("Finalizing property registration...", { id: progressToast });
 

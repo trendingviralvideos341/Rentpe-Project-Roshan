@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { initiateUploadAction, uploadChunkAction, completeUploadAction } from '@/actions/uploads';
+import { initiateUploadAction, uploadChunkAction, completeUploadAction, quickUploadAction } from '@/actions/uploads';
 
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (Optimal for Vercel/NextJS limits)
+const FAST_PATH_THRESHOLD = 2 * 1024 * 1024; // Use quick upload for files < 2MB
 const CONCURRENCY_LIMIT = 3; // Number of simultaneous chunks per file
 
 type UploadProgress = {
@@ -20,10 +21,25 @@ export function useResumableUpload() {
     const uploadFile = useCallback(async (file: File) => {
         setStatus('UPLOADING');
         setError(null);
+        setProgress({ percent: 0, uploadedChunks: 0, totalChunks: 1 });
 
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        
         try {
+            // --- FAST PATH for Small Files ---
+            if (file.size < FAST_PATH_THRESHOLD) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('fileName', file.name);
+                formData.append('mimeType', file.type);
+
+                const result = await quickUploadAction(formData);
+                setProgress({ percent: 100, uploadedChunks: 1, totalChunks: 1 });
+                setStatus('SUCCESS');
+                return result;
+            }
+
+            // --- CHUNKED PATH for Large Files ---
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            
             // 1. Initiate Session
             const session = await initiateUploadAction({
                 fileName: file.name,
@@ -33,7 +49,7 @@ export function useResumableUpload() {
             });
 
             const sessionId = session.id;
-            let uploadedChunkIndices = session.uploadedChunks || [];
+            let uploadedChunkIndices = (session as any).uploadedChunks || [];
 
             // 2. Prepare Chunks
             const chunkIndices = Array.from({ length: totalChunks }, (_, i) => i)
