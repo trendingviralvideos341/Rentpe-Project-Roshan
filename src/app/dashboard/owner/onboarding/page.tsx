@@ -206,14 +206,10 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
         const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > MAX_FILE_SIZE) { alert("File exceeds 5MB limit."); return; }
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            try {
-                await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: ev.target?.result as string, fileName: file.name });
-                fetchDocs();
-            } catch { alert("Upload failed."); }
-        };
-        reader.readAsDataURL(file);
+        try {
+            await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: file, fileName: file.name });
+            fetchDocs();
+        } catch { alert("Upload failed."); }
         e.target.value = "";
     };
 

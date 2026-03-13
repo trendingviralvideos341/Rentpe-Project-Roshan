@@ -127,25 +127,16 @@ function ActionModal({ title, subtitle, placeholder, confirmLabel, confirmClass,
     );
 }
 
-// ── File to base64 ──────────────────────────────────────────────────────────
-function fileToBase64(file: File): Promise<string> {
-    return new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result as string);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-    });
-}
+// removed fileToBase64 utility as we now use raw File objects for better performance
 
 // ── Doc Upload field ────────────────────────────────────────────────────────
 function DocUpload({ label, docData, docName, verified, onUpload, onVerify }:
-    { label: string; docData?: string; docName?: string; verified: boolean; onUpload: (data: string, name: string) => void; onVerify: () => void }) {
+    { label: string; docData?: string; docName?: string; verified: boolean; onUpload: (data: string | File, name: string) => void; onVerify: () => void }) {
     const [viewing, setViewing] = useState(false);
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]; if (!file) return;
         if (file.size > 5 * 1024 * 1024) { alert("File too large (max 5MB)"); return; }
-        const b64 = await fileToBase64(file);
-        onUpload(b64, file.name);
+        onUpload(file, file.name);
     };
     return (
         <>

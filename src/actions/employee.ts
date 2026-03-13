@@ -202,7 +202,7 @@ const DOC_FIELD_MAP: Record<string, { dataField: string; nameField: string }> = 
     policeVerification: { dataField: 'policeVerification', nameField: 'policeVerificationName' },
 };
 
-export async function uploadEmployeeDoc(id: string, docField: string, docData: string, docName: string) {
+export async function uploadEmployeeDoc(id: string, docField: string, docData: string | File, docName: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 

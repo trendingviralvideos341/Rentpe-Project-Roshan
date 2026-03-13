@@ -10,7 +10,7 @@ import { logAuditEvent } from "@/lib/audit";
 export async function uploadTenantDocument(data: {
     bookingId: string;
     type: string;
-    fileData: string;
+    fileData: string | File;
     fileName?: string;
 }) {
     const session = await getSession();

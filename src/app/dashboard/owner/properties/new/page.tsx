@@ -180,14 +180,6 @@ export default function AddPropertyPage() {
         }
     };
 
-    const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = error => reject(error);
-        });
-    };
 
     // Sub-component for upload cards
     const UploadCard = ({ label, sub, category, isMultiple = true, slotsCount = 4, isRequired = false, minRequired }: { 

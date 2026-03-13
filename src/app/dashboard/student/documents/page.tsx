@@ -16,11 +16,19 @@ const DOC_TYPES = [
 
 const MAX_TOTAL_BYTES = 5 * 1024 * 1024; // 5 MB
 
-// base64 string → approximate original byte size
-function base64ToBytes(b64: string): number {
-    // data:image/jpeg;base64,XXXX — strip header
-    const base = b64.includes(",") ? b64.split(",")[1] : b64;
-    return Math.floor((base.length * 3) / 4);
+// estimate file size (handles base64, files, or URLs roughly)
+function getFileSize(data: string | File): number {
+    if (!data) return 0;
+    if (data instanceof File) return data.size;
+    if (data.startsWith('data:')) {
+        const base = data.includes(",") ? data.split(",")[1] : data;
+        return Math.floor((base.length * 3) / 4);
+    }
+    // For Cloudinary URLs, we don't have the size locally, 
+    // but in this UI we primarily care about the new upload.
+    // We'll return 0 for URLs to avoid breaking calculations, 
+    // as previously it was return wrong values anyway.
+    return 0;
 }
 
 function formatMB(bytes: number): string {
@@ -58,7 +66,7 @@ export default function StudentDocumentsPage() {
     }, []);
 
     // ── Storage calculation ──────────────────────────────
-    const usedBytes = documents.reduce((sum, d) => sum + base64ToBytes(d.fileData || ""), 0);
+    const usedBytes = documents.reduce((sum, d) => sum + getFileSize(d.fileData || ""), 0);
     const remainingBytes = MAX_TOTAL_BYTES - usedBytes;
     const usedPercent = Math.min(100, (usedBytes / MAX_TOTAL_BYTES) * 100);
     const isNearLimit = usedPercent >= 80;
@@ -66,15 +74,15 @@ export default function StudentDocumentsPage() {
 
     const getDocStatus = (type: string) => documents.find(d => d.type === type);
 
-    const checkAndUpload = async (type: string, base64: string, fileName: string) => {
+    const checkAndUpload = async (type: string, fileData: string | File, fileName: string) => {
         if (!booking) return;
         setUploadError(null);
 
-        const newFileBytes = base64ToBytes(base64);
+        const newFileBytes = getFileSize(fileData);
 
         // Find existing doc of this type to subtract its size (it will be replaced)
         const existingDoc = getDocStatus(type);
-        const existingBytes = existingDoc ? base64ToBytes(existingDoc.fileData || "") : 0;
+        const existingBytes = existingDoc ? getFileSize(existingDoc.fileData || "") : 0;
         const projectedUsed = usedBytes - existingBytes + newFileBytes;
 
         if (projectedUsed > MAX_TOTAL_BYTES) {
@@ -86,7 +94,7 @@ export default function StudentDocumentsPage() {
             return;
         }
 
-        await uploadTenantDocument({ bookingId: booking.id, type, fileData: base64, fileName });
+        await uploadTenantDocument({ bookingId: booking.id, type, fileData, fileName });
         const docs = await getTenantDocuments(booking.id);
         setDocuments(docs);
         setUploading(null);
@@ -96,12 +104,7 @@ export default function StudentDocumentsPage() {
         setUploading(type);
         setUploadError(null);
         try {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const base64 = e.target?.result as string;
-                await checkAndUpload(type, base64, file.name);
-            };
-            reader.readAsDataURL(file);
+            await checkAndUpload(type, file, file.name);
         } catch {
             setUploadError("Upload failed. Please try again.");
             setUploading(null);
@@ -125,14 +128,18 @@ export default function StudentDocumentsPage() {
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
         canvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
-        const base64 = canvas.toDataURL("image/jpeg", 0.75); // 0.75 quality to save space
 
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream?.getTracks().forEach(t => t.stop());
-        setCameraActive(false);
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
 
-        setUploading("SELFIE");
-        await checkAndUpload("SELFIE", base64, "selfie.jpg");
+            const stream = videoRef.current?.srcObject as MediaStream;
+            stream?.getTracks().forEach(t => t.stop());
+            setCameraActive(false);
+
+            setUploading("SELFIE");
+            await checkAndUpload("SELFIE", file, "selfie.jpg");
+        }, "image/jpeg", 0.75);
     };
 
     if (loading) return <div className="p-8 text-center animate-pulse">Loading...</div>;
@@ -220,7 +227,7 @@ export default function StudentDocumentsPage() {
                 {DOC_TYPES.map((dt) => {
                     const doc = getDocStatus(dt.key);
                     const isUploading = uploading === dt.key;
-                    const docBytes = doc ? base64ToBytes(doc.fileData || "") : 0;
+                    const docBytes = doc ? getFileSize(doc.fileData || "") : 0;
 
                     return (
                         <Card key={dt.key} className={`border-2 ${doc?.status === "VERIFIED" ? "border-green-300 bg-green-50/30" : doc?.status === "REJECTED" ? "border-red-300 bg-red-50/30" : doc ? "border-blue-200" : "border-dashed"}`}>

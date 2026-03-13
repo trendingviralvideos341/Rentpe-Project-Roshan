@@ -18,7 +18,7 @@ export default function OwnerTicketsPage() {
     const [description, setDescription] = useState("");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
-    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+    const [uploadedImages, setUploadedImages] = useState<{file: File, preview: string}[]>([]);
     const imgInputRef = useRef<HTMLInputElement>(null);
 
     const ownerCategories = OWNER_TO_ADMIN_CATEGORIES;
@@ -27,17 +27,21 @@ export default function OwnerTicketsPage() {
         const files = Array.from(e.target.files || []);
         const remaining = 3 - uploadedImages.length;
         const toProcess = files.slice(0, remaining);
-        toProcess.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                setUploadedImages(prev => [...prev, ev.target?.result as string]);
-            };
-            reader.readAsDataURL(file);
-        });
+        
+        const newImages = toProcess.map(file => ({
+            file,
+            preview: URL.createObjectURL(file)
+        }));
+        
+        setUploadedImages(prev => [...prev, ...newImages]);
         e.target.value = '';
     };
 
     const removeImage = (idx: number) => {
+        const removed = uploadedImages[idx];
+        if (removed.preview.startsWith('blob:')) {
+            URL.revokeObjectURL(removed.preview);
+        }
         setUploadedImages(prev => prev.filter((_, i) => i !== idx));
     };
 
@@ -139,7 +143,8 @@ export default function OwnerTicketsPage() {
                                 onChange={(e) => setCategory(e.target.value)}
                                 className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                             >
-                                {ownerCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                {OWNER_TO_ADMIN_CATEGORIES.map(c => (
+<option key={c} value={c}>{c}</option>))}
                             </select>
                         </div>
                         <div>
@@ -163,8 +168,9 @@ export default function OwnerTicketsPage() {
                             <div className="flex flex-wrap gap-3 mb-3">
                                 {uploadedImages.map((img, idx) => (
                                     <div key={idx} className="relative group">
-                                        <img src={img} alt={`Screenshot ${idx + 1}`} className="h-24 w-24 object-cover rounded-lg border-2 border-blue-200" />
+                                        <img src={img.preview} alt={`Screenshot ${idx + 1}`} className="h-24 w-24 object-cover rounded-lg border-2 border-primary/20" />
                                         <button
+                                            type="button"
                                             onClick={() => removeImage(idx)}
                                             className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
@@ -174,10 +180,11 @@ export default function OwnerTicketsPage() {
                                 ))}
                                 {uploadedImages.length < 3 && (
                                     <button
+                                        type="button"
                                         onClick={() => imgInputRef.current?.click()}
-                                        className="h-24 w-24 border-2 border-dashed border-blue-300/50 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-500/50 hover:bg-blue-50 transition-all text-muted-foreground"
+                                        className="h-24 w-24 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground"
                                     >
-                                        <ImagePlus className="h-5 w-5 text-blue-400" />
+                                        <ImagePlus className="h-5 w-5" />
                                         <span className="text-[10px] font-medium">Add Photo</span>
                                         <span className="text-[9px] opacity-60">{uploadedImages.length}/3</span>
                                     </button>

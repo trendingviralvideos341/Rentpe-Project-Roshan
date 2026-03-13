@@ -16,24 +16,28 @@ export default function StudentTicketsPage() {
     const [description, setDescription] = useState("");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
-    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+    const [uploadedImages, setUploadedImages] = useState<{file: File, preview: string}[]>([]);
     const imgInputRef = useRef<HTMLInputElement>(null);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         const remaining = 3 - uploadedImages.length;
         const toProcess = files.slice(0, remaining);
-        toProcess.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                setUploadedImages(prev => [...prev, ev.target?.result as string]);
-            };
-            reader.readAsDataURL(file);
-        });
+        
+        const newImages = toProcess.map(file => ({
+            file,
+            preview: URL.createObjectURL(file)
+        }));
+        
+        setUploadedImages(prev => [...prev, ...newImages]);
         e.target.value = '';
     };
 
     const removeImage = (idx: number) => {
+        const removed = uploadedImages[idx];
+        if (removed.preview.startsWith('blob:')) {
+            URL.revokeObjectURL(removed.preview);
+        }
         setUploadedImages(prev => prev.filter((_, i) => i !== idx));
     };
 
@@ -56,7 +60,10 @@ export default function StudentTicketsPage() {
                 ? `${description.trim()}\n\n[ATTACHMENTS: ${uploadedImages.length} screenshot(s) attached]`
                 : description.trim();
             await createStudentTicket({ category, description: descWithImages });
-            setDescription(""); setCategory(""); setShowCreate(false); setUploadedImages([]);
+            setDescription(""); setCategory(""); setShowCreate(false); 
+            // Cleanup previews
+            uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
+            setUploadedImages([]);
             fetchTickets();
         } catch (e) { alert("Failed to create ticket."); }
         finally { setCreating(false); }
@@ -162,7 +169,7 @@ export default function StudentTicketsPage() {
                             <div className="flex flex-wrap gap-3 mb-3">
                                 {uploadedImages.map((img, idx) => (
                                     <div key={idx} className="relative group">
-                                        <img src={img} alt={`Screenshot ${idx + 1}`} className="h-24 w-24 object-cover rounded-lg border-2 border-primary/20" />
+                                        <img src={img.preview} alt={`Screenshot ${idx + 1}`} className="h-24 w-24 object-cover rounded-lg border-2 border-primary/20" />
                                         <button
                                             onClick={() => removeImage(idx)}
                                             className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

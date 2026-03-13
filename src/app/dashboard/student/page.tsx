@@ -158,16 +158,11 @@ function DocumentSection({ booking }: { booking: any }) {
         if (!file) return;
         if (file.size > MAX_FILE_SIZE) { alert("File size exceeds 5MB limit. Please upload a smaller file."); return; }
         setUploading(true);
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const base64 = ev.target?.result as string;
-            try {
-                await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: base64, fileName: file.name });
-                await fetchDocs();
-            } catch { alert("Upload failed. Please try again."); }
-            finally { setUploading(false); }
-        };
-        reader.readAsDataURL(file);
+        try {
+            await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: file, fileName: file.name });
+            await fetchDocs();
+        } catch { alert("Upload failed. Please try again."); }
+        finally { setUploading(false); }
         e.target.value = "";
     };
 
