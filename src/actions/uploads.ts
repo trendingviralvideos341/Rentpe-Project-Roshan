@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import fs from "fs";
 import path from "path";
+import { uploadToCloudinary } from "@/lib/upload";
 
 /**
  * Initiates a new resumable upload session.
@@ -120,46 +121,57 @@ export async function completeUploadAction(sessionId: string) {
         fs.mkdirSync(finalDir, { recursive: true });
     }
 
-    // Assemble file
-    await new Promise<void>((resolve, reject) => {
-        const writeStream = fs.createWriteStream(finalPath);
-        writeStream.on('error', reject);
-        writeStream.on('finish', resolve);
-
-        for (let i = 0; i < upload.totalChunks; i++) {
+    // Assemble file in a temporary buffer
+    const assembledBuffer = Buffer.concat(
+        Array.from({ length: upload.totalChunks }, (_, i) => {
             const chunkPath = path.join(chunkDir, `chunk-${i}`);
             const data = fs.readFileSync(chunkPath);
-            writeStream.write(data);
             fs.unlinkSync(chunkPath); // Clean up chunk
-        }
-        writeStream.end();
-    });
+            return data;
+        })
+    );
 
     // Clean up directory
     if (fs.existsSync(chunkDir)) {
         fs.rmdirSync(chunkDir);
     }
 
-    await (prisma as any).uploadSession.update({
-        where: { id: sessionId },
-        data: { status: 'COMPLETED' }
-    });
+    // --- PHASE 3: Cloudinary Elite Restoration ---
+    try {
+        // Upload the assembled buffer to Cloudinary
+        // Note: Using a temporary File-like structure for the upload helper
+        const cloudinaryUrl = await uploadToCloudinary(
+            new File([assembledBuffer], upload.fileName, { type: upload.mimeType }),
+            `uploads/${session.userId}`
+        );
 
-    logAuditEvent({
-        actorId: session.userId,
-        actorRole: session.role || 'USER',
-        actorName: (session as any).name || 'User',
-        actionType: 'CREATE',
-        entityType: 'FILE',
-        entityId: sessionId,
-        description: `Successfully uploaded file: ${upload.fileName}`
-    });
+        await (prisma as any).uploadSession.update({
+            where: { id: sessionId },
+            data: { 
+                status: 'COMPLETED',
+                storageKey: cloudinaryUrl // Update with final cloud URL
+            }
+        });
 
-    return { 
-        success: true, 
-        url: `/uploads/${upload.storageKey}`, // Relative URL for public access
-        fileName: upload.fileName 
-    };
+        logAuditEvent({
+            actorId: session.userId,
+            actorRole: session.role || 'USER',
+            actorName: (session as any).name || 'User',
+            actionType: 'CREATE',
+            entityType: 'FILE',
+            entityId: sessionId,
+            description: `Successfully uploaded file to cloud: ${upload.fileName}`
+        });
+
+        return { 
+            success: true, 
+            url: cloudinaryUrl,
+            fileName: upload.fileName 
+        };
+    } catch (error) {
+        console.error("Cloudinary assembly upload failed:", error);
+        throw new Error("Final cloud storage sync failed. Chunks were saved, please retry completion.");
+    }
 }
 
 /**
@@ -193,39 +205,33 @@ export async function quickUploadAction(formData: FormData) {
         throw new Error(`File type ${mimeType} is not allowed`);
     }
 
-    // Generate storage key
-    const storageKey = `uploads/${session.userId}/${Date.now()}-${fileName}`;
-    const finalPath = path.join(process.cwd(), 'public', 'uploads', storageKey);
-    const finalDir = path.dirname(finalPath);
-    
-    if (!fs.existsSync(finalDir)) {
-        fs.mkdirSync(finalDir, { recursive: true });
+    // --- PHASE 3: Cloudinary Elite Restoration ---
+    try {
+        const cloudinaryUrl = await uploadToCloudinary(file, `uploads/${session.userId}`);
+        
+        // Create a completed session in the DB for consistency
+        const uploadSession = await (prisma as any).uploadSession.create({
+            data: {
+                userId: session.userId,
+                fileName,
+                fileSize: file.size,
+                mimeType,
+                totalChunks: 1,
+                storageKey: cloudinaryUrl, // Store Cloudinary URL as key
+                status: 'COMPLETED',
+                uploadedChunks: [0]
+            }
+        });
+
+        return { 
+            id: uploadSession.id, 
+            storageKey: uploadSession.storageKey, 
+            url: cloudinaryUrl,
+            fileName: fileName,
+            success: true
+        };
+    } catch (error) {
+        console.error("Fast-path Cloudinary upload failed:", error);
+        throw new Error("Cloud storage upload failed. Please try again.");
     }
-
-    // Write file directly
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    fs.writeFileSync(finalPath, buffer);
-
-    // Create a completed session in the DB for consistency
-    const uploadSession = await (prisma as any).uploadSession.create({
-        data: {
-            userId: session.userId,
-            fileName,
-            fileSize: file.size,
-            mimeType,
-            totalChunks: 1,
-            storageKey,
-            status: 'COMPLETED',
-            uploadedChunks: [0]
-        }
-    });
-
-    return { 
-        id: uploadSession.id, 
-        storageKey: uploadSession.storageKey, 
-        url: `/uploads/${storageKey}`,
-        fileName: fileName,
-        success: true
-    };
 }
