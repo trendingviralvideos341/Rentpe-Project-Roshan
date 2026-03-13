@@ -30,6 +30,7 @@ interface SidebarProps {
     isStaff?: boolean;
     displayId?: string;
     userName?: string;
+    isSuperAdmin?: boolean;
 }
 
 export default function DashboardSidebar(props: SidebarProps) {
@@ -140,33 +141,34 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "User Hub",
             links: [
-                { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "sub_admin"] },
+                { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "users"] },
                 { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
-                { href: "/dashboard/admin/employees", label: "Employee Hub", icon: UserCheck, reqPerm: ["super_admin", "hr_admin"] },
+                { href: "/dashboard/admin/employees", label: "Owner Staff Hub", icon: UserCheck, reqPerm: ["super_admin", "staff"] },
+                { href: "/dashboard/admin/staff", label: "internal Platform Staff", icon: Shield, reqPerm: ["super_admin", "staff"] },
             ]
         },
         {
             title: "Operations",
             links: [
-                { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
-                { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "sub_admin", "booking_manager"] },
-                { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "sub_admin", "onboarder"] },
-                { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "sub_admin", "verifier"] },
-                { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "sub_admin", "property_manager"] },
+                { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
+                { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "operations"] },
+                { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "operations"] },
             ]
         },
         {
             title: "Finance",
             links: [
-                { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "finance_admin"] },
-                { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Percent, reqPerm: ["super_admin", "finance_admin"] },
+                { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
+                { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Percent, reqPerm: ["super_admin", "payments"] },
             ]
         },
         {
             title: "System & Settings",
             links: [
-                { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "sub_admin", "support"] },
-                { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "security_audit"] },
+                { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
+                { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "audit"] },
                 { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
                 { href: "/dashboard/admin/settings", label: "Platform Settings", icon: Settings, reqPerm: ["super_admin"] },
             ]
@@ -196,8 +198,8 @@ export default function DashboardSidebar(props: SidebarProps) {
     const perms = props.permissions || [];
     const isSuperAdmin =
         perms.includes("super_admin") ||
-        perms.includes("sub_admin") ||
-        (role === "admin" && perms.length === 0) ||
+        (role === "admin" && props.isSuperAdmin) ||
+        (role === "admin" && perms.length === 0 && !props.isStaff) ||
         (role === "owner" && !props.isStaff); // Primary owners have full access
 
     const filterSectionLinks = (sections: SidebarSection[]) => {

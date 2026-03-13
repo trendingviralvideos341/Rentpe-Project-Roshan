@@ -16,6 +16,7 @@ export default async function AdminLayout({
                 role="admin" 
                 permissions={user?.permissions || []} 
                 displayId={user?.displayId}
+                isSuperAdmin={user?.isSuperAdmin}
             />
             <main className="flex-1 p-8 h-[calc(100vh-4rem)] overflow-y-auto w-full">
                 {children}

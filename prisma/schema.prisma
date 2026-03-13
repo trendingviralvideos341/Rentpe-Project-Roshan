@@ -71,6 +71,7 @@ model User {
   sessions              UserSession[]
   ownerEmployees        OwnerEmployee[]   @relation("OwnerEmployees")
   employeeProfile       OwnerEmployee?    @relation("UserAsEmployee")
+  adminProfile          AdminEmployee?    @relation("UserAsAdminEmployee")
 }
 
 model Property {
@@ -893,4 +894,23 @@ model EmployeePropertyAssignment {
 
   @@unique([employeeId, propertyId])
   @@map("employee_property_assignment")
+}
+
+model AdminEmployee {
+  id            String   @id @default(uuid())
+  displayId     String   @unique // REN-EMP-XXXX
+  userId        String?  @unique
+  name          String
+  email         String   @unique
+  phone         String
+  department    String   // Verification, Support, Operations, Finance, Tech
+  role          String   // Senior Verifier, Agent, etc.
+  permissions   String   @default("[]") // JSON string of module access
+  status        String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User?    @relation("UserAsAdminEmployee", fields: [userId], references: [id])
+
+  @@map("admin_employees")
 }

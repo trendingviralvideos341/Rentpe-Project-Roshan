@@ -449,7 +449,14 @@ export async function getCurrentUser() {
             select: {
                 id: true, email: true, name: true, role: true, roles: true,
                 phone: true, twoFactorEnabled: true, businessName: true, profilePhoto: true,
-                staffPermissions: true, parentOwnerId: true
+                staffPermissions: true, parentOwnerId: true, adminRole: true,
+                adminProfile: {
+                    select: {
+                        permissions: true,
+                        department: true,
+                        role: true
+                    }
+                }
             }
         });
 
@@ -465,10 +472,22 @@ export async function getCurrentUser() {
             };
         }
 
+        // Parse admin permissions if they exist
+        let adminPermissions: string[] = [];
+        if (user.adminProfile?.permissions) {
+            try {
+                adminPermissions = JSON.parse(user.adminProfile.permissions);
+            } catch (e) {
+                console.error("Failed to parse admin permissions", e);
+            }
+        }
+
         return {
             ...user,
             name: user.name || session.name || null,
             email: user.email || session.email || null,
+            permissions: adminPermissions.length > 0 ? adminPermissions : (user.adminRole === 'SUPER_ADMIN' ? [] : []), // If super admin, logic in Sidebar handles it
+            isSuperAdmin: user.adminRole === 'SUPER_ADMIN'
         };
     } catch (e) {
         console.error("getCurrentUser Error:", e);

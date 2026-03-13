@@ -1,6 +1,6 @@
 import prisma from "./prisma";
 
-export type EntityType = 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKING' | 'TENANT' | 'OWNER_EMPLOYEE';
+export type EntityType = 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKING' | 'TENANT' | 'OWNER_EMPLOYEE' | 'ADMIN_EMPLOYEE';
 
 const PREFIXES: Record<EntityType, string> = {
     USER: 'REN-USER',
@@ -10,7 +10,8 @@ const PREFIXES: Record<EntityType, string> = {
     BED: 'REN-BED',
     BOOKING: 'REN-BOOK',
     TENANT: 'REN-TEN',
-    OWNER_EMPLOYEE: 'OWN-EMP'
+    OWNER_EMPLOYEE: 'OWN-EMP',
+    ADMIN_EMPLOYEE: 'REN-EMP'
 };
 
 /**
@@ -47,6 +48,9 @@ export async function generateSequentialId(type: EntityType): Promise<string> {
             break;
         case 'OWNER_EMPLOYEE':
             count = await prisma.ownerEmployee.count();
+            break;
+        case 'ADMIN_EMPLOYEE':
+            count = await prisma.adminEmployee.count();
             break;
     }
 
