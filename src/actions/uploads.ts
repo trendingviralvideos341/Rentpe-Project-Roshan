@@ -72,7 +72,7 @@ export async function quickUploadAction(formData: FormData) {
             success: true
         };
     } catch (error: any) {
-        console.error("🔴 [Vercel Commit: " + (process.env.VERCEL_GIT_COMMIT_SHA || "LOCAL") + "] Cloudinary upload error details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+        console.error("🔴 Cloudinary upload error:", error);
         throw new Error("Cloud storage upload failed. Please try again.");
     }
 }
