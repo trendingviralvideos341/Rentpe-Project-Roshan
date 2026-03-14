@@ -74,9 +74,8 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
     return result.secure_url;
   } catch (error: any) {
     console.error('Cloudinary Upload Error:', error);
-    // Bubble up the actual Cloudinary error details if available
-    const detailedMessage = error.message || 'Failed to upload file to cloud storage.';
-    throw new Error(detailedMessage);
+    // Re-throw the original error to preserve properties like http_code for the action logger
+    throw error;
   }
 }
 
