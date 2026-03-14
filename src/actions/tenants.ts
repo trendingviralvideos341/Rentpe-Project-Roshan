@@ -12,7 +12,7 @@ export async function getTenants() {
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
     const userId = session.userId;
 
-    let whereClause: any = {};
+    const whereClause: any = {};
 
     if (session.role === 'OWNER') {
         const user = await prisma.user.findUnique({ 

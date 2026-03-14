@@ -1,0 +1,459 @@
+﻿
+> rentpe@0.1.0 lint
+> eslint
+
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\prisma\seed.ts
+  108:11  warning  'room4' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  109:11  warning  'room5' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\admin-auth.ts
+  6:10  warning  'revalidatePath' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\admin.ts
+  596:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  606:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\adminEmployees.ts
+  172:11  warning  'session' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\auth.ts
+  13:10  warning  'NotificationService' is defined but never used  @typescript-eslint/no-unused-vars
+  14:10  warning  'Session' is defined but never used              @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\documents.ts
+   53:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  220:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\drafts.ts
+  5:10  warning  'revalidatePath' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\health.ts
+  22:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\onboarding.ts
+  115:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  173:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\ops.ts
+  66:10  warning  'OWNER_CATEGORIES' is defined but never used           @typescript-eslint/no-unused-vars
+  66:28  warning  'ADMIN_CATEGORIES' is defined but never used           @typescript-eslint/no-unused-vars
+  66:46  warning  'OWNER_TO_ADMIN_CATEGORIES' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\ownerTeam.ts
+    7:10  warning  'createNotification' is defined but never used  @typescript-eslint/no-unused-vars
+  166:18  warning  'e' is defined but never used                   @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\properties.ts
+  596:22  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  634:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\studentProfile.ts
+  70:11  warning  'updated' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\superAdmin.ts
+  15:10  warning  'requirePermission' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\tenants.ts
+  6:10  warning  'createNotification' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\actions\uploads.ts
+   4:10  warning  'logAuditEvent' is defined but never used  @typescript-eslint/no-unused-vars
+  10:44  warning  'params' is defined but never used         @typescript-eslint/no-unused-vars
+  22:5   warning  'formData' is defined but never used       @typescript-eslint/no-unused-vars
+  30:44  warning  'sessionId' is defined but never used      @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\bookings\page.tsx
+  5:10  warning  'Badge' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\audit-log\page.tsx
+  5:13  warning  'Filter' is defined but never used        @typescript-eslint/no-unused-vars
+  5:21  warning  'Calendar' is defined but never used      @typescript-eslint/no-unused-vars
+  5:47  warning  'Landmark' is defined but never used      @typescript-eslint/no-unused-vars
+  6:5   warning  'CheckCircle' is defined but never used   @typescript-eslint/no-unused-vars
+  6:18  warning  'XCircle' is defined but never used       @typescript-eslint/no-unused-vars
+  6:27  warning  'LogIn' is defined but never used         @typescript-eslint/no-unused-vars
+  6:34  warning  'LogOut' is defined but never used        @typescript-eslint/no-unused-vars
+  6:42  warning  'ArrowRight' is defined but never used    @typescript-eslint/no-unused-vars
+  8:10  warning  'MoreVertical' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\bookings\page.tsx
+    4:29  warning  'CardHeader' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+    4:41  warning  'CardTitle' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    8:5   warning  'Users' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+    8:32  warning  'Calendar' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    8:42  warning  'Building2' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    9:5   warning  'CreditCard' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+    9:17  warning  'Tag' is defined but never used                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+    9:22  warning  'User' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+    9:28  warning  'Mail' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+    9:34  warning  'Phone' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+    9:41  warning  'Clock' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   10:76  warning  'AlertCircle' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   48:7   warning  'PAYMENT_STATUS_COLORS' is assigned a value but never used                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   60:40  warning  'rooms' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   60:47  warning  'onRefresh' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   78:8   warning  React Hook useEffect has a missing dependency: 'fetchDocs'. Either include it or remove the dependency array                                                                                                                                                                             react-hooks/exhaustive-deps
+  239:37  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\doc-verification\page.tsx
+    8:22  warning  'CreditCard' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+    8:34  warning  'Calendar' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    8:44  warning  'ArrowRight' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+    9:20  warning  'Mail' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+    9:26  warning  'Trash2' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   77:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  332:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  368:42  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  473:52  warning  'onZoom' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  474:28  warning  'overallStatus' is assigned a value but never used                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  590:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  590:25  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\employees\page.tsx
+  12:5   warning  'Phone' is defined but never used  @typescript-eslint/no-unused-vars
+  36:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\onboarding\page.tsx
+   11:40  warning  'validateName' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   11:54  warning  'normalizePhone' is defined but never used                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  102:57  warning  React Hook useEffect has a missing dependency: 'fetchDocs'. Either include it or remove the dependency array                                                                                                                                                                             react-hooks/exhaustive-deps
+  757:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\page.tsx
+  3:29   warning  'CardHeader' is defined but never used           @typescript-eslint/no-unused-vars
+  3:41   warning  'CardTitle' is defined but never used            @typescript-eslint/no-unused-vars
+  7:10   warning  'AreaChart' is defined but never used            @typescript-eslint/no-unused-vars
+  7:21   warning  'Area' is defined but never used                 @typescript-eslint/no-unused-vars
+  7:27   warning  'XAxis' is defined but never used                @typescript-eslint/no-unused-vars
+  7:34   warning  'YAxis' is defined but never used                @typescript-eslint/no-unused-vars
+  7:41   warning  'CartesianGrid' is defined but never used        @typescript-eslint/no-unused-vars
+  7:56   warning  'Tooltip' is defined but never used              @typescript-eslint/no-unused-vars
+  7:65   warning  'ResponsiveContainer' is defined but never used  @typescript-eslint/no-unused-vars
+  7:86   warning  'PieChart' is defined but never used             @typescript-eslint/no-unused-vars
+  7:96   warning  'Pie' is defined but never used                  @typescript-eslint/no-unused-vars
+  7:101  warning  'Cell' is defined but never used                 @typescript-eslint/no-unused-vars
+  7:107  warning  'Legend' is defined but never used               @typescript-eslint/no-unused-vars
+  8:76   warning  'ArrowRight' is defined but never used           @typescript-eslint/no-unused-vars
+  8:119  warning  'Users' is defined but never used                @typescript-eslint/no-unused-vars
+  8:126  warning  'CreditCard' is defined but never used           @typescript-eslint/no-unused-vars
+  8:138  warning  'Ticket' is defined but never used               @typescript-eslint/no-unused-vars
+  8:146  warning  'Building2' is defined but never used            @typescript-eslint/no-unused-vars
+  9:7    warning  'COLORS' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\platform-fees\page.tsx
+  10:10  warning  'calcFee' is defined but never used               @typescript-eslint/no-unused-vars
+  38:12  warning  'allUsers' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  38:22  warning  'setAllUsers' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\property-approval\page.tsx
+   10:127  warning  'Upload' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  324:69   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  324:69   warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  388:89   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  388:89   warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  442:83   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  442:83   warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\settings\page.tsx
+  6:31  warning  'updatePlatformSettings' is defined but never used  @typescript-eslint/no-unused-vars
+  9:35  warning  'Bell' is defined but never used                    @typescript-eslint/no-unused-vars
+  9:64  warning  'AlertTriangle' is defined but never used           @typescript-eslint/no-unused-vars
+  9:79  warning  'Key' is defined but never used                     @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\staff\page.tsx
+    5:5   warning  'Users' is defined but never used         @typescript-eslint/no-unused-vars
+   10:5   warning  'MoreVertical' is defined but never used  @typescript-eslint/no-unused-vars
+   11:5   warning  'Mail' is defined but never used          @typescript-eslint/no-unused-vars
+   12:5   warning  'Phone' is defined but never used         @typescript-eslint/no-unused-vars
+   13:5   warning  'Building2' is defined but never used     @typescript-eslint/no-unused-vars
+   18:5   warning  'Trash2' is defined but never used        @typescript-eslint/no-unused-vars
+   71:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  107:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\team\page.tsx
+  10:25  warning  'validatePhone' is defined but never used   @typescript-eslint/no-unused-vars
+  10:54  warning  'normalizePhone' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\tenants\page.tsx
+    3:41  warning  'useRef' is defined but never used                      @typescript-eslint/no-unused-vars
+    7:32  warning  'Clock' is defined but never used                       @typescript-eslint/no-unused-vars
+   17:28  warning  'setExpandedTenant' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  208:43  warning  'isActive' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\tickets\page.tsx
+   8:57  warning  'Building' is defined but never used                @typescript-eslint/no-unused-vars
+   8:67  warning  'Shield' is defined but never used                  @typescript-eslint/no-unused-vars
+   8:75  warning  'Users' is defined but never used                   @typescript-eslint/no-unused-vars
+  28:65  warning  'e' is defined but never used                       @typescript-eslint/no-unused-vars
+  38:18  warning  'e' is defined but never used                       @typescript-eslint/no-unused-vars
+  50:11  warning  'routedToOwner' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\users\[id]\page.tsx
+  10:11  warning  'Mail' is defined but never used             @typescript-eslint/no-unused-vars
+  10:17  warning  'Phone' is defined but never used            @typescript-eslint/no-unused-vars
+  10:24  warning  'Calendar' is defined but never used         @typescript-eslint/no-unused-vars
+  11:5   warning  'FileText' is defined but never used         @typescript-eslint/no-unused-vars
+  12:5   warning  'Save' is defined but never used             @typescript-eslint/no-unused-vars
+  12:33  warning  'LayoutDashboard' is defined but never used  @typescript-eslint/no-unused-vars
+  15:8   warning  'Link' is defined but never used             @typescript-eslint/no-unused-vars
+  63:18  warning  'e' is defined but never used                @typescript-eslint/no-unused-vars
+  79:18  warning  'e' is defined but never used                @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\admin\users\page.tsx
+    7:15   warning  'CheckCircle' is defined but never used               @typescript-eslint/no-unused-vars
+    7:48   warning  'Building' is defined but never used                  @typescript-eslint/no-unused-vars
+    7:58   warning  'ChevronDown' is defined but never used               @typescript-eslint/no-unused-vars
+    7:71   warning  'ChevronUp' is defined but never used                 @typescript-eslint/no-unused-vars
+    7:108  warning  'X' is defined but never used                         @typescript-eslint/no-unused-vars
+   99:12   warning  'expandedUser' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   99:26   warning  'setExpandedUser' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  102:12   warning  'processing' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  157:20   warning  'handleImpersonate' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\bookings\page.tsx
+    5:98  warning  'AlertCircle' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   45:35  warning  'rooms' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   45:42  warning  'onRefresh' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   63:8   warning  React Hook useEffect has a missing dependency: 'fetchDocs'. Either include it or remove the dependency array                                                                                                                                                                             react-hooks/exhaustive-deps
+  256:37  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  279:12  warning  'expandedTab' is assigned a value but never used                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  279:25  warning  'setExpandedTab' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  281:11  warning  'router' is assigned a value but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  328:11  warning  'handleMarkCashPaid' is assigned a value but never used                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\employees\page.tsx
+  12:52  warning  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+  25:5   warning  'Trash2' is defined but never used           @typescript-eslint/no-unused-vars
+  68:18  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\food-menu\page.tsx
+   3:29  warning  'CardDescription' is defined but never used                                                                   @typescript-eslint/no-unused-vars
+   7:10  warning  'Plus' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   7:16  warning  'Trash2' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  37:8   warning  React Hook useEffect has a missing dependency: 'fetchMenu'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  77:18  warning  'error' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\onboarding\page.tsx
+   11:40  warning  'validateName' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   11:54  warning  'normalizePhone' is defined but never used                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  102:57  warning  React Hook useEffect has a missing dependency: 'fetchDocs'. Either include it or remove the dependency array                                                                                                                                                                             react-hooks/exhaustive-deps
+  759:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\page.tsx
+  14:16  warning  'Shield' is defined but never used      @typescript-eslint/no-unused-vars
+  14:65  warning  'ListFilter' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\payments\page.tsx
+  7:32  warning  'IndianRupee' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\properties\[id]\page.tsx
+  518:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  531:53  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  531:53  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  539:53  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  539:53  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  547:53  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  547:53  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  555:53  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  555:53  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  667:77  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  667:77  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+  806:63  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  806:63  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\properties\new\page.tsx
+    12:39  warning  'validateEmail' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+    12:54  warning  'normalizePhone' is defined but never used                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   109:17  warning  'uploadStatus' is assigned a value but never used                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   110:19  warning  'uploadProgress' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   271:22  warning  'err' is defined but never used                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   315:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+   390:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  1147:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\properties\page.tsx
+   9:10  warning  'getSession' is defined but never used  @typescript-eslint/no-unused-vars
+  76:50  warning  'e' is defined but never used           @typescript-eslint/no-unused-vars
+  86:50  warning  'e' is defined but never used           @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\rooms\page.tsx
+  5:16  warning  'Trash2' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\settings\payment\RazorpaySettingsClient.tsx
+  54:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\tenants\page.tsx
+   3:41  warning  'useRef' is defined but never used                      @typescript-eslint/no-unused-vars
+  19:28  warning  'setExpandedTenant' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\tickets\page.tsx
+    9:10  warning  'MessageSquare' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   24:11  warning  'ownerCategories' is assigned a value but never used                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   62:61  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   67:69  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   77:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   91:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  171:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\owner\verifications\page.tsx
+    8:34  warning  'Calendar' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    8:44  warning  'ArrowRight' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+    9:20  warning  'Mail' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+    9:26  warning  'Trash2' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   95:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  350:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  386:42  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  491:52  warning  'onZoom' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  492:28  warning  'overallStatus' is assigned a value but never used                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  620:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  620:25  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\student\page.tsx
+    6:38   warning  'signAgreement' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   10:78   warning  'XCircle' is defined but never used                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   10:139  warning  'Phone' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   10:146  warning  'Mail' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   20:29   warning  'updateStudentProfile' is defined but never used                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  138:10   warning  'DocumentSection' is defined but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  289:29   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  313:12   warning  'reviewBookingId' is assigned a value but never used                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  313:29   warning  'setReviewBookingId' is assigned a value but never used                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  459:39   warning  'isCashPending' is assigned a value but never used                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\dashboard\student\tickets\page.tsx
+   45:11  warning  'allCategories' is assigned a value but never used                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   68:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   79:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  172:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\forgot-password\page.tsx
+  34:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\join-team\page.tsx
+  3:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\layout.tsx
+  54:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  68:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\list-property\page.tsx
+  9:12  warning  'loading' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  9:21  warning  'setLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\property\[id]\page.tsx
+    5:53  warning  'Building' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   12:10  warning  'validateEmail' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   12:25  warning  'validatePhone' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   12:40  warning  'validateName' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   20:7   warning  'onlyLetters' is assigned a value but never used                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   21:7   warning  'onlyDigits' is assigned a value but never used                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   22:7   warning  'isValidEmail' is assigned a value but never used                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   74:34  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   80:34  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  152:11  warning  'mainImage' is assigned a value but never used                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  153:11  warning  'otherImages' is assigned a value but never used                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  230:65  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  237:46  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\reset-password\page.tsx
+   3:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+  66:18  warning  'e' is defined but never used          @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\search\page.tsx
+  6:61  warning  'ChevronDown' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\app\secure\payment\page.tsx
+  80:30  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\ImageCarousel.tsx
+  36:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\booking\BookingStepper.tsx
+  3:24  warning  'Shield' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\booking\StudentKYCUploader.tsx
+   6:10  warning  'Upload' is defined but never used                   @typescript-eslint/no-unused-vars
+   6:42  warning  'Trash2' is defined but never used                   @typescript-eslint/no-unused-vars
+  22:17  warning  'uploadStatus' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  23:19  warning  'uploadProgress' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\dashboard\SuperAdminKPIs.tsx
+   7:5   warning  'TrendingUp' is defined but never used             @typescript-eslint/no-unused-vars
+   7:24  warning  'Home' is defined but never used                   @typescript-eslint/no-unused-vars
+   7:30  warning  'CreditCard' is defined but never used             @typescript-eslint/no-unused-vars
+   8:5   warning  'AlertTriangle' is defined but never used          @typescript-eslint/no-unused-vars
+  10:19  warning  'ArrowDownRight' is defined but never used         @typescript-eslint/no-unused-vars
+  14:35  warning  'BarChart' is defined but never used               @typescript-eslint/no-unused-vars
+  14:45  warning  'Bar' is defined but never used                    @typescript-eslint/no-unused-vars
+  27:59  warning  'userGrowth' is defined but never used             @typescript-eslint/no-unused-vars
+  27:71  warning  'conversionAnalytics' is defined but never used    @typescript-eslint/no-unused-vars
+  30:11  warning  'healthStatus' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\dashboard\TenantLifecycleManager.tsx
+   8:16  warning  'TabsContent' is defined but never used            @typescript-eslint/no-unused-vars
+   9:62  warning  'XCircle' is defined but never used                @typescript-eslint/no-unused-vars
+   9:78  warning  'Trash2' is defined but never used                 @typescript-eslint/no-unused-vars
+   9:92  warning  'CreditCard' is defined but never used             @typescript-eslint/no-unused-vars
+  10:63  warning  'approveMoveOutRequest' is defined but never used  @typescript-eslint/no-unused-vars
+  12:10  warning  'LucideIcon' is defined but never used             @typescript-eslint/no-unused-vars
+  36:18  warning  'e' is defined but never used                      @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\layout\Navbar.tsx
+  4:10  warning  'usePathname' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\layout\NotificationBell.tsx
+  21:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  53:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  60:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\ui\DraftRecoveryAlert.tsx
+  6:19  warning  'X' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\ui\ResilienceIndicator.tsx
+  4:10  warning  'Cloud' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\components\ui\button.tsx
+  18:15  warning  'Comp' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\hooks\useAutoSave.ts
+  125:8   warning  React Hook useCallback has unnecessary dependencies: 'entityId' and 'entityType'. Either exclude them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+  129:24  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\hooks\useAutoSave.ts:129:24
+  127 |     // Stable debounced function
+  128 |     const debouncedSave = useMemo(
+> 129 |         () => debounce(handleSave, interval),
+      |                        ^^^^^^^^^^ Passing a ref to a function may read its value during render
+  130 |         [handleSave, interval]
+  131 |     );
+  132 |  react-hooks/refs
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\hooks\useResumableUpload.ts
+  64:8  warning  React Hook useCallback has an unnecessary dependency: 'getCloudinarySignature'. Either exclude it or remove the dependency array. Outer scope values like 'getCloudinarySignature' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\lib\2fa.ts
+  39:14  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\lib\auth.ts
+  30:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  41:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\lib\email-templates.ts
+  8:7  warning  'WARNING_COLOR' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\lib\notifications.ts
+  180:49  warning  'ownerId' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\lib\upload.ts
+  7:79  warning  'isPrivate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Antigravity\ANTIGRATIVITY project\rentpe\src\middleware.ts
+  54:18  warning  'e' is defined but never used                         @typescript-eslint/no-unused-vars
+  67:15  warning  'isImpersonating' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 292 problems (1 error, 291 warnings)
+
+

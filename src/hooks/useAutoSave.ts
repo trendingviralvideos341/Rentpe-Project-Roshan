@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { upsertDraft, getDraftAction } from '@/actions/drafts';
 import { debounce } from 'lodash';
 
@@ -77,63 +77,68 @@ export function useAutoSave({
         };
     }, []);
 
-    // Stable debounced save function
-    const debouncedSave = useRef(
-        debounce(async (payload: { entityType: string, entityId?: string, onSaved?: (d: any) => void }) => {
-            // Check latest pause state
-            if (pausedRef.current) return;
-            
-            if (!navigator.onLine) {
-                setStatus('OFFLINE');
-                return;
-            }
+    // Stable logic function
+    const handleSave = useCallback(async (payload: { entityType: string, entityId?: string, onSaved?: (d: any) => void }) => {
+        if (pausedRef.current) return;
+        
+        if (!navigator.onLine) {
+            setStatus('OFFLINE');
+            return;
+        }
 
-            // Get latest data from ref
-            const currentData = dataRef.current;
-            if (!currentData) return;
+        // Get latest data from ref
+        const currentData = dataRef.current;
+        if (!currentData) return;
 
-            // Sanitize data (strip non-serializable objects like File/Blob)
-            let sanitizedData;
-            try {
-                sanitizedData = JSON.parse(JSON.stringify(currentData, (key, value) => {
-                    // Check for File or Blob using constructor names to be safe in all environments
-                    if (value && typeof value === 'object') {
-                        const name = value.constructor?.name;
-                        if (name === 'File' || name === 'Blob' || value instanceof File) {
-                            return undefined;
-                        }
+        // Sanitize data
+        let sanitizedData;
+        try {
+            sanitizedData = JSON.parse(JSON.stringify(currentData, (key, value) => {
+                if (value && typeof value === 'object') {
+                    const name = value.constructor?.name;
+                    if (name === 'File' || name === 'Blob' || value instanceof File) {
+                        return undefined;
                     }
-                    return value;
-                }));
-            } catch (e) {
-                console.error("Data serialization failed", e);
-                return;
-            }
+                }
+                return value;
+            }));
+        } catch (e) {
+            console.error("Data serialization failed", e);
+            return;
+        }
 
-            setStatus('SAVING');
-            try {
-                await upsertDraft({
-                    userId: '', // Server action gets it from session
-                    entityType: payload.entityType,
-                    entityId: payload.entityId,
-                    data: sanitizedData
-                });
-                setStatus('SAVED');
-                setLastSaved(new Date());
-                if (payload.onSaved) payload.onSaved(currentData);
-            } catch (error) {
-                console.error("Auto-save failed", error);
-                setStatus('ERROR');
-            }
-        }, interval)
-    ).current;
+        setStatus('SAVING');
+        try {
+            await upsertDraft({
+                userId: '', 
+                entityType: payload.entityType,
+                entityId: payload.entityId,
+                data: sanitizedData
+            });
+            setStatus('SAVED');
+            setLastSaved(new Date());
+            if (payload.onSaved) payload.onSaved(currentData);
+        } catch (error) {
+            console.error("Auto-save failed", error);
+            setStatus('ERROR');
+        }
+    }, [entityType, entityId]); // Keep dependencies minimal
 
-    // Cleanup pending debounced calls
+    // Stable debounced function ref
+    const debouncedSaveRef = useRef<ReturnType<typeof debounce> | null>(null);
+
     useEffect(() => {
+        debouncedSaveRef.current = debounce(handleSave, interval);
         return () => {
-            debouncedSave.cancel();
+            debouncedSaveRef.current?.cancel();
         };
-    }, [debouncedSave]);
+    }, [handleSave, interval]);
+
+    const debouncedSave = useCallback((...args: Parameters<ReturnType<typeof debounce>>) => {
+        debouncedSaveRef.current?.(...args);
+    }, []);
+
+    // Cleanup pending debounced calls handled by useEffect above
 
     const updateData = (data: any) => {
         dataRef.current = data;
@@ -149,7 +154,7 @@ export function useAutoSave({
     };
 
     const clearDraft = () => {
-        debouncedSave.cancel();
+        debouncedSaveRef.current?.cancel();
         const localKey = `rentpe-draft-${entityType}-${entityId || 'new'}`;
         localStorage.removeItem(localKey);
     };
