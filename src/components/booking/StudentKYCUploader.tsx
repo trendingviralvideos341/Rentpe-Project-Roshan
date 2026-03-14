@@ -17,6 +17,7 @@ interface StudentKYCUploaderProps {
 
 export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSuccess }: StudentKYCUploaderProps) {
     const [uploading, setUploading] = useState<string | null>(null);
+    const [uploadingCount, setUploadingCount] = useState(0);
     const { 
         status: uploadStatus, 
         progress: uploadProgress, 
@@ -38,7 +39,10 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
     const handleUpload = async (file: File, type: string) => {
         if (file.size > 5 * 1024 * 1024) return toast.error("File size must be less than 5MB");
 
+        const toastId = toast.loading(`Uploading ${type.split('_').join(' ')}...`);
         setUploading(type);
+        setUploadingCount(prev => prev + 1);
+        
         try {
             // Use resumable upload instead of direct fetch
             const result = await uploadFile(file);
@@ -52,14 +56,15 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                     fileName: file.name 
                 });
 
-                toast.success(`${type.split('_').join(' ')} uploaded!`);
+                toast.success(`${type.split('_').join(' ')} uploaded!`, { id: toastId });
                 onUploadSuccess?.();
             }
         } catch (e) {
             console.error("KYC Upload Error:", e);
-            toast.error("Upload failed");
+            toast.error("Upload failed", { id: toastId });
         } finally {
             setUploading(null);
+            setUploadingCount(prev => Math.max(0, prev - 1));
         }
     };
 
@@ -72,8 +77,8 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                         <span className="text-xs font-bold text-indigo-700 uppercase">Secure KYC Verification</span>
                     </div>
                     <ResilienceIndicator 
-                        status={uploadStatus} 
-                        progress={uploadProgress.percent}
+                        status={uploadingCount > 0 ? 'UPLOADING' : 'IDLE'} 
+                        progress={undefined}
                     />
                 </div>
                 <CardTitle className="text-xl font-bold">Document Verification</CardTitle>

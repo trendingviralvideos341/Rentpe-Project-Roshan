@@ -102,6 +102,8 @@ export default function AddPropertyPage() {
         interval: 5000
     });
 
+    const [uploadingCount, setUploadingCount] = useState(0);
+
     const { 
         status: uploadStatus, 
         progress: uploadProgress, 
@@ -249,6 +251,9 @@ export default function AddPropertyPage() {
 
         // Upload each file to Cloudinary in the background
         for (const entry of newEntries) {
+            const toastId = toast.loading(`Uploading ${entry.file.name}...`);
+            setUploadingCount(prev => prev + 1);
+            
             try {
                 const result = await uploadFile(entry.file) as { url: string };
                 setDocs(prev => ({
@@ -259,6 +264,7 @@ export default function AddPropertyPage() {
                             : e
                     )
                 }));
+                toast.success(`${entry.file.name} uploaded!`, { id: toastId });
             } catch (err: any) {
                 setDocs(prev => ({
                     ...prev,
@@ -268,7 +274,9 @@ export default function AddPropertyPage() {
                             : e
                     )
                 }));
-                toast.error(`Failed to upload ${entry.file.name}. Please remove and re-add it.`);
+                toast.error(`Failed to upload ${entry.file.name}.`, { id: toastId });
+            } finally {
+                setUploadingCount(prev => Math.max(0, prev - 1));
             }
         }
     };
@@ -616,9 +624,9 @@ export default function AddPropertyPage() {
                         <p className="text-muted-foreground">List your PG or Hostel. All fields marked with <span className="text-red-500">*</span> are mandatory.</p>
                     </div>
                     <ResilienceIndicator 
-                        status={uploadStatus !== 'IDLE' ? uploadStatus : saveStatus} 
+                        status={uploadingCount > 0 ? 'UPLOADING' : saveStatus} 
                         lastSaved={lastSaved}
-                        progress={uploadProgress.percent}
+                        progress={uploadingCount > 0 ? undefined : undefined} // Percentage is misleading for multiple files
                     />
                 </div>
                 
