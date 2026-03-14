@@ -72,12 +72,7 @@ export async function quickUploadAction(formData: FormData) {
             success: true
         };
     } catch (error: any) {
-        console.error("🔴 Cloudinary upload error details:", {
-            message: error.message,
-            http_code: error.http_code,
-            name: error.name,
-            error: error
-        });
+        console.error("🔴 Cloudinary upload error details:", error);
         throw new Error("Cloud storage upload failed. Please try again.");
     }
 }

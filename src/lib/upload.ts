@@ -21,10 +21,8 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
       const uploadPromise = new Promise<string>((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            folder: `rentpe/${folder}`, // Use the same folder structure as base64 upload
+            folder: `rentpe/${folder}`,
             resource_type: 'auto',
-            type: isPrivate ? 'authenticated' : 'upload',
-            access_mode: isPrivate ? 'authenticated' : 'public',
           },
           (error, result) => {
             if (error) {
