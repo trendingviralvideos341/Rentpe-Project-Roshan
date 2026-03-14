@@ -19,9 +19,10 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
       const buffer = Buffer.from(arrayBuffer);
 
       const uploadPromise = new Promise<string>((resolve, reject) => {
+        const targetFolder = folder.startsWith('rentpe/') ? folder : `rentpe/${folder}`;
         const stream = cloudinary.uploader.upload_stream(
           {
-            folder: `rentpe/${folder}`,
+            folder: targetFolder,
             resource_type: 'auto',
           },
           (error, result) => {
@@ -57,8 +58,9 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
     }
 
     // 3. Handle Base64 string fallback
+    const targetFolder = folder.startsWith('rentpe/') ? folder : `rentpe/${folder}`;
     const uploadPromise = cloudinary.uploader.upload(data, {
-      folder: `rentpe/${folder}`,
+      folder: targetFolder,
       resource_type: 'auto',
       type: isPrivate ? 'authenticated' : 'upload',
       access_mode: isPrivate ? 'authenticated' : 'public',

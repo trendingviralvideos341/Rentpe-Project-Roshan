@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Stream file directly to Cloudinary — zero disk I/O
-        const folder = `rentpe/properties/${session.userId}`;
+        const folder = `properties/${session.userId}`;
         const cloudUrl = await uploadToCloudinary(file, folder);
 
         return NextResponse.json({ url: cloudUrl });
