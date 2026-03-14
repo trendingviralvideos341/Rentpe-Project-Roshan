@@ -89,6 +89,8 @@ export default function AddPropertyPage() {
 
     const [rooms, setRooms] = useState<{ roomNumber: string; type: string; price: string; availability: string }[]>([]);
 
+    const [uploadingCount, setUploadingCount] = useState(0);
+
     // Resilience Hooks
     const { 
         status: saveStatus, 
@@ -102,8 +104,6 @@ export default function AddPropertyPage() {
         interval: 5000,
         paused: uploadingCount > 0 || saving
     });
-
-    const [uploadingCount, setUploadingCount] = useState(0);
 
     const { 
         status: uploadStatus, 
