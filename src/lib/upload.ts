@@ -49,8 +49,8 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
         });
 
         // Pass the actual file buffer to the stream
-        const passthrough = require('stream').Readable.from(Buffer.from(arrayBuffer));
-        passthrough.pipe(stream);
+        const { Readable } = require('stream');
+        Readable.from(buffer).pipe(stream);
       });
 
       return await uploadPromise;
