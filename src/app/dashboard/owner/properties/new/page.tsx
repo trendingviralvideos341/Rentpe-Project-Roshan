@@ -573,6 +573,7 @@ export default function AddPropertyPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (saving) return; // INDUSTRY STANDARD: Prevent parallel submission triggers
         if (!validate()) return;
 
         // Block submit if any photo is still uploading
