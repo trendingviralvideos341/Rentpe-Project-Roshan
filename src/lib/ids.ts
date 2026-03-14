@@ -18,69 +18,76 @@ export async function generateSequentialId(type: EntityType): Promise<string> {
     const prefix = PREFIXES[type];
     let lastId: string | null = null;
 
-    // Use indexed findFirst (O(1)) instead of count (O(N)) for high-speed ID generation
+    // Use indexed findFirst (O(1)) with stable sorting for high-speed ID generation
     switch (type) {
         case 'USER':
             const lastUser = await prisma.user.findFirst({ 
-                where: { isOwner: false }, 
-                orderBy: { createdAt: 'desc' }, 
+                where: { isOwner: false, displayId: { startsWith: 'REN-USER-' } }, 
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastUser?.displayId || null;
             break;
         case 'OWNER':
             const lastOwner = await prisma.user.findFirst({ 
-                where: { isOwner: true }, 
-                orderBy: { createdAt: 'desc' }, 
+                where: { isOwner: true, displayId: { startsWith: 'REN-OWN-' } }, 
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastOwner?.displayId || null;
             break;
         case 'PROPERTY':
             const lastProp = await prisma.property.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'REN-PROP-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastProp?.displayId || null;
             break;
         case 'ROOM':
             const lastRoom = await prisma.room.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'REN-ROOM-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastRoom?.displayId || null;
             break;
         case 'BED':
             const lastBed = await prisma.bed.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'REN-BED-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastBed?.displayId || null;
             break;
         case 'BOOKING':
             const lastBooking = await prisma.booking.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'REN-BOOK-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastBooking?.displayId || null;
             break;
         case 'TENANT':
             const lastTenant = await prisma.tenant.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'REN-TEN-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastTenant?.displayId || null;
             break;
         case 'OWNER_EMPLOYEE':
             const lastOwnerEmp = await prisma.ownerEmployee.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'OWN-EMP-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastOwnerEmp?.displayId || null;
             break;
         case 'ADMIN_EMPLOYEE':
             const lastAdminEmp = await prisma.adminEmployee.findFirst({ 
-                orderBy: { createdAt: 'desc' }, 
+                where: { displayId: { startsWith: 'REN-EMP-' } },
+                orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
             lastId = lastAdminEmp?.displayId || null;

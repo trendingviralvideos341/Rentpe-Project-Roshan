@@ -156,123 +156,139 @@ export async function createProperty(data: FormData | any) {
     if (!name?.trim()) throw new Error("Property name is required");
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
-    // 2. HIGH-SPEED ID GENERATION (O(1) Indexed Lookup)
-    // Avoids prisma.count() which gets slower as DB grows
-    const [lastProp, lastRoom, lastBed] = await Promise.all([
-        prisma.property.findFirst({ orderBy: { createdAt: 'desc' }, select: { displayId: true } }),
-        prisma.room.findFirst({ orderBy: { createdAt: 'desc' }, select: { displayId: true } }),
-        prisma.bed.findFirst({ orderBy: { createdAt: 'desc' }, select: { displayId: true } })
-    ]);
+    // --- REFRESHABLE ID LOGIC ---
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    const getNextId = (lastId: string | null | undefined, prefix: string) => {
-        if (!lastId) return `${prefix}-0001`;
-        const parts = lastId.split('-');
-        const num = parseInt(parts[parts.length - 1]);
-        return `${prefix}-${(num + 1).toString().padStart(4, '0')}`;
-    };
+    while (retryCount < maxRetries) {
+        try {
+            // 2. HIGH-SPEED ID GENERATION (O(1) Indexed Lookup)
+            // Refined: Sort by displayId to ensure we always get the actual maximum
+            const [lastProp, lastRoom, lastBed] = await Promise.all([
+                prisma.property.findFirst({ where: { displayId: { startsWith: 'REN-PROP-' } }, orderBy: { displayId: 'desc' }, select: { displayId: true } }),
+                prisma.room.findFirst({ where: { displayId: { startsWith: 'REN-ROOM-' } }, orderBy: { displayId: 'desc' }, select: { displayId: true } }),
+                prisma.bed.findFirst({ where: { displayId: { startsWith: 'REN-BED-' } }, orderBy: { displayId: 'desc' }, select: { displayId: true } })
+            ]);
 
-    const displayId = getNextId(lastProp?.displayId, 'REN-PROP');
-    let nextRoomNum = lastRoom?.displayId ? parseInt(lastRoom.displayId.split('-').pop()!) : 0;
-    let nextBedNum = lastBed?.displayId ? parseInt(lastBed.displayId.split('-').pop()!) : 0;
+            const getNextId = (lastId: string | null | undefined, prefix: string) => {
+                if (!lastId) return `${prefix}-0001`;
+                const parts = lastId.split('-');
+                const numStr = parts[parts.length - 1];
+                const num = parseInt(numStr);
+                return `${prefix}-${(num + 1).toString().padStart(4, '0')}`;
+            };
 
-    const parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
+            const displayId = getNextId(lastProp?.displayId, 'REN-PROP');
+            let nextRoomNum = lastRoom?.displayId ? parseInt(lastRoom.displayId.split('-').pop()!) : 0;
+            let nextBedNum = lastBed?.displayId ? parseInt(lastBed.displayId.split('-').pop()!) : 0;
 
-    // 3. Create property and all related rooms/beds in a single high-speed transaction
-    const property = await prisma.$transaction(async (tx) => {
-        const newProperty = await tx.property.create({
-            data: {
-                displayId,
-                name,
-                address,
-                city,
-                description,
-                amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
-                images: JSON.stringify([
-                    ...(buildingPhotos || []),
-                    ...(roomsAndBathroomPhotos || [])
-                ]),
-                ownerName: finalOwnerName,
-                ownerId: user?.parentOwnerId || session.userId,
-                status: "SUBMITTED",
-                propertyType: propertyType || "PG",
-                licenseNumber: licenseNumber || null,
-                reraId: reraId || null,
-                businessName: businessName || null,
-                buildingPhotos: buildingPhotos ? JSON.stringify(buildingPhotos) : null,
-                commonAreaPhotos: commonAreaPhotos ? JSON.stringify(commonAreaPhotos) : null,
-                roomsAndBathroomPhotos: roomsAndBathroomPhotos ? JSON.stringify(roomsAndBathroomPhotos) : null,
-                parkingPhotos: parkingPhotos ? JSON.stringify(parkingPhotos) : null,
-                amenitiesPhotos: amenitiesPhotos ? JSON.stringify(amenitiesPhotos) : null,
-                aadhaarProof: aadhaarProof ? JSON.stringify(aadhaarProof) : null,
-                panProof: panProof ? JSON.stringify(panProof) : null,
-                pgLicenceUrl: pgLicenceUrl ? JSON.stringify(pgLicenceUrl) : null,
-                livePhotoUrl: livePhotoUrl || null,
-            }
-        });
+            const parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
-        if (parsedRooms.length > 0) {
-            const roomsData: any[] = [];
-            const bedsData: any[] = [];
-
-            for (const r of parsedRooms) {
-                nextRoomNum++;
-                const roomId = randomUUID();
-                const roomDisplayId = `REN-ROOM-${nextRoomNum.toString().padStart(4, '0')}`;
-                
-                roomsData.push({
-                    id: roomId,
-                    displayId: roomDisplayId,
-                    propertyId: newProperty.id,
-                    roomNumber: r.roomNumber.toString(),
-                    type: r.type,
-                    price: parseFloat(r.price),
-                    availability: parseInt(r.availability),
-                    totalBeds: parseInt(r.availability),
-                    status: 'AVAILABLE'
+            // 3. Create property and all related rooms/beds in a single high-speed transaction
+            const property = await prisma.$transaction(async (tx) => {
+                const newProperty = await tx.property.create({
+                    data: {
+                        displayId,
+                        name,
+                        address,
+                        city,
+                        description,
+                        amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
+                        images: JSON.stringify([
+                            ...(buildingPhotos || []),
+                            ...(roomsAndBathroomPhotos || [])
+                        ]),
+                        ownerName: finalOwnerName,
+                        ownerId: user?.parentOwnerId || session.userId,
+                        status: "SUBMITTED",
+                        propertyType: propertyType || "PG",
+                        licenseNumber: licenseNumber || null,
+                        reraId: reraId || null,
+                        businessName: businessName || null,
+                        buildingPhotos: buildingPhotos ? JSON.stringify(buildingPhotos) : null,
+                        commonAreaPhotos: commonAreaPhotos ? JSON.stringify(commonAreaPhotos) : null,
+                        roomsAndBathroomPhotos: roomsAndBathroomPhotos ? JSON.stringify(roomsAndBathroomPhotos) : null,
+                        parkingPhotos: parkingPhotos ? JSON.stringify(parkingPhotos) : null,
+                        amenitiesPhotos: amenitiesPhotos ? JSON.stringify(amenitiesPhotos) : null,
+                        aadhaarProof: aadhaarProof ? JSON.stringify(aadhaarProof) : null,
+                        panProof: panProof ? JSON.stringify(panProof) : null,
+                        pgLicenceUrl: pgLicenceUrl ? JSON.stringify(pgLicenceUrl) : null,
+                        livePhotoUrl: livePhotoUrl || null,
+                    }
                 });
 
-                for (let i = 0; i < parseInt(r.availability); i++) {
-                    nextBedNum++;
-                    bedsData.push({
-                        id: randomUUID(),
-                        displayId: `REN-BED-${nextBedNum.toString().padStart(4, '0')}`,
-                        roomId: roomId,
-                        bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
-                        status: 'AVAILABLE'
-                    });
+                if (parsedRooms.length > 0) {
+                    const roomsData: any[] = [];
+                    const bedsData: any[] = [];
+
+                    for (const r of parsedRooms) {
+                        nextRoomNum++;
+                        const roomId = randomUUID();
+                        const roomDisplayId = `REN-ROOM-${nextRoomNum.toString().padStart(4, '0')}`;
+                        
+                        roomsData.push({
+                            id: roomId,
+                            displayId: roomDisplayId,
+                            propertyId: newProperty.id,
+                            roomNumber: r.roomNumber.toString(),
+                            type: r.type,
+                            price: parseFloat(r.price),
+                            availability: parseInt(r.availability),
+                            totalBeds: parseInt(r.availability),
+                            status: 'AVAILABLE'
+                        });
+
+                        for (let i = 0; i < parseInt(r.availability); i++) {
+                            nextBedNum++;
+                            bedsData.push({
+                                id: randomUUID(),
+                                displayId: `REN-BED-${nextBedNum.toString().padStart(4, '0')}`,
+                                roomId: roomId,
+                                bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
+                                status: 'AVAILABLE'
+                            });
+                        }
+                    }
+
+                    if (roomsData.length > 0) {
+                        await tx.room.createMany({ data: roomsData });
+                    }
+                    if (bedsData.length > 0) {
+                        await tx.bed.createMany({ data: bedsData });
+                    }
                 }
-            }
 
-            // Batch insert ALL rooms and ALL beds in just 2 queries
-            if (roomsData.length > 0) {
-                await tx.room.createMany({ data: roomsData });
+                return newProperty;
+            }, { timeout: 30000 });
+
+            // 4. Log Audit Event
+            logAuditEvent({
+                actorId: user?.id || session.userId,
+                actorRole: session.role as string,
+                actorName: user?.name || session.name || 'Owner',
+                actionType: 'CREATE',
+                entityType: 'PROPERTY',
+                entityId: property.id,
+                entityName: property.name,
+                description: `Owner created a new property listing with ${parsedRooms.length} rooms: ${property.name}`,
+                newValue: property
+            });
+
+            return property;
+        } catch (error: any) {
+            // Handle unique constraint conflict by retrying with fresh IDs
+            if (error.code === 'P2002' && retryCount < maxRetries - 1) {
+                console.warn(`[createProperty] Unique constraint conflict detected. Retrying ${retryCount + 1}/${maxRetries}...`);
+                retryCount++;
+                // Add a small jittered delay to prevent stampede
+                await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 150));
+                continue;
             }
-            if (bedsData.length > 0) {
-                await tx.bed.createMany({ data: bedsData });
-            }
+            console.error("🔴 createProperty FAILED:", error);
+            throw error;
         }
-
-        return newProperty;
-    }, { timeout: 30000 });
-
-    // 3. Log Audit Event
-    logAuditEvent({
-        actorId: user?.id || session.userId,
-        actorRole: session.role as string,
-        actorName: user?.name || session.name || 'Owner',
-        actionType: 'CREATE',
-        entityType: 'PROPERTY',
-        entityId: property.id,
-        entityName: property.name,
-        description: `Owner created a new property listing with ${parsedRooms.length} rooms: ${property.name}`,
-        newValue: property
-    });
-
-    return property;
-    } catch (error) {
-        console.error("🔴 createProperty FAILED:", error);
-        throw error;
     }
+    throw new Error("System is busy. Please try again in a few moments.");
 }
 
 /**
