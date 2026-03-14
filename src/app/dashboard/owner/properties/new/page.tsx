@@ -40,6 +40,9 @@ export default function AddPropertyPage() {
     const [name, setName] = useState("");
     const [address, setAddress] = useState("");
     const [pincode, setPincode] = useState("");
+
+    // Performance: Session-persistent signature cache to avoid redundant server roundtrips
+    const [signatureCache, setSignatureCache] = useState<{data: any, expiry: number} | null>(null);
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
     const [postOffice, setPostOffice] = useState("");
@@ -136,6 +139,24 @@ export default function AddPropertyPage() {
             }
         };
         loadProfile();
+    }, []);
+
+    // OPTIMISTIC WARM-UP: Pre-fetch signature so it's ready before user selects photos
+    useEffect(() => {
+        const warmUpSignature = async () => {
+            const now = Date.now();
+            const timestamp = Math.floor(now / 1000);
+            try {
+                const data = await getCloudinarySignature({
+                    folder: `rentpe/properties/temp`,
+                    timestamp
+                });
+                setSignatureCache({ data, expiry: now + 45 * 60 * 1000 });
+            } catch (err) {
+                // Silently fail, it's just a warm-ups
+            }
+        };
+        warmUpSignature();
     }, []);
 
     // Sync latest form state to auto-save hook
@@ -255,30 +276,45 @@ export default function AddPropertyPage() {
 
         setUploadingCount(prev => prev + newEntries.length);
         
-        // Optimizing for speed: 
-        // 1. Fetch a SINGLE signature for the whole batch (Zero extra roundtrips)
-        const timestamp = Math.floor(Date.now() / 1000);
-        let sharedSignatureData: any = null;
-        try {
-            sharedSignatureData = await getCloudinarySignature({
-                folder: `rentpe/properties/temp`,
-                timestamp
-            });
-        } catch (err) {
-            console.error("Failed to pre-fetch signature", err);
-            // Fallback: useResumableUpload will fetch its own if null
-        }
+        // HIGH-SPEED PATH: Parallelize everything
+        // 1. Preparation phase: Start signature fetching and file compression IN PARALLEL
+        const getOrFetchSignature = async () => {
+            // Reuse cached signature if valid (30 min buffer)
+            const now = Date.now();
+            if (signatureCache && signatureCache.expiry > now) {
+                return signatureCache.data;
+            }
 
-        // 2. Parallel compression followed by parallel upload
+            const timestamp = Math.floor(now / 1000);
+            try {
+                const data = await getCloudinarySignature({
+                    folder: `rentpe/properties/temp`,
+                    timestamp
+                });
+                // Cache for 45 mins (Cloudinary default is 1h)
+                setSignatureCache({ data, expiry: now + 45 * 60 * 1000 });
+                return data;
+            } catch (err) {
+                console.error("Signature fetch failed", err);
+                return null;
+            }
+        };
+
+        // Kick off signature and file processing at the same time
+        const signaturePromise = getOrFetchSignature();
+
         await Promise.all(newEntries.map(async (entry) => {
-            const toastId = toast.loading(`Processing ${entry.file.name}...`);
+            const toastId = toast.loading(`Uploading ${entry.file.name}...`);
             
             try {
-                // 1. Client-side compression (Fast, saves 90% bandwidth)
-                const optimizedFile = await compressImage(entry.file);
+                // Compression and signature happen in parallel across files
+                const [optimizedFile, sigData] = await Promise.all([
+                    compressImage(entry.file),
+                    signaturePromise
+                ]);
                 
-                // 2. High-speed upload (Uses the PRE-FETCHED shared signature)
-                const result = await uploadFile(optimizedFile, { signatureData: sharedSignatureData }) as { url: string };
+                // Direct high-speed upload using pre-fetched/cached signature
+                const result = await uploadFile(optimizedFile, { signatureData: sigData }) as { url: string };
                 
                 setDocs(prev => ({
                     ...prev,
