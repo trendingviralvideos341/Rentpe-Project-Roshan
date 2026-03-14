@@ -63,7 +63,6 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
       folder: targetFolder,
       resource_type: 'auto',
       type: isPrivate ? 'authenticated' : 'upload',
-      access_mode: isPrivate ? 'authenticated' : 'public',
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
