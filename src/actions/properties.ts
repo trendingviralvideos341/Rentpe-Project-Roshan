@@ -112,6 +112,14 @@ export async function createProperty(formData: FormData) {
         throw new Error("Unauthorized");
     }
 
+    // Reject any raw File objects — all uploads must be pre-uploaded Cloudinary URLs
+    for (const [key, value] of formData.entries()) {
+        if (value instanceof File && value.size > 0) {
+            console.error(`🔴 Raw file detected in field "${key}". Submission rejected.`);
+            throw new Error(`Critical Error: Raw file detected for field "${key}". All photos must be uploaded before submitting.`);
+        }
+    }
+
     const name = formData.get("name") as string;
     const address = formData.get("address") as string;
     const city = formData.get("city") as string;
