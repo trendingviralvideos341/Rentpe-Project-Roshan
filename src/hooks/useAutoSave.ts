@@ -9,13 +9,15 @@ type AutoSaveOptions = {
     entityId?: string;
     interval?: number; // ms
     onSaved?: (data: any) => void;
+    paused?: boolean; // New option
 };
 
 export function useAutoSave({
     entityType,
     entityId,
     interval = 5000,
-    onSaved
+    onSaved,
+    paused = false
 }: AutoSaveOptions) {
     const [status, setStatus] = useState<'IDLE' | 'SAVING' | 'SAVED' | 'ERROR' | 'OFFLINE'>('IDLE');
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -77,6 +79,8 @@ export function useAutoSave({
 
     const saveToBackend = useCallback(
         debounce(async (data: any) => {
+            if (paused) return; // Skip if paused (e.g., active uploads)
+            
             if (!navigator.onLine) {
                 setStatus('OFFLINE');
                 return;
@@ -98,7 +102,7 @@ export function useAutoSave({
                 setStatus('ERROR');
             }
         }, interval),
-        [entityType, entityId, interval, onSaved]
+        [entityType, entityId, interval, onSaved, paused]
     );
 
     const updateData = (data: any) => {

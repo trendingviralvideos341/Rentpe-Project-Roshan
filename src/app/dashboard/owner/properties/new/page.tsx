@@ -99,7 +99,8 @@ export default function AddPropertyPage() {
     } = useAutoSave({
         entityType: 'PROPERTY',
         entityId: undefined, // undefined for new property
-        interval: 5000
+        interval: 5000,
+        paused: uploadingCount > 0 || saving
     });
 
     const [uploadingCount, setUploadingCount] = useState(0);
