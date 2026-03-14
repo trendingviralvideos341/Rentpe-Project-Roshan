@@ -289,6 +289,10 @@ export async function createProperty(data: FormData | any) {
         }
     }
     throw new Error("System is busy. Please try again in a few moments.");
+    } catch (error) {
+        console.error("🔴 createProperty FAILED:", error);
+        throw error;
+    }
 }
 
 /**
