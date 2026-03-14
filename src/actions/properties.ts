@@ -248,25 +248,16 @@ export async function createProperty(formData: FormData) {
         throw new Error(`Critical uploads failed: ${uploadErrors.join(", ")}`);
     }
 
-    // 2. Pre-fetch counts OUTSIDE the transaction — avoids nested sequential DB queries inside an open transaction
-    let roomCount = 0;
-    let bedCount = 0;
-    const parsedRooms = roomsJson ? (() => { try { return JSON.parse(roomsJson); } catch { return []; } })() : [];
-    const hasRooms = Array.isArray(parsedRooms) && parsedRooms.length > 0;
-
-    const [propertyCount] = await Promise.all([
+    // 2. Pre-fetch counts globally to generate human-readable display IDs
+    const [propertyCount, totalRoomCount, totalBedCount] = await Promise.all([
         prisma.property.count(),
-        ...(hasRooms ? [
-            prisma.room.count().then(c => { roomCount = c; }),
-            prisma.bed.count().then(c => { bedCount = c; }),
-        ] : [])
+        prisma.room.count(),
+        prisma.bed.count()
     ]);
 
-    // Generate displayId locally — no DB roundtrip
     const displayId = `REN-PROP-${(propertyCount + 1).toString().padStart(4, '0')}`;
 
-    // 3. Create property and rooms in a transaction
-
+    // 3. Create property and all related rooms/beds in a single high-speed transaction
     const property = await prisma.$transaction(async (tx) => {
         const newProperty = await tx.property.create({
             data: {
@@ -300,38 +291,47 @@ export async function createProperty(formData: FormData) {
         });
 
         if (hasRooms) {
-            let curRoomCount = roomCount;
-            let curBedCount = bedCount;
+            const roomsData: any[] = [];
+            const bedsData: any[] = [];
+            let currentRoomCount = totalRoomCount;
+            let currentBedCount = totalBedCount;
 
+            // Pre-calculate all IDs and data for batch insertion
             for (const r of parsedRooms) {
-                curRoomCount++;
-                const room = await tx.room.create({
-                    data: {
-                        displayId: `REN-ROOM-${curRoomCount.toString().padStart(4, '0')}`,
-                        propertyId: newProperty.id,
-                        roomNumber: r.roomNumber.toString(),
-                        type: r.type,
-                        price: parseFloat(r.price),
-                        availability: parseInt(r.availability),
-                        totalBeds: parseInt(r.availability),
+                currentRoomCount++;
+                const roomId = randomUUID(); // Pre-generate UUID for linking
+                const roomDisplayId = `REN-ROOM-${currentRoomCount.toString().padStart(4, '0')}`;
+                
+                roomsData.push({
+                    id: roomId,
+                    displayId: roomDisplayId,
+                    propertyId: newProperty.id,
+                    roomNumber: r.roomNumber.toString(),
+                    type: r.type,
+                    price: parseFloat(r.price),
+                    availability: parseInt(r.availability),
+                    totalBeds: parseInt(r.availability),
+                    status: 'AVAILABLE'
+                });
+
+                for (let i = 0; i < parseInt(r.availability); i++) {
+                    currentBedCount++;
+                    bedsData.push({
+                        id: randomUUID(),
+                        displayId: `REN-BED-${currentBedCount.toString().padStart(4, '0')}`,
+                        roomId: roomId,
+                        bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
                         status: 'AVAILABLE'
-                    }
-                });
-
-                // Bulk-insert ALL beds for this room in ONE query (was N separate queries)
-                const bedsPayload = Array.from({ length: room.availability }, (_, i) => {
-                    curBedCount++;
-                    return {
-                        displayId: `REN-BED-${curBedCount.toString().padStart(4, '0')}`,
-                        roomId: room.id,
-                        bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
-                        status: 'AVAILABLE' as const,
-                    };
-                });
-
-                if (bedsPayload.length > 0) {
-                    await tx.bed.createMany({ data: bedsPayload });
+                    });
                 }
+            }
+
+            // Batch insert ALL rooms and ALL beds in just 2 queries
+            if (roomsData.length > 0) {
+                await tx.room.createMany({ data: roomsData });
+            }
+            if (bedsData.length > 0) {
+                await tx.bed.createMany({ data: bedsData });
             }
         }
 
@@ -347,7 +347,7 @@ export async function createProperty(formData: FormData) {
         entityType: 'PROPERTY',
         entityId: property.id,
         entityName: property.name,
-        description: `Owner created a new property listing: ${property.name}`,
+        description: `Owner created a new property listing with ${parsedRooms.length} rooms: ${property.name}`,
         newValue: property
     });
 

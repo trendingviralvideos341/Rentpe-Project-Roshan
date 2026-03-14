@@ -1,11 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { initiateUploadAction, uploadChunkAction, completeUploadAction, quickUploadAction } from '@/actions/uploads';
-
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
-const FAST_PATH_THRESHOLD = 25 * 1024 * 1024; // ALL photos (up to 25MB) use the direct zero-DB path
-const CONCURRENCY_LIMIT = 3;
+import { getCloudinarySignature } from '@/actions/uploads';
 
 type UploadProgress = {
     percent: number;
@@ -24,23 +20,48 @@ export function useResumableUpload() {
         setProgress({ percent: 0, uploadedChunks: 0, totalChunks: 1 });
 
         try {
-            // DIRECT PATH: Always use quickUploadAction to avoid Vercel filesystem issues
+            // 1. Get Secure Signature from Server (High Performance - No file data sent)
+            const timestamp = Math.floor(Date.now() / 1000);
+            const { signature, apiKey, cloudName, folder } = await getCloudinarySignature({
+                folder: `rentpe/properties/temp`, // Will be auto-corrected to user-specific folder in action
+                timestamp
+            });
+
+            // 2. Direct Upload to Cloudinary (Bypasses Vercel Proxy)
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('fileName', file.name);
-            formData.append('mimeType', file.type);
+            formData.append('api_key', apiKey);
+            formData.append('timestamp', timestamp.toString());
+            formData.append('signature', signature);
+            formData.append('folder', folder);
 
-            const result = await quickUploadAction(formData);
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || 'Cloudinary upload failed');
+            }
+
+            const result = await response.json();
+            
             setProgress({ percent: 100, uploadedChunks: 1, totalChunks: 1 });
             setStatus('SUCCESS');
-            return result;
+            
+            return {
+                url: result.secure_url,
+                public_id: result.public_id,
+                success: true
+            };
         } catch (err: any) {
-            console.error("Direct upload failed", err);
+            console.error("Direct high-speed upload failed", err);
             setStatus('ERROR');
             setError(err.message || 'Upload failed');
             throw err;
         }
-    }, [quickUploadAction]);
+    }, [getCloudinarySignature]);
 
     return {
         status,

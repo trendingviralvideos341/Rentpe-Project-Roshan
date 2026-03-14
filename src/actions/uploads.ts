@@ -76,3 +76,41 @@ export async function quickUploadAction(formData: FormData) {
         throw new Error("Cloud storage upload failed. Please try again.");
     }
 }
+
+/**
+ * Generates a signature for DIRECT browser-to-Cloudinary upload.
+ * This is the HIGHEST PERFORMANCE path as it bypasses Vercel proxying entirely.
+ */
+export async function getCloudinarySignature(params: { folder: string; timestamp: number }) {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+
+    const { folder, timestamp } = params;
+    
+    // Ensure the folder is scoped to the user for security
+    const secureFolder = folder.startsWith(`rentpe/properties/${session.userId}`) 
+        ? folder 
+        : `rentpe/properties/${session.userId}`;
+
+    const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+    const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+
+    if (!apiSecret || !apiKey) {
+        throw new Error("Cloudinary configuration missing on server");
+    }
+
+    // Official Cloudinary signature logic
+    const { v2: cloudinary } = await import('cloudinary');
+    const signature = cloudinary.utils.api_sign_request(
+        { folder: secureFolder, timestamp },
+        apiSecret
+    );
+
+    return {
+        signature,
+        apiKey,
+        timestamp,
+        folder: secureFolder,
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME?.trim()
+    };
+}

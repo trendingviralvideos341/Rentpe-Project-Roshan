@@ -250,12 +250,14 @@ export default function AddPropertyPage() {
             [category]: isMultiple ? [...prev[category], ...newEntries] : [newEntries[0]]
         }));
 
-        // Upload each file to Cloudinary in the background
-        for (const entry of newEntries) {
+        // Upload all files to Cloudinary in parallel for maximum speed
+        setUploadingCount(prev => prev + newEntries.length);
+        
+        await Promise.all(newEntries.map(async (entry) => {
             const toastId = toast.loading(`Uploading ${entry.file.name}...`);
-            setUploadingCount(prev => prev + 1);
             
             try {
+                // Higher performance: Promise-based parallel execution
                 const result = await uploadFile(entry.file) as { url: string };
                 setDocs(prev => ({
                     ...prev,
@@ -279,7 +281,7 @@ export default function AddPropertyPage() {
             } finally {
                 setUploadingCount(prev => Math.max(0, prev - 1));
             }
-        }
+        }));
     };
 
     const removeDoc = (category: keyof DocsState, index?: number) => {
