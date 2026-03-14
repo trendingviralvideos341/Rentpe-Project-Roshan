@@ -106,6 +106,7 @@ export async function getPropertyById(id: string) {
 }
 
 export async function createProperty(formData: FormData) {
+    try {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') {
         throw new Error("Unauthorized");
@@ -343,6 +344,10 @@ export async function createProperty(formData: FormData) {
     });
 
     return property;
+    } catch (error) {
+        console.error("🔴 createProperty FAILED:", error);
+        throw error;
+    }
 }
 
 /**
