@@ -249,6 +249,9 @@ export async function createProperty(formData: FormData) {
     }
 
     // 2. Pre-fetch counts globally to generate human-readable display IDs
+    const parsedRooms = roomsJson ? (() => { try { return JSON.parse(roomsJson); } catch { return []; } })() : [];
+    const hasRooms = Array.isArray(parsedRooms) && parsedRooms.length > 0;
+
     const [propertyCount, totalRoomCount, totalBedCount] = await Promise.all([
         prisma.property.count(),
         prisma.room.count(),
