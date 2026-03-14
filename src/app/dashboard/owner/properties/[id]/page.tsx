@@ -25,6 +25,8 @@ export default function PropertyManagePage() {
 
     // Document Upload State
     const [uploading, setUploading] = useState(false);
+    const [uploadingCount, setUploadingCount] = useState(0);
+    const [categoryUploading, setCategoryUploading] = useState<Record<string, boolean>>({});
 
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
@@ -73,7 +75,7 @@ export default function PropertyManagePage() {
             }
         } catch (err) {
             console.error("Error accessing camera:", err);
-            alert("Could not access camera. Please ensure it's enabled and try again.");
+            toast.error("Could not access camera. Please ensure it's enabled and try again.");
             setCapturing(false);
             setIsCaptureOpen(false);
         }
@@ -121,19 +123,19 @@ export default function PropertyManagePage() {
     const handleFileUpload = async (file: File, docType: string, index?: number) => {
         // Category-based size limit logic (User wants 5MB total per category)
         const categories = {
-            buildingPhotos: { max: 5 * 1024 * 1024, isArray: true },
-            commonAreaPhotos: { max: 5 * 1024 * 1024, isArray: true },
-            parkingPhoto: { max: 5 * 1024 * 1024, isArray: false },
-            bathroomPhoto: { max: 5 * 1024 * 1024, isArray: false },
-            aadhaarProof: { max: 5 * 1024 * 1024, isArray: false },
-            panProof: { max: 5 * 1024 * 1024, isArray: false },
-            pgLicenceUrl: { max: 5 * 1024 * 1024, isArray: false },
-            livePhotoUrl: { max: 5 * 1024 * 1024, isArray: false }
+            buildingPhotos: { name: "Building Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            commonAreaPhotos: { name: "Common Area Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            parkingPhoto: { name: "Parking Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
+            bathroomPhoto: { name: "Bathroom Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
+            aadhaarProof: { name: "Aadhaar Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
+            panProof: { name: "PAN Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
+            pgLicenceUrl: { name: "PG Licence", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
+            livePhotoUrl: { name: "Live Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false }
         } as any;
 
         const cat = categories[docType];
-        if (file.size > (cat?.max || 5 * 1024 * 1024)) {
-            alert(`File exceeds the limit.`);
+        if (file.size > cat.maxSize) {
+            toast.error(`File "${file.name}" exceeds the ${cat.name} size limit (${cat.maxMb}MB).`);
             return;
         }
 
@@ -144,17 +146,23 @@ export default function PropertyManagePage() {
             // For simplicity, we'll assume each existing photo is ~1MB if size not tracked, 
             // but the user wants real-time. I'll add a 'size' property to the JSON if it doesn't exist.
             const totalUsed = photos.reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0);
-            if (totalUsed + file.size > cat.max) {
-                alert(`Not enough space! Only ${(cat.max - totalUsed) / (1024 * 1024)} MB remaining.`);
+            if (totalUsed + file.size > cat.maxSize) {
+                toast.error(`Storage full! Only ${((cat.maxSize - totalUsed) / (1024 * 1024)).toFixed(2)} MB remaining in ${cat.name}.`);
                 return;
             }
         }
 
+        const toastId = toast.loading(`Uploading ${docType.split(/(?=[A-Z])/).join(' ')}...`);
         setUploading(true);
+        setUploadingCount(prev => prev + 1);
+        setCategoryUploading(prev => ({ ...prev, [docType]: true }));
+        
         try {
             const formData = new FormData();
             formData.append('file', file);
             const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            
+            // Timeout safety for fetch if server hangs (though Cloudinary now has its own)
             const data = await res.json();
 
             if (res.ok && data.url) {
@@ -163,17 +171,16 @@ export default function PropertyManagePage() {
 
                 if (cat?.isArray) {
                     const existingPhotos = property[docType] ? JSON.parse(property[docType]) : [];
-                    if (existingPhotos.length >= 4 && index === undefined) { // Only check if adding new, not reuploading existing
-                        alert("Maximum 4 photos allowed for this category.");
-                        setUploading(false);
+                    if (existingPhotos.length >= 4 && index === undefined) {
+                        toast.error("Maximum 4 photos allowed.", { id: toastId });
                         return;
                     }
-                    // Store as {url, size} for the real-time indicator
+                    
                     let updatedPhotos;
-                    if (index !== undefined) { // Reuploading a specific photo
+                    if (index !== undefined) {
                         updatedPhotos = [...existingPhotos];
                         updatedPhotos[index] = { url: data.url, size: file.size };
-                    } else { // Adding a new photo
+                    } else {
                         updatedPhotos = [...existingPhotos, { url: data.url, size: file.size }];
                     }
                     updateData = { [docType]: JSON.stringify(updatedPhotos) };
@@ -182,10 +189,9 @@ export default function PropertyManagePage() {
                     newPropertyState[docType] = data.url;
                 }
 
-                // If this document had a REUPLOAD request, clear it
                 if (property.adminNotes) {
                     const lines = property.adminNotes.split('\n');
-                    const reuploadTag = index !== undefined ? `[REUPLOAD:${docType} -${index}]` : `[REUPLOAD:${docType}]`;
+                    const reuploadTag = index !== undefined ? `[REUPLOAD:${docType}-${index}]` : `[REUPLOAD:${docType}]`;
                     const filteredLines = lines.filter((l: string) => !l.startsWith(reuploadTag));
                     const newAdminNotes = filteredLines.join('\n');
 
@@ -197,34 +203,37 @@ export default function PropertyManagePage() {
 
                 await savePropertyDocuments(propertyId, updateData);
                 setProperty(newPropertyState);
-                alert(`Document uploaded successfully!`);
+                toast.success("Document uploaded & saved!", { id: toastId });
             } else {
-                alert(`Upload failed: ${data.error} `);
+                toast.error(`Upload failed: ${data.error || 'Server error'}`, { id: toastId });
             }
         } catch (error) {
             console.error("Upload Error:", error);
-            alert("An error occurred during upload.");
+            toast.error("An error occurred during upload.", { id: toastId });
         } finally {
             setUploading(false);
+            setUploadingCount(prev => Math.max(0, prev - 1));
+            setCategoryUploading(prev => ({ ...prev, [docType]: false }));
         }
     };
 
     const handleDelete = async (docType: string, index?: number) => {
         const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
-        const docKey = index !== undefined ? `${docType} -${index} ` : docType;
+        const docKey = index !== undefined ? `${docType}-${index}` : docType;
+        const isVerified = verifiedDocs.includes(docKey);
 
-        if (verifiedDocs.includes(docKey)) {
-            alert("Verified documents cannot be deleted.");
+        if (isVerified) {
+            toast.info("Verified documents cannot be deleted for audit reasons.");
             return;
         }
 
         if (!confirm("Are you sure you want to delete this document?")) return;
 
+        const toastId = toast.loading("Deleting document...");
         setUploading(true);
         try {
             const res = await deletePropertyDocument(propertyId, docType, index);
             if (res.success) {
-                // Refresh local state
                 const updatedProperty = { ...property };
                 if (index !== undefined && property[docType]) {
                     const items = JSON.parse(property[docType]);
@@ -234,12 +243,13 @@ export default function PropertyManagePage() {
                     updatedProperty[docType] = null;
                 }
                 setProperty(updatedProperty);
-                alert("Deleted successfully.");
+                toast.success("Deleted successfully.", { id: toastId });
             } else {
-                alert("Delete failed.");
+                toast.error("Delete failed.", { id: toastId });
             }
         } catch (error) {
             console.error("Delete Error:", error);
+            toast.error("Cleanup failed.", { id: toastId });
         } finally {
             setUploading(false);
         }
@@ -284,7 +294,7 @@ export default function PropertyManagePage() {
 
     const handleSaveRoom = async () => {
         if (!roomForm.roomNumber || !roomForm.price) {
-            alert("Room Number and Rent Price are required.");
+            toast.error("Room Number and Rent Price are required.");
             return;
         }
 
@@ -300,8 +310,9 @@ export default function PropertyManagePage() {
             setProperty({ ...property, rooms: [...(property.rooms || []), newRoom] });
             setIsAddRoomOpen(false);
             setRoomForm({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
+            toast.success("Room added successfully!");
         } catch (e: any) {
-            alert(`Error: ${e.message}`);
+            toast.error(`Error adding room: ${e.message}`);
         } finally {
             setSavingRoom(false);
         }
@@ -375,6 +386,14 @@ export default function PropertyManagePage() {
                     <p className="text-muted-foreground flex items-center gap-1 mt-1">
                         <MapPin className="h-4 w-4" /> {property.city}, {property.address}
                     </p>
+                </div>
+                <div className="ml-auto">
+                    {uploadingCount > 0 && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 animate-pulse">
+                            <RefreshCcw className="w-4 h-4 animate-spin text-indigo-600" />
+                            <span className="text-xs font-bold text-indigo-700">System Syncing...</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -621,6 +640,12 @@ export default function PropertyManagePage() {
                                                 <h4 className="font-bold text-base tracking-tight text-slate-800">{cat.label}</h4>
                                                 <p className="text-[10px] text-muted-foreground uppercase font-semibold">{cat.desc}</p>
                                             </div>
+                                            {categoryUploading[cat.key] && (
+                                                <div className="ml-auto flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 animate-pulse">
+                                                    <RefreshCcw className="w-3 h-3 animate-spin" />
+                                                    Syncing...
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Display logic for arrays (Building Photos) or single files */}

@@ -9,6 +9,7 @@ import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
 import { getProperties } from "@/actions/properties";
 import { validateEmail, validatePhone, validateName, normalizePhone } from "@/lib/validators";
+import { toast } from "sonner";
 
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -43,6 +44,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [rejectTarget, setRejectTarget] = useState<string | null>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [uploadType, setUploadType] = useState("ID_PROOF");
+    const [uploadingCount, setUploadingCount] = useState(0);
     const [previewDoc, setPreviewDoc] = useState<any>(null);
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -205,12 +207,24 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > MAX_FILE_SIZE) { alert("File exceeds 5MB limit."); return; }
+        if (file.size > MAX_FILE_SIZE) { 
+            toast.error("File exceeds 5MB limit."); 
+            return; 
+        }
+
+        const toastId = toast.loading(`Uploading ${TYPE_LABELS[uploadType]}...`);
+        setUploadingCount(prev => prev + 1);
         try {
             await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: file, fileName: file.name });
+            toast.success("Document uploaded successfully!", { id: toastId });
             fetchDocs();
-        } catch { alert("Upload failed."); }
-        e.target.value = "";
+        } catch (error: any) {
+            console.error("Upload Error:", error);
+            toast.error(`Upload failed: ${error.message || 'Server error'}`, { id: toastId });
+        } finally {
+            setUploadingCount(prev => Math.max(0, prev - 1));
+            e.target.value = "";
+        }
     };
 
     const pendingDocs = docs.filter(d => d.status === "PENDING");
@@ -719,8 +733,9 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                         {DOC_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
                                     </select>
                                     <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
-                                    <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => fileRef.current?.click()}>
-                                        <UploadCloud className="h-3 w-3 mr-1" />Upload
+                                    <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => fileRef.current?.click()} disabled={uploadingCount > 0}>
+                                        <UploadCloud className="h-3 w-3 mr-1" />
+                                        {uploadingCount > 0 ? "Syncing..." : "Upload"}
                                     </Button>
                                 </div>
                             </div>

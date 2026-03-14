@@ -141,7 +141,7 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                                                         disabled={!!uploading}
                                                     />
                                                     <Button variant="outline" size="sm" className="w-full text-[10px] h-8 font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50">
-                                                        {uploading === doc.key ? "Uploading..." : "Replace"}
+                                                        {uploading === doc.key ? "Syncing..." : "Replace"}
                                                     </Button>
                                                 </label>
                                             )}
@@ -155,7 +155,7 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                                                 disabled={!!uploading}
                                             />
                                             <Button variant="outline" size="sm" className="w-full h-10 border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold">
-                                                {uploading === doc.key ? "Uploading..." : "Upload File"}
+                                                {uploading === doc.key ? "Syncing..." : "Upload File"}
                                             </Button>
                                         </label>
                                     )}

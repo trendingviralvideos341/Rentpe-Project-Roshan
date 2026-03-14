@@ -156,14 +156,24 @@ function DocumentSection({ booking }: { booking: any }) {
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > MAX_FILE_SIZE) { alert("File size exceeds 5MB limit. Please upload a smaller file."); return; }
+        if (file.size > MAX_FILE_SIZE) { 
+            toast.error("File size exceeds 5MB limit. Please upload a smaller file."); 
+            return; 
+        }
+
+        const toastId = toast.loading(`Uploading ${TYPE_LABELS[uploadType]}...`);
         setUploading(true);
         try {
             await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: file, fileName: file.name });
+            toast.success("Document uploaded successfully!", { id: toastId });
             await fetchDocs();
-        } catch { alert("Upload failed. Please try again."); }
-        finally { setUploading(false); }
-        e.target.value = "";
+        } catch (error: any) {
+            console.error("Upload Error:", error);
+            toast.error(`Upload failed: ${error.message || 'Server error'}`, { id: toastId });
+        } finally {
+            setUploading(false);
+            e.target.value = "";
+        }
     };
 
     const rejectedDocs = docs.filter(d => d.status === "REJECTED");
@@ -258,7 +268,7 @@ function DocumentSection({ booking }: { booking: any }) {
                         onClick={() => fileRef.current?.click()}
                     >
                         <UploadCloud className="h-3.5 w-3.5 mr-1" />
-                        {uploading ? "Uploading..." : "Upload"}
+                        {uploading ? "Syncing..." : "Upload"}
                     </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1.5">Accepted: Images (JPG, PNG) and PDF • Max 5MB</p>

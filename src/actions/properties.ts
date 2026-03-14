@@ -422,29 +422,48 @@ export async function savePropertyDocuments(propertyId: string, docs: {
     if (docs.bathroomPhoto?.startsWith('data:')) uploadData.bathroomPhoto = await uploadToCloudinary(docs.bathroomPhoto, folder);
     if (docs.livePhotoUrl?.startsWith('data:')) uploadData.livePhotoUrl = await uploadToCloudinary(docs.livePhotoUrl, folder);
 
-    // Handle JSON array fields
-    if (docs.buildingPhotos) {
+    // Handle JSON array fields (robustly handle both strings and objects)
+    const processPhotos = async (jsonStr: string | undefined) => {
+        if (!jsonStr) return undefined;
         try {
-            const photos = JSON.parse(docs.buildingPhotos);
-            // Only upload photos that are base64 (start with data:)
-            const toUpload = photos.filter((p: string) => p.startsWith('data:'));
-            const uploadedUrls = await batchUploadToCloudinary(toUpload, folder);
-            
-            // Reconstruct array with new URLs and existing non-base64 URLs
-            const finalPhotos = photos.map((p: string) => p.startsWith('data:') ? uploadedUrls.shift() : p);
-            uploadData.buildingPhotos = JSON.stringify(finalPhotos);
-        } catch (e) {}
-    }
+            const photos = JSON.parse(jsonStr);
+            if (!Array.isArray(photos)) return jsonStr;
 
-    if (docs.commonAreaPhotos) {
-        try {
-            const photos = JSON.parse(docs.commonAreaPhotos);
-            const toUpload = photos.filter((p: string) => p.startsWith('data:'));
-            const uploadedUrls = await batchUploadToCloudinary(toUpload, folder);
-            const finalPhotos = photos.map((p: string) => p.startsWith('data:') ? uploadedUrls.shift() : p);
-            uploadData.commonAreaPhotos = JSON.stringify(finalPhotos);
-        } catch (e) {}
-    }
+            const toUpload: (string | File)[] = [];
+            const resultPhotos = [...photos];
+
+            for (let i = 0; i < photos.length; i++) {
+                const p = photos[i];
+                const url = typeof p === 'object' ? p.url : p;
+                if (url && typeof url === 'string' && url.startsWith('data:')) {
+                    toUpload.push(url);
+                }
+            }
+
+            if (toUpload.length > 0) {
+                const uploadedUrls = await batchUploadToCloudinary(toUpload, folder);
+                let uploadIdx = 0;
+                for (let i = 0; i < resultPhotos.length; i++) {
+                    const p = resultPhotos[i];
+                    const url = typeof p === 'object' ? p.url : p;
+                    if (url && typeof url === 'string' && url.startsWith('data:')) {
+                        if (typeof p === 'object') {
+                            resultPhotos[i] = { ...p, url: uploadedUrls[uploadIdx++] };
+                        } else {
+                            resultPhotos[i] = uploadedUrls[uploadIdx++];
+                        }
+                    }
+                }
+            }
+            return JSON.stringify(resultPhotos);
+        } catch (e) {
+            console.error(`[savePropertyDocuments] Error processing photos:`, e);
+            return jsonStr; // Return original on partial failure
+        }
+    };
+
+    if (docs.buildingPhotos) uploadData.buildingPhotos = await processPhotos(docs.buildingPhotos);
+    if (docs.commonAreaPhotos) uploadData.commonAreaPhotos = await processPhotos(docs.commonAreaPhotos);
 
     await prisma.property.update({
         where: { id: propertyId, ownerId: session.userId },

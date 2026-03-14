@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, CheckCircle, Clock, XCircle, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { getBookings } from "@/actions/bookings";
 import { uploadTenantDocument, getTenantDocuments } from "@/actions/documents";
 import { useResumableUpload } from "@/hooks/useResumableUpload";
@@ -121,10 +122,15 @@ export default function StudentDocumentsPage() {
     const handleFileUpload = async (type: string, file: File) => {
         setUploading(type);
         setUploadError(null);
+        const toastId = toast.loading(`Uploading ${type.split('_').join(' ')}...`);
         try {
             await checkAndUpload(type, file, file.name);
-        } catch {
-            setUploadError("Upload failed. Please try again.");
+            toast.success("Document uploaded successfully!", { id: toastId });
+        } catch (error: any) {
+            console.error("Upload Error:", error);
+            const msg = error.message || "Upload failed. Please try again.";
+            setUploadError(msg);
+            toast.error(msg, { id: toastId });
             setUploading(null);
         }
     };
@@ -135,7 +141,7 @@ export default function StudentDocumentsPage() {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             if (videoRef.current) videoRef.current.srcObject = stream;
         } catch {
-            alert("Camera access denied. Please allow camera access.");
+            toast.error("Camera access denied. Please allow camera access in your browser settings.");
             setCameraActive(false);
         }
     };
@@ -303,7 +309,7 @@ export default function StudentDocumentsPage() {
                                                         title={isAtLimit ? "Storage full — compress existing files first" : ""}
                                                     >
                                                         <Upload className="h-3 w-3 mr-1" />
-                                                        {isUploading ? "Uploading..." : doc ? "Re-upload" : "Upload"}
+                                                        {isUploading ? "Syncing..." : doc ? "Re-upload" : "Upload"}
                                                     </Button>
                                                 </>
                                             )
