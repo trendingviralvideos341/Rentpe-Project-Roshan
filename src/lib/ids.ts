@@ -14,47 +14,87 @@ const PREFIXES: Record<EntityType, string> = {
     ADMIN_EMPLOYEE: 'REN-EMP'
 };
 
-/**
- * Generates a sequential ID for a given entity type.
- * Format: REN-[TYPE]-[0001]
- */
 export async function generateSequentialId(type: EntityType): Promise<string> {
     const prefix = PREFIXES[type];
-    let count = 0;
+    let lastId: string | null = null;
 
+    // Use indexed findFirst (O(1)) instead of count (O(N)) for high-speed ID generation
     switch (type) {
         case 'USER':
-            // Count users who are NOT owners
-            count = await prisma.user.count({ where: { isOwner: false } });
+            const lastUser = await prisma.user.findFirst({ 
+                where: { isOwner: false }, 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastUser?.displayId || null;
             break;
         case 'OWNER':
-            // Count users who ARE owners
-            count = await prisma.user.count({ where: { isOwner: true } });
+            const lastOwner = await prisma.user.findFirst({ 
+                where: { isOwner: true }, 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastOwner?.displayId || null;
             break;
         case 'PROPERTY':
-            count = await prisma.property.count();
+            const lastProp = await prisma.property.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastProp?.displayId || null;
             break;
         case 'ROOM':
-            count = await prisma.room.count();
+            const lastRoom = await prisma.room.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastRoom?.displayId || null;
             break;
         case 'BED':
-            count = await prisma.bed.count();
+            const lastBed = await prisma.bed.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastBed?.displayId || null;
             break;
         case 'BOOKING':
-            count = await prisma.booking.count();
+            const lastBooking = await prisma.booking.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastBooking?.displayId || null;
             break;
         case 'TENANT':
-            count = await prisma.tenant.count();
+            const lastTenant = await prisma.tenant.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastTenant?.displayId || null;
             break;
         case 'OWNER_EMPLOYEE':
-            count = await prisma.ownerEmployee.count();
+            const lastOwnerEmp = await prisma.ownerEmployee.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastOwnerEmp?.displayId || null;
             break;
         case 'ADMIN_EMPLOYEE':
-            count = await prisma.adminEmployee.count();
+            const lastAdminEmp = await prisma.adminEmployee.findFirst({ 
+                orderBy: { createdAt: 'desc' }, 
+                select: { displayId: true } 
+            });
+            lastId = lastAdminEmp?.displayId || null;
             break;
     }
 
-    // Use 1-based indexing for the suffix
-    const suffix = (count + 1).toString().padStart(4, '0');
-    return `${prefix}-${suffix}`;
+    let nextNum = 1;
+    if (lastId) {
+        const parts = lastId.split('-');
+        const lastNum = parseInt(parts[parts.length - 1]);
+        if (!isNaN(lastNum)) {
+            nextNum = lastNum + 1;
+        }
+    }
+
+    return `${prefix}-${nextNum.toString().padStart(4, '0')}`;
 }

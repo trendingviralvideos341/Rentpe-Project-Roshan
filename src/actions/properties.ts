@@ -105,160 +105,77 @@ export async function getPropertyById(id: string) {
     return property;
 }
 
-export async function createProperty(formData: FormData) {
+export async function createProperty(data: FormData | any) {
     try {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') {
         throw new Error("Unauthorized");
     }
 
-    // Reject any raw File objects — all uploads must be pre-uploaded Cloudinary URLs
-    for (const [key, value] of formData.entries()) {
-        if (value instanceof File && value.size > 0) {
-            console.error(`🔴 Raw file detected in field "${key}". Submission rejected.`);
-            throw new Error(`Critical Error: Raw file detected for field "${key}". All photos must be uploaded before submitting.`);
-        }
-    }
+    // 1. Unified Data Extraction (Supports both FormData and JSON)
+    const isFormData = data instanceof FormData;
+    const getVal = (key: string) => isFormData ? (data.get(key) as string) : (data[key] as string);
+    const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
 
-    const name = formData.get("name") as string;
-    const address = formData.get("address") as string;
-    const city = formData.get("city") as string;
-    const description = formData.get("description") as string;
-    const amenities = formData.get("amenities") as string; // JSON string
-    const ownerName = formData.get("ownerName") as string;
-    const roomsJson = formData.get("rooms") as string;
-    const propertyType = formData.get("propertyType") as string;
-    const licenseNumber = formData.get("licenseNumber") as string;
-    const reraId = formData.get("reraId") as string;
-    const businessName = formData.get("businessName") as string;
+    const name = getVal("name");
+    const address = getVal("address");
+    const city = getVal("city");
+    const description = getVal("description");
+    const amenities = getVal("amenities"); 
+    const ownerName = getVal("ownerName");
+    const roomsSource = getVal("rooms");
+    const propertyType = getVal("propertyType");
+    const licenseNumber = getVal("licenseNumber");
+    const reraId = getVal("reraId");
+    const businessName = getVal("businessName");
 
-    // --- SMART DETECTION: Pre-uploaded URLs vs Raw Files ---
-    // The frontend may pre-upload files via quickUploadAction and send Cloudinary URLs as strings,
-    // OR it may send raw File objects. We handle both cases.
-    const isCloudinaryUrl = (val: any): val is string => 
-        typeof val === 'string' && (val.startsWith('https://res.cloudinary.com') || val.startsWith('http'));
-
-    const extractUrlsOrFiles = (fieldName: string): { urls: string[], files: File[] } => {
-        const values = formData.getAll(fieldName);
-        const urls: string[] = [];
-        const files: File[] = [];
-        for (const val of values) {
-            if (isCloudinaryUrl(val)) {
-                urls.push(val);
-            } else if (val instanceof File && val.size > 0) {
-                files.push(val);
+    // Reject raw Files in legacy path
+    if (isFormData) {
+        for (const [key, value] of data.entries()) {
+            if (value instanceof File && value.size > 0) {
+                console.error(`🔴 Raw file detected in field "${key}". Submission rejected.`);
+                throw new Error("Photos must be pre-uploaded. Please try again.");
             }
         }
-        return { urls, files };
-    };
-
-    const extractSingleUrlOrFile = (fieldName: string): { url: string | null, file: File | null } => {
-        const val = formData.get(fieldName);
-        if (isCloudinaryUrl(val)) return { url: val as string, file: null };
-        if (val instanceof File && val.size > 0) return { url: null, file: val };
-        return { url: null, file: null };
-    };
-
-    const buildingPhotos = extractUrlsOrFiles("buildingPhotos");
-    if (!buildingPhotos || buildingPhotos.urls.length + buildingPhotos.files.length === 0) {
-        throw new Error("Building photos are required. Please re-upload and try again.");
     }
-    const commonAreaPhotos = extractUrlsOrFiles("commonAreaPhotos");
-    const roomsAndBathroomPhotos = extractUrlsOrFiles("roomsAndBathroomPhotos");
-    const parkingPhotos = extractUrlsOrFiles("parkingPhotos");
-    const amenitiesPhotos = extractUrlsOrFiles("amenitiesPhotos");
-    const aadhaarProof = extractUrlsOrFiles("aadhaarProof");
-    const panProof = extractUrlsOrFiles("panProof");
-    const pgLicenceUrl = extractUrlsOrFiles("pgLicenceUrl");
-    const livePhotoData = extractSingleUrlOrFile("livePhotoUrl");
 
-    const user = await prisma.user.findUnique({ where: { id: (session as any).userId } });
+    const buildingPhotos = getAllVal("buildingPhotos");
+    const commonAreaPhotos = getAllVal("commonAreaPhotos");
+    const roomsAndBathroomPhotos = getAllVal("roomsAndBathroomPhotos");
+    const parkingPhotos = getAllVal("parkingPhotos");
+    const amenitiesPhotos = getAllVal("amenitiesPhotos");
+    const aadhaarProof = getAllVal("aadhaarProof");
+    const panProof = getAllVal("panProof");
+    const pgLicenceUrl = getAllVal("pgLicenceUrl");
+    const livePhotoUrl = getVal("livePhotoUrl");
 
-    // Server-side validation
+    const userId = (session as any).userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    // Validation
     if (!name?.trim()) throw new Error("Property name is required");
-    if (!address?.trim()) throw new Error("Address is required");
-    if (!city?.trim()) throw new Error("City is required");
-
-    // Auto-fill owner info from profile if not in form
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
-    // 1. Process ONLY raw File objects that haven't been pre-uploaded
-    const folder = `properties/${name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${randomUUID()}`;
-    
-    const uploadTasks = async () => {
-        const results: Record<string, any> = {};
-        const errors: string[] = [];
-        
-        const processBatch = async (field: string, data: { urls: string[], files: File[] }) => {
-            // Start with any pre-uploaded URLs
-            const allUrls = [...data.urls];
-            
-            // Only upload raw File objects that weren't pre-uploaded
-            for (const file of data.files) {
-                try {
-                    if (!file.type.startsWith('image/') && !file.type.includes('pdf')) {
-                        throw new Error(`Invalid file type for ${field}: ${file.name}`);
-                    }
-                    if (file.size > 25 * 1024 * 1024) {
-                        throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB): ${file.name}`);
-                    }
-                    const url = await uploadToCloudinary(file, `${folder}/${field}`);
-                    allUrls.push(url);
-                } catch (err: any) {
-                    console.error(`Upload error for ${field}:`, err.message);
-                    errors.push(`${field}: ${err.message}`);
-                }
-            }
-            
-            if (allUrls.length > 0) {
-                results[field] = allUrls;
-            }
-        };
-
-        const processSingle = async (field: string, data: { url: string | null, file: File | null }) => {
-            if (data.url) {
-                // Already uploaded — use directly
-                results[field] = data.url;
-            } else if (data.file) {
-                try {
-                    if (data.file.size > 25 * 1024 * 1024) throw new Error(`${field} exceeds 25MB`);
-                    results[field] = await uploadToCloudinary(data.file, folder);
-                } catch (err: any) {
-                    errors.push(`${field}: ${err.message}`);
-                }
-            }
-        };
-
-        await processBatch("buildingPhotos", buildingPhotos);
-        await processBatch("commonAreaPhotos", commonAreaPhotos);
-        await processBatch("roomsAndBathroomPhotos", roomsAndBathroomPhotos);
-        await processBatch("parkingPhotos", parkingPhotos);
-        await processBatch("amenitiesPhotos", amenitiesPhotos);
-        await processBatch("aadhaarProof", aadhaarProof);
-        await processBatch("panProof", panProof);
-        await processBatch("pgLicenceUrl", pgLicenceUrl);
-        await processSingle("livePhotoUrl", livePhotoData);
-
-        return { results, errors };
-    };
-
-    const { results: uploaded, errors: uploadErrors } = await uploadTasks();
-
-    if (uploadErrors.length > 0) {
-        throw new Error(`Critical uploads failed: ${uploadErrors.join(", ")}`);
-    }
-
-    // 2. Pre-fetch counts globally to generate human-readable display IDs
-    const parsedRooms = roomsJson ? (() => { try { return JSON.parse(roomsJson); } catch { return []; } })() : [];
-    const hasRooms = Array.isArray(parsedRooms) && parsedRooms.length > 0;
-
-    const [propertyCount, totalRoomCount, totalBedCount] = await Promise.all([
-        prisma.property.count(),
-        prisma.room.count(),
-        prisma.bed.count()
+    // 2. HIGH-SPEED ID GENERATION (O(1) Indexed Lookup)
+    // Avoids prisma.count() which gets slower as DB grows
+    const [lastProp, lastRoom, lastBed] = await Promise.all([
+        prisma.property.findFirst({ orderBy: { createdAt: 'desc' }, select: { displayId: true } }),
+        prisma.room.findFirst({ orderBy: { createdAt: 'desc' }, select: { displayId: true } }),
+        prisma.bed.findFirst({ orderBy: { createdAt: 'desc' }, select: { displayId: true } })
     ]);
 
-    const displayId = `REN-PROP-${(propertyCount + 1).toString().padStart(4, '0')}`;
+    const getNextId = (lastId: string | null | undefined, prefix: string) => {
+        if (!lastId) return `${prefix}-0001`;
+        const parts = lastId.split('-');
+        const num = parseInt(parts[parts.length - 1]);
+        return `${prefix}-${(num + 1).toString().padStart(4, '0')}`;
+    };
+
+    const displayId = getNextId(lastProp?.displayId, 'REN-PROP');
+    let nextRoomNum = lastRoom?.displayId ? parseInt(lastRoom.displayId.split('-').pop()!) : 0;
+    let nextBedNum = lastBed?.displayId ? parseInt(lastBed.displayId.split('-').pop()!) : 0;
+
+    const parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
     // 3. Create property and all related rooms/beds in a single high-speed transaction
     const property = await prisma.$transaction(async (tx) => {
@@ -269,10 +186,10 @@ export async function createProperty(formData: FormData) {
                 address,
                 city,
                 description,
-                amenities: amenities || "[]",
+                amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
                 images: JSON.stringify([
-                    ...(uploaded.buildingPhotos || []),
-                    ...(uploaded.roomsAndBathroomPhotos || [])
+                    ...(buildingPhotos || []),
+                    ...(roomsAndBathroomPhotos || [])
                 ]),
                 ownerName: finalOwnerName,
                 ownerId: user?.parentOwnerId || session.userId,
@@ -281,29 +198,26 @@ export async function createProperty(formData: FormData) {
                 licenseNumber: licenseNumber || null,
                 reraId: reraId || null,
                 businessName: businessName || null,
-                buildingPhotos: uploaded.buildingPhotos ? JSON.stringify(uploaded.buildingPhotos) : null,
-                commonAreaPhotos: uploaded.commonAreaPhotos ? JSON.stringify(uploaded.commonAreaPhotos) : null,
-                roomsAndBathroomPhotos: uploaded.roomsAndBathroomPhotos ? JSON.stringify(uploaded.roomsAndBathroomPhotos) : null,
-                parkingPhotos: uploaded.parkingPhotos ? JSON.stringify(uploaded.parkingPhotos) : null,
-                amenitiesPhotos: uploaded.amenitiesPhotos ? JSON.stringify(uploaded.amenitiesPhotos) : null,
-                aadhaarProof: uploaded.aadhaarProof ? JSON.stringify(uploaded.aadhaarProof) : null,
-                panProof: uploaded.panProof ? JSON.stringify(uploaded.panProof) : null,
-                pgLicenceUrl: uploaded.pgLicenceUrl ? JSON.stringify(uploaded.pgLicenceUrl) : null,
-                livePhotoUrl: uploaded.livePhotoUrl || null,
+                buildingPhotos: buildingPhotos ? JSON.stringify(buildingPhotos) : null,
+                commonAreaPhotos: commonAreaPhotos ? JSON.stringify(commonAreaPhotos) : null,
+                roomsAndBathroomPhotos: roomsAndBathroomPhotos ? JSON.stringify(roomsAndBathroomPhotos) : null,
+                parkingPhotos: parkingPhotos ? JSON.stringify(parkingPhotos) : null,
+                amenitiesPhotos: amenitiesPhotos ? JSON.stringify(amenitiesPhotos) : null,
+                aadhaarProof: aadhaarProof ? JSON.stringify(aadhaarProof) : null,
+                panProof: panProof ? JSON.stringify(panProof) : null,
+                pgLicenceUrl: pgLicenceUrl ? JSON.stringify(pgLicenceUrl) : null,
+                livePhotoUrl: livePhotoUrl || null,
             }
         });
 
-        if (hasRooms) {
+        if (parsedRooms.length > 0) {
             const roomsData: any[] = [];
             const bedsData: any[] = [];
-            let currentRoomCount = totalRoomCount;
-            let currentBedCount = totalBedCount;
 
-            // Pre-calculate all IDs and data for batch insertion
             for (const r of parsedRooms) {
-                currentRoomCount++;
-                const roomId = randomUUID(); // Pre-generate UUID for linking
-                const roomDisplayId = `REN-ROOM-${currentRoomCount.toString().padStart(4, '0')}`;
+                nextRoomNum++;
+                const roomId = randomUUID();
+                const roomDisplayId = `REN-ROOM-${nextRoomNum.toString().padStart(4, '0')}`;
                 
                 roomsData.push({
                     id: roomId,
@@ -318,10 +232,10 @@ export async function createProperty(formData: FormData) {
                 });
 
                 for (let i = 0; i < parseInt(r.availability); i++) {
-                    currentBedCount++;
+                    nextBedNum++;
                     bedsData.push({
                         id: randomUUID(),
-                        displayId: `REN-BED-${currentBedCount.toString().padStart(4, '0')}`,
+                        displayId: `REN-BED-${nextBedNum.toString().padStart(4, '0')}`,
                         roomId: roomId,
                         bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
                         status: 'AVAILABLE'

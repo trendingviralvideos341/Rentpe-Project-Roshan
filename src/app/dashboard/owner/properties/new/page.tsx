@@ -602,27 +602,26 @@ export default function AddPropertyPage() {
                     .map(e => e.cloudUrl as string);
             }
 
-            // Prepare and submit
             const fullAddress = [address, postOffice, city, state].filter(Boolean).join(", ") + ` - ${pincode}, India`;
-            const submissionFormData = new FormData();
-            submissionFormData.append("name", name);
-            submissionFormData.append("address", fullAddress);
-            submissionFormData.append("city", city);
-            submissionFormData.append("description", description);
-            submissionFormData.append("businessName", businessName);
-            submissionFormData.append("amenities", JSON.stringify(amenities));
-            submissionFormData.append("ownerName", ownerName);
-            submissionFormData.append("propertyType", propertyType);
-            submissionFormData.append("licenseNumber", licenseNumber);
-            submissionFormData.append("reraId", reraId);
-            submissionFormData.append("rooms", JSON.stringify(rooms));
 
-            // Append pre-uploaded URLs (pass-through to createProperty)
-            Object.entries(uploadedUrls).forEach(([key, urls]) => {
-                urls.forEach(url => submissionFormData.append(key, url));
-            });
+            // HIGH-SPEED SUBMISSION: Use JSON payload to bypass FormData parsing overhead
+            const submissionData = {
+                name,
+                address: fullAddress,
+                city,
+                description,
+                businessName,
+                amenities,
+                ownerName,
+                propertyType,
+                licenseNumber,
+                reraId,
+                rooms,
+                ...uploadedUrls,
+                livePhotoUrl: docs.livePhotoUrl[0]?.cloudUrl // Single URL for live photo
+            };
 
-            const res = await createProperty(submissionFormData);
+            const res = await createProperty(submissionData);
             
             if (res) {
                 toast.success("Property listing submitted!", { id: progressToast });
