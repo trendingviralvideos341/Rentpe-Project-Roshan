@@ -9,11 +9,13 @@ import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2 } from "
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
+import { getCloudinarySignature } from "@/actions/uploads";
 import { validateName, validatePhone, validateEmail, normalizePhone } from "@/lib/validators";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useResumableUpload } from "@/hooks/useResumableUpload";
 import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
 import { DraftRecoveryAlert } from "@/components/ui/DraftRecoveryAlert";
+import { compressImage } from "@/lib/imageCompression";
 
 // UPLOAD-ON-SELECT: Each photo uploads immediately when selected
 type DocEntry = { file: File; previewUrl: string; cloudUrl: string | null; uploading: boolean; error?: string };
@@ -245,20 +247,39 @@ export default function AddPropertyPage() {
             uploading: true,
         }));
 
+        // Update entries with progress immediately for UX
         setDocs(prev => ({
             ...prev,
             [category]: isMultiple ? [...prev[category], ...newEntries] : [newEntries[0]]
         }));
 
-        // Upload all files to Cloudinary in parallel for maximum speed
         setUploadingCount(prev => prev + newEntries.length);
         
+        // Optimizing for speed: 
+        // 1. Fetch a SINGLE signature for the whole batch (Zero extra roundtrips)
+        const timestamp = Math.floor(Date.now() / 1000);
+        let sharedSignatureData: any = null;
+        try {
+            sharedSignatureData = await getCloudinarySignature({
+                folder: `rentpe/properties/temp`,
+                timestamp
+            });
+        } catch (err) {
+            console.error("Failed to pre-fetch signature", err);
+            // Fallback: useResumableUpload will fetch its own if null
+        }
+
+        // 2. Parallel compression followed by parallel upload
         await Promise.all(newEntries.map(async (entry) => {
-            const toastId = toast.loading(`Uploading ${entry.file.name}...`);
+            const toastId = toast.loading(`Processing ${entry.file.name}...`);
             
             try {
-                // Higher performance: Promise-based parallel execution
-                const result = await uploadFile(entry.file) as { url: string };
+                // 1. Client-side compression (Fast, saves 90% bandwidth)
+                const optimizedFile = await compressImage(entry.file);
+                
+                // 2. High-speed upload (Uses the PRE-FETCHED shared signature)
+                const result = await uploadFile(optimizedFile, { signatureData: sharedSignatureData }) as { url: string };
+                
                 setDocs(prev => ({
                     ...prev,
                     [category]: prev[category].map(e =>
@@ -267,8 +288,9 @@ export default function AddPropertyPage() {
                             : e
                     )
                 }));
-                toast.success(`${entry.file.name} uploaded!`, { id: toastId });
+                toast.success(`${entry.file.name} ready!`, { id: toastId });
             } catch (err: any) {
+                console.error("Upload error for", entry.file.name, err);
                 setDocs(prev => ({
                     ...prev,
                     [category]: prev[category].map(e =>

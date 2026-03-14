@@ -14,24 +14,31 @@ export function useResumableUpload() {
     const [progress, setProgress] = useState<UploadProgress>({ percent: 0, uploadedChunks: 0, totalChunks: 0 });
     const [error, setError] = useState<string | null>(null);
 
-    const uploadFile = useCallback(async (file: File) => {
+    const uploadFile = useCallback(async (file: File, options?: { signatureData?: any }) => {
         setStatus('UPLOADING');
         setError(null);
         setProgress({ percent: 0, uploadedChunks: 0, totalChunks: 1 });
 
         try {
-            // 1. Get Secure Signature from Server (High Performance - No file data sent)
-            const timestamp = Math.floor(Date.now() / 1000);
-            const { signature, apiKey, cloudName, folder } = await getCloudinarySignature({
-                folder: `rentpe/properties/temp`, // Will be auto-corrected to user-specific folder in action
-                timestamp
-            });
+            // 1. Get Signature — Support pre-fetched signatures for batch performance
+            let sigData;
+            if (options?.signatureData) {
+                sigData = options.signatureData;
+            } else {
+                const timestamp = Math.floor(Date.now() / 1000);
+                sigData = await getCloudinarySignature({
+                    folder: `rentpe/properties/temp`, // Will be auto-corrected to user-specific folder in action
+                    timestamp
+                });
+            }
+
+            const { signature, apiKey, cloudName, folder, timestamp: sigTimestamp } = sigData;
 
             // 2. Direct Upload to Cloudinary (Bypasses Vercel Proxy)
             const formData = new FormData();
             formData.append('file', file);
             formData.append('api_key', apiKey);
-            formData.append('timestamp', timestamp.toString());
+            formData.append('timestamp', sigTimestamp.toString());
             formData.append('signature', signature);
             formData.append('folder', folder);
 

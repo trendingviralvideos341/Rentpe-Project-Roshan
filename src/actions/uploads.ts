@@ -99,8 +99,8 @@ export async function getCloudinarySignature(params: { folder: string; timestamp
         throw new Error("Cloudinary configuration missing on server");
     }
 
-    // Official Cloudinary signature logic
-    const { v2: cloudinary } = await import('cloudinary');
+    // Use the pre-configured cloudinary instance for better performance
+    const cloudinary = (await import('@/lib/cloudinary')).default;
     const signature = cloudinary.utils.api_sign_request(
         { folder: secureFolder, timestamp },
         apiSecret
