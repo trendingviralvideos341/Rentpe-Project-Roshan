@@ -35,14 +35,30 @@ export function useResumableUpload() {
             formData.append('signature', signature);
             formData.append('folder', folder);
 
-            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-                method: 'POST',
-                body: formData,
-            });
+            let response;
+            let retries = 2; // Industry standard: 2-3 retries for transient network errors
+            
+            while (retries >= 0) {
+                try {
+                    response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (response.ok) break;
+                    if (retries === 0) {
+                        const errData = await response.json();
+                        throw new Error(errData.error?.message || 'Cloudinary upload failed after retries');
+                    }
+                } catch (err) {
+                    if (retries === 0) throw err;
+                    console.warn(`Upload attempt failed, retrying... (${retries} left)`);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                }
+                retries--;
+            }
 
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.error?.message || 'Cloudinary upload failed');
+            if (!response || !response.ok) {
+                throw new Error('Upload failed');
             }
 
             const result = await response.json();
