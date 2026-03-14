@@ -23,13 +23,18 @@ export function useAutoSave({
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [restoredData, setRestoredData] = useState<any>(null);
     
-    // Ref to track latest data for the debounced function
+    // Refs for stability
     const dataRef = useRef<any>(null);
+    const pausedRef = useRef(paused);
+    
+    // Sync paused prop to ref without triggering re-renders
+    useEffect(() => {
+        pausedRef.current = paused;
+    }, [paused]);
 
     // Initial Restoration Logic
     useEffect(() => {
         async function restore() {
-            // 1. Try Local Storage first (fastest)
             const localKey = `rentpe-draft-${entityType}-${entityId || 'new'}`;
             const localData = localStorage.getItem(localKey);
             
@@ -37,19 +42,14 @@ export function useAutoSave({
                 try {
                     const parsed = JSON.parse(localData);
                     setRestoredData(parsed);
-                    console.log(`Restored ${entityType} draft from local storage`);
                 } catch (e) {
                     console.error("Local recovery failed", e);
                 }
             }
 
-            // 2. Try Backend (cross-device)
             try {
                 const backendDraft = await getDraftAction(entityType, entityId);
                 if (backendDraft) {
-                    // If backend is newer than local, prefer backend? 
-                    // For now, let's just merge or provide both. 
-                    // Most often, local is the latest WIP.
                     setRestoredData((prev: any) => ({
                         ...prev,
                         ...backendDraft.data,
@@ -77,12 +77,36 @@ export function useAutoSave({
         };
     }, []);
 
-    const saveToBackend = useCallback(
-        debounce(async (data: any) => {
-            if (paused) return; // Skip if paused (e.g., active uploads)
+    // Stable debounced save function
+    const debouncedSave = useRef(
+        debounce(async (payload: { entityType: string, entityId?: string, onSaved?: (d: any) => void }) => {
+            // Check latest pause state
+            if (pausedRef.current) return;
             
             if (!navigator.onLine) {
                 setStatus('OFFLINE');
+                return;
+            }
+
+            // Get latest data from ref
+            const currentData = dataRef.current;
+            if (!currentData) return;
+
+            // Sanitize data (strip non-serializable objects like File/Blob)
+            let sanitizedData;
+            try {
+                sanitizedData = JSON.parse(JSON.stringify(currentData, (key, value) => {
+                    // Check for File or Blob using constructor names to be safe in all environments
+                    if (value && typeof value === 'object') {
+                        const name = value.constructor?.name;
+                        if (name === 'File' || name === 'Blob' || value instanceof File) {
+                            return undefined;
+                        }
+                    }
+                    return value;
+                }));
+            } catch (e) {
+                console.error("Data serialization failed", e);
                 return;
             }
 
@@ -90,20 +114,26 @@ export function useAutoSave({
             try {
                 await upsertDraft({
                     userId: '', // Server action gets it from session
-                    entityType,
-                    entityId,
-                    data
+                    entityType: payload.entityType,
+                    entityId: payload.entityId,
+                    data: sanitizedData
                 });
                 setStatus('SAVED');
                 setLastSaved(new Date());
-                if (onSaved) onSaved(data);
+                if (payload.onSaved) payload.onSaved(currentData);
             } catch (error) {
                 console.error("Auto-save failed", error);
                 setStatus('ERROR');
             }
-        }, interval),
-        [entityType, entityId, interval, onSaved, paused]
-    );
+        }, interval)
+    ).current;
+
+    // Cleanup pending debounced calls
+    useEffect(() => {
+        return () => {
+            debouncedSave.cancel();
+        };
+    }, [debouncedSave]);
 
     const updateData = (data: any) => {
         dataRef.current = data;
@@ -112,11 +142,14 @@ export function useAutoSave({
         const localKey = `rentpe-draft-${entityType}-${entityId || 'new'}`;
         localStorage.setItem(localKey, JSON.stringify(data));
         
-        // 2. Debounced Backend Save
-        saveToBackend(data);
+        // 2. Queue Backend Save
+        if (!pausedRef.current) {
+            debouncedSave({ entityType, entityId, onSaved });
+        }
     };
 
     const clearDraft = () => {
+        debouncedSave.cancel();
         const localKey = `rentpe-draft-${entityType}-${entityId || 'new'}`;
         localStorage.removeItem(localKey);
     };
