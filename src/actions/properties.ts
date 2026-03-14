@@ -151,6 +151,9 @@ export async function createProperty(formData: FormData) {
     };
 
     const buildingPhotos = extractUrlsOrFiles("buildingPhotos");
+    if (!buildingPhotos || buildingPhotos.urls.length + buildingPhotos.files.length === 0) {
+        throw new Error("Building photos are required. Please re-upload and try again.");
+    }
     const commonAreaPhotos = extractUrlsOrFiles("commonAreaPhotos");
     const roomsAndBathroomPhotos = extractUrlsOrFiles("roomsAndBathroomPhotos");
     const parkingPhotos = extractUrlsOrFiles("parkingPhotos");

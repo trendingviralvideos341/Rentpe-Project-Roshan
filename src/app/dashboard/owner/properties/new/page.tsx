@@ -1120,8 +1120,17 @@ export default function AddPropertyPage() {
 
                 <div className="flex justify-end space-x-4">
                     <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-                    <Button size="lg" type="submit" disabled={saving} className="bg-purple-700 hover:bg-purple-800">
-                        {saving ? "Processing..." : "🏠 Submit for Approval"}
+                    <Button 
+                        size="lg" 
+                        type="submit" 
+                        disabled={saving || uploadingCount > 0} 
+                        className="bg-purple-700 hover:bg-purple-800"
+                    >
+                        {saving 
+                            ? "Processing..." 
+                            : uploadingCount > 0 
+                            ? `⏳ Uploading (${uploadingCount} left)...` 
+                            : "🏠 Submit for Approval"}
                     </Button>
                 </div>
             </form>
