@@ -16,9 +16,9 @@ import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
 import { toast } from "sonner";
 
 export default function PropertyManagePage() {
-    const params = useParams();
+    const params = useParams<{ id: string }>();
     const router = useRouter();
-    const propertyId = params.id as string;
+    const propertyId = params?.id as string;
 
     const [property, setProperty] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -61,7 +61,8 @@ export default function PropertyManagePage() {
             }
         };
         fetchProperty();
-    }, [propertyId, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [propertyId]);
 
     const startCapture = async () => {
         setIsCaptureOpen(true);
