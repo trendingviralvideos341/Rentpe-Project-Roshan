@@ -72,9 +72,11 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
 
     const result = await Promise.race([uploadPromise, timeoutPromise]) as any;
     return result.secure_url;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Cloudinary Upload Error:', error);
-    throw new Error('Failed to upload file to cloud storage.');
+    // Bubble up the actual Cloudinary error details if available
+    const detailedMessage = error.message || 'Failed to upload file to cloud storage.';
+    throw new Error(detailedMessage);
   }
 }
 

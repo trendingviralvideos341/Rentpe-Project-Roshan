@@ -65,7 +65,7 @@ export async function quickUploadAction(formData: FormData) {
 
     // DIRECT TO CLOUDINARY — Zero DB overhead
     try {
-        const cloudinaryUrl = await uploadToCloudinary(file, `rentpe/properties/${session.userId}`);
+        const cloudinaryUrl = await uploadToCloudinary(file, `properties/${session.userId}`);
         return { 
             url: cloudinaryUrl,
             fileName: fileName,
