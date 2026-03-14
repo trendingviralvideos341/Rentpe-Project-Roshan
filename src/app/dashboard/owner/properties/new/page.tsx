@@ -627,6 +627,10 @@ export default function AddPropertyPage() {
             if (res) {
                 toast.success("Property listing submitted!", { id: progressToast });
                 clearDraft();
+                
+                // INDUSTRY STANDARD: Trigger fresh background fetch before showing success state
+                router.refresh(); 
+                
                 setSuccessData({ displayId: res.displayId || "PENDING", name: res.name });
             }
         } catch (e: any) {

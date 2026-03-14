@@ -36,7 +36,9 @@ export async function getProperties(ownerId?: string) {
     return prisma.property.findMany({
         where,
         include: {
-            rooms: true,
+            rooms: {
+                select: { id: true, roomNumber: true, status: true }
+            },
             owner: {
                 select: {
                     name: true,
@@ -272,6 +274,10 @@ export async function createProperty(data: FormData | any) {
                 description: `Owner created a new property listing with ${parsedRooms.length} rooms: ${property.name}`,
                 newValue: property
             });
+
+            // 5. Revalidate Dashboard Paths (Purge Stale Cache)
+            revalidatePath("/dashboard/owner/properties");
+            revalidatePath("/dashboard/owner/overview");
 
             return property;
         } catch (error: any) {
