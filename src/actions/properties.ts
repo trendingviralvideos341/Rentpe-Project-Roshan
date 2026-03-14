@@ -174,7 +174,7 @@ export async function createProperty(formData: FormData) {
     const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
 
     // 1. Process ONLY raw File objects that haven't been pre-uploaded
-    const folder = `properties/${name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${crypto.randomUUID()}`;
+    const folder = `properties/${name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${randomUUID()}`;
     
     const uploadTasks = async () => {
         const results: Record<string, any> = {};
