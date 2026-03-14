@@ -21,7 +21,7 @@ export async function uploadToCloudinary(data: string | File, folder: string, is
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            folder: `rentpe/${folder}`,
+            folder: folder,
             resource_type: 'auto',
             type: isPrivate ? 'authenticated' : 'upload',
             access_mode: isPrivate ? 'authenticated' : 'public',
