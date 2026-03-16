@@ -10,9 +10,9 @@ export async function getOwnerDashboardStats() {
             throw new Error("Unauthorized");
         }
 
-        const userId = (session as any).userId;
+        const userId = session.userId;
 
-        const [propertyCount, tenantCount, paidRecords, recentActivity] = await Promise.all([
+        const [propertyCount, tenantCount, paidRecordSums, recentActivity] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId } }),
             prisma.tenant.count({
                 where: {
@@ -20,25 +20,32 @@ export async function getOwnerDashboardStats() {
                     status: 'ACTIVE'
                 }
             }),
-            prisma.rentRecord.findMany({
+            prisma.rentRecord.aggregate({
                 where: {
                     paid: true,
                     tenant: {
                         property: { ownerId: userId }
                     }
                 },
-                select: { amount: true }
+                _sum: {
+                    amount: true
+                }
             }),
             prisma.auditLog.findMany({
                 where: { actorId: userId },
+                select: {
+                    id: true,
+                    actionType: true,
+                    entityType: true,
+                    createdAt: true,
+                    description: true
+                },
                 orderBy: { createdAt: 'desc' },
                 take: 5
             })
         ]);
 
-        const totalRevenue = paidRecords.reduce((sum, record) => {
-            return sum + (Number((record as any).amount) || 0);
-        }, 0);
+        const totalRevenue = paidRecordSums._sum.amount || 0;
 
         const revenueHistory = [
             { month: "Oct", revenue: Math.floor(totalRevenue * 0.15) },
@@ -51,13 +58,21 @@ export async function getOwnerDashboardStats() {
 
         const occupancyStats = [
             { name: "Occupied Beds", value: tenantCount },
-            { name: "Vacant Beds", value: Math.max(0, (propertyCount * 20) - tenantCount) }, // Assumption 20 beds/prop
+            { name: "Vacant Beds", value: Math.max(0, (propertyCount * 20) - tenantCount) }, 
         ];
 
-        // Always fetch fresh user data from DB — never trust stale JWT name
         const ownerUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, email: true, role: true, phone: true, createdAt: true, displayId: true, loyaltyPoints: true } as any
+            select: { 
+                id: true, 
+                name: true, 
+                email: true, 
+                role: true, 
+                phone: true, 
+                createdAt: true, 
+                displayId: true, 
+                loyaltyPoints: true 
+            }
         });
 
         return {
@@ -69,13 +84,13 @@ export async function getOwnerDashboardStats() {
             occupancyStats,
             user: {
                 id: ownerUser?.id || userId,
-                name: (ownerUser as any)?.name || (session as any).name || 'Owner',
-                email: (ownerUser as any)?.email || (session.email as string),
-                role: (ownerUser as any)?.role || session.role,
-                phone: (ownerUser as any)?.phone || null,
-                createdAt: (ownerUser as any)?.createdAt || new Date(),
-                displayId: (ownerUser as any)?.displayId || null,
-                loyaltyPoints: (ownerUser as any)?.loyaltyPoints ?? 0,
+                name: ownerUser?.name || session.name || 'Owner',
+                email: ownerUser?.email || session.email,
+                role: ownerUser?.role || session.role,
+                phone: ownerUser?.phone || null,
+                createdAt: ownerUser?.createdAt || new Date(),
+                displayId: ownerUser?.displayId || null,
+                loyaltyPoints: ownerUser?.loyaltyPoints ?? 0,
             }
         };
     } catch (e: any) {
@@ -99,9 +114,9 @@ export async function getOwnerInventory() {
         const session = await getSession();
         if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-        const userId = (session as any).userId;
+        const userId = session.userId;
 
-        const properties = await (prisma.property as any).findMany({
+        const properties = await prisma.property.findMany({
             where: { ownerId: userId },
             include: {
                 rooms: {

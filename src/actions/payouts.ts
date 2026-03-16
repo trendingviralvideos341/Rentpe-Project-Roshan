@@ -50,7 +50,7 @@ export async function createPayoutBatch(data: {
 
     logAuditEvent({
         actorId: session.userId,
-        actorRole: session.role || 'ADMIN',
+        actorRole: session.role ?? 'ADMIN',
         actorName: session.name || 'Admin',
         actionType: 'CREATE',
         entityType: 'PAYOUT',
@@ -76,7 +76,7 @@ export async function approvePayoutBatch(payoutId: string) {
 
     logAuditEvent({
         actorId: session.userId,
-        actorRole: session.role || 'ADMIN',
+        actorRole: session.role ?? 'ADMIN',
         actorName: session.name || 'Admin',
         actionType: 'APPROVE',
         entityType: 'PAYOUT',
@@ -102,7 +102,7 @@ export async function markPayoutPaid(payoutId: string, txnReference: string) {
 
     logAuditEvent({
         actorId: session.userId,
-        actorRole: session.role || 'ADMIN',
+        actorRole: session.role ?? 'ADMIN',
         actorName: session.name || 'Admin',
         actionType: 'UPDATE', // Marked as paid
         entityType: 'PAYOUT',

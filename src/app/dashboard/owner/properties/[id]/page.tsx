@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom, deletePropertyDocument } from "@/actions/properties";
-import { ArrowLeft, Building2, MapPin, BedDouble, AlertCircle, Upload, CheckCircle, FileText, Image as ImageIcon, Plus, Trash2, RefreshCcw, Eye, Camera } from "lucide-react";
+import { 
+    ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
+    Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
+    BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
+    Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
+    Home, ShieldCheck
+} from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
@@ -19,6 +26,18 @@ export default function PropertyManagePage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
     const propertyId = params?.id as string;
+    
+    const safeParse = (val: any) => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        if (typeof val !== 'string') return [val];
+        try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+            return [val];
+        }
+    };
 
     const [property, setProperty] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -44,6 +63,10 @@ export default function PropertyManagePage() {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // View Photo State
+    const [viewDialog, setViewDialog] = useState<{ isOpen: boolean; catKey: string; index?: number; isArray: boolean; label: string; desc: string } | null>(null);
+    const [previewZoom, setPreviewZoom] = useState(1);
 
     useEffect(() => {
         const fetchProperty = async () => {
@@ -123,16 +146,17 @@ export default function PropertyManagePage() {
 
     const handleFileUpload = async (file: File, docType: string, index?: number) => {
         // Category-based size limit logic (User wants 5MB total per category)
-        const categories = {
+        const categories: Record<string, any> = {
             buildingPhotos: { name: "Building Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
             commonAreaPhotos: { name: "Common Area Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            parkingPhoto: { name: "Parking Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
-            bathroomPhoto: { name: "Bathroom Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
-            aadhaarProof: { name: "Aadhaar Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
-            panProof: { name: "PAN Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
-            pgLicenceUrl: { name: "PG Licence", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false },
+            roomsAndBathroomPhotos: { name: "Rooms & Bathroom Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            parkingPhotos: { name: "Parking Area Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            amenitiesPhotos: { name: "Other Amenities Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            aadhaarProof: { name: "Aadhaar Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            panProof: { name: "PAN Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
+            pgLicenceUrl: { name: "PG Licence", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
             livePhotoUrl: { name: "Live Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false }
-        } as any;
+        };
 
         const cat = categories[docType];
         if (file.size > cat.maxSize) {
@@ -143,7 +167,7 @@ export default function PropertyManagePage() {
         // Logic for "Remaining MB" calculation: 
         // We'll calculate it on the fly in the render, but we need to ensure the new file fits.
         if (cat?.isArray) {
-            const photos = property[docType] ? JSON.parse(property[docType]) : [];
+            const photos = property[docType] ? safeParse(property[docType]) : [];
             // For simplicity, we'll assume each existing photo is ~1MB if size not tracked, 
             // but the user wants real-time. I'll add a 'size' property to the JSON if it doesn't exist.
             const totalUsed = photos.reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0);
@@ -171,9 +195,11 @@ export default function PropertyManagePage() {
                 const newPropertyState = { ...property };
 
                 if (cat?.isArray) {
-                    const existingPhotos = property[docType] ? JSON.parse(property[docType]) : [];
-                    if (existingPhotos.length >= 4 && index === undefined) {
-                        toast.error("Maximum 4 photos allowed.", { id: toastId });
+                    const existingPhotos = property[docType] ? safeParse(property[docType]) : [];
+                    // max is determined by category, but default to 4 for photos and 2 for docs
+                    const maxPhotos = (docType === 'buildingPhotos' || docType === 'roomsAndBathroomPhotos' || docType === 'amenitiesPhotos') ? 4 : 2;
+                    if (existingPhotos.length >= maxPhotos && index === undefined) {
+                        toast.error(`Maximum ${maxPhotos} photos allowed.`, { id: toastId });
                         return;
                     }
                     
@@ -219,16 +245,13 @@ export default function PropertyManagePage() {
     };
 
     const handleDelete = async (docType: string, index?: number) => {
-        const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
-        const docKey = index !== undefined ? `${docType}-${index}` : docType;
-        const isVerified = verifiedDocs.includes(docKey);
-
-        if (isVerified) {
-            toast.info("Verified documents cannot be deleted for audit reasons.");
+        const isDocVerified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(index !== undefined ? `${docType}-${index}` : docType);
+        if (isDocVerified) {
+            toast.info("Verified documents cannot be deleted.");
             return;
         }
 
-        if (!confirm("Are you sure you want to delete this document?")) return;
+        if (!confirm("Are you sure you want to delete this file?")) return;
 
         const toastId = toast.loading("Deleting document...");
         setUploading(true);
@@ -237,7 +260,7 @@ export default function PropertyManagePage() {
             if (res.success) {
                 const updatedProperty = { ...property };
                 if (index !== undefined && property[docType]) {
-                    const items = JSON.parse(property[docType]);
+                    const items = safeParse(property[docType]);
                     items.splice(index, 1);
                     updatedProperty[docType] = items.length > 0 ? JSON.stringify(items) : null;
                 } else {
@@ -259,7 +282,7 @@ export default function PropertyManagePage() {
     const getReuploadNote = (docType: string) => {
         if (!property?.adminNotes) return null;
 
-        const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
+        const verifiedDocs = property.verifiedDocs ? safeParse(property.verifiedDocs) : [];
         // If the entire category is verified, ignore the reupload note
         if (verifiedDocs.includes(docType)) return null;
 
@@ -357,8 +380,197 @@ export default function PropertyManagePage() {
         setIsEditRoomOpen(true);
     };
 
+
+
+    const handleLivePhoto = () => {
+        startCapture();
+    };
+
+    const renderCategory = (cat: any, isLocked: boolean) => (
+        <div key={cat.key} className={`border-2 ${cat.borderHover} transition-all rounded-xl p-5 flex flex-col h-full shadow-sm bg-white overflow-hidden`}>
+            <div className="flex items-center gap-4 mb-5 pb-3 border-b border-slate-50">
+                <div className={`p-3 ${cat.bgClass} rounded-xl ${cat.colorClass} shadow-inner`}>{cat.icon}</div>
+                <div>
+                    <h4 className="font-bold text-base tracking-tight text-slate-800">{cat.label}</h4>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">{cat.desc}</p>
+                </div>
+                {categoryUploading[cat.key] && (
+                    <div className="ml-auto flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 animate-pulse">
+                        <RefreshCcw className="w-3 h-3 animate-spin" />
+                        Syncing...
+                    </div>
+                )}
+            </div>
+
+            {cat.isArray ? (
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        {(() => {
+                            const photos = property[cat.key] ? safeParse(property[cat.key]) : [];
+                            const slots = [];
+                            for (let i = 0; i < cat.max; i++) {
+                                if (photos[i]) {
+                                    const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
+                                    const isDocVerified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(`${cat.key}-${i}`);
+                                    const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
+
+                                    slots.push(
+                                        <div 
+                                            key={`photo-${i}`} 
+                                            className={`relative h-28 rounded-lg border shadow-sm group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-4 ring-red-100 bg-red-50' : 'bg-white'} overflow-hidden cursor-pointer`}
+                                            onClick={() => setViewDialog({ isOpen: true, catKey: cat.key, index: i, isArray: true, label: cat.label, desc: cat.desc })}
+                                        >
+                                            <img src={img} className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700" />
+                                            
+                                            {/* Hover Overlay */}
+                                            <div className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/20 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[1px] z-30">
+                                                <div className="bg-white/90 p-3 rounded-full shadow-2xl scale-75 group-hover/img:scale-100 transition-all">
+                                                    <Search className="w-5 h-5 text-slate-900" />
+                                                </div>
+                                                <span className="text-[9px] font-black text-white mt-2 uppercase tracking-widest drop-shadow-lg">View Photo</span>
+                                            </div>
+
+                                            {/* Verified Badge */}
+                                            <div className="absolute top-2 right-2 z-40">
+                                                {isDocVerified ? (
+                                                    <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
+                                                        <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
+                                                        <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>
+                                                    </div>
+                                                ) : isReuploadRequired ? (
+                                                    <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
+                                                        <AlertCircle className="w-3 h-3 mr-1" />
+                                                        <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
+                                                        <AlertCircle className="w-3 h-3 mr-1" />
+                                                        <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Watermark */}
+                                            {isDocVerified && (
+                                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 transition-opacity group-hover/img:opacity-[0.08]">
+                                                    <span className="text-xl font-black rotate-[-20deg] text-green-700 uppercase tracking-[0.3em] whitespace-nowrap">VERIFIED</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                } else {
+                                    slots.push(
+                                        isLocked ? (
+                                            <div key={`slot-${i}`} className={`border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center h-28 bg-slate-50/50 opacity-40 grayscale`}>
+                                                <ImageIcon className="w-6 h-6 text-slate-300 mb-1" />
+                                                <span className={`text-[8px] font-bold uppercase tracking-widest text-slate-400`}>Not Provided</span>
+                                            </div>
+                                        ) : (
+                                            <label key={`slot-${i}`} className={`cursor-pointer border-2 border-dashed ${cat.borderHover} rounded-lg flex flex-col items-center justify-center h-28 ${cat.bgClass} transition-all hover:bg-opacity-50 hover:scale-[1.02] active:scale-95 group/slot shadow-sm`}>
+                                                <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                                <div className={`p-2 rounded-full ${cat.bgClass} mb-2 group-hover/slot:scale-110 transition-transform`}>
+                                                    <Plus className={`w-5 h-5 ${cat.colorClass}`} />
+                                                </div>
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${cat.colorClass}`}>Add Photo</span>
+                                            </label>
+                                        )
+                                    );
+                                }
+                            }
+                            return slots;
+                        })()}
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col h-full">
+                    {property[cat.key] ? (
+                        <div className="flex-1 flex flex-col">
+                            <div 
+                                className={`relative flex-1 min-h-[160px] rounded-lg border shadow-sm group/img ${property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? 'border-red-500 border-2 ring-4 ring-red-100 bg-red-50' : 'bg-white'} overflow-hidden cursor-pointer`}
+                                onClick={() => setViewDialog({ isOpen: true, catKey: cat.key, isArray: false, label: cat.label, desc: cat.desc })}
+                            >
+                                <img 
+                                    src={property[cat.key]} 
+                                    className="absolute inset-0 w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700" 
+                                />
+                                
+                                {/* Hover Overlay */}
+                                <div className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/20 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[1px] z-30">
+                                    <div className="bg-white/90 p-4 rounded-full shadow-2xl scale-75 group-hover/img:scale-110 transition-all">
+                                        <Search className="w-6 h-6 text-slate-900" />
+                                    </div>
+                                    <span className="text-[10px] font-black text-white mt-3 uppercase tracking-widest drop-shadow-lg">View Photo</span>
+                                </div>
+
+                                <div className="absolute top-3 right-3 z-40">
+                                    {property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) ? (
+                                        <div className="bg-green-600 text-white px-5 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 border-2 border-green-400/50 scale-105">
+                                            <CheckCircle className="w-5 h-5 fill-white/20" />
+                                            <span className="text-[13px] font-black uppercase tracking-[0.3em] drop-shadow-md">Verified</span>
+                                        </div>
+                                    ) : property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
+                                        <div className="bg-orange-600 animate-pulse text-white px-4 py-2 rounded-2xl shadow-xl flex items-center border-2 border-orange-400/50" title="Reupload Required">
+                                            <AlertCircle className="w-4 h-4 mr-2" />
+                                            <span className="text-[11px] font-black uppercase tracking-widest">Reupload Required</span>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-amber-500 text-white px-4 py-2 rounded-2xl shadow-xl flex items-center border-2 border-amber-300/50" title="Pending Approval">
+                                            <AlertCircle className="w-4 h-4 mr-2" />
+                                            <span className="text-[11px] font-black uppercase tracking-widest">Pending</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Watermark */}
+                                {property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) && (
+                                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none opacity-[0.05] z-10 transition-opacity group-hover/img:opacity-[0.08]">
+                                        <span className="text-5xl font-black rotate-[-20deg] text-green-700 uppercase tracking-[0.3em] whitespace-nowrap">VERIFIED</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : cat.isLive ? (
+                        <div className="flex-1 flex flex-col gap-4 items-center justify-center border-2 border-dashed border-cyan-200 rounded-2xl bg-cyan-50/30 p-8 group/live hover:bg-cyan-50/50 transition-all">
+                            <div className="w-20 h-20 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center mb-2 group-hover/live:scale-110 transition-transform duration-500 shadow-inner border-2 border-cyan-200/50">
+                                <Camera className="w-10 h-10" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-[12px] font-black text-cyan-900 uppercase tracking-tighter">Live Identity Required</p>
+                                <p className="text-[10px] text-cyan-600 mt-1 max-w-[180px] font-bold">Please capture a live selfie of the property owner for verification.</p>
+                            </div>
+                            <Button 
+                                onClick={handleLivePhoto} 
+                                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-black text-[12px] uppercase tracking-widest py-6 rounded-xl shadow-xl shadow-cyan-100 transition-all active:scale-95 border-b-4 border-cyan-800"
+                            >
+                                Open Secure Camera
+                            </Button>
+                        </div>
+                    ) : (
+                        isLocked ? (
+                            <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 p-8 grayscale opacity-50">
+                                <FileText className="w-8 h-8 text-slate-300 mb-2" />
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Document Not Provided</span>
+                            </div>
+                        ) : (
+                            <label className="flex-1 cursor-pointer border-2 border-dashed border-indigo-200 rounded-2xl flex flex-col items-center justify-center p-8 bg-indigo-50/20 hover:bg-indigo-50/50 hover:border-indigo-400 transition-all group/upload shadow-inner">
+                                <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
+                                <div className="w-14 h-14 rounded-full bg-white shadow-md border-2 border-indigo-50 flex items-center justify-center mb-4 group-hover/upload:scale-110 transition-transform duration-500">
+                                    <Plus className="w-7 h-7 text-indigo-400 group-hover/upload:text-indigo-600" />
+                                </div>
+                                <span className="text-[12px] font-black text-indigo-600 group-hover/upload:text-indigo-700 transition-colors uppercase tracking-[0.2em] leading-none">Awaiting Document</span>
+                                <span className="text-[10px] text-indigo-300 mt-2 font-black group-hover/upload:text-indigo-400 uppercase tracking-widest">Click to browse files</span>
+                            </label>
+                        )
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
     if (loading) return <div className="p-20 text-center animate-pulse text-muted-foreground">Loading property details...</div>;
     if (!property) return null;
+
+    const isLocked = ['VERIFIED_SUCCESSFULLY', 'APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED', 'APPROVED'].includes(property.status);
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -370,10 +582,10 @@ export default function PropertyManagePage() {
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         {property.name}
                         <Badge variant="secondary" className={`
-                            ${property.status === 'LIVE' ? 'bg-green-100 text-green-700' : ''}
-                            ${property.status === 'REJECTED' ? 'bg-red-100 text-red-700' : ''}
-                            ${property.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-700' : ''}
-                            ${property.status === 'PAYMENT_PENDING' ? 'bg-purple-100 text-purple-700 border-purple-200' : ''}
+                            ${property.status === 'APPROVED' ? 'bg-green-100 text-green-700' : ''}
+                            ${(property.status === 'SUSPENDED' || property.status === 'REJECTED') ? 'bg-red-100 text-red-700' : ''}
+                            ${(property.status === 'PENDING_VERIFICATION' || property.status === 'NEEDS_CORRECTION') ? 'bg-amber-100 text-amber-700' : ''}
+                            ${property.status === 'APPROVED_PENDING_PAYMENT' ? 'bg-purple-100 text-purple-700 border-purple-200' : ''}
 `}>
                             {property.status.replace('_', ' ')}
                         </Badge>
@@ -398,10 +610,10 @@ export default function PropertyManagePage() {
                 </div>
             </div>
 
-            {(property.status === 'REJECTED' || (property.status === 'PENDING_APPROVAL' && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
+            {(property.status === 'REJECTED' || property.status === 'SUSPENDED' || ((property.status === 'NEEDS_CORRECTION' || property.status === 'PENDING_VERIFICATION') && property.adminNotes?.includes('[REUPLOAD'))) && property.adminNotes && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
                     <h3 className="text-red-800 font-bold mb-3 flex items-center gap-2 border-b border-red-200 pb-2">
-                        <AlertCircle className="h-5 w-5" /> Admin Feedback / Corrections Needed
+                        <AlertCircle className="h-5 w-5" /> RentPe Team Feedback / Corrections Needed
                     </h3>
                     <div className="text-red-700 space-y-2 mb-4">
                         {property.adminNotes.split('\n').map((line: string, i: number) => {
@@ -413,8 +625,9 @@ export default function PropertyManagePage() {
                                     const mapping: Record<string, string> = {
                                         buildingPhotos: "Building Photos",
                                         commonAreaPhotos: "Common Area",
-                                        bathroomPhoto: "Bathroom",
-                                        parkingPhoto: "Parking",
+                                        roomsAndBathroomPhotos: "Rooms & Bathroom",
+                                        parkingPhotos: "Parking Area",
+                                        amenitiesPhotos: "Other Amenities",
                                         aadhaarProof: "Aadhaar",
                                         panProof: "PAN Card",
                                         pgLicenceUrl: "PG Licence",
@@ -432,7 +645,7 @@ export default function PropertyManagePage() {
                                 if (!cleanText) return null;
 
                                 // Hide if this specific document is verified
-                                const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
+                                const verifiedDocs = property.verifiedDocs ? safeParse(property.verifiedDocs) : [];
                                 if (tagMatch && tagMatch[1] && verifiedDocs.includes(tagMatch[1])) {
                                     return null;
                                 }
@@ -447,39 +660,66 @@ export default function PropertyManagePage() {
                             return <div key={i}>{line}</div>;
                         })}
                     </div>
-                    <div className="mt-2">
-                        <Button variant="destructive" size="sm" className="shadow-sm font-bold" onClick={() => {
+                    <div className="mt-4">
+                        <Button variant="destructive" size="default" className="shadow-md font-bold uppercase tracking-wider text-xs gap-2" onClick={() => {
                             if (property.adminNotes.includes('[REUPLOAD')) {
                                 const tab = document.querySelector('[value="verification"]') as HTMLElement;
                                 if (tab) tab.click();
                             }
-                        }}>Review Required Changes</Button>
+                        }}>Go to Verification Documents <ArrowRight className="w-4 h-4 ml-1" /></Button>
                     </div>
                 </div>
             )}
 
-            {property.status === 'PAYMENT_PENDING' && (
+            {property.status === 'APPROVED_PENDING_PAYMENT' && (
                 <OwnerPaymentCard
                     propertyId={propertyId}
                     propertyName={property.name}
                     onSuccess={() => {
-                        setProperty({ ...property, status: 'LIVE' });
+                        setProperty({ ...property, status: 'APPROVED' });
                         router.refresh();
                     }}
                 />
             )}
 
-            <Tabs defaultValue="details">
-                <TabsList className="grid w-full grid-cols-3 max-w-2xl">
-                    <TabsTrigger value="details">Property Details</TabsTrigger>
-                    <TabsTrigger value="rooms">Rooms ({property.rooms?.length || 0})</TabsTrigger>
+            <Tabs defaultValue="details" className="w-full">
+                <TabsList className="flex items-center w-full max-w-2xl bg-white border-2 border-slate-100 p-2 rounded-[24px] h-20 mb-12 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.1)] relative z-0">
+                    <TabsTrigger 
+                        value="details"
+                        className="flex-1 rounded-full font-black uppercase text-[11px] tracking-[0.15em] gap-3 h-14 transition-all duration-500 
+                        bg-indigo-600/90 border-2 border-indigo-400/30 text-white shadow-sm
+                        data-[state=active]:bg-indigo-600 data-[state=active]:text-white 
+                        data-[state=active]:shadow-[0_20px_40px_-10px_rgba(79,70,229,0.5)] data-[state=active]:border-indigo-300 data-[state=active]:-translate-y-2 group/tab 
+                        hover:bg-indigo-500 active:scale-95"
+                    >
+                        <Home className="w-5 h-5 group-data-[state=active]/tab:scale-110 transition-transform" />
+                        <span>Property Details</span>
+                    </TabsTrigger>
+
+                    <TabsTrigger 
+                        value="rooms"
+                        className="flex-1 rounded-full font-black uppercase text-[11px] tracking-[0.15em] gap-3 h-14 transition-all duration-500 
+                        bg-emerald-600/90 border-2 border-emerald-400/30 text-white shadow-sm
+                        data-[state=active]:bg-emerald-600 data-[state=active]:text-white 
+                        data-[state=active]:shadow-[0_20px_40px_-10px_rgba(16,185,129,0.5)] data-[state=active]:border-emerald-300 data-[state=active]:-translate-y-2 group/tab 
+                        hover:bg-emerald-500 active:scale-95"
+                    >
+                        <BedDouble className="w-5 h-5 group-data-[state=active]/tab:scale-110 transition-transform" />
+                        <span>Rooms ({property.rooms?.length || 0})</span>
+                    </TabsTrigger>
+
                     <TabsTrigger
                         value="verification"
-                        className={`relative transition - all ${property.adminNotes?.includes('[REUPLOAD') ? 'bg-red-50 text-red-700 data-[state=active]:bg-red-100 data-[state=active]:text-red-900 font-bold border border-red-200' : ''} `}
+                        className={`flex-1 rounded-full font-black uppercase text-[11px] tracking-[0.15em] gap-3 h-14 transition-all duration-500 border-2 relative group/tab active:scale-95 shadow-sm text-white
+                            ${property.adminNotes?.includes('[REUPLOAD') 
+                                ? 'bg-red-600/90 border-red-400/30 hover:bg-red-500 data-[state=active]:-translate-y-2 data-[state=active]:bg-red-600 data-[state=active]:shadow-[0_20px_40px_-10px_rgba(220,38,38,0.5)] data-[state=active]:border-red-300' 
+                                : 'bg-amber-600/90 border-amber-400/30 hover:bg-amber-500 data-[state=active]:-translate-y-2 data-[state=active]:bg-amber-600 data-[state=active]:shadow-[0_20px_40px_-10px_rgba(245,158,11,0.5)] data-[state=active]:border-amber-300'
+                            }`}
                     >
-                        Verification Documents
+                        <ShieldCheck className="w-5 h-5 group-data-[state=active]/tab:scale-110 transition-transform" />
+                        <span>Verification</span>
                         {property.adminNotes?.includes('[REUPLOAD') && (
-                            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5" title="Action Required">
+                            <span className="absolute top-2 right-2 flex h-3.5 w-3.5" title="Action Required">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white shadow-sm"></span>
                             </span>
@@ -514,7 +754,7 @@ export default function PropertyManagePage() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                {property.images && (() => { try { return JSON.parse(property.images); } catch { return []; } })().map((img: string, i: number) => (
+                                {property.images && safeParse(property.images).map((img: string, i: number) => (
                                     <div key={i} className="aspect-video bg-muted rounded-md overflow-hidden relative">
                                         <img src={img} alt={`Property image ${i + 1} `} className="object-cover w-full h-full" />
                                     </div>
@@ -525,7 +765,7 @@ export default function PropertyManagePage() {
                                 <div className="mt-8 border-t pt-6">
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Verified Building Photos</h4>
                                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                                        {property.buildingPhotos && (() => { try { return JSON.parse(property.buildingPhotos); } catch { return []; } })().map((img: any, i: number) => (
+                                        {property.buildingPhotos && safeParse(property.buildingPhotos).map((img: any, i: number) => (
                                             <div key={i} className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Building Photo {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
@@ -533,7 +773,7 @@ export default function PropertyManagePage() {
                                                 </div>
                                             </div>
                                         ))}
-                                        {property.commonAreaPhotos && (() => { try { return JSON.parse(property.commonAreaPhotos); } catch { return []; } })().map((img: any, i: number) => (
+                                        {property.commonAreaPhotos && safeParse(property.commonAreaPhotos).map((img: any, i: number) => (
                                             <div key={i} className="flex flex-col gap-1">
                                                 <span className="text-xs font-semibold">Common Area {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
@@ -615,304 +855,69 @@ export default function PropertyManagePage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
-
                 <TabsContent value="verification" className="pt-4 space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Verification Documents</CardTitle>
-                            <CardDescription>Upload necessary documents for Admin approval. Maximum size 5MB each.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {[
-                                    { key: 'buildingPhotos', label: 'Building Photos', desc: '4 exterior/interior photos required', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
-                                    { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway, Lobby, or Shared (4 Photos)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderHover: 'border-orange-200 hover:border-orange-400', accept: 'image/*', isArray: true, max: 4 },
-                                    { key: 'bathroomPhoto', label: 'Bathroom', desc: 'Sample bathroom photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderHover: 'border-rose-200 hover:border-rose-400', accept: 'image/*' },
-                                    { key: 'parkingPhoto', label: 'Parking Area', desc: 'Parking facility photo', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderHover: 'border-amber-200 hover:border-amber-400', accept: 'image/*' },
-                                    { key: 'aadhaarProof', label: 'Owner Aadhaar Proof', desc: 'Clear front/back of Aadhaar', icon: <FileText className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf' },
-                                    { key: 'panProof', label: 'Owner PAN Proof', desc: 'Clear photo of PAN Card', icon: <FileText className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*,.pdf' },
-                                    { key: 'pgLicenceUrl', label: 'PG / Hostel Licence', desc: 'Official municipal doc', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf' },
-                                    { key: 'livePhotoUrl', label: 'Live Photo Capture', desc: 'Real-time Identity Check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'border-cyan-200 hover:border-cyan-400', isLive: true }
-                                ].map((cat) => (
-                                    <div key={cat.key} className={`border-2 ${cat.borderHover} transition-all rounded-xl p-5 flex flex-col h-full shadow-sm bg-white overflow-hidden`}>
-                                        <div className="flex items-center gap-4 mb-5 pb-3 border-b border-slate-50">
-                                            <div className={`p-3 ${cat.bgClass} rounded-xl ${cat.colorClass} shadow-inner`}>{cat.icon}</div>
-                                            <div>
-                                                <h4 className="font-bold text-base tracking-tight text-slate-800">{cat.label}</h4>
-                                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">{cat.desc}</p>
-                                            </div>
-                                            {categoryUploading[cat.key] && (
-                                                <div className="ml-auto flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 animate-pulse">
-                                                    <RefreshCcw className="w-3 h-3 animate-spin" />
-                                                    Syncing...
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Display logic for arrays (Building Photos) or single files */}
-                                        {cat.isArray ? (
-                                            <div className="space-y-3">
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {(() => {
-                                                        const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
-                                                        const slots = [];
-                                                        for (let i = 0; i < 4; i++) {
-                                                            if (photos[i]) {
-                                                                const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
-                                                                const isDocVerified = property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(`${cat.key}-${i}`);
-                                                                const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
-
-                                                                slots.push(
-                                                                    <div key={`photo-${i}`} className={`relative h-32 rounded-lg border shadow-sm group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-4 ring-red-100 bg-red-50' : 'bg-white'} overflow-hidden`}>
-                                                                        <div className="w-full h-24 overflow-hidden bg-slate-100">
-                                                                            <img src={img} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
-                                                                        </div>
-                                                                        {/* Delete, Reupload, View Buttons - Bottom Row */}
-                                                                        <div className="flex w-full mt-auto h-8 divide-x divide-white/20">
-                                                                            {!isDocVerified && (
-                                                                                <>
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key, i); }}
-                                                                                        className="flex-1 bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center group/btn"
-                                                                                        title="Delete Document"
-                                                                                    >
-                                                                                        <Trash2 className="w-3 h-3 mr-1" />
-                                                                                        <span className="text-[9px] font-bold">Delete</span>
-                                                                                    </button>
-                                                                                    <label
-                                                                                        className="flex-1 cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center justify-center"
-                                                                                        title="Reupload Document"
-                                                                                    >
-                                                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key, i)} />
-                                                                                        <RefreshCcw className="w-3 h-3 mr-1" />
-                                                                                        <span className="text-[9px] font-bold">Reupload</span>
-                                                                                    </label>
-                                                                                </>
-                                                                            )}
-                                                                            <a
-                                                                                href={img}
-                                                                                target="_blank"
-                                                                                className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-colors flex items-center justify-center"
-                                                                                title="View Full Size"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <Eye className="w-3 h-3 mr-1" />
-                                                                                <span className="text-[9px] font-bold">View</span>
-                                                                            </a>
-                                                                        </div>
-
-                                                                        {/* Status Badge - Top Right */}
-                                                                        <div className="absolute top-0 right-0">
-                                                                            {isDocVerified ? (
-                                                                                <div className="bg-green-600 text-white px-2 py-0.5 rounded-bl-lg shadow-md flex items-center border-l border-b border-white/20" title="Verified">
-                                                                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Verified</span>
-                                                                                </div>
-                                                                            ) : isReuploadRequired ? (
-                                                                                <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-bl-lg shadow-md flex items-center border-l border-b border-white/20" title="Reupload Required">
-                                                                                    <AlertCircle className="w-3 h-3 mr-1" />
-                                                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="bg-amber-500 text-white px-2 py-0.5 rounded-bl-lg shadow-md flex items-center border-l border-b border-white/20" title="Pending Approval">
-                                                                                    <AlertCircle className="w-3 h-3 mr-1" />
-                                                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            } else {
-                                                                slots.push(
-                                                                    <label key={`slot-${i}`} className={`cursor-pointer border-2 border-dashed ${cat.borderHover} rounded-lg flex flex-col items-center justify-center h-32 ${cat.bgClass} transition-all hover:bg-opacity-50 hover:scale-[1.02] active:scale-95 group/slot shadow-sm`}>
-                                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                        <div className={`p-2 rounded-full ${cat.bgClass} mb-2 group-hover/slot:scale-110 transition-transform`}>
-                                                                            <Plus className={`w-5 h-5 ${cat.colorClass}`} />
-                                                                        </div>
-                                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${cat.colorClass}`}>Add Photo</span>
-                                                                    </label>
-                                                                );
-                                                            }
-                                                        }
-                                                        return slots;
-                                                    })()}
-                                                </div>
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="text-[10px] font-bold flex justify-between px-1">
-                                                        <span className="text-slate-500">{property[cat.key] ? JSON.parse(property[cat.key]).length : 0} / {cat.max} Photos</span>
-                                                        <span className="text-indigo-600">
-                                                            {(() => {
-                                                                const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
-                                                                const totalUsed = photos.reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0);
-                                                                const left = 5 * 1024 * 1024 - totalUsed;
-                                                                return `${(Math.max(0, left) / (1024 * 1024)).toFixed(2)} MB Left`;
-                                                            })()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                                        <div className={`h-full ${cat.colorClass.replace('text-', 'bg-')} transition-all duration-700 ease-out`} style={{
-                                                            width: `${Math.min(100, ((() => { try { return JSON.parse(property[cat.key] || '[]'); } catch { return []; } })().reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0) / (5 * 1024 * 1024)) * 100)}%`
-                                                        }} />
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-auto pt-2">
-                                                    {(() => {
-                                                        const photos = property[cat.key] ? JSON.parse(property[cat.key]) : [];
-                                                        if (photos.length === 0) return null;
-
-                                                        const verifiedDocs = property.verifiedDocs ? JSON.parse(property.verifiedDocs) : [];
-                                                        // Check if ALL uploaded photos in this array are verified
-                                                        const allVerified = photos.length > 0 && photos.every((_: any, idx: number) => verifiedDocs.includes(`${cat.key}-${idx}`));
-
-                                                        if (getReuploadNote(cat.key)) {
-                                                            return (
-                                                                <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
-                                                                    <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
-                                                                    <div>
-                                                                        <span className="font-bold block uppercase text-[8px]">Action Required:</span>
-                                                                        {getReuploadNote(cat.key)}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        return (
-                                                            <div className="space-y-1">
-                                                                <div className="text-[10px] font-bold text-center text-slate-500 mb-1">✓ Uploaded & Saved</div>
-                                                                {allVerified ? (
-                                                                    <div className="text-[9px] text-center text-green-600 font-bold border-green-200 border rounded py-1 bg-green-50 flex items-center justify-center gap-1">
-                                                                        <CheckCircle className="w-2.5 h-2.5" /> All Documents Verified
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="text-[9px] text-center text-amber-600 font-bold border-amber-200 border rounded py-1 bg-amber-50 flex items-center justify-center gap-1">
-                                                                        <AlertCircle className="w-2.5 h-2.5" /> Pending Approval
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        ) : property[cat.key] ? (
-                                            <div className="flex flex-col gap-2 relative group h-full">
-                                                <div className={`relative w-full h-36 rounded-md border shadow-sm overflow-hidden ${property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? 'border-red-500 ring-2 ring-red-100 bg-red-50' : 'bg-white'}`}>
-                                                    <div className="w-full h-26 rounded-t-md overflow-hidden bg-muted">
-                                                        {property[cat.key].endsWith(".pdf") ?
-                                                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 group-hover:bg-slate-100 transition-colors">
-                                                                <FileText className="w-8 h-8 text-slate-400 mb-1" />
-                                                                <span className="text-[10px] font-bold text-slate-500">PDF Document</span>
-                                                            </div>
-                                                            : <img src={property[cat.key]} className="w-full h-full object-cover" />
-                                                        }
-                                                    </div>
-                                                    {/* Delete, Reupload, View Buttons - Bottom Row */}
-                                                    <div className="flex w-full mt-auto h-10 divide-x divide-white/20">
-                                                        {!(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) && (
-                                                            <>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(cat.key); }}
-                                                                    className="flex-1 bg-red-500 text-white hover:bg-red-600 transition-colors flex items-center justify-center group/btn font-bold"
-                                                                    title="Delete Document"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4 mr-1.5" />
-                                                                    <span className="text-[11px] uppercase tracking-wider">Delete</span>
-                                                                </button>
-                                                                <label
-                                                                    className="flex-1 cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center justify-center font-bold"
-                                                                    title="Reupload Document"
-                                                                >
-                                                                    <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                                    <RefreshCcw className="w-4 h-4 mr-1.5" />
-                                                                    <span className="text-[11px] uppercase tracking-wider">Reupload</span>
-                                                                </label>
-                                                            </>
-                                                        )}
-                                                        <a
-                                                            href={property[cat.key]}
-                                                            target="_blank"
-                                                            className="flex-1 bg-slate-800 text-white hover:bg-slate-900 transition-colors flex items-center justify-center font-bold"
-                                                            title="View Full Size"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            <Eye className="w-4 h-4 mr-1.5" />
-                                                            <span className="text-[11px] uppercase tracking-wider">View</span>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Status Badge - Top Right */}
-                                                    <div className="absolute top-0 right-0 z-[10]">
-                                                        {(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) ? (
-                                                            <div className="bg-green-600 text-white p-1.5 rounded-bl-md shadow-sm border-l border-b border-white/20 flex items-center justify-center" title="Verified">
-                                                                <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                                                                <span className="text-[9px] font-bold">Verified</span>
-                                                            </div>
-                                                        ) : property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
-                                                            <div className="bg-red-600 animate-pulse text-white p-1.5 rounded-bl-md shadow-sm border-l border-b border-white/20 flex items-center justify-center" title="Reupload Required">
-                                                                <AlertCircle className="w-3.5 h-3.5 mr-1" />
-                                                                <span className="text-[9px] font-bold">Reupload</span>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="bg-amber-500 text-white p-1.5 rounded-bl-md shadow-sm border-l border-b border-white/20 flex items-center justify-center" title="Pending Approval">
-                                                                <AlertCircle className="w-3.5 h-3.5 mr-1" />
-                                                                <span className="text-[9px] font-bold">Pending</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="mt-auto pt-2">
-                                                    {getReuploadNote(cat.key) ? (
-                                                        <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 flex gap-1 items-start">
-                                                            <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
-                                                            <div>
-                                                                <span className="font-bold block uppercase">Reupload Required:</span>
-                                                                {getReuploadNote(cat.key)}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-1">
-                                                            <div className="text-[10px] font-bold text-center text-slate-500 mb-1">✓ Uploaded & Saved</div>
-                                                            {(property.verifiedDocs && JSON.parse(property.verifiedDocs).includes(cat.key)) ? (
-                                                                <div className="text-[9px] text-center text-green-600 font-bold border-green-200 border rounded py-1 bg-green-50 flex items-center justify-center gap-1">
-                                                                    <CheckCircle className="w-2.5 h-2.5" /> Verified Document
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-[9px] text-center text-amber-600 font-bold border-amber-200 border rounded py-1 bg-amber-50 flex items-center justify-center gap-1">
-                                                                    <AlertCircle className="w-2.5 h-2.5" /> Pending Approval
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="mt-2 text-center h-full flex flex-col justify-end">
-                                                {cat.isLive ? (
-                                                    <div onClick={() => startCapture()} className={`cursor-pointer w-full border-2 border-dashed ${cat.borderHover} rounded-xl flex flex-col items-center justify-center py-10 ${cat.bgClass} transition-all hover:shadow-lg hover:scale-[1.02] active:scale-95 group/live shadow-sm`}>
-                                                        <div className={`p-4 rounded-full ${cat.bgClass} mb-3 group-hover/live:bg-white transition-colors shadow-inner`}>
-                                                            <Camera className={`w-8 h-8 ${cat.colorClass} group-hover/live:scale-110 transition-transform duration-300`} />
-                                                        </div>
-                                                        <p className={`text-sm font-bold ${cat.colorClass}`}>Capture Live Photo</p>
-                                                        <p className="text-[10px] text-muted-foreground mt-1 font-medium italic opacity-70">Requires camera access</p>
-                                                    </div>
-                                                ) : (
-                                                    <label className="cursor-pointer block w-full group h-full">
-                                                        <input type="file" className="hidden" accept={cat.accept} disabled={uploading} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key)} />
-                                                        <div className={`w-full border-2 border-dashed ${cat.borderHover} rounded-xl flex flex-col items-center justify-center py-10 ${cat.bgClass} transition-all hover:shadow-lg hover:scale-[1.02] active:scale-95 group shadow-sm`}>
-                                                            <div className={`p-4 rounded-full ${cat.bgClass} mb-3 group-hover:bg-white transition-colors shadow-inner`}>
-                                                                <Upload className={`w-8 h-8 ${cat.colorClass} group-hover:scale-110 transition-transform duration-300`} />
-                                                            </div>
-                                                            <p className={`text-sm font-bold ${cat.colorClass}`}>Upload {cat.label}</p>
-                                                            <p className="text-[10px] text-muted-foreground mt-1 font-medium opacity-70">5.00 MB Maximum Size</p>
-                                                        </div>
-                                                    </label>
-                                                )}
-                                            </div>
-                                        )}
+                    <Card className="border-none shadow-xl overflow-hidden bg-slate-50/30">
+                        <CardHeader className="bg-white border-b border-slate-100 pb-8">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest mb-3 border border-indigo-100/50">
+                                        <CheckCircle className="w-3 h-3" /> Property Verification Protocol
                                     </div>
-                                ))}
+                                    <CardTitle className="text-2xl font-black text-slate-900 tracking-tight">Required Documentation</CardTitle>
+                                    <CardDescription className="text-slate-500 font-medium max-w-md mt-1">
+                                        Please provide clear photos and legal identification to list your property. All files are encrypted and verified by our compliance team.
+                                    </CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 md:p-10">
+                            <div className="space-y-12">
+                                {/* Property Visuals Group */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-8 w-1.5 bg-indigo-600 rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)]" />
+                                        <div>
+                                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter flex items-center gap-2">
+                                                I. Property Assets
+                                                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[9px]">VISUALS</Badge>
+                                            </h3>
+                                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-tight">High quality photos increase tenant trust</p>
+                                        </div>
+                                        <div className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent ml-4" />
+                                    </div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-2">
+                                        {[
+                                            { key: 'buildingPhotos', label: 'Building Photos', desc: 'Exterior / Main Gate (Max 4)', icon: <Building2 className="w-5 h-5 text-indigo-600" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderHover: 'border-indigo-200 hover:border-indigo-400', accept: 'image/*', isArray: true, max: 4 },
+                                            { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway / Lobby / Shared (Max 4)', icon: <Users className="w-5 h-5 text-purple-600" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*', isArray: true, max: 4 },
+                                            { key: 'roomsAndBathroomPhotos', label: 'Rooms & Bathroom', desc: 'Interior Space Checklist (Max 4)', icon: <BedDouble className="w-5 h-5 text-blue-600" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*', isArray: true, max: 4 },
+                                            { key: 'parkingPhotos', label: 'Parking Area', desc: 'Dedicated Space (Max 4)', icon: <ParkingCircle className="w-5 h-5 text-emerald-600" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*', isArray: true, max: 4 },
+                                            { key: 'amenitiesPhotos', label: 'Other Amenities', desc: 'Fridge/TV/Washing (Max 4)', icon: <ImageIcon className="w-5 h-5 text-cyan-600" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'border-cyan-200 hover:border-cyan-400', accept: 'image/*', isArray: true, max: 4 },
+                                        ].map((cat) => renderCategory(cat, isLocked))}
+                                    </div>
+                                </div>
+
+                                {/* Legal Documentation Group */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-8 w-1.5 bg-emerald-600 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                        <div>
+                                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter flex items-center gap-2">
+                                                II. Legal Documentation
+                                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[9px]">REQUIRED</Badge>
+                                            </h3>
+                                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-tight">Identity & Ownership Verification</p>
+                                        </div>
+                                        <div className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent ml-4" />
+                                    </div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-2">
+                                        {[
+                                            { key: 'aadhaarProof', label: 'Aadhaar Card', desc: 'FRONT & BACK required', icon: <FileText className="w-5 h-5 text-emerald-600" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
+                                            { key: 'panProof', label: 'PAN Card', desc: 'FRONT & BACK required', icon: <FileText className="w-5 h-5 text-blue-600" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
+                                            { key: 'pgLicenceUrl', label: 'Property License / Docs', desc: 'Official property papers', icon: <Building2 className="w-5 h-5 text-purple-600" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
+                                            { key: 'livePhotoUrl', label: 'Identity Photo', desc: 'Selfie verification', icon: <Camera className="w-5 h-5 text-cyan-600" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'border-cyan-200 hover:border-cyan-400', isLive: true }
+                                        ].map((cat) => renderCategory(cat, isLocked))}
+                                    </div>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -947,12 +952,12 @@ export default function PropertyManagePage() {
                                     };
                                     setRoomForm({ ...roomForm, type, availability: availMap[type] || "1" });
                                 }}>
-                                    <option value="Single Sharing">Single Sharing</option>
-                                    <option value="Double Sharing">Double Sharing</option>
-                                    <option value="Three Sharing">Three Sharing</option>
-                                    <option value="Four Sharing">Four Sharing</option>
-                                    <option value="Five Sharing">Five Sharing</option>
-                                    <option value="Six Sharing">Six Sharing</option>
+                                    <option value="Single Sharing">Single Sharing (1)</option>
+                                    <option value="Double Sharing">Double Sharing (2)</option>
+                                    <option value="Three Sharing">Three Sharing (3)</option>
+                                    <option value="Four Sharing">Four Sharing (4)</option>
+                                    <option value="Five Sharing">Five Sharing (5)</option>
+                                    <option value="Six Sharing">Six Sharing (6)</option>
                                 </select>
                             </div>
                             <div className="grid gap-2">
@@ -1002,12 +1007,12 @@ export default function PropertyManagePage() {
                                     };
                                     setEditRoomForm({ ...editRoomForm, type, availability: availMap[type] || "1" });
                                 }}>
-                                    <option value="Single Sharing">Single Sharing</option>
-                                    <option value="Double Sharing">Double Sharing</option>
-                                    <option value="Three Sharing">Three Sharing</option>
-                                    <option value="Four Sharing">Four Sharing</option>
-                                    <option value="Five Sharing">Five Sharing</option>
-                                    <option value="Six Sharing">Six Sharing</option>
+                                    <option value="Single Sharing">Single Sharing (1)</option>
+                                    <option value="Double Sharing">Double Sharing (2)</option>
+                                    <option value="Three Sharing">Three Sharing (3)</option>
+                                    <option value="Four Sharing">Four Sharing (4)</option>
+                                    <option value="Five Sharing">Five Sharing (5)</option>
+                                    <option value="Six Sharing">Six Sharing (6)</option>
                                 </select>
                             </div>
                             <div className="grid gap-2">
@@ -1071,6 +1076,212 @@ export default function PropertyManagePage() {
                             )}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Interactive Photo View Modal */}
+            <Dialog open={!!viewDialog?.isOpen} onOpenChange={(open) => !open && setViewDialog(null)}>
+                <DialogContent className="max-w-[95vw] md:max-w-7xl p-0 overflow-hidden border-none shadow-2xl bg-slate-950">
+                    {viewDialog && (
+                        <div className="flex flex-col h-[90vh] relative">
+                            {/* Hidden Title for Accessibility */}
+                            <div className="sr-only">
+                                <DialogHeader>
+                                    <DialogTitle>{viewDialog.label} - {viewDialog.desc}</DialogTitle>
+                                </DialogHeader>
+                            </div>
+
+                            {/* Header: Admin-style Box Header */}
+                            <div className="absolute top-6 inset-x-6 z-50 flex items-start justify-between pointer-events-none">
+                                <div className="bg-slate-900/60 backdrop-blur-xl text-white border border-white/10 px-6 py-3 rounded-2xl flex flex-col shadow-2xl pointer-events-auto">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                                            <FileText className="w-5 h-5 text-blue-400" />
+                                        </div>
+                                        <span className="text-2xl font-black uppercase tracking-tight leading-tight">
+                                            {viewDialog.label}
+                                        </span>
+                                    </div>
+                                    <span className="text-[11px] font-black text-blue-400 uppercase tracking-[0.2em]">
+                                        {viewDialog.desc}
+                                    </span>
+                                </div>
+
+                                <button 
+                                    onClick={() => setViewDialog(null)}
+                                    className="w-14 h-14 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center hover:bg-red-500/80 transition-all shadow-2xl pointer-events-auto group"
+                                >
+                                    <XCircle className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                                </button>
+                            </div>
+
+                            {/* Main Display: Large Image */}
+                            <div 
+                                className="flex-1 relative flex items-center justify-center group/viewer overflow-hidden"
+                                style={{ background: 'radial-gradient(circle at center, #1e1b4b 0%, #020617 50%, #000000 100%)' }}
+                            >
+                                {(() => {
+                                    const photos = viewDialog.isArray ? safeParse(property[viewDialog.catKey]) : [property[viewDialog.catKey]];
+                                    const currentImg = typeof photos[viewDialog.index || 0] === 'string' 
+                                        ? photos[viewDialog.index || 0] 
+                                        : (photos[viewDialog.index || 0]?.url || "");
+                                    const photoCount = photos.length;
+                                    const docKey = viewDialog.isArray ? `${viewDialog.catKey}-${viewDialog.index}` : viewDialog.catKey;
+                                    const isVerified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(docKey);
+
+                                    return (
+                                        <>
+                                            {/* Advanced Blurry Overlay (Synchronized with Admin) */}
+                                            <div className="absolute inset-0 opacity-30 pointer-events-none overflow-hidden">
+                                                <img 
+                                                    src={currentImg} 
+                                                    className="w-full h-full object-cover blur-3xl scale-150" 
+                                                />
+                                            </div>
+
+                                            {/* Background Glow */}
+                                            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-full w-full bg-blue-600/10 blur-[120px] rounded-full opacity-30 z-0" />
+                                            
+                                            <div className="relative z-10 w-full h-full flex items-center justify-center transition-transform duration-300 ease-out" style={{ transform: `scale(${previewZoom})` }}>
+                                                <img 
+                                                    src={currentImg} 
+                                                    className="max-w-full max-h-full object-contain rounded-xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/20 animate-in fade-in zoom-in-95 duration-500" 
+                                                />
+                                            </div>
+
+                                            {/* Navigation Arrows */}
+                                            {viewDialog.isArray && photoCount > 1 && (
+                                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 md:px-12 pointer-events-none z-20">
+                                                    <button 
+                                                        disabled={viewDialog.index === 0}
+                                                        onClick={(e) => { e.stopPropagation(); setViewDialog({ ...viewDialog, index: (viewDialog.index || 0) - 1 }); setPreviewZoom(1); }}
+                                                        className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all pointer-events-auto active:scale-90 ${viewDialog.index === 0 ? 'bg-white/5 border-white/5 text-white/10 cursor-not-allowed' : 'bg-white/10 border-white/20 text-white hover:bg-indigo-600 hover:border-indigo-400 shadow-2xl backdrop-blur-md'}`}
+                                                    >
+                                                        <ChevronLeft className="w-8 h-8" />
+                                                    </button>
+                                                    <button 
+                                                        disabled={viewDialog.index === photoCount - 1}
+                                                        onClick={(e) => { e.stopPropagation(); setViewDialog({ ...viewDialog, index: (viewDialog.index || 0) + 1 }); setPreviewZoom(1); }}
+                                                        className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all pointer-events-auto active:scale-90 ${viewDialog.index === photoCount - 1 ? 'bg-white/5 border-white/5 text-white/10 cursor-not-allowed' : 'bg-white/10 border-white/20 text-white hover:bg-indigo-600 hover:border-indigo-400 shadow-2xl backdrop-blur-md'}`}
+                                                    >
+                                                        <ChevronRight className="w-8 h-8" />
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Top Info Overlays (Sync with Admin layout: Right side) */}
+                                            <div className="absolute top-6 right-24 z-40 flex flex-col items-end gap-2">
+                                                {viewDialog.isArray && (
+                                                    <div className="bg-slate-900/80 backdrop-blur-md text-white border border-white/20 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl">
+                                                        Image {viewDialog.index! + 1} / {photoCount}
+                                                    </div>
+                                                )}
+
+                                                {isVerified ? (
+                                                    <div className="bg-green-600/90 backdrop-blur-md text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl flex items-center gap-2 border border-green-400/50">
+                                                        <CheckCircle className="w-4 h-4" /> VERIFIED
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-amber-500/90 backdrop-blur-md text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl flex items-center gap-2 border border-amber-400/50">
+                                                        <RotateCcw className="w-4 h-4 animate-pulse" /> PENDING
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Floating Zoom Controls (Positioned exactly as requested) */}
+                                            <div className="absolute bottom-6 inset-x-0 flex justify-center z-50 pointer-events-none">
+                                                <div className="flex items-center gap-1 bg-slate-900/90 backdrop-blur-xl p-1.5 rounded-2xl border border-white/20 shadow-2xl pointer-events-auto">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => setPreviewZoom(prev => Math.max(0.25, prev - 0.25))}
+                                                        className="w-10 h-10 rounded-xl text-white hover:bg-white/10"
+                                                    >
+                                                        <ZoomOut className="w-5 h-5" />
+                                                    </Button>
+                                                    <div className="w-12 text-center text-[10px] font-black text-white uppercase tracking-tighter">
+                                                        {Math.round(previewZoom * 100)}%
+                                                    </div>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => setPreviewZoom(prev => Math.min(5, prev + 0.25))}
+                                                        className="w-10 h-10 rounded-xl text-white hover:bg-white/10"
+                                                    >
+                                                        <ZoomIn className="w-5 h-5" />
+                                                    </Button>
+                                                    <div className="w-px h-6 bg-white/10 mx-1" />
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => setPreviewZoom(1)}
+                                                        className="px-4 h-10 rounded-xl text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10"
+                                                    >
+                                                        Reset
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                 })()}
+                            </div>
+
+                            {/* Footer: Control Panel */}
+                            <div className="h-28 bg-white border-t flex items-center px-10 relative z-50">
+                                <div className="max-w-screen-xl mx-auto w-full flex items-center justify-between gap-6">
+                                    <div className="flex items-center gap-3">
+                                        {(() => {
+                                            const docKey = viewDialog.isArray ? `${viewDialog.catKey}-${viewDialog.index}` : viewDialog.catKey;
+                                            const isVerified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(docKey);
+                                            
+                                            if (!isVerified && !isLocked) {
+                                                return (
+                                                    <>
+                                                        <label className="cursor-pointer">
+                                                            <div className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center justify-center transition-all shadow-lg active:scale-95 font-black uppercase text-[10px] tracking-widest">
+                                                                <RefreshCcw className="w-4 h-4 mr-2" /> Replace
+                                                            </div>
+                                                            <input 
+                                                                type="file" 
+                                                                className="hidden" 
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) handleFileUpload(file, viewDialog.catKey, viewDialog.index);
+                                                                }}
+                                                                accept="image/*"
+                                                            />
+                                                        </label>
+                                                        <Button 
+                                                            variant="destructive"
+                                                            className="h-12 px-6 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95"
+                                                            onClick={() => {
+                                                                handleDelete(viewDialog.catKey, viewDialog.index);
+                                                                setViewDialog(null);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                                        </Button>
+                                                    </>
+                                                );
+                                            }
+                                            return (
+                                                <div className="flex items-center gap-2 text-slate-400 font-bold text-[9px] uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-lg border">
+                                                    <CheckCircle className="w-3 h-3" /> Management Locked
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    <Button 
+                                        className="h-14 px-12 bg-black hover:bg-slate-900 text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-xl shadow-xl active:scale-95 transition-all"
+                                        onClick={() => { setViewDialog(null); setPreviewZoom(1); }}
+                                    >
+                                        Close
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

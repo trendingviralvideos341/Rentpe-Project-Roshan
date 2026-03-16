@@ -1,0 +1,2 @@
+﻿src/actions/auth.ts(204,13): error TS2322: Type 'string' is not assignable to type 'UserRole | undefined'.
+src/actions/auth.ts(284,13): error TS2322: Type 'string' is not assignable to type 'UserRole | undefined'.

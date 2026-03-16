@@ -9,7 +9,14 @@ export default async function OwnerLayout({
     children: React.ReactNode;
 }) {
     const user = await getCurrentUser() as any;
-    const permissions = user?.staffPermissions ? JSON.parse(user.staffPermissions) : [];
+    const permissions = (() => {
+        if (!user?.staffPermissions) return [];
+        try {
+            return JSON.parse(user.staffPermissions);
+        } catch (e) {
+            return [];
+        }
+    })();
     const isStaff = !!user?.parentOwnerId;
 
     return (

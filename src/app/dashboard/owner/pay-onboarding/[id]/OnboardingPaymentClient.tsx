@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, ShieldCheck, IndianRupee } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ShieldCheck, IndianRupee, CreditCard, Smartphone, Landmark } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { payOnboardingFee } from "@/actions/properties";
 
 export default function OnboardingPaymentClient({ property, fee }: { property: any, fee: number }) {
     const [loading, setLoading] = useState(false);
+    const [selectedMethod, setSelectedMethod] = useState("UPI");
     const router = useRouter();
 
     const handlePay = async () => {
@@ -17,8 +18,8 @@ export default function OnboardingPaymentClient({ property, fee }: { property: a
         try {
             // We simulate the Razorpay Flow here. In production, we'd trigger Razorpay checkout.js
             // and upon success, call payOnboardingFee to mark the property LIVE.
-            await payOnboardingFee(property.id);
-            alert("Payment successful! Your property is now LIVE.");
+            await payOnboardingFee(property.id, selectedMethod);
+            alert(`Payment of ₹${(fee * 1.18).toFixed(2)} successful via ${selectedMethod}! Your property is now awaiting final RentPe Team activation.`);
             router.push('/dashboard/owner/properties');
         } catch (error: any) {
             alert(`Payment failed: ${error.message}`);
@@ -58,7 +59,7 @@ export default function OnboardingPaymentClient({ property, fee }: { property: a
                         <div className="flex gap-3">
                             <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
                             <div>
-                                <h3 className="font-bold">Dedicated Admin Support</h3>
+                                <h3 className="font-bold">Dedicated RentPe Team Support</h3>
                                 <p className="text-sm text-muted-foreground">Priority ticket resolution for your property operations.</p>
                             </div>
                         </div>
@@ -73,7 +74,7 @@ export default function OnboardingPaymentClient({ property, fee }: { property: a
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="flex justify-between items-center py-2 border-b">
-                                <span className="text-muted-foreground">Premium Onboarding Fee</span>
+                                <span className="text-muted-foreground">Standard Verification Fee</span>
                                 <span className="font-mono">₹{fee.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center py-2 border-b">
@@ -86,6 +87,30 @@ export default function OnboardingPaymentClient({ property, fee }: { property: a
                                     <IndianRupee className="w-5 h-5 mr-1" />
                                     {(fee * 1.18).toFixed(2)}
                                 </span>
+                            </div>
+
+                            <div className="space-y-3 pt-4">
+                                <label className="text-sm font-bold text-slate-700">Select Payment Method</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { id: 'UPI', icon: Smartphone, label: 'UPI' },
+                                        { id: 'CARD', icon: CreditCard, label: 'Card' },
+                                        { id: 'NETBANKING', icon: Landmark, label: 'Bank' },
+                                    ].map((m) => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => setSelectedMethod(m.id)}
+                                            className={`flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all ${
+                                                selectedMethod === m.id 
+                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
+                                                : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                                            }`}
+                                        >
+                                            <m.icon className="w-5 h-5 mb-1" />
+                                            <span className="text-[10px] font-bold uppercase">{m.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <Button

@@ -1,5 +1,6 @@
 'use server';
 
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -12,7 +13,7 @@ export async function getTenants() {
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
     const userId = session.userId;
 
-    const whereClause: any = {};
+    const whereClause: Prisma.TenantWhereInput = {};
 
     if (session.role === 'OWNER') {
         const user = await prisma.user.findUnique({ 
@@ -26,7 +27,7 @@ export async function getTenants() {
                 where: { employeeId: user.employeeProfile.id },
                 select: { propertyId: true }
             });
-            whereClause.propertyId = { in: assignments.map((a: any) => a.propertyId) };
+            whereClause.propertyId = { in: assignments.map(a => a.propertyId) };
         } else {
             whereClause.property = { ownerId: user?.parentOwnerId || userId };
         }
@@ -85,6 +86,7 @@ export async function createTenantFromBooking(bookingId: string) {
         const tenant = await tx.tenant.create({
             data: {
                 displayId,
+                applicationId: displayId,
                 studentId: booking.userId,
                 bookingId: booking.id,
                 propertyId: booking.propertyId!,
@@ -117,7 +119,7 @@ export async function createTenantFromBooking(bookingId: string) {
             actionType: 'CREATE',
             entityType: 'TENANT',
             entityId: tenant.id,
-            description: `Tenant record created for booking ${booking.displayId}. Status: UPCOMING_MOVE_IN.`,
+            description: `Tenant record created for booking ${booking.displayId}. Status: Upcoming.`,
         });
 
         return tenant;
@@ -138,10 +140,19 @@ export async function confirmMoveIn(tenantId: string) {
     }
 
     return await prisma.$transaction(async (tx) => {
+        // 0. Upgrade ID if needed
+        let newDisplayId = tenant.displayId;
+        if (newDisplayId.startsWith('APP-TEN-')) {
+            newDisplayId = newDisplayId.replace('APP-TEN-', 'REG-TEN-');
+        }
+
         // 1. Update Tenant
         await tx.tenant.update({
             where: { id: tenantId },
-            data: { status: 'Active' }
+            data: { 
+                status: 'Active',
+                displayId: newDisplayId
+            }
         });
 
         // 2. Update Bed to OCCUPIED
@@ -161,7 +172,7 @@ export async function confirmMoveIn(tenantId: string) {
         }
 
         // 4. Financial Integration: Create Billing Profile & Generate Initial Deposit Invoice
-        const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : tenant.rent;
+        const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : Number(tenant.rent);
         const profile = await tx.billingProfile.create({
             data: {
                 tenantId,
@@ -184,13 +195,13 @@ export async function confirmMoveIn(tenantId: string) {
         });
 
         logAuditEvent({
-            actorId: (session as any).userId,
-            actorRole: session.role as string,
-            actorName: (session as any).name || 'Owner',
+            actorId: session.userId,
+            actorRole: session.role || 'OWNER',
+            actorName: session.name || 'Owner',
             actionType: 'UPDATE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Tenant ${tenant.name} moved in. Financial profile initialized.`,
+            description: `Tenant ${tenant.name} moved in. Financials active. ID Upgraded: ${tenant.displayId} -> ${newDisplayId}`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -217,15 +228,15 @@ export async function markRentAsPaid(recordId: string, note?: string) {
                 targetType: 'TENANT',
                 action: 'PAYMENT_MARKED_PAID',
                 reason: note.trim(),
-                performedBy: (session as any).userId
+                performedBy: session.userId
             }
         });
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: session.name || 'Owner',
         actionType: 'UPDATE',
         entityType: 'TENANT',
         entityId: record.tenantId,
@@ -253,15 +264,15 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
                 targetType: 'TENANT',
                 action: 'PAYMENT_MARKED_UNPAID',
                 reason: note.trim(),
-                performedBy: (session as any).userId
+                performedBy: session.userId
             }
         });
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: session.name || 'Owner',
         actionType: 'UPDATE',
         entityType: 'TENANT',
         entityId: record.tenantId,
@@ -289,13 +300,13 @@ export async function blockTenant(tenantId: string, note: string) {
             targetType: 'TENANT',
             action: 'BLOCKED',
             reason: note,
-            performedBy: (session as any).userId
+            performedBy: session.userId
         }
     });
 
     logAuditEvent({
         actorId: session.userId,
-        actorRole: session.role as string,
+        actorRole: session.role || 'OWNER',
         actorName: session.name || 'Owner',
         actionType: 'DELETE',
         entityType: 'TENANT',
@@ -322,14 +333,14 @@ export async function unblockTenant(tenantId: string, note: string) {
             targetType: 'TENANT',
             action: 'UNBLOCKED',
             reason: note,
-            performedBy: (session as any).userId
+            performedBy: session.userId
         }
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: session.name || 'Owner',
         actionType: 'UPDATE',
         entityType: 'TENANT',
         entityId: tenantId,
@@ -371,9 +382,9 @@ export async function generateNextRentRecord(tenantId: string, month: string) {
     });
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: session.role as string,
-        actorName: (session as any).name || 'Owner',
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: session.name || 'Owner',
         actionType: 'CREATE',
         entityType: 'TENANT',
         entityId: tenantId,
@@ -492,8 +503,8 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
         // 1. Financial Settlement logic
-        const unpaidRent = tenant.rentRecords.filter(r => !r.paid).reduce((acc: number, r: any) => acc + r.amount, 0);
-        const totalPaidRent = tenant.rentRecords.filter(r => r.paid).reduce((acc: number, r: any) => acc + r.amount, 0);
+        const unpaidRent = tenant.rentRecords.filter(r => !r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+        const totalPaidRent = tenant.rentRecords.filter(r => r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
         // We use the rent as deposit here for migration support, but real flow should use deposit table
         const depositAmount = tenant.rent; 
         const finalRefund = depositAmount - unpaidRent - deductions;
@@ -564,7 +575,7 @@ Note: ${note}
         // 6. Log event
         logAuditEvent({
             actorId: session.userId,
-            actorRole: session.role as string,
+            actorRole: session.role || 'OWNER',
             actorName: session.name || 'Owner',
             actionType: 'DELETE',
             entityType: 'TENANT',
@@ -603,7 +614,7 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
             where: { employeeId: user.employeeProfile.id },
             select: { propertyId: true }
         });
-        pIds = assignments.map((a: any) => a.propertyId);
+        pIds = assignments.map(a => a.propertyId);
     } else {
         const properties = await prisma.property.findMany({ 
             where: { ownerId: user?.parentOwnerId || session.userId }, 

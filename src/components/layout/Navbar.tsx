@@ -64,6 +64,7 @@ const Navbar = ({ session }: { session: any }) => {
                     <button
                         onClick={handleStopImpersonation}
                         disabled={isPending}
+                        suppressHydrationWarning
                         className="bg-white text-red-700 px-4 py-1 text-xs rounded shadow-sm hover:bg-gray-100 disabled:opacity-50 transition-colors uppercase tracking-wider"
                     >
                         {isPending ? 'Returning...' : 'Return to Admin'}
@@ -84,23 +85,26 @@ const Navbar = ({ session }: { session: any }) => {
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-3">
-                        <Link href="/search">
-                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group">
-                                <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                Find PG
-                            </button>
+                        <Link 
+                            href="/search"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group"
+                        >
+                            <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                            Find PG
                         </Link>
-                        <Link href="/list-property">
-                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group">
-                                <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                List Your PG
-                            </button>
+                        <Link 
+                            href="/list-property"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                        >
+                            <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                            List Your PG
                         </Link>
-                        <Link href="/about">
-                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group">
-                                <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                About Us
-                            </button>
+                        <Link 
+                            href="/about"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                        >
+                            <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                            About Us
                         </Link>
                     </div>
 
@@ -112,6 +116,7 @@ const Navbar = ({ session }: { session: any }) => {
                                     <button
                                         onClick={() => handleSwitch(isOwner ? "USER" : "OWNER")}
                                         disabled={isPending}
+                                        suppressHydrationWarning
                                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all disabled:opacity-50"
                                     >
                                         {isPending ? (
@@ -127,36 +132,44 @@ const Navbar = ({ session }: { session: any }) => {
                                 </span>
                                 <NotificationBell />
                                 <div className="flex items-center gap-2">
-                                    <Link href={dashboardHref + "?tab=profile"}>
-                                        <button className="px-4 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity shadow-sm">
-                                            My Profile
-                                        </button>
+                                    <Link 
+                                        href={dashboardHref + "?tab=profile"}
+                                        className="px-4 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity shadow-sm"
+                                    >
+                                        My Profile
                                     </Link>
-                                    <Link href={dashboardHref}>
-                                        <button className="px-4 py-2 text-sm font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors">
-                                            Dashboard
-                                        </button>
+                                    <Link 
+                                        href={dashboardHref}
+                                        className="px-4 py-2 text-sm font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors"
+                                    >
+                                        Dashboard
                                     </Link>
                                 </div>
                             </div>
                         ) : (
                             <>
-                                <Link href="/login">
-                                    <button className="px-5 py-2 text-sm font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm">
-                                        Sign In
-                                    </button>
+                                <Link 
+                                    href="/login"
+                                    className="px-5 py-2 text-sm font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
+                                >
+                                    Sign In
                                 </Link>
-                                <Link href="/signup">
-                                    <button className="px-5 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:opacity-90 transition-opacity shadow-md">
-                                        Sign Up
-                                    </button>
+                                <Link 
+                                    href="/signup"
+                                    className="px-5 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:opacity-90 transition-opacity shadow-md"
+                                >
+                                    Sign Up
                                 </Link>
                             </>
                         )}
                     </div>
 
                     {/* Mobile Menu Toggle */}
-                    <button className="md:hidden p-2 hover:bg-muted rounded-md" onClick={() => setIsOpen(!isOpen)}>
+                    <button 
+                        className="md:hidden p-2 hover:bg-muted rounded-md" 
+                        onClick={() => setIsOpen(!isOpen)}
+                        suppressHydrationWarning
+                    >
                         <Menu className="h-6 w-6" />
                     </button>
                 </div>
@@ -183,7 +196,8 @@ const Navbar = ({ session }: { session: any }) => {
                                         <button
                                             onClick={() => handleSwitch(isOwner ? "USER" : "OWNER")}
                                             disabled={isPending}
-                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mb-2"
+                                            suppressHydrationWarning
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-indigo-200 mb-2"
                                         >
                                             {isPending ? (
                                                 <Loader2 className="h-4 w-4 animate-spin" />

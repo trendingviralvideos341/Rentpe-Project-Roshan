@@ -214,7 +214,7 @@ export default function OwnerStaffPage() {
                             </thead>
                             <tbody className="divide-y divide-muted/30">
                                 {staff.map((s: any) => {
-                                    const perms = JSON.parse(s.staffPermissions || "[]");
+                                    const perms = (() => { try { return JSON.parse(s.staffPermissions || "[]"); } catch { return []; } })();
                                     const isBlocked = s.status === "BLOCKED";
                                     const isInvited = s.status === "INVITED";
                                     

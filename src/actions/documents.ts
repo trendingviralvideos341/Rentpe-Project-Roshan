@@ -25,7 +25,7 @@ export async function uploadTenantDocument(data: {
         if (data.fileData.size > 25 * 1024 * 1024) throw new Error("File size limit 25MB exceeded.");
     }
 
-    const userId = (session as any).userId;
+    const userId = session.userId;
     const userRole = session.role || 'USER';
 
     const auditEvent = {
@@ -257,7 +257,7 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
     logAuditEvent({
         actorId: userId,
         actorRole: userRole as string,
-        actorName: (session as any).name || (userRole === 'ADMIN' ? 'Admin' : 'Owner'),
+        actorName: session.name || (userRole === 'ADMIN' ? 'Admin' : 'Owner'),
         actionType: status === 'VERIFIED' ? 'APPROVE' : 'REJECT',
         entityType: 'DOCUMENT',
         entityId: docId,

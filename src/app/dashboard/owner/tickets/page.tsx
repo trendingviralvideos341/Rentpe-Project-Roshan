@@ -63,7 +63,7 @@ export default function OwnerTicketsPage() {
     };
 
     const handleEscalate = async (id: string) => {
-        if (!confirm("Escalate this ticket to the RentPe Admin team?")) return;
+        if (!confirm("Escalate this ticket to the RentPe Team?")) return;
         try { await escalateTicketToAdmin(id); fetchAll(); } catch (e) { alert("Failed to escalate."); }
     };
 
@@ -101,10 +101,10 @@ export default function OwnerTicketsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold">Support Tickets</h1>
-                    <p className="text-muted-foreground">Manage customer complaints & raise issues to RentPe Admin.</p>
+                    <p className="text-muted-foreground">Manage customer complaints & raise issues to the RentPe Team.</p>
                 </div>
                 <Button onClick={() => setShowCreate(!showCreate)}>
-                    <Plus className="h-4 w-4 mr-2" /> Raise to Admin
+                    <Plus className="h-4 w-4 mr-2" /> Raise to RentPe Team
                 </Button>
             </div>
 
@@ -122,7 +122,7 @@ export default function OwnerTicketsPage() {
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'raised' ? 'bg-blue-600 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                         }`}
                 >
-                    My Tickets to Admin ({myTickets.length})
+                    My Tickets to RentPe Team ({myTickets.length})
                 </button>
             </div>
 
@@ -131,9 +131,9 @@ export default function OwnerTicketsPage() {
                 <Card className="border-blue-300 bg-blue-50/50">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <Shield className="h-5 w-5 text-blue-600" /> Raise a Ticket to RentPe Admin
+                            <Shield className="h-5 w-5 text-blue-600" /> Raise a Ticket to the RentPe Team
                         </CardTitle>
-                        <CardDescription>Report platform issues or escalate matters to our admin team.</CardDescription>
+                        <CardDescription>Report platform issues or escalate matters to the RentPe Team.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
@@ -201,7 +201,7 @@ export default function OwnerTicketsPage() {
                         </div>
                         <div className="flex gap-2">
                             <Button onClick={handleCreate} disabled={creating || !description.trim()}>
-                                {creating ? "Submitting..." : "Submit to Admin"}
+                                {creating ? "Submitting..." : "Submit to RentPe Team"}
                             </Button>
                             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
                         </div>
@@ -212,7 +212,7 @@ export default function OwnerTicketsPage() {
             {/* Ticket List */}
             <div className="grid gap-4">
                 {displayTickets.map((ticket) => {
-                    const replies = JSON.parse(ticket.replies || "[]");
+                    const replies = (() => { try { return JSON.parse(ticket.replies || "[]"); } catch { return []; } })();
                     const isIncoming = tab === 'incoming';
                     return (
                         <Card key={ticket.id} className={ticket.status === 'RESOLVED' ? 'opacity-70' : ''}>
@@ -259,7 +259,7 @@ export default function OwnerTicketsPage() {
                                                     'bg-muted border-l-2 border-muted-foreground mr-4'
                                                 }`}>
                                                 <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-bold">{r.sender === 'OWNER' ? 'You' : r.sender === 'ADMIN' ? 'Admin' : 'Student'}</span>
+                                                    <span className="font-bold">{r.sender === 'OWNER' ? 'You' : r.sender === 'ADMIN' ? 'RentPe Team' : 'Student'}</span>
                                                     <span className="opacity-60">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
                                                 <p>{r.message}</p>
@@ -275,7 +275,7 @@ export default function OwnerTicketsPage() {
                                                 <CheckCircle className="h-4 w-4 mr-1" /> Resolve
                                             </Button>
                                             <Button variant="outline" size="sm" className="text-purple-600 border-purple-300 shrink-0" onClick={() => handleEscalate(ticket.id)}>
-                                                <ArrowUpRight className="h-4 w-4 mr-1" /> Escalate to Admin
+                                                <ArrowUpRight className="h-4 w-4 mr-1" /> Escalate to RentPe Team
                                             </Button>
                                         </>
                                     )}
@@ -301,7 +301,7 @@ export default function OwnerTicketsPage() {
                 {displayTickets.length === 0 && (
                     <div className="p-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        {tab === 'incoming' ? 'No student tickets routed to you.' : 'You haven\'t raised any tickets to admin yet.'}
+                        {tab === 'incoming' ? 'No student tickets routed to you.' : 'You haven\'t raised any tickets to the RentPe Team yet.'}
                     </div>
                 )}
             </div>

@@ -10,7 +10,7 @@ const Footer = () => {
                     <div className="space-y-4">
                         <h3 className="text-lg font-bold text-foreground">RentPe</h3>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                            India&apos;s smartest PG & Hostel aggregator. Connecting students and professionals with verified, premium stays.
+                            India&apos;s smartest PG & Hostel aggregator. Connecting students and professionals with verified, high-fidelity stays.
                         </p>
                         <div className="flex space-x-4">
                             <Link href="#" className="p-2 bg-background rounded-full hover:text-primary transition-colors border shadow-sm">

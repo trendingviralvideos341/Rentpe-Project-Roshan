@@ -75,6 +75,7 @@ export async function signup(formData: FormData) {
                 isStudent,
                 isOwner,
                 displayId,
+                applicationId: displayId,
             }
         });
 
@@ -200,7 +201,7 @@ export async function login(formData: FormData) {
         const token = await signJWT({
             userId: user.id,
             email: user.email,
-            role: user.role,
+            role: user.role as any,
             roles: user.roles,
             name: user.name,
             permissions,
@@ -280,7 +281,7 @@ export async function verify2FALogin(userId: string, token: string) {
         const jwtToken = await signJWT({
             userId: user.id,
             email: user.email,
-            role: user.role,
+            role: user.role as any,
             roles: user.roles,
             name: user.name,
             phone: user.phone,

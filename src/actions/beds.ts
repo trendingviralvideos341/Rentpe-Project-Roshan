@@ -149,13 +149,15 @@ export async function createBedsForRoom(roomId: string, count: number) {
     if (!room) throw new Error("Room not found");
 
     const existingBeds = await (prisma as any).bed.count({ where: { roomId } });
-    for (let i = 1; i <= count; i++) {
-        const displayId = await generateSequentialId('BED');
+    const bedIdsList = await generateSequentialId('BED', count);
+
+    for (let i = 0; i < count; i++) {
+        const displayId = bedIdsList[i];
         await (prisma as any).bed.create({
             data: {
                 displayId,
                 roomId,
-                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + existingBeds + i)}`,
+                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + existingBeds + i + 1)}`,
                 status: 'AVAILABLE'
             }
         });

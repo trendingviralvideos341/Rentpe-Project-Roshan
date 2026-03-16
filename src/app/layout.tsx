@@ -23,8 +23,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RentPe | Premium PGs & Hostels",
-  description: "Find your perfect student home away from home with RentPe. Verified listings, premium amenities, and hassle-free booking.",
+  title: "RentPe | Verified PGs & Hostels",
+  description: "Find your perfect student home away from home with RentPe. Verified listings, high-end amenities, and hassle-free booking.",
 };
 
 export default async function RootLayout({

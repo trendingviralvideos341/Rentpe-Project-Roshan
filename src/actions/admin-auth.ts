@@ -22,7 +22,7 @@ export async function impersonateUser(targetUserId: string) {
 
     const payload = {
         userId: targetUser.id,
-        role: targetUser.role,
+        role: targetUser.role as any,
         email: targetUser.email,
         name: targetUser.name,
         // The magic trace that proves this is a God Mode override:
@@ -71,7 +71,7 @@ export async function stopImpersonation() {
 
     const payload = {
         userId: adminUser.id,
-        role: adminUser.role,
+        role: adminUser.role as any,
         email: adminUser.email,
         name: adminUser.name,
         roles: adminUser.roles,

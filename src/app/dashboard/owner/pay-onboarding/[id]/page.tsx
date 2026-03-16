@@ -12,7 +12,7 @@ export default async function PayOnboardingPage({ params }: { params: { id: stri
         select: { id: true, name: true, status: true, rooms: true }
     });
 
-    if (!property || property.status !== 'PAYMENT_PENDING') {
+    if (!property || property.status !== 'APPROVED_PENDING_PAYMENT') {
         redirect('/dashboard/owner/properties');
     }
 

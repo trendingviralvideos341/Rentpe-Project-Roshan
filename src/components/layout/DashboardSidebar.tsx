@@ -144,7 +144,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "users"] },
                 { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
                 { href: "/dashboard/admin/employees", label: "Owner Staff Hub", icon: UserCheck, reqPerm: ["super_admin", "staff"] },
-                { href: "/dashboard/admin/staff", label: "internal Platform Staff", icon: Shield, reqPerm: ["super_admin", "staff"] },
+                { href: "/dashboard/admin/staff", label: "Internal Platform Staff", icon: Shield, reqPerm: ["super_admin", "staff"] },
             ]
         },
         {
@@ -299,6 +299,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 onClick={() => setMobileOpen(true)}
                 className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
                 aria-label="Open menu"
+                suppressHydrationWarning
             >
                 <Menu className="w-6 h-6" />
             </button>
@@ -319,6 +320,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                                 onClick={() => setMobileOpen(false)}
                                 className="p-2 rounded-full hover:bg-muted transition-colors"
                                 aria-label="Close menu"
+                                suppressHydrationWarning
                             >
                                 <X className="w-5 h-5" />
                             </button>

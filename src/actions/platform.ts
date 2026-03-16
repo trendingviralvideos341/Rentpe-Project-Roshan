@@ -7,8 +7,9 @@ import { logAuditEvent } from "@/lib/audit";
 
 // ── Get or create the singleton settings row ──────────
 export async function getPlatformSettings() {
+    // Accessible to logged-in users to check fee rates
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    if (!session) throw new Error("Unauthorized");
 
     let settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
     if (!settings) {

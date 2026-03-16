@@ -1,0 +1,10 @@
+﻿src/actions/admin-auth.ts(33,33): error TS2345: Argument of type '{ userId: string; role: string; email: string; name: string | null; impersonatorId: string; roles: string; }' is not assignable to parameter of type 'Partial<Session> & Record<string, any>'.
+  Type '{ userId: string; role: string; email: string; name: string | null; impersonatorId: string; roles: string; }' is not assignable to type 'Partial<Session>'.
+    Types of property 'role' are incompatible.
+      Type 'string' is not assignable to type 'UserRole | undefined'.
+src/actions/admin-auth.ts(80,33): error TS2345: Argument of type '{ userId: string; role: string; email: string; name: string | null; roles: string; }' is not assignable to parameter of type 'Partial<Session> & Record<string, any>'.
+  Type '{ userId: string; role: string; email: string; name: string | null; roles: string; }' is not assignable to type 'Partial<Session>'.
+    Types of property 'role' are incompatible.
+      Type 'string' is not assignable to type 'UserRole | undefined'.
+src/actions/auth.ts(204,13): error TS2322: Type 'string' is not assignable to type 'UserRole | undefined'.
+src/actions/auth.ts(284,13): error TS2322: Type 'string' is not assignable to type 'UserRole | undefined'.

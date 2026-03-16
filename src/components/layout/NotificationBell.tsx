@@ -78,6 +78,7 @@ export default function NotificationBell() {
                 onClick={() => setOpen(!open)}
                 className="relative p-2 rounded-full hover:bg-muted transition-colors"
                 aria-label="Notifications"
+                suppressHydrationWarning
             >
                 <Bell className="h-5 w-5 text-muted-foreground" />
                 {unreadCount > 0 && (

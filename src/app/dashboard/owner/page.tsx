@@ -98,7 +98,7 @@ export default function OwnerDashboard() {
                         value="inventory"
                         className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <Bed className="h-4 w-4 mr-2" /> Inventory
+                        <Bed className="h-4 w-4 mr-2" /> Bed Management
                     </TabsTrigger>
                     <TabsTrigger
                         value="ops"
@@ -266,7 +266,7 @@ export default function OwnerDashboard() {
                                     <Building className="h-12 w-12 text-white" />
                                 </div>
                                 <div className="text-center md:text-left flex-1">
-                                    <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Premium Partner"}</h2>
+                                    <h2 className="text-3xl font-black tracking-tight">{stats.user?.name || "Verified Business Partner"}</h2>
                                     <div className="flex flex-col md:flex-row items-center md:justify-start gap-2 mt-2">
                                         <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/30 uppercase tracking-widest">
                                             {stats.user?.displayId || "OWNER"}

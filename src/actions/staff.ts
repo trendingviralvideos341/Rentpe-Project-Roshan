@@ -13,13 +13,29 @@ export async function getOwnerStaff() {
 
     const staff = await prisma.user.findMany({
         where: { 
-            parentOwnerId: (session as any).userId,
+            parentOwnerId: session.userId,
             deletedAt: null 
+        },
+        select: {
+            id: true,
+            displayId: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            status: true,
+            createdAt: true,
+            staffPermissions: true,
+            occupationDetail: true
         },
         orderBy: { createdAt: 'desc' }
     });
 
-    return staff;
+    return staff.map(s => ({
+        ...s,
+        designation: s.occupationDetail,
+        permissions: s.staffPermissions
+    }));
 }
 
 export async function addOwnerStaff(data: {

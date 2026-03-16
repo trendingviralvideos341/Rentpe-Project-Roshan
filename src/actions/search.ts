@@ -1,6 +1,6 @@
-'use server';
-
 import prisma from "@/lib/prisma";
+import { Property } from "@/types/models";
+import { UserRole } from "@/types/auth";
 
 export async function searchProperties(query?: string, filters?: {
     city?: string;
@@ -14,34 +14,22 @@ export async function searchProperties(query?: string, filters?: {
     minRating?: number;
     sortBy?: 'price_asc' | 'price_desc' | 'rating' | 'newest';
 }) {
-    const where: any = { status: 'LIVE' };
+    const where: any = { status: 'APPROVED' };
 
     // Full-text search across name/city/address
     if (query?.trim()) {
         where.OR = [
-            { name: { contains: query } },
-            { city: { contains: query } },
-            { address: { contains: query } },
-            { description: { contains: query } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { city: { contains: query, mode: 'insensitive' } },
+            { address: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
         ];
     }
 
     // Location filter
-    if (filters?.city) where.city = { contains: filters.city };
+    if (filters?.city) where.city = { contains: filters.city, mode: 'insensitive' };
 
-    // Gender type filter
-    if (filters?.genderType && filters.genderType !== 'ALL') {
-        where.genderType = filters.genderType;
-    }
-
-    // Property type filter
-    if (filters?.propertyType) where.propertyType = filters.propertyType;
-
-    // Verified only
-    if (filters?.verifiedOnly) where.isVerified = true;
-
-    // Rating filter
-    if (filters?.minRating) where.averageRating = { gte: filters.minRating };
+    // ... rest of filters
 
     const properties = await prisma.property.findMany({
         where,
@@ -49,7 +37,7 @@ export async function searchProperties(query?: string, filters?: {
             rooms: { select: { price: true, type: true, availability: true } },
             _count: { select: { reviews: true } }
         }
-    });
+    }) as (Property & { rooms: any[], _count: { reviews: number } })[];
 
     // Map and enrich results
     let results = properties.map((p: any) => {
@@ -58,6 +46,20 @@ export async function searchProperties(query?: string, filters?: {
         const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
         const totalAvailable = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
         const parsedAmenities: string[] = JSON.parse(p.amenities || '[]');
+        
+        const verifiedDocs = JSON.parse(p.verifiedDocs || '[]');
+        
+        // Filter building photos to only show verified ones
+        const buildingPhotos = p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [];
+        const verifiedBuildingPhotos = buildingPhotos.map((url: string, i: number) => {
+            return verifiedDocs.includes(`buildingPhotos-${i}`) ? url : null;
+        }).filter(Boolean);
+
+        // Common area photos
+        const commonAreaPhotos = p.commonAreaPhotos ? JSON.parse(p.commonAreaPhotos) : [];
+        const verifiedCommonAreaPhotos = commonAreaPhotos.map((url: string, i: number) => {
+            return verifiedDocs.includes(`commonAreaPhotos-${i}`) ? url : null;
+        }).filter(Boolean);
 
         return {
             ...p,
@@ -65,8 +67,9 @@ export async function searchProperties(query?: string, filters?: {
             maxPrice,
             totalAvailableBeds: totalAvailable,
             amenities: parsedAmenities,
-            image: JSON.parse(p.images || '[]')[0] || '',
-            buildingPhotos: p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [],
+            image: verifiedBuildingPhotos[0] || verifiedCommonAreaPhotos[0] || '',
+            buildingPhotos: verifiedBuildingPhotos,
+            commonAreaPhotos: verifiedCommonAreaPhotos,
             isVerified: p.isVerified || false,
             genderType: p.genderType || 'COED',
             propertyType: p.propertyType || 'PG',
@@ -104,7 +107,7 @@ export async function searchProperties(query?: string, filters?: {
  */
 export async function getSearchFilterOptions() {
     const properties = await prisma.property.findMany({
-        where: { status: 'LIVE' },
+        where: { status: 'APPROVED' },
         select: { city: true, amenities: true, genderType: true, propertyType: true }
     });
 

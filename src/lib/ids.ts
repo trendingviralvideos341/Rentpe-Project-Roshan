@@ -4,22 +4,32 @@ export type EntityType = 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKI
 
 const PREFIXES: Record<EntityType, string> = {
     USER: 'REN-USER',
-    OWNER: 'REN-OWN',
-    PROPERTY: 'REN-PROP',
+    OWNER: 'APP-OWN',
+    PROPERTY: 'APP-RP',
     ROOM: 'REN-ROOM',
     BED: 'REN-BED',
     BOOKING: 'REN-BOOK',
-    TENANT: 'REN-TEN',
+    TENANT: 'APP-TEN',
     OWNER_EMPLOYEE: 'OWN-EMP',
     ADMIN_EMPLOYEE: 'REN-EMP'
 };
 
-export async function generateSequentialId(type: EntityType): Promise<string> {
+function extractNum(id: string | null | undefined): number {
+    if (!id) return 0;
+    const parts = id.split('-');
+    return parseInt(parts[parts.length - 1]) || 0;
+}
+
+export async function generateSequentialId(type: EntityType): Promise<string>;
+export async function generateSequentialId(type: EntityType, count: number): Promise<string[]>;
+export async function generateSequentialId(type: EntityType, count?: number): Promise<string | string[]> {
     const prefix = PREFIXES[type];
     let lastId: string | null = null;
+    const numToGenerate = count ?? 1;
 
     // Use indexed findFirst (O(1)) with stable sorting for high-speed ID generation
     switch (type) {
+        // ... (rest of switch stays same)
         case 'USER':
             const lastUser = await prisma.user.findFirst({ 
                 where: { isOwner: false, displayId: { startsWith: 'REN-USER-' } }, 
@@ -30,19 +40,34 @@ export async function generateSequentialId(type: EntityType): Promise<string> {
             break;
         case 'OWNER':
             const lastOwner = await prisma.user.findFirst({ 
-                where: { isOwner: true, displayId: { startsWith: 'REN-OWN-' } }, 
+                where: { isOwner: true, displayId: { startsWith: 'APP-OWN-' } }, 
                 orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
-            lastId = lastOwner?.displayId || null;
+            // Also need to check for upgraded IDs to ensure sequence continues
+            const lastRegOwner = await prisma.user.findFirst({
+                where: { isOwner: true, displayId: { startsWith: 'REG-OWN-' } },
+                orderBy: { displayId: 'desc' },
+                select: { displayId: true }
+            });
+
+            const ownerNum = Math.max(extractNum(lastOwner?.displayId), extractNum(lastRegOwner?.displayId));
+            lastId = ownerNum > 0 ? `APP-OWN-${ownerNum.toString().padStart(4, '0')}` : null;
             break;
         case 'PROPERTY':
             const lastProp = await prisma.property.findFirst({ 
-                where: { displayId: { startsWith: 'REN-PROP-' } },
+                where: { displayId: { startsWith: 'APP-RP-' } },
                 orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
-            lastId = lastProp?.displayId || null;
+            const lastRegProp = await prisma.property.findFirst({
+                where: { displayId: { startsWith: 'RP-REG-' } },
+                orderBy: { displayId: 'desc' },
+                select: { displayId: true }
+            });
+            
+            const propNum = Math.max(extractNum(lastProp?.displayId), extractNum(lastRegProp?.displayId));
+            lastId = propNum > 0 ? `APP-RP-${propNum.toString().padStart(4, '0')}` : null;
             break;
         case 'ROOM':
             const lastRoom = await prisma.room.findFirst({ 
@@ -70,11 +95,18 @@ export async function generateSequentialId(type: EntityType): Promise<string> {
             break;
         case 'TENANT':
             const lastTenant = await prisma.tenant.findFirst({ 
-                where: { displayId: { startsWith: 'REN-TEN-' } },
+                where: { displayId: { startsWith: 'APP-TEN-' } },
                 orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
-            lastId = lastTenant?.displayId || null;
+            const lastRegTenant = await prisma.tenant.findFirst({
+                where: { displayId: { startsWith: 'REG-TEN-' } },
+                orderBy: { displayId: 'desc' },
+                select: { displayId: true }
+            });
+            
+            const tenNum = Math.max(extractNum(lastTenant?.displayId), extractNum(lastRegTenant?.displayId));
+            lastId = tenNum > 0 ? `APP-TEN-${tenNum.toString().padStart(4, '0')}` : null;
             break;
         case 'OWNER_EMPLOYEE':
             const lastOwnerEmp = await prisma.ownerEmployee.findFirst({ 
@@ -103,5 +135,13 @@ export async function generateSequentialId(type: EntityType): Promise<string> {
         }
     }
 
-    return `${prefix}-${nextNum.toString().padStart(4, '0')}`;
+    if (count === undefined) {
+        return `${prefix}-${nextNum.toString().padStart(4, '0')}`;
+    }
+
+    const ids: string[] = [];
+    for (let i = 0; i < numToGenerate; i++) {
+        ids.push(`${prefix}-${(nextNum + i).toString().padStart(4, '0')}`);
+    }
+    return ids;
 }

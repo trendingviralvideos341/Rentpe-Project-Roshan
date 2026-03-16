@@ -67,18 +67,29 @@ export default function PropertyDetailPage() {
                 const data = await getPropertyById(id);
                 if (data) {
                     const allImages: string[] = [];
-                    if (data.buildingPhotos) {
-                        try {
-                            const parsed = JSON.parse(data.buildingPhotos);
-                            parsed.forEach((p: any) => { if (p) allImages.push(typeof p === 'string' ? p : p.url); });
-                        } catch (e) { }
-                    }
-                    if (data.commonAreaPhotos) {
-                        try {
-                            const parsed = JSON.parse(data.commonAreaPhotos);
-                            parsed.forEach((p: any) => { if (p) allImages.push(typeof p === 'string' ? p : p.url); });
-                        } catch (e) { }
-                    }
+                    const categories = [
+                        'buildingPhotos',
+                        'commonAreaPhotos',
+                        'roomsAndBathroomPhotos',
+                        'parkingPhotos',
+                        'amenitiesPhotos'
+                    ];
+
+                    (categories as (keyof typeof data)[]).forEach(catKey => {
+                        const val = data[catKey];
+                        if (val && typeof val === 'string') {
+                            try {
+                                const parsed = JSON.parse(val);
+                                if (Array.isArray(parsed)) {
+                                    parsed.forEach((p: any) => { 
+                                        if (p) allImages.push(typeof p === 'string' ? p : p.url); 
+                                    });
+                                } else if (typeof parsed === 'string') {
+                                    allImages.push(parsed);
+                                }
+                            } catch (e) { }
+                        }
+                    });
 
                     setProperty({
                         ...data,
@@ -213,38 +224,47 @@ export default function PropertyDetailPage() {
                             {(() => {
                                 const renderCategoryGrid = (title: string, dataString: string | null) => {
                                     if (!dataString) return null;
+                                    let photos: string[] = [];
                                     try {
-                                        const photos = JSON.parse(dataString).map((p: any) => typeof p === 'string' ? p : p.url).filter(Boolean);
-                                        if (photos.length === 0) return null;
-                                        return (
-                                            <div>
-                                                <h3 className="text-md font-semibold mb-3 text-muted-foreground flex items-center gap-2">
-                                                    <div className="h-1 flex-1 bg-muted rounded"></div>
-                                                    <span>{title} ({photos.length})</span>
-                                                    <div className="h-1 flex-1 bg-muted rounded"></div>
-                                                </h3>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                                    {photos.map((url: string, idx: number) => (
-                                                        <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted border hover:shadow-md transition-shadow">
-                                                            <a href={url} target="_blank" rel="noopener noreferrer">
-                                                                <img src={url} alt={`${title} ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                                                            </a>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                        const parsed = JSON.parse(dataString);
+                                        photos = (Array.isArray(parsed) ? parsed : [parsed])
+                                            .map((p: any) => typeof p === 'string' ? p : p.url)
+                                            .filter(Boolean);
+                                    } catch (e) {
+                                        // Handle plain string URLs
+                                        photos = [dataString].filter(Boolean);
+                                    }
+
+                                    if (photos.length === 0) return null;
+                                    return (
+                                        <div>
+                                            <h3 className="text-md font-semibold mb-3 text-muted-foreground flex items-center gap-2">
+                                                <div className="h-1 flex-1 bg-muted rounded"></div>
+                                                <span>{title} ({photos.length})</span>
+                                                <div className="h-1 flex-1 bg-muted rounded"></div>
+                                            </h3>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                                {photos.map((url: string, idx: number) => (
+                                                    <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted border hover:shadow-md transition-shadow">
+                                                        <a href={url} target="_blank" rel="noopener noreferrer">
+                                                            <img src={url} alt={`${title} ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                                                        </a>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        );
-                                    } catch (e) { return null; }
+                                        </div>
+                                    );
                                 };
 
                                 return (
                                     <>
                                         {renderCategoryGrid("Building Photos", property.buildingPhotos)}
                                         {renderCategoryGrid("Common Area", property.commonAreaPhotos)}
-                                        {property.bathroomPhoto && renderCategoryGrid("Bathroom", JSON.stringify([property.bathroomPhoto]))}
-                                        {property.parkingPhoto && renderCategoryGrid("Parking Area", JSON.stringify([property.parkingPhoto]))}
+                                        {renderCategoryGrid("Rooms & Bathroom", property.roomsAndBathroomPhotos)}
+                                        {renderCategoryGrid("Parking Area", property.parkingPhotos)}
+                                        {renderCategoryGrid("Other Amenities", property.amenitiesPhotos)}
 
-                                        {!property.buildingPhotos && !property.commonAreaPhotos && !property.bathroomPhoto && !property.parkingPhoto && (
+                                        {!property.buildingPhotos && !property.commonAreaPhotos && !property.roomsAndBathroomPhotos && !property.parkingPhotos && !property.amenitiesPhotos && (
                                             <p className="text-sm text-muted-foreground">No additional gallery photos available.</p>
                                         )}
                                     </>

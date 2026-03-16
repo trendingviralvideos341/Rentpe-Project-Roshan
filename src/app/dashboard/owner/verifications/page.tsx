@@ -361,12 +361,12 @@ export default function OwnerVerificationsPage() {
                         </div>
                     </div>
 
-                    {/* Audit Trail Sidebar */}
+                    {/* History Sidebar */}
                     <div className="w-full md:w-96 bg-slate-900 border-l border-white/10 flex flex-col h-[50vh] md:h-screen shrink-0">
                         <div className="p-6 border-b border-white/10 shrink-0 flex items-center justify-between">
                             <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm flex items-center gap-3">
                                 <Clock className="w-4 h-4 text-indigo-400" />
-                                Audit History
+                                History
                             </h3>
                             <Button
                                 variant="ghost"
@@ -585,13 +585,13 @@ const TYPE_CONFIG: any = {
     PAN_BACK: { label: 'PAN Card Back', desc: 'Back side of PAN card (Optional)', icon: <CreditCard className="w-5 h-5" />, colorClass: 'text-green-500', bgClass: 'bg-green-50', borderClass: 'border-green-200' },
     STUDENT_ID: { label: 'Student / University ID', desc: 'Current academic year', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' },
     COMPANY_ID: { label: 'Company ID / Offer Letter', desc: 'For working professionals', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200' },
-    LIVE_PHOTO: { label: 'Live Photo', desc: 'Real-time identity check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
+    LIVE_PHOTO: { label: 'Live Photo', desc: 'User identity verification', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
     OTHER: { label: 'Other Documents', desc: 'Any additional document (Optional)', icon: <FileText className="w-5 h-5" />, colorClass: 'text-slate-600', bgClass: 'bg-slate-50', borderClass: 'border-slate-200' },
     // Legacy types
     ID_PROOF: { label: 'Identity Proof', desc: 'Aadhaar, PAN or Voter ID', icon: <FileText className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-200' },
     ADDRESS_PROOF: { label: 'Address Proof', desc: 'Electricity Bill or Rent Agreement', icon: <MapPin className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200' },
     COLLEGE_COMPANY: { label: 'College / Work', desc: 'ID Card or Offer Letter', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' },
-    SELFIE: { label: 'Live Selfie', desc: 'Real-time Identity Check', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
+    SELFIE: { label: 'Live Selfie', desc: 'User identity verification', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
 };
 
 function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {

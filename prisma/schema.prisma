@@ -54,6 +54,7 @@ model User {
   staffPermissions      String?
   twoFactorSecret       String?
   twoFactorEnabled      Boolean           @default(false)
+  applicationId         String?           @unique
   actionNotes           ActionNote[]      @relation("TargetUser")
   auditLogs             AuditLog[]        @relation("PerformedBy")
   bookings              Booking[]
@@ -69,72 +70,77 @@ model User {
   parentOwner           User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
   staffMembers          User[]            @relation("OwnerToStaff")
   sessions              UserSession[]
-  ownerEmployees        OwnerEmployee[]   @relation("OwnerEmployees")
-  employeeProfile       OwnerEmployee?    @relation("UserAsEmployee")
   adminProfile          AdminEmployee?    @relation("UserAsAdminEmployee")
   drafts                Draft[]
+  ownerEmployees        OwnerEmployee[]   @relation("OwnerEmployees")
+  employeeProfile       OwnerEmployee?    @relation("UserAsEmployee")
   uploadSessions        UploadSession[]
 }
 
 model Property {
-  id                     String          @id @default(uuid())
-  displayId              String?         @unique
-  ownerId                String
-  name                   String
-  address                String
-  city                   String
-  description            String?
-  amenities              String
-  images                 String
-  status                 String          @default("PENDING_APPROVAL")
-  adminNotes             String?
-  pgPhotoUrl             String?
-  aadhaarProof           String?
-  panProof               String?
-  pgLicenceUrl           String?
-  buildingPhotos         String?
-  commonAreaPhotos       String?
-  parkingPhotos          String?
-  roomsAndBathroomPhotos String?
-  livePhotoUrl           String?
-  exteriorPhotos         String?
-  interiorPhotos         String?
-  roomsPhotos            String?
-  hallPhotos             String?
-  lobbyPhotos            String?
-  washroomPhotos         String?
-  amenitiesPhotos        String?
-  verifiedDocs           String          @default("[]")
-  averageRating          Float           @default(0)
-  reviewCount            Int             @default(0)
-  propertyType           String          @default("PG")
-  genderType             String          @default("COED")
-  latitude               Float?
-  longitude              Float?
-  cancellationPolicy     String?
-  noticePeriod           Int?
-  refundPolicy           String?
-  bankAccountNo          String?
-  bankIfsc               String?
-  bankName               String?
-  videoUrl               String?
-  isVerified             Boolean         @default(false)
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
-  ownerName              String?
-  businessName           String?
-  pgLicence              String?
-  licenseNumber          String?
-  reraId                 String?
-  bookings               Booking[]
-  foodMenu               FoodMenu[]
-  owner                  User            @relation(fields: [ownerId], references: [id])
-  reviews                Review[]
-  rooms                  Room[]
-  savedBy                SavedProperty[]
-  tenants                Tenant[]
-  tickets                Ticket[]
-  employeeAssignments    EmployeePropertyAssignment[]
+  id                      String                       @id @default(uuid())
+  displayId               String?                      @unique
+  ownerId                 String
+  name                    String
+  address                 String
+  city                    String
+  description             String?
+  amenities               String
+  images                  String
+  status                  String                       @default("PENDING_VERIFICATION")
+  adminNotes              String?
+  pgPhotoUrl              String?
+  aadhaarProof            String?
+  panProof                String?
+  pgLicenceUrl            String?
+  buildingPhotos          String?
+  commonAreaPhotos        String?
+  parkingPhotos           String?
+  roomsAndBathroomPhotos  String?
+  livePhotoUrl            String?
+  exteriorPhotos          String?
+  interiorPhotos          String?
+  roomsPhotos             String?
+  hallPhotos              String?
+  lobbyPhotos             String?
+  washroomPhotos          String?
+  amenitiesPhotos         String?
+  verifiedDocs            String                       @default("[]")
+  averageRating           Float                        @default(0)
+  reviewCount             Int                          @default(0)
+  propertyType            String                       @default("PG")
+  genderType              String                       @default("COED")
+  latitude                Float?
+  longitude               Float?
+  cancellationPolicy      String?
+  noticePeriod            Int?
+  refundPolicy            String?
+  bankAccountNo           String?
+  bankIfsc                String?
+  bankName                String?
+  videoUrl                String?
+  isVerified              Boolean                      @default(false)
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  ownerName               String?
+  businessName            String?
+  pgLicence               String?
+  licenseNumber           String?
+  reraId                  String?
+  termsAccepted           Boolean                      @default(false)
+  termsAcceptedAt         DateTime?
+  onboardingPaidAt        DateTime?
+  onboardingPaymentMethod String?
+  applicationId           String?                      @unique
+  bookings                Booking[]
+  foodMenu                FoodMenu[]
+  owner                   User                         @relation(fields: [ownerId], references: [id])
+  reviews                 Review[]
+  rooms                   Room[]
+  savedBy                 SavedProperty[]
+  tenants                 Tenant[]
+  tickets                 Ticket[]
+  employeeAssignments     EmployeePropertyAssignment[]
 }
 
 model Room {
@@ -190,7 +196,7 @@ model Booking {
   onboardingDate       String?
   moveInDate           String
   stayDuration         Int?
-  occupants            Int?              @default(1)
+  occupants            Int?             @default(1)
   message              String?
   status               String           @default("PENDING_APPROVAL")
   paymentStatus        String           @default("UNPAID")
@@ -220,8 +226,8 @@ model Booking {
   occupationType       String?
   pendingAmount        Float?
   property             Property?        @relation(fields: [propertyId], references: [id])
-  user                 User             @relation(fields: [userId], references: [id])
   room                 Room?            @relation(fields: [roomId], references: [id])
+  user                 User             @relation(fields: [userId], references: [id])
   payments             Payment[]
   platformFee          PlatformFee?
   tenant               Tenant?
@@ -271,6 +277,7 @@ model Tenant {
   occupationDetail    String?
   occupationType      String?
   pincode             String?
+  applicationId       String?
   attendances         Attendance[]
   billingProfile      BillingProfile?
   disputes            Dispute[]
@@ -278,10 +285,10 @@ model Tenant {
   rentRecords         RentRecord[]
   reviews             Review[]
   settlementRecord    SettlementRecord?
-  property            Property          @relation(fields: [propertyId], references: [id])
-  room                Room              @relation(fields: [roomId], references: [id])
   bed                 Bed?              @relation(fields: [bedId], references: [id])
   booking             Booking?          @relation(fields: [bookingId], references: [id])
+  property            Property          @relation(fields: [propertyId], references: [id])
+  room                Room              @relation(fields: [roomId], references: [id])
 }
 
 model BillingProfile {
@@ -399,8 +406,8 @@ model Review {
   adminNotes String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
   property   Property @relation(fields: [propertyId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
 
   @@unique([propertyId, tenantId])
 }
@@ -428,9 +435,9 @@ model Payment {
   razorpayId      String?
   verifiedBy      String?
   date            DateTime         @default(now())
+  booking         Booking          @relation(fields: [bookingId], references: [id])
   deposit         SecurityDeposit? @relation("DepositPayments", fields: [depositId], references: [id])
   invoice         RentInvoice?     @relation("InvoicePayments", fields: [invoiceId], references: [id])
-  booking         Booking          @relation(fields: [bookingId], references: [id])
 }
 
 model FoodMenu {
@@ -457,8 +464,8 @@ model Ticket {
   replies      String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  user         User      @relation(fields: [userId], references: [id])
   property     Property? @relation(fields: [propertyId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 }
 
 model Notification {
@@ -479,10 +486,10 @@ model Notification {
 model AuditLog {
   id            String   @id @default(uuid())
   actorId       String
-  actorRole     String   // ADMIN / OWNER / USER / EMPLOYEE
-  actorName      String
-  actionType    String   // CREATE / UPDATE / DELETE / APPROVE / REJECT / LOGIN / LOGOUT
-  entityType    String   // USER / OWNER / PROPERTY / ROOM / BED / BOOKING / PAYMENT
+  actorRole     String
+  actorName     String
+  actionType    String
+  entityType    String
   entityId      String
   entityName    String?
   description   String
@@ -491,8 +498,6 @@ model AuditLog {
   ipAddress     String?
   userAgent     String?
   createdAt     DateTime @default(now())
-
-  // Relationships
   actor         User     @relation("PerformedBy", fields: [actorId], references: [id])
 }
 
@@ -864,72 +869,69 @@ model RefundRecord {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
-model OwnerEmployee {
-  id           String   @id @default(uuid())
-  displayId    String   @unique // OWN-EMP-XXXX
-  ownerId      String
-  name         String
-  email        String   @unique
-  phone        String
-  role         String   @default("Staff") // Manager, Caretaker, Warden, etc.
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
-  owner        User     @relation("OwnerEmployees", fields: [ownerId], references: [id])
-  assignments  EmployeePropertyAssignment[]
-  userId       String?  @unique
-  user         User?    @relation("UserAsEmployee", fields: [userId], references: [id])
+model OwnerEmployee {
+  id          String                       @id @default(uuid())
+  displayId   String                       @unique
+  ownerId     String
+  name        String
+  email       String                       @unique
+  phone       String
+  role        String                       @default("Staff")
+  status      String                       @default("ACTIVE")
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+  userId      String?                      @unique
+  assignments EmployeePropertyAssignment[]
+  owner       User                         @relation("OwnerEmployees", fields: [ownerId], references: [id])
+  user        User?                        @relation("UserAsEmployee", fields: [userId], references: [id])
 
   @@map("owner_employees")
 }
 
 model EmployeePropertyAssignment {
-  id          String   @id @default(uuid())
-  employeeId  String
-  propertyId  String
-  assignedBy  String
-  assignedAt  DateTime @default(now())
-
-  employee    OwnerEmployee @relation(fields: [employeeId], references: [id])
-  property    Property      @relation(fields: [propertyId], references: [id])
+  id         String        @id @default(uuid())
+  employeeId String
+  propertyId String
+  assignedBy String
+  assignedAt DateTime      @default(now())
+  employee   OwnerEmployee @relation(fields: [employeeId], references: [id])
+  property   Property      @relation(fields: [propertyId], references: [id])
 
   @@unique([employeeId, propertyId])
   @@map("employee_property_assignment")
 }
 
 model AdminEmployee {
-  id            String   @id @default(uuid())
-  displayId     String   @unique // REN-EMP-XXXX
-  userId        String?  @unique
-  name          String
-  email         String   @unique
-  phone         String
-  department    String   // Verification, Support, Operations, Finance, Tech
-  role          String   // Senior Verifier, Agent, etc.
-  permissions   String   @default("[]") // JSON string of module access
-  status        String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User?    @relation("UserAsAdminEmployee", fields: [userId], references: [id])
+  id          String   @id @default(uuid())
+  displayId   String   @unique
+  userId      String?  @unique
+  name        String
+  email       String   @unique
+  phone       String
+  department  String
+  role        String
+  permissions String   @default("[]")
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation("UserAsAdminEmployee", fields: [userId], references: [id])
 
   @@map("admin_employees")
 }
 
 model Draft {
-  id            String   @id @default(uuid())
-  userId        String
-  entityType    String   // PROPERTY, USER_KYC, BOOKING, etc.
-  entityId      String?  // Optional if updating existing
-  data          Json
-  status        String   @default("DRAFT") // DRAFT, ARCHIVED_DRAFT
-  lastStep      Int      @default(1)
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id])
+  id         String   @id @default(uuid())
+  userId     String
+  entityType String
+  entityId   String?
+  data       Json
+  status     String   @default("DRAFT")
+  lastStep   Int      @default(1)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
 
   @@index([userId, entityType])
   @@map("drafts")
@@ -944,10 +946,9 @@ model UploadSession {
   totalChunks    Int
   uploadedChunks Int[]    @default([])
   storageKey     String   @unique
-  status         String   @default("UPLOADING") // UPLOADING, COMPLETED, FAILED
+  status         String   @default("UPLOADING")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-
   user           User     @relation(fields: [userId], references: [id])
 
   @@map("upload_sessions")

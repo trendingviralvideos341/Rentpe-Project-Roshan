@@ -69,7 +69,7 @@ export async function createBooking(data: {
 
     logAuditEvent({
         actorId: session.userId,
-        actorRole: session.role as string,
+        actorRole: session.role || 'USER',
         actorName: session.name || 'Student',
         actionType: 'CREATE',
         entityType: 'BOOKING',
@@ -122,7 +122,7 @@ export async function getBookings() {
                     where: { employeeId: user.employeeProfile.id },
                     select: { propertyId: true }
                 });
-                propertyIds = assignments.map((a: any) => a.propertyId);
+                propertyIds = assignments.map(a => a.propertyId);
             } else {
                 // Primary owner sees all their properties
                 const ownerProperties = await prisma.property.findMany({
@@ -560,7 +560,7 @@ export async function getPendingBookingsCount() {
                 where: { employeeId: user.employeeProfile.id },
                 select: { propertyId: true }
             });
-            propertyIds = assignments.map((a: any) => a.propertyId);
+            propertyIds = assignments.map(a => a.propertyId);
         } else {
             // Primary owner sees all their properties
             const ownerProperties = await prisma.property.findMany({
@@ -588,9 +588,9 @@ export async function cancelBooking(id: string, reason?: string) {
 
     const booking = await prisma.booking.findUnique({ where: { id } });
     if (!booking) throw new Error("Booking not found");
-    if (session.role !== 'ADMIN' && session.role !== 'OWNER' && booking.userId !== (session as any).userId) throw new Error("Unauthorized");
+    if (session.role !== 'ADMIN' && session.role !== 'OWNER' && booking.userId !== session.userId) throw new Error("Unauthorized");
 
-    const updated = await (prisma as any).booking.update({
+    const updated = await prisma.booking.update({
         where: { id },
         data: { status: 'CANCELLED', cancelReason: reason || 'Cancelled by user' }
     });
@@ -602,7 +602,7 @@ export async function cancelBooking(id: string, reason?: string) {
 
     // Notify waitlisted students when room opens up
     if (booking.propertyId) {
-        const waitlisted = await (prisma as any).waitlist.findMany({ where: { propertyId: booking.propertyId, status: 'WAITING' } }).catch(() => []);
+        const waitlisted = await prisma.waitlist.findMany({ where: { propertyId: booking.propertyId, status: 'WAITING' } }).catch(() => []);
         for (const w of waitlisted) {
             await NotificationService.trigger({
                 bookingId: booking.id,
@@ -612,11 +612,11 @@ export async function cancelBooking(id: string, reason?: string) {
                 message: `A room is now available at your waitlisted property! Log in to book now.`,
                 targetRole: 'USER'
             });
-            await (prisma as any).waitlist.update({ where: { id: w.id }, data: { status: 'NOTIFIED', notifiedAt: new Date() } }).catch(() => {});
+            await prisma.waitlist.update({ where: { id: w.id }, data: { status: 'NOTIFIED', notifiedAt: new Date() } }).catch(() => {});
         }
     }
 
-    if (booking.userId && (session as any).role !== 'USER') {
+    if (booking.userId && session.role !== 'USER') {
         await NotificationService.trigger({
             bookingId: booking.id,
             userId: booking.userId,
@@ -628,9 +628,9 @@ export async function cancelBooking(id: string, reason?: string) {
     }
 
     logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: (session as any).role || 'USER',
-        actorName: (session as any).name || 'User',
+        actorId: session.userId,
+        actorRole: session.role || 'USER',
+        actorName: session.name || 'User',
         actionType: 'DELETE',
         entityType: 'BOOKING',
         entityId: id,
@@ -649,9 +649,9 @@ export async function signAgreement(id: string) {
 
     const booking = await prisma.booking.findUnique({ where: { id }, include: { user: true } });
     if (!booking) throw new Error("Booking not found");
-    if (booking.userId !== (session as any).userId) throw new Error("Unauthorized to sign this agreement");
+    if (booking.userId !== session.userId) throw new Error("Unauthorized to sign this agreement");
 
-    const updated = await (prisma as any).booking.update({
+    const updated = await prisma.booking.update({
         where: { id },
         data: { status: 'BOOKING_CONFIRMED', agreementSigned: true, agreementSignedAt: new Date() }
     });
@@ -682,7 +682,7 @@ export async function getStudentPendingActionsCount() {
     const session = await getSession();
     if (!session) return 0;
 
-    const userId = (session as any).userId;
+    const userId = session.userId;
     const bookings = await prisma.booking.findMany({
         where: { userId },
         include: { documents: true }
@@ -694,7 +694,7 @@ export async function getStudentPendingActionsCount() {
         if (b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED') count++;
         if (b.status === 'AGREEMENT_PENDING') count++;
         if (b.status === 'ROOM_RESERVED') {
-            const hasVerified = b.documents.filter((d: any) => d.status === 'VERIFIED').length >= 2;
+            const hasVerified = b.documents.filter(d => d.status === 'VERIFIED').length >= 2;
             if (!hasVerified) count++;
         }
     }
@@ -729,7 +729,7 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
     const reservationExpiry = new Date();
     reservationExpiry.setDate(reservationExpiry.getDate() + 7); // 7-day reservation window
 
-    const updated = await (prisma as any).booking.update({
+    const updated = await prisma.booking.update({
         where: { id: bookingId },
         data: {
             status: 'ROOM_RESERVED',
@@ -774,7 +774,7 @@ export async function markTokenCashPaid(bookingId: string) {
     const reservationExpiry = new Date();
     reservationExpiry.setDate(reservationExpiry.getDate() + 7);
 
-    const updated = await (prisma as any).booking.update({
+    const updated = await prisma.booking.update({
         where: { id: bookingId },
         data: { status: 'KYC_PENDING', tokenPaidAt: new Date(), paymentMethod: 'CASH', reservationExpiresAt: reservationExpiry }
     });
@@ -812,14 +812,14 @@ export async function verifyKycAndProceed(bookingId: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    const updated = await (prisma as any).booking.update({
+    const updated = await prisma.booking.update({
         where: { id: bookingId },
         data: { status: 'AGREEMENT_PENDING', kycVerifiedAt: new Date() }
     });
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
     if (booking?.userId) {
-        await NotificationService.onKycVerified(booking, (session as any).userId);
+        await NotificationService.onKycVerified(booking, session.userId);
     }
 
     logAuditEvent({
@@ -931,7 +931,7 @@ export async function getPlatformAnalytics() {
 
     const [totalProperties, liveProperties, totalBookings, kycPending, activeTenants, pendingDocuments] = await Promise.all([
         prisma.property.count(),
-        prisma.property.count({ where: { status: 'LIVE' } }),
+        prisma.property.count({ where: { status: 'APPROVED' } }),
         prisma.booking.count(),
         prisma.booking.count({ where: { status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
         prisma.tenant.count({ where: { status: 'ACTIVE' } }),

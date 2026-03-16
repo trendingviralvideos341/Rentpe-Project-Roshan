@@ -32,7 +32,7 @@ async function ensureSuperAdmin() {
 export async function getAdminEmployees() {
     await ensureSuperAdmin();
     
-    return await (prisma as any).adminEmployee.findMany({
+    return await prisma.adminEmployee.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
             user: {
@@ -95,7 +95,7 @@ export async function createAdminEmployee(data: {
         });
 
         // 3. Create AdminEmployee record
-        const employee = await (tx as any).adminEmployee.create({
+        const employee = await tx.adminEmployee.create({
             data: {
                 displayId,
                 userId: user.id,
@@ -115,7 +115,7 @@ export async function createAdminEmployee(data: {
                 data: {
                     actorId: session.userId,
                     actorRole: 'ADMIN',
-                    actorName: (session as any).name || 'Super Admin',
+                    actorName: session.name || 'Super Admin',
                     actionType: 'CREATE',
                     entityType: 'USER',
                     entityId: employee.id,
@@ -136,7 +136,7 @@ export async function updateAdminEmployee(id: string, data: {
 }) {
     const session = await ensureSuperAdmin();
 
-    const employee = await (prisma as any).adminEmployee.update({
+    const employee = await prisma.adminEmployee.update({
         where: { id },
         data: {
             ...data,
@@ -156,7 +156,7 @@ export async function updateAdminEmployee(id: string, data: {
         logAuditEvent({
             actorId: session.userId,
             actorRole: 'ADMIN',
-            actorName: (session as any).name || 'Super Admin',
+            actorName: session.name || 'Super Admin',
             actionType: 'UPDATE',
             entityType: 'USER',
             entityId: id,

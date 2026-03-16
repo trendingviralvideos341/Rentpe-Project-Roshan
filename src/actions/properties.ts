@@ -8,6 +8,15 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { generateSequentialId } from "@/lib/ids";
 
+async function getEffectiveOwnerId(session: any) {
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    const user = await prisma.user.findUnique({ 
+        where: { id: session.userId },
+        select: { parentOwnerId: true }
+    });
+    return user?.parentOwnerId || session.userId;
+}
+
 export async function getProperties(ownerId?: string) {
     const session = await getSession();
     const where: any = {};
@@ -21,14 +30,12 @@ export async function getProperties(ownerId?: string) {
         });
         
         if (user?.employeeProfile) {
-            // For Owner Staff, restrict to assigned properties
             const assignedIds = await prisma.employeePropertyAssignment.findMany({
                 where: { employeeId: user.employeeProfile.id },
                 select: { propertyId: true }
             });
             where.id = { in: assignedIds.map((a: any) => a.propertyId) };
         } else {
-            // Primary owner sees all their properties
             where.ownerId = user?.parentOwnerId || session.userId;
         }
     }
@@ -40,15 +47,10 @@ export async function getProperties(ownerId?: string) {
                 select: { id: true, roomNumber: true, status: true }
             },
             owner: {
-                select: {
-                    name: true,
-                    email: true
-                }
+                select: { name: true, email: true }
             }
         },
-        orderBy: {
-            updatedAt: 'desc'
-        }
+        orderBy: { updatedAt: 'desc' }
     });
 }
 
@@ -61,7 +63,7 @@ export async function getPendingOwnerActionCount() {
         select: { status: true, adminNotes: true }
     });
 
-    return properties.filter(p => p.status === 'REJECTED' || (p.status === 'PENDING_APPROVAL' && p.adminNotes?.includes('[REUPLOAD'))).length;
+    return properties.filter(p => p.status === 'REJECTED' || (p.status === 'PENDING_VERIFICATION' && p.adminNotes?.includes('[REUPLOAD'))).length;
 }
 
 export async function getPropertyById(id: string) {
@@ -71,18 +73,14 @@ export async function getPropertyById(id: string) {
         include: {
             rooms: true,
             foodMenu: true,
-            owner: {
-                select: {
-                    name: true,
-                    email: true
-                }
-            }
+            owner: { select: { name: true, email: true } }
         }
     });
 
     if (!property) return null;
 
-    // Access control for owners/staff
+    if (session?.role === 'ADMIN') return property;
+
     if (session?.role === 'OWNER') {
         const user = await prisma.user.findUnique({ 
             where: { id: session.userId },
@@ -91,33 +89,56 @@ export async function getPropertyById(id: string) {
         
         if (user?.employeeProfile) {
             const isAssigned = await prisma.employeePropertyAssignment.findUnique({
-                where: {
-                    employeeId_propertyId: {
-                        employeeId: user.employeeProfile.id,
-                        propertyId: id
-                    }
-                }
+                where: { employeeId_propertyId: { employeeId: user.employeeProfile.id, propertyId: id } }
             });
-            if (!isAssigned) throw new Error("Access denied: Not assigned to this property");
+            if (!isAssigned) throw new Error("Access denied");
         } else if (property.ownerId !== (user?.parentOwnerId || session.userId)) {
-             throw new Error("Access denied: Not your property");
+             throw new Error("Access denied");
         }
+        return property;
     }
 
-    return property;
+    if (property.status !== 'APPROVED') return null;
+
+    // For public view, filter only verified photos
+    const verifiedDocs = JSON.parse(property.verifiedDocs || '[]');
+    const filterPhotos = (dataString: string | null, keyPrefix: string) => {
+        if (!dataString) return null;
+        try {
+            const photos = JSON.parse(dataString);
+            if (!Array.isArray(photos)) return dataString; // Handle single values if any
+            const filtered = photos.map((url: string, i: number) => {
+                return verifiedDocs.includes(`${keyPrefix}-${i}`) ? url : null;
+            }).filter(Boolean);
+            return filtered.length > 0 ? JSON.stringify(filtered) : null;
+        } catch (e) { return null; }
+    };
+
+    const isVerified = (key: string) => verifiedDocs.includes(key);
+
+    return {
+        ...property,
+        buildingPhotos: filterPhotos(property.buildingPhotos, 'buildingPhotos'),
+        commonAreaPhotos: filterPhotos(property.commonAreaPhotos, 'commonAreaPhotos'),
+        roomsAndBathroomPhotos: filterPhotos(property.roomsAndBathroomPhotos, 'roomsAndBathroomPhotos'),
+        parkingPhotos: filterPhotos(property.parkingPhotos, 'parkingPhotos'),
+        amenitiesPhotos: filterPhotos(property.amenitiesPhotos, 'amenitiesPhotos'),
+        aadhaarProof: null, // Security: Never leakage in public view
+        panProof: null,
+        pgLicenceUrl: null,
+    };
 }
 
 export async function createProperty(data: FormData | any) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') {
-        throw new Error("Unauthorized");
-    }
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-    // 1. Unified Data Extraction (Supports both FormData and JSON)
     const isFormData = data instanceof FormData;
     const getVal = (key: string) => isFormData ? (data.get(key) as string) : (data[key] as string);
     const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
 
+    const userId = session.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");
@@ -129,20 +150,25 @@ export async function createProperty(data: FormData | any) {
     const licenseNumber = getVal("licenseNumber");
     const reraId = getVal("reraId");
     const businessName = getVal("businessName");
+    const termsAcceptedRaw = getVal("termsAccepted");
+    const termsAccepted = termsAcceptedRaw === "true" || termsAcceptedRaw === "on" || (termsAcceptedRaw as any) === true;
+    const feeTermsAcceptedRaw = getVal("feeTermsAccepted");
+    const feeTermsAccepted = feeTermsAcceptedRaw === "true" || feeTermsAcceptedRaw === "on" || (feeTermsAcceptedRaw as any) === true;
 
-    // Reject raw Files in legacy path
-    if (isFormData) {
-        for (const [key, value] of data.entries()) {
-            if (value instanceof File && value.size > 0) {
-                console.error(`🔴 Raw file detected in field "${key}". Submission rejected.`);
-                throw new Error("Photos must be pre-uploaded. Please try again.");
-            }
-        }
+    if (!name?.trim()) throw new Error("Property name is required");
+    if (!termsAccepted) throw new Error("You must accept general terms to list your property.");
+
+    // Industry Standard: Fetch platform settings server-side at the moment of creation to lock the fee
+    const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
+    const onboardingFee = settings?.feesEnabled ? settings.ownerOnboardingFeeFlat : 0;
+
+    if (onboardingFee > 0 && !feeTermsAccepted) {
+        throw new Error(`Acknowledgment of the ₹${onboardingFee} platform onboarding fee is mandatory.`);
     }
 
     const buildingPhotos = getAllVal("buildingPhotos");
-    const commonAreaPhotos = getAllVal("commonAreaPhotos");
     const roomsAndBathroomPhotos = getAllVal("roomsAndBathroomPhotos");
+    const commonAreaPhotos = getAllVal("commonAreaPhotos");
     const parkingPhotos = getAllVal("parkingPhotos");
     const amenitiesPhotos = getAllVal("amenitiesPhotos");
     const aadhaarProof = getAllVal("aadhaarProof");
@@ -150,568 +176,551 @@ export async function createProperty(data: FormData | any) {
     const pgLicenceUrl = getAllVal("pgLicenceUrl");
     const livePhotoUrl = getVal("livePhotoUrl");
 
-    const userId = (session as any).userId;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
+    const displayId = await generateSequentialId('PROPERTY');
 
-    // Validation
-    if (!name?.trim()) throw new Error("Property name is required");
-    const finalOwnerName = ownerName?.trim() || user?.name || "Owner";
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.create({
+            data: {
+                displayId,
+                applicationId: displayId,
+                name,
+                address,
+                city,
+                description,
+                propertyType: (propertyType as any) || "PG",
+                licenseNumber,
+                reraId,
+                businessName,
+                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - ₹${onboardingFee}]` : null,
+                ownerName: ownerName || user?.name || "Owner",
+                ownerId: user?.parentOwnerId || userId,
+                amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
+                images: JSON.stringify([...buildingPhotos, ...roomsAndBathroomPhotos]),
+                status: 'PENDING_VERIFICATION',
+                buildingPhotos: JSON.stringify(buildingPhotos),
+                commonAreaPhotos: JSON.stringify(commonAreaPhotos),
+                roomsAndBathroomPhotos: JSON.stringify(roomsAndBathroomPhotos),
+                parkingPhotos: JSON.stringify(parkingPhotos),
+                amenitiesPhotos: JSON.stringify(amenitiesPhotos),
+                aadhaarProof: aadhaarProof[0] || null,
+                panProof: panProof[0] || null,
+                pgLicenceUrl: pgLicenceUrl[0] || null,
+                termsAccepted: true,
+                termsAcceptedAt: new Date(),
+            } as any
+        });
 
-    // --- REFRESHABLE ID LOGIC ---
-    let retryCount = 0;
-    const maxRetries = 3;
+        const roomIdsList = parsedRooms.length > 0 
+            ? await generateSequentialId('ROOM', parsedRooms.length)
+            : [];
+            
+        // Pre-calculate total beds to fetch Bed IDs in one batch
+        const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
+        const bedIdsList = totalBedsNeeded > 0
+            ? await generateSequentialId('BED', totalBedsNeeded)
+            : [];
 
-    while (retryCount < maxRetries) {
-        try {
-            // 2. HIGH-SPEED ID GENERATION (O(1) Indexed Lookup)
-            // Refined: Sort by displayId to ensure we always get the actual maximum
-            const [lastProp, lastRoom, lastBed] = await Promise.all([
-                prisma.property.findFirst({ where: { displayId: { startsWith: 'REN-PROP-' } }, orderBy: { displayId: 'desc' }, select: { displayId: true } }),
-                prisma.room.findFirst({ where: { displayId: { startsWith: 'REN-ROOM-' } }, orderBy: { displayId: 'desc' }, select: { displayId: true } }),
-                prisma.bed.findFirst({ where: { displayId: { startsWith: 'REN-BED-' } }, orderBy: { displayId: 'desc' }, select: { displayId: true } })
-            ]);
+        let currentRoomIdx = 0;
+        let currentBedIdx = 0;
 
-            const getNextId = (lastId: string | null | undefined, prefix: string) => {
-                if (!lastId) return `${prefix}-0001`;
-                const parts = lastId.split('-');
-                const numStr = parts[parts.length - 1];
-                const num = parseInt(numStr);
-                return `${prefix}-${(num + 1).toString().padStart(4, '0')}`;
-            };
-
-            const displayId = getNextId(lastProp?.displayId, 'REN-PROP');
-            let nextRoomNum = lastRoom?.displayId ? parseInt(lastRoom.displayId.split('-').pop()!) : 0;
-            let nextBedNum = lastBed?.displayId ? parseInt(lastBed.displayId.split('-').pop()!) : 0;
-
-            const parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
-
-            // 3. Create property and all related rooms/beds in a single high-speed transaction
-            const property = await prisma.$transaction(async (tx) => {
-                const newProperty = await tx.property.create({
+        // Atomic Rooms & Beds
+        if (parsedRooms.length > 0) {
+            for (const r of parsedRooms) {
+                const roomDisplayId = roomIdsList[currentRoomIdx++];
+                const room = await tx.room.create({
                     data: {
-                        displayId,
-                        name,
-                        address,
-                        city,
-                        description,
-                        amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
-                        images: JSON.stringify([
-                            ...(buildingPhotos || []),
-                            ...(roomsAndBathroomPhotos || [])
-                        ]),
-                        ownerName: finalOwnerName,
-                        ownerId: user?.parentOwnerId || session.userId,
-                        status: "SUBMITTED",
-                        propertyType: propertyType || "PG",
-                        licenseNumber: licenseNumber || null,
-                        reraId: reraId || null,
-                        businessName: businessName || null,
-                        buildingPhotos: buildingPhotos ? JSON.stringify(buildingPhotos) : null,
-                        commonAreaPhotos: commonAreaPhotos ? JSON.stringify(commonAreaPhotos) : null,
-                        roomsAndBathroomPhotos: roomsAndBathroomPhotos ? JSON.stringify(roomsAndBathroomPhotos) : null,
-                        parkingPhotos: parkingPhotos ? JSON.stringify(parkingPhotos) : null,
-                        amenitiesPhotos: amenitiesPhotos ? JSON.stringify(amenitiesPhotos) : null,
-                        aadhaarProof: aadhaarProof ? JSON.stringify(aadhaarProof) : null,
-                        panProof: panProof ? JSON.stringify(panProof) : null,
-                        pgLicenceUrl: pgLicenceUrl ? JSON.stringify(pgLicenceUrl) : null,
-                        livePhotoUrl: livePhotoUrl || null,
+                        displayId: roomDisplayId,
+                        propertyId: property.id,
+                        roomNumber: r.roomNumber.toString(),
+                        type: r.type,
+                        price: parseFloat(r.price),
+                        availability: parseInt(r.availability),
+                        totalBeds: parseInt(r.availability),
+                        status: 'AVAILABLE'
                     }
                 });
 
-                if (parsedRooms.length > 0) {
-                    const roomsData: any[] = [];
-                    const bedsData: any[] = [];
-
-                    for (const r of parsedRooms) {
-                        nextRoomNum++;
-                        const roomId = randomUUID();
-                        const roomDisplayId = `REN-ROOM-${nextRoomNum.toString().padStart(4, '0')}`;
-                        
-                        roomsData.push({
-                            id: roomId,
-                            displayId: roomDisplayId,
-                            propertyId: newProperty.id,
-                            roomNumber: r.roomNumber.toString(),
-                            type: r.type,
-                            price: parseFloat(r.price),
-                            availability: parseInt(r.availability),
-                            totalBeds: parseInt(r.availability),
+                for (let i = 0; i < room.availability; i++) {
+                    const bedDisplayId = bedIdsList[currentBedIdx++];
+                    await tx.bed.create({
+                        data: {
+                            displayId: bedDisplayId,
+                            roomId: room.id,
+                            bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
                             status: 'AVAILABLE'
-                        });
-
-                        for (let i = 0; i < parseInt(r.availability); i++) {
-                            nextBedNum++;
-                            bedsData.push({
-                                id: randomUUID(),
-                                displayId: `REN-BED-${nextBedNum.toString().padStart(4, '0')}`,
-                                roomId: roomId,
-                                bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
-                                status: 'AVAILABLE'
-                            });
                         }
-                    }
-
-                    if (roomsData.length > 0) {
-                        await tx.room.createMany({ data: roomsData });
-                    }
-                    if (bedsData.length > 0) {
-                        await tx.bed.createMany({ data: bedsData });
-                    }
+                    });
                 }
+            }
+        }
 
-                return newProperty;
-            }, { timeout: 30000 });
-
-            // 4. Log Audit Event
-            logAuditEvent({
-                actorId: user?.id || session.userId,
-                actorRole: session.role as string,
-                actorName: user?.name || session.name || 'Owner',
+        await tx.auditLog.create({
+            data: {
+                actorId: userId,
+                actorRole: 'OWNER',
+                actorName: user?.name || 'Owner',
                 actionType: 'CREATE',
                 entityType: 'PROPERTY',
                 entityId: property.id,
-                entityName: property.name,
-                description: `Owner created a new property listing with ${parsedRooms.length} rooms: ${property.name}`,
-                newValue: property
-            });
-
-            // 5. Revalidate Dashboard Paths (Purge Stale Cache)
-            revalidatePath("/dashboard/owner/properties");
-            revalidatePath("/dashboard/owner/overview");
-
-            return property;
-        } catch (error: any) {
-            // Handle unique constraint conflict by retrying with fresh IDs
-            if (error.code === 'P2002' && retryCount < maxRetries - 1) {
-                console.warn(`[createProperty] Unique constraint conflict detected. Retrying ${retryCount + 1}/${maxRetries}...`);
-                retryCount++;
-                // Add a small jittered delay to prevent stampede
-                await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 150));
-                continue;
+                description: `Owner created property ${property.name}. Status: PENDING_VERIFICATION.`,
+                newValue: { status: 'PENDING_VERIFICATION', termsAccepted: true },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
             }
-            console.error("🔴 createProperty FAILED:", error);
-            throw error;
-        }
-    }
-    throw new Error("System is busy. Please try again in a few moments.");
+        });
+
+        return property;
+    });
+
+    revalidatePath('/dashboard/owner/properties');
+    return result;
 }
 
-/**
- * Update Property Information
- * Critical changes (Rent, Amenities, Images) trigger internal re-verification status
- */
-export async function updateProperty(propertyId: string, data: {
-    name?: string;
-    address?: string;
-    description?: string;
-    amenities?: string;
-    images?: string;
-    propertyType?: string;
-    genderType?: string;
-}) {
+export async function updateProperty(propertyId: string, data: any) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
-
-    const userId = session.userId;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const ownerId = user?.parentOwnerId || userId;
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
 
     const existing = await prisma.property.findUnique({ where: { id: propertyId } });
-    if (!existing || existing.ownerId !== ownerId) throw new Error("Property not found or unauthorized");
+    if (!existing || existing.ownerId !== effectiveOwnerId) throw new Error("Unauthorized");
 
-    // Logic: if price or images or amenities changed, we might want to flag for re-approval
-    // For now, any update sets status back to PENDING_APPROVAL if it was LIVE
     const needsReapproval = data.images || data.amenities || data.name;
-    const newStatus = (existing.status === 'LIVE' && needsReapproval) ? 'PENDING_APPROVAL' : existing.status;
+    const newStatus = (existing.status === 'APPROVED' && needsReapproval) ? 'PENDING_VERIFICATION' : existing.status;
 
-    const updated = await prisma.property.update({
-        where: { id: propertyId },
-        data: {
-            ...data,
-            status: newStatus as any
-        }
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.property.update({
+            where: { id: propertyId },
+            data: { ...data, status: newStatus }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session!.userId,
+                actorRole: 'OWNER',
+                actorName: session!.name || 'Owner',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Owner updated property. Status: ${newStatus}`,
+                newValue: { status: newStatus },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return updated;
     });
-
-    logAuditEvent({
-        actorId: userId,
-        actorRole: 'OWNER',
-        actorName: 'Owner',
-        actionType: 'UPDATE',
-        entityType: 'PROPERTY',
-        entityId: propertyId,
-        description: `Fields updated: ${Object.keys(data).join(', ')}. Status: ${newStatus}`,
-    });
-
-    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/search');
-
-    return updated;
 }
 
-export async function savePropertyDocuments(propertyId: string, docs: {
-    aadhaarProof?: string,
-    panProof?: string,
-    pgLicenceUrl?: string,
-    pgPhotoUrl?: string,
-    buildingPhotos?: string, // JSON array string
-    commonAreaPhotos?: string,
-    parkingPhoto?: string,
-    bathroomPhoto?: string,
-    livePhotoUrl?: string,
-    adminNotes?: string | null,
-}) {
+export async function savePropertyDocuments(propertyId: string, docs: any) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session) throw new Error("Unauthorized");
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+    
+    if (session.role === 'OWNER' && property.ownerId !== effectiveOwnerId) {
+        throw new Error("Unauthorized");
+    }
 
     const folder = `properties/docs/${propertyId}`;
     const uploadData: any = { ...docs };
 
-    // Handle single fields
     if (docs.aadhaarProof?.startsWith('data:')) uploadData.aadhaarProof = await uploadToCloudinary(docs.aadhaarProof, folder, true);
     if (docs.panProof?.startsWith('data:')) uploadData.panProof = await uploadToCloudinary(docs.panProof, folder, true);
     if (docs.pgLicenceUrl?.startsWith('data:')) uploadData.pgLicenceUrl = await uploadToCloudinary(docs.pgLicenceUrl, folder, true);
     if (docs.pgPhotoUrl?.startsWith('data:')) uploadData.pgPhotoUrl = await uploadToCloudinary(docs.pgPhotoUrl, folder);
-    if (docs.parkingPhoto?.startsWith('data:')) uploadData.parkingPhoto = await uploadToCloudinary(docs.parkingPhoto, folder);
-    if (docs.bathroomPhoto?.startsWith('data:')) uploadData.bathroomPhoto = await uploadToCloudinary(docs.bathroomPhoto, folder);
     if (docs.livePhotoUrl?.startsWith('data:')) uploadData.livePhotoUrl = await uploadToCloudinary(docs.livePhotoUrl, folder);
 
-    // Handle JSON array fields (robustly handle both strings and objects)
-    const processPhotos = async (jsonStr: string | undefined) => {
-        if (!jsonStr) return undefined;
-        try {
-            const photos = JSON.parse(jsonStr);
-            if (!Array.isArray(photos)) return jsonStr;
+    if (property.status === 'NEEDS_CORRECTION') uploadData.status = 'CORRECTED';
 
-            const toUpload: (string | File)[] = [];
-            const resultPhotos = [...photos];
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.property.update({
+            where: { id: propertyId },
+            data: uploadData
+        });
 
-            for (let i = 0; i < photos.length; i++) {
-                const p = photos[i];
-                const url = typeof p === 'object' ? p.url : p;
-                if (url && typeof url === 'string' && url.startsWith('data:')) {
-                    toUpload.push(url);
+        if (property.status === 'NEEDS_CORRECTION') {
+            await tx.auditLog.create({
+                data: {
+                    actorId: session!.userId,
+                    actorRole: 'OWNER',
+                    actorName: session!.name || 'Owner',
+                    actionType: 'UPDATE',
+                    entityType: 'PROPERTY',
+                    entityId: propertyId,
+                    description: `Owner submitted corrections. Status marked as CORRECTED for admin review.`,
+                    newValue: { status: 'CORRECTED' },
+                    ipAddress: 'internal',
+                    userAgent: 'server-action'
                 }
-            }
-
-            if (toUpload.length > 0) {
-                const uploadedUrls = await batchUploadToCloudinary(toUpload, folder);
-                let uploadIdx = 0;
-                for (let i = 0; i < resultPhotos.length; i++) {
-                    const p = resultPhotos[i];
-                    const url = typeof p === 'object' ? p.url : p;
-                    if (url && typeof url === 'string' && url.startsWith('data:')) {
-                        if (typeof p === 'object') {
-                            resultPhotos[i] = { ...p, url: uploadedUrls[uploadIdx++] };
-                        } else {
-                            resultPhotos[i] = uploadedUrls[uploadIdx++];
-                        }
-                    }
-                }
-            }
-            return JSON.stringify(resultPhotos);
-        } catch (e) {
-            console.error(`[savePropertyDocuments] Error processing photos:`, e);
-            return jsonStr; // Return original on partial failure
+            });
         }
-    };
 
-    if (docs.buildingPhotos) uploadData.buildingPhotos = await processPhotos(docs.buildingPhotos);
-    if (docs.commonAreaPhotos) uploadData.commonAreaPhotos = await processPhotos(docs.commonAreaPhotos);
-
-    await prisma.property.update({
-        where: { id: propertyId, ownerId: session.userId },
-        data: uploadData
+        return updated;
     });
-
-    return { success: true };
 }
 
-export async function addRoomToProperty(propertyId: string, roomData: { roomNumber: string, type: string, price: number, availability: number, photoUrl?: string }) {
+export async function addRoomToProperty(propertyId: string, roomData: any) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
 
-    // Verify ownership
-    const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: session.userId } });
-    if (!property) throw new Error("Property not found or unauthorized");
+    const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: effectiveOwnerId } });
+    if (!property) throw new Error("Unauthorized or Property not found");
 
     const roomDisplayId = await generateSequentialId('ROOM');
-    const room = await prisma.room.create({
-        data: {
-            ...roomData,
-            displayId: roomDisplayId,
-            propertyId,
-            totalBeds: roomData.availability,
-            status: 'AVAILABLE'
-        }
-    });
-
-    // Auto-generate beds
-    for (let i = 1; i <= room.availability; i++) {
-        const bedDisplayId = await generateSequentialId('BED');
-        await prisma.bed.create({
-            data: {
-                displayId: bedDisplayId,
-                roomId: room.id,
-                bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i)}`,
-                status: 'AVAILABLE'
-            }
+    const bedIdsList = await generateSequentialId('BED', roomData.availability);
+    
+    return prisma.$transaction(async (tx) => {
+        const room = await tx.room.create({
+            data: { ...roomData, displayId: roomDisplayId, propertyId, totalBeds: roomData.availability, status: 'AVAILABLE' }
         });
-    }
 
-    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
-    return room;
+        for (let i = 0; i < room.availability; i++) {
+            const bedDisplayId = bedIdsList[i];
+            await tx.bed.create({
+                data: { displayId: bedDisplayId, roomId: room.id, bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i + 1)}`, status: 'AVAILABLE' }
+            });
+        }
+        return room;
+    });
 }
 
-export async function editRoom(roomId: string, roomData: { roomNumber: string, type: string, price: number, availability: number, photoUrl?: string }) {
+export async function editRoom(roomId: string, roomData: any) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
 
     const room = await prisma.room.findUnique({
         where: { id: roomId },
         include: { property: true }
     });
 
-    if (!room || room.property.ownerId !== session.userId) {
+    if (!room || room.property.ownerId !== effectiveOwnerId) {
         throw new Error("Room not found or unauthorized");
     }
 
     const oldAvailability = room.availability;
-    const newAvailability = roomData.availability;
+    const newAvailability = parseInt(roomData.availability);
 
-    const updated = await prisma.room.update({
-        where: { id: roomId },
-        data: roomData
-    });
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.room.update({
+            where: { id: roomId },
+            data: {
+                ...roomData,
+                price: parseFloat(roomData.price),
+                availability: newAvailability,
+                totalBeds: newAvailability
+            }
+        });
 
-    // If availability increased, add more beds
-    if (newAvailability > oldAvailability) {
-        for (let i = oldAvailability + 1; i <= newAvailability; i++) {
-            const bedDisplayId = await generateSequentialId('BED');
-            await prisma.bed.create({
-                data: {
-                    displayId: bedDisplayId,
-                    roomId: roomId,
-                    bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + i)}`,
-                    status: 'AVAILABLE'
-                }
-            });
+        // If availability increased, add more beds
+        if (newAvailability > oldAvailability) {
+            const bedsToAdd = newAvailability - oldAvailability;
+            const bedIdsList = await generateSequentialId('BED', bedsToAdd);
+            
+            for (let i = 0; i < bedsToAdd; i++) {
+                const bedDisplayId = bedIdsList[i];
+                await tx.bed.create({
+                    data: {
+                        displayId: bedDisplayId,
+                        roomId: roomId,
+                        bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + oldAvailability + i + 1)}`,
+                        status: 'AVAILABLE'
+                    }
+                });
+            }
         }
-    }
 
-    revalidatePath(`/dashboard/owner/properties/${room.propertyId}`);
-    return updated;
+        await tx.auditLog.create({
+            data: {
+                actorId: session!.userId,
+                actorRole: 'OWNER',
+                actorName: session!.name || 'Owner',
+                actionType: 'UPDATE',
+                entityType: 'ROOM',
+                entityId: roomId,
+                description: `Owner updated room ${updated.roomNumber}. New Price: ${updated.price}, New Availability: ${updated.availability}`,
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return updated;
+    });
 }
+
 
 export async function deletePropertyDocument(propertyId: string, docType: string, index?: number) {
-    try {
-        const property = await prisma.property.findUnique({
-            where: { id: propertyId },
-            select: { [docType]: true, verifiedDocs: true } as Record<string, any>
-        });
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-        if (!property) return { success: false, error: "Property not found" };
+    let effectiveOwnerId = session.userId;
+    if (session.role === 'OWNER') {
+        effectiveOwnerId = await getEffectiveOwnerId(session);
+    }
 
-        const updateData: any = {};
-        const currentValue = (property as Record<string, any>)[docType];
-        let verifiedDocs = JSON.parse((property as Record<string, any>).verifiedDocs || "[]");
+    const property = await prisma.property.findUnique({ 
+        where: { id: propertyId }, 
+        select: { [docType]: true, verifiedDocs: true, ownerId: true } as any 
+    });
 
-        if (index !== undefined && currentValue) {
-            // Handle JSON array fields (buildingPhotos, commonAreaPhotos)
-            try {
-                const photos = JSON.parse(currentValue);
-                if (Array.isArray(photos)) {
-                    photos.splice(index, 1);
-                    updateData[docType] = photos.length > 0 ? JSON.stringify(photos) : null;
+    if (!property || (session.role === 'OWNER' && (property as any).ownerId !== effectiveOwnerId)) throw new Error("Unauthorized");
 
-                    // Remove verification for this specific slot
-                    const docKey = `${docType}-${index}`;
-                    verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey);
-                }
-            } catch (e) {
-                updateData[docType] = null;
+    const updateData: any = {};
+    const currentValue = (property as any)[docType] as string | null;
+    let verifiedDocs = JSON.parse((property as any).verifiedDocs || "[]");
+
+    if (index !== undefined && currentValue) {
+        try {
+            const photos = JSON.parse(currentValue);
+            if (Array.isArray(photos)) {
+                photos.splice(index, 1);
+                updateData[docType] = photos.length > 0 ? JSON.stringify(photos) : null;
+                const docKey = `${docType}-${index}`;
+                verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey);
             }
-        } else {
-            // Handle single string fields
-            updateData[docType] = null;
-            verifiedDocs = verifiedDocs.filter((key: string) => key !== docType);
-        }
+        } catch (e) { updateData[docType] = null; }
+    } else {
+        updateData[docType] = null;
+        verifiedDocs = verifiedDocs.filter((key: string) => key !== docType);
+    }
 
-        updateData.verifiedDocs = JSON.stringify(verifiedDocs);
-
-        await prisma.property.update({
-            where: { id: propertyId },
-            data: updateData
-        });
-
+    updateData.verifiedDocs = JSON.stringify(verifiedDocs);
+    try {
+        await prisma.property.update({ where: { id: propertyId }, data: updateData });
         return { success: true };
-    } catch (error) {
-        console.error("Delete Doc Error:", error);
-        return { success: false, error: "Failed to delete document" };
+    } catch (e: any) {
+        return { success: false, error: e.message };
     }
 }
+
+
 
 export async function togglePropertyDocumentVerification(propertyId: string, docKey: string, verified: boolean) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
+    const property = await prisma.property.findUnique({ where: { id: propertyId }, select: { verifiedDocs: true } });
+    if (!property) throw new Error("Not found");
+
+    let verifiedDocs = JSON.parse(property.verifiedDocs || "[]");
+    if (verified) { if (!verifiedDocs.includes(docKey)) verifiedDocs.push(docKey); }
+    else { verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey); }
+
     try {
-        const property = await prisma.property.findUnique({
-            where: { id: propertyId },
-            select: { verifiedDocs: true }
-        });
-
-        if (!property) return { success: false, error: "Property not found" };
-
-        let verifiedDocs = [];
-        try {
-            verifiedDocs = JSON.parse(property.verifiedDocs || "[]");
-        } catch (e) {
-            verifiedDocs = [];
-        }
-
-        if (verified) {
-            if (!verifiedDocs.includes(docKey)) {
-                verifiedDocs.push(docKey);
-            }
-        } else {
-            verifiedDocs = verifiedDocs.filter((key: string) => key !== docKey);
-        }
-
-        await prisma.property.update({
-            where: { id: propertyId },
-            data: { verifiedDocs: JSON.stringify(verifiedDocs) }
-        });
-
-        // Audit Logging
-        logAuditEvent({
-            actorId: session.userId,
-            actorRole: session.role as string,
-            actorName: session.name || 'Admin',
-            actionType: verified ? 'APPROVE' : 'REJECT',
-            entityType: 'PROPERTY',
-            entityId: propertyId,
-            description: `${verified ? 'Verified' : 'Unverified'} document: ${docKey}`,
-        });
-
+        await prisma.property.update({ where: { id: propertyId }, data: { verifiedDocs: JSON.stringify(verifiedDocs) } });
         return { success: true };
     } catch (e: any) {
-        const error = e as Error;
-        return { success: false, error: error.message };
+        return { success: false, error: e.message };
     }
 }
+
+
 
 export async function requestDocumentReupload(propertyId: string, docType: string, note: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    try {
-        const property = await prisma.property.findUnique({
-            where: { id: propertyId },
-            select: { adminNotes: true }
-        });
+    const property = await prisma.property.findUnique({
+        where: { id: propertyId },
+        select: { adminNotes: true, name: true, ownerId: true }
+    });
 
-        if (!property) return { success: false, error: "Property not found" };
+    if (!property) throw new Error("Property not found");
 
-        // Append reupload request to admin notes using a structured tag
-        // If docType already includes an index (e.g. "buildingPhotos-0"), it works directly
-        const reuploadTag = `[REUPLOAD:${docType}] ${note}`;
-        const newNotes = property.adminNotes
-            ? `${property.adminNotes}\n${reuploadTag}`
-            : reuploadTag;
+    const reuploadTag = `[REUPLOAD:${docType}] ${note}`;
+    const newNotes = property.adminNotes
+        ? `${property.adminNotes}\n${reuploadTag}`
+        : reuploadTag;
 
-        await prisma.property.update({
+    return prisma.$transaction(async (tx) => {
+        const result = await tx.property.update({
             where: { id: propertyId },
             data: {
                 adminNotes: newNotes,
-                status: 'PENDING_APPROVAL' // Set to pending to notify owner without rejecting the whole property
+                status: 'NEEDS_CORRECTION'
             }
         });
 
-        // Log Audit Event
-        logAuditEvent({
-            actorId: session.userId, // Admin ID from session
-            actorRole: session.role as string,
-            actorName: session.name || 'Admin',
-            actionType: 'UPDATE',
-            entityType: 'PROPERTY',
-            entityId: propertyId,
-            description: `Admin requested a reupload for ${docType}. Reason: ${note}`,
-            newValue: { docType, note }
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_PENDING",
+                message: `Action Required: Re-upload requested for ${docType} on property ${property.name}. Reason: ${note}`
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin requested a document re-upload for ${docType}. Reason: ${note}`,
+                newValue: { status: 'NEEDS_CORRECTION', docType, note },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return result;
+    });
+    return { success: true };
+}
+
+
+
+export async function payOnboardingFee(propertyId: string, method: string) {
+    const session = await getSession();
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+    
+    if (property.ownerId !== effectiveOwnerId) throw new Error("Unauthorized");
+
+    if (property.status !== 'APPROVED_PENDING_PAYMENT' && property.status !== 'VERIFIED_SUCCESSFULLY') {
+        throw new Error("Invalid state for payment");
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const updated = await (tx.property as any).update({ 
+            where: { id: propertyId }, 
+            data: { 
+                status: 'APPROVED_PAYMENT_VERIFIED',
+                onboardingPaymentMethod: method,
+                onboardingPaidAt: new Date()
+            } 
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session!.userId,
+                actorRole: 'OWNER',
+                actorName: session!.name || 'Owner',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Owner paid onboarding fee via ${method}. Status: APPROVED_PAYMENT_VERIFIED.`,
+                newValue: { status: 'APPROVED_PAYMENT_VERIFIED', method },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        // Notify Admin
+        const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
+        if (admin) {
+            await tx.notification.create({
+                data: {
+                    userId: admin.id,
+                    type: "PROPERTY_PENDING",
+                    message: `Payment Verified: Property "${property.name}" has paid via ${method}. Awaiting final activation.`,
+                    targetRole: "ADMIN"
+                }
+            });
+        }
+
+        return { success: true, updated };
+    });
+}
+
+export async function activateProperty(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+    
+    if (property.status !== 'APPROVED_PAYMENT_VERIFIED') throw new Error("Invalid state: Payment not verified yet");
+
+    return prisma.$transaction(async (tx) => {
+        await tx.property.update({ 
+            where: { id: propertyId }, 
+            data: { status: 'APPROVED', isVerified: true } 
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'APPROVE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin activated property "${property.name}". Status: APPROVED (Live).`,
+                newValue: { status: 'APPROVED' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        // Notify Owner
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_LIVE",
+                message: `Congratulations! Your property "${property.name}" is now LIVE on RentPe.`,
+                targetRole: "OWNER"
+            }
         });
 
         return { success: true };
-    } catch (error) {
-        console.error("Request Reupload Error:", error);
-        return { success: false, error: "Failed to request reupload" };
-    }
-}
-
-// ── P8: Owner Onboarding Fee Payment Simulation ──
-
-export async function payOnboardingFee(propertyId: string) {
-    const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
-
-    const property = await prisma.property.findUnique({
-        where: { id: propertyId, ownerId: session.userId },
-        select: { status: true, name: true }
     });
-
-    if (!property || property.status !== 'PAYMENT_PENDING') {
-        throw new Error("Property is not awaiting payment.");
-    }
-
-    // 1. Mark as LIVE
-    await prisma.property.update({
-        where: { id: propertyId },
-        data: { status: 'LIVE' }
-    });
-
-    // 2. Add to Audit Log
-    logAuditEvent({
-        actorId: session.userId,
-        actorRole: session.role as string,
-        actorName: session.name || 'Owner',
-        actionType: 'UPDATE',
-        entityType: 'PROPERTY',
-        entityId: propertyId,
-        description: `Owner paid onboarding fee for property ${property.name}. Status is now LIVE.`,
-    });
-
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/search');
-
-    return { success: true };
 }
 
 export async function deleteProperty(propertyId: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
 
-    const property = await prisma.property.findUnique({ where: { id: propertyId } });
-    if (!property) throw new Error("Property not found");
-
-    if (session.role === 'OWNER' && property.ownerId !== session.userId) throw new Error("Unauthorized");
-
-    // Soft delete: Change status to INACTIVE
-    await prisma.property.update({
+    const property = await prisma.property.findUnique({
         where: { id: propertyId },
-        data: { status: 'INACTIVE' }
+        include: { rooms: true }
     });
 
-    logAuditEvent({
-        actorId: session.userId,
-        actorRole: session.role as string,
-        actorName: session.name || 'User',
-        actionType: 'DELETE',
-        entityType: 'PROPERTY',
-        entityId: propertyId,
-        entityName: property.name,
-        description: `Property status set to INACTIVE (Soft Delete): ${property.name}`,
-    });
+    if (!property) throw new Error("Property not found");
+    if (property.ownerId !== effectiveOwnerId) throw new Error("Unauthorized");
 
-    revalidatePath('/dashboard/owner/properties');
-    revalidatePath('/dashboard/admin/properties');
-    return { success: true };
+    // Safety: Only allow deletion if property is NOT active/approved
+    const deletableStatuses = ['PENDING_VERIFICATION', 'NEEDS_CORRECTION', 'REJECTED', 'APPROVED_PENDING_PAYMENT', 'VERIFIED_SUCCESSFULLY', 'CORRECTED', 'UNDER_REVIEW', 'VERIFYING', 'VERIFYING_DOCUMENTS'];
+    if (!deletableStatuses.includes(property.status)) {
+        throw new Error("This property application cannot be cancelled at this stage. Please contact support.");
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const roomIds = property.rooms.map(r => r.id);
+        
+        // 1. Delete related records
+        if (roomIds.length > 0) {
+            await tx.bed.deleteMany({ where: { roomId: { in: roomIds } } });
+            await tx.room.deleteMany({ where: { propertyId } });
+        }
+        await tx.foodMenu.deleteMany({ where: { propertyId } });
+        await tx.employeePropertyAssignment.deleteMany({ where: { propertyId } });
+        await tx.savedProperty.deleteMany({ where: { propertyId } });
+        await tx.review.deleteMany({ where: { propertyId } });
+
+        // 2. Finally delete the property
+        await tx.property.delete({ where: { id: propertyId } });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'OWNER',
+                actorName: session.name || 'Owner',
+                actionType: 'DELETE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Owner cancelled property application for "${property.name}". Status was ${property.status}.`,
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return { success: true };
+    });
 }

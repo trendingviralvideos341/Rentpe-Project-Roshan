@@ -135,6 +135,8 @@ async function checkRapidCancellations(userId: string) {
     return null;
 }
 
+import { FraudAlert } from "@/types/models";
+
 /**
  * Internal: create a fraud alert, skip if duplicate OPEN alert exists
  */
@@ -146,14 +148,22 @@ async function createFraudAlert(data: {
     description: string;
     metadata: any;
 }) {
-    // Don't spam duplicate alerts
-    const existing = await (prisma as any).fraudAlert.findFirst({
+    // Don't spam duplicate alerts (Prisma 5+ handles this better, but we check manually for status: OPEN)
+    const existing = await prisma.fraudAlert.findFirst({
         where: { type: data.type, targetId: data.targetId, status: 'OPEN' }
     });
     if (existing) return existing;
 
-    return (prisma as any).fraudAlert.create({
-        data: { ...data, metadata: JSON.stringify(data.metadata) }
+    return await prisma.fraudAlert.create({
+        data: { 
+            type: data.type,
+            severity: data.severity,
+            targetId: data.targetId,
+            targetType: data.targetType,
+            description: data.description,
+            metadata: JSON.stringify(data.metadata),
+            user: { connect: { id: data.targetId } } // Assuming targetId is userId for USER type alerts
+        }
     });
 }
 
@@ -163,7 +173,7 @@ export async function getFraudAlerts(status?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return (prisma as any).fraudAlert.findMany({
+    return await prisma.fraudAlert.findMany({
         where: status ? { status } : {},
         orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }]
     });
@@ -173,9 +183,11 @@ export async function investigateFraudAlert(alertId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return (prisma as any).fraudAlert.update({
+    const userId = session.userId;
+
+    return await prisma.fraudAlert.update({
         where: { id: alertId },
-        data: { status: 'UNDER_INVESTIGATION', investigatedBy: (session as any).userId }
+        data: { status: 'UNDER_INVESTIGATION', investigatedBy: userId }
     });
 }
 
@@ -183,9 +195,11 @@ export async function resolveFraudAlert(alertId: string, resolution: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return (prisma as any).fraudAlert.update({
+    const userId = session.userId;
+
+    return await prisma.fraudAlert.update({
         where: { id: alertId },
-        data: { status: 'RESOLVED', resolution, investigatedBy: (session as any).userId }
+        data: { status: 'RESOLVED', resolution, investigatedBy: userId }
     });
 }
 
@@ -193,7 +207,7 @@ export async function dismissFraudAlert(alertId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return (prisma as any).fraudAlert.update({
+    return await prisma.fraudAlert.update({
         where: { id: alertId },
         data: { status: 'DISMISSED', resolution: reason }
     });

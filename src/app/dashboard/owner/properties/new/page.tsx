@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2 } from "lucide-react";
+import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
 import { getCloudinarySignature } from "@/actions/uploads";
+import { getPlatformSettings } from "@/actions/platform";
 import { validateName, validatePhone, validateEmail, normalizePhone } from "@/lib/validators";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useResumableUpload } from "@/hooks/useResumableUpload";
@@ -60,6 +61,8 @@ export default function AddPropertyPage() {
     const [amenities, setAmenities] = useState<string[]>([]);
     const [customAmenityInput, setCustomAmenityInput] = useState("");
     const [showCustomAmenity, setShowCustomAmenity] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [feeTermsAccepted, setFeeTermsAccepted] = useState(false);
     
     const amenityOptions = ["WiFi", "AC", "Laundry", "Power Backup", "CCTV", "Biometric", "Food", "Cleaning", "Parking", "Gym", "Hot Water", "TV"];
     
@@ -118,9 +121,15 @@ export default function AddPropertyPage() {
 
     const [showRecoveryAlert, setShowRecoveryAlert] = useState(false);
 
+    const [onboardingFee, setOnboardingFee] = useState<number | null>(null);
+
     useEffect(() => {
-        const loadProfile = async () => {
-            const user = await getCurrentUser();
+        const loadProfileAndSettings = async () => {
+            const [user, settings] = await Promise.all([
+                getCurrentUser(),
+                getPlatformSettings().catch(() => null)
+            ]);
+
             if (user) {
                 setOwnerName(user.name || "");
                 setOwnerEmail(user.email || "");
@@ -128,7 +137,7 @@ export default function AddPropertyPage() {
                 if (p && !p.startsWith("+91")) p = "+91" + p;
                 setPhone(p);
                 
-                // Clear errors for auto-filled fields upon success
+                // Clear any existing errors for these fields
                 setErrors(prev => {
                     const next = { ...prev };
                     delete next.ownerName;
@@ -137,8 +146,13 @@ export default function AddPropertyPage() {
                     return next;
                 });
             }
+
+            if (settings) {
+                // Industry Standard: Default to settings but we'll re-fetch on server for security
+                setOnboardingFee(settings.ownerOnboardingFeeFlat);
+            }
         };
-        loadProfile();
+        loadProfileAndSettings();
     }, []);
 
     // OPTIMISTIC WARM-UP: Pre-fetch signature so it's ready before user selects photos
@@ -152,8 +166,10 @@ export default function AddPropertyPage() {
                     timestamp
                 });
                 setSignatureCache({ data, expiry: now + 45 * 60 * 1000 });
+                return data;
             } catch (err) {
                 // Silently fail, it's just a warm-ups
+                return null;
             }
         };
         warmUpSignature();
@@ -304,7 +320,8 @@ export default function AddPropertyPage() {
         const signaturePromise = getOrFetchSignature();
 
         await Promise.all(newEntries.map(async (entry) => {
-            const toastId = toast.loading(`Uploading ${entry.file.name}...`);
+            // SHOW OPTIMIZING STATE FIRST
+            const toastId = toast.loading(`Optimizing ${entry.file.name}...`);
             
             try {
                 // Compression and signature happen in parallel across files
@@ -313,6 +330,9 @@ export default function AddPropertyPage() {
                     signaturePromise
                 ]);
                 
+                // Update toast for upload phase
+                toast.loading(`Uploading ${entry.file.name}...`, { id: toastId });
+
                 // Direct high-speed upload using pre-fetched/cached signature
                 const result = await uploadFile(optimizedFile, { signatureData: sigData }) as { url: string };
                 
@@ -427,7 +447,13 @@ export default function AddPropertyPage() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg border ${error ? "bg-red-50 border-red-100" : "bg-purple-50 border-purple-100"}`}>
-                            <UploadCloud className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />
+                            {category === 'buildingPhotos' && <Building2 className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
+                            {category === 'commonAreaPhotos' && <Users className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
+                            {category === 'roomsAndBathroomPhotos' && <BedDouble className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
+                            {category === 'parkingPhotos' && <ParkingCircle className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
+                            {category === 'amenitiesPhotos' && <ImageIcon className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
+                            {['aadhaarProof', 'panProof', 'pgLicenceUrl'].includes(category) && <ShieldCheck className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
+                            {category === 'livePhotoUrl' && <Camera className={`h-4 w-4 ${error ? "text-red-600" : "text-purple-600"}`} />}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-black text-slate-800 leading-tight truncate">{label}</p>
@@ -531,6 +557,10 @@ export default function AddPropertyPage() {
         if (!gender) errs.gender = "Gender type is required";
         if (amenities.length === 0) errs.amenities = "Select at least one amenity";
         if (rooms.length === 0) errs.rooms = "Add at least one room";
+        if (!termsAccepted) errs.termsAccepted = "You must accept terms to list your property";
+        if (onboardingFee !== null && onboardingFee > 0 && !feeTermsAccepted) {
+            errs.feeTermsAccepted = "Fee acknowledgment is required.";
+        }
 
         // Conditional Mandatory for PG/Hostel Licence
         if ((propertyType === "PG" || propertyType === "Hostel") && !licenseNumber.trim()) {
@@ -543,9 +573,10 @@ export default function AddPropertyPage() {
         }
 
         // Validate mandatory documents with specific slot counts
-        if (docs.buildingPhotos.length < 4) errs.buildingPhotos = "4 Building photos are mandatory";
-        if (docs.commonAreaPhotos.length < 2) errs.commonAreaPhotos = "2 Common area photos are mandatory";
-        if (docs.roomsAndBathroomPhotos.length < 4) errs.roomsAndBathroomPhotos = "4 Rooms & Bathroom photos are mandatory";
+        // Photos are now optional per user request
+        // if (docs.buildingPhotos.length < 4) errs.buildingPhotos = "4 Building photos are mandatory";
+        // if (docs.commonAreaPhotos.length < 2) errs.commonAreaPhotos = "2 Common area photos are mandatory";
+        // if (docs.roomsAndBathroomPhotos.length < 4) errs.roomsAndBathroomPhotos = "4 Rooms & Bathroom photos are mandatory";
         
         // Legal docs (Mandatory)
         if (docs.aadhaarProof.length < 2) errs.aadhaarProof = "Both Aadhaar Front & Back are mandatory";
@@ -618,6 +649,8 @@ export default function AddPropertyPage() {
                 licenseNumber,
                 reraId,
                 rooms,
+                termsAccepted,
+                feeTermsAccepted,
                 ...uploadedUrls,
                 livePhotoUrl: docs.livePhotoUrl[0]?.cloudUrl // Single URL for live photo
             };
@@ -721,10 +754,10 @@ export default function AddPropertyPage() {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Basic Info */}
-                <Card className="border border-purple-100 shadow-xl overflow-hidden">
+                <Card className="border-[7px] border-purple-200 shadow-2xl shadow-purple-900/10 overflow-hidden">
                     <CardHeader className="bg-slate-50/50 p-6 border-b">
-                        <CardTitle className="text-xl font-black text-slate-900 flex items-center gap-3">
-                            <Plus className="h-6 w-6 text-purple-600" /> Basic Details
+                        <CardTitle className="text-xl font-black text-purple-700 flex items-center gap-3">
+                            <Plus className="h-6 w-6" /> Basic Details
                         </CardTitle>
                         <CardDescription className="text-sm text-slate-500 mt-1 font-medium italic">Standardized property identification details.</CardDescription>
                     </CardHeader>
@@ -740,6 +773,7 @@ export default function AddPropertyPage() {
                                         key={type}
                                         type="button"
                                         onClick={() => setPropertyType(type as any)}
+                                        suppressHydrationWarning
                                         className={`p-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all flex flex-col items-center gap-2 ${
                                             propertyType === type 
                                             ? "bg-purple-600 border-purple-600 text-white shadow-lg scale-[1.02]" 
@@ -756,6 +790,7 @@ export default function AddPropertyPage() {
                                         placeholder="Specify property type (e.g. Guest House, Villa...)"
                                         value={otherPropertyType}
                                         onChange={(e) => setOtherPropertyType(e.target.value)}
+                                        suppressHydrationWarning
                                         className="h-10 text-[12px] font-bold border-2 border-purple-200 focus:border-purple-400 bg-white"
                                     />
                                     {errors.propertyType && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase italic">{errors.propertyType}</p>}
@@ -772,14 +807,14 @@ export default function AddPropertyPage() {
                                         setName(v);
                                         const err = v.length > 0 ? validateName(v) : "";
                                         setFieldErr("name", err);
-                                    }} className={inputErr("name")} />
+                                    }} className={inputErr("name")} suppressHydrationWarning />
                                 {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name}</p>}
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">Building Owner Name <span className="text-red-500">*</span> <span className="text-[10px] text-muted-foreground">(letters only)</span></label>
                                 <Input placeholder="e.g. Rajesh Kumar" value={ownerName}
                                     readOnly={true}
-                                    className={`${inputErr("ownerName")} ${readOnlyCls}`} />
+                                    className={`${inputErr("ownerName")} ${readOnlyCls}`} suppressHydrationWarning />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered profile name. Contact Rentpe Support Team to update.</p>
                                 {errors.ownerName && <p className="text-xs text-red-600 font-semibold">{errors.ownerName}</p>}
                             </div>
@@ -789,21 +824,21 @@ export default function AddPropertyPage() {
                                 <label className="text-sm font-medium">Business / Entity Name <span className="text-[10px] text-muted-foreground">(Optional)</span></label>
                                 <Input placeholder="e.g. SkyLiv Properties Pvt Ltd" value={businessName}
                                     onChange={e => setBusinessName(e.target.value)}
-                                    className="h-10 text-sm font-medium" />
+                                    className="h-10 text-sm font-medium" suppressHydrationWarning />
                                 <p className="text-[10px] text-slate-400 font-medium italic uppercase tracking-tighter">Enter legal business name if applicable.</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">Contact Email</label>
                                 <Input placeholder="owner@example.com" value={ownerEmail}
                                     readOnly={true}
-                                    className={`${readOnlyCls}`} />
+                                    className={`${readOnlyCls}`} suppressHydrationWarning />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to registered account email.</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">Contact Phone <span className="text-red-500">*</span></label>
                                 <Input placeholder="e.g. +919876543210" value={phone}
                                     readOnly={true}
-                                    maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} />
+                                    maxLength={13} className={`${inputErr("phone")} ${readOnlyCls}`} suppressHydrationWarning />
                                 <p className="text-[10px] text-blue-600 font-medium italic">Locked to verified mobile number.</p>
                                 {errors.phone && <p className="text-xs text-red-600 font-semibold">{errors.phone}</p>}
                             </div>
@@ -820,6 +855,7 @@ export default function AddPropertyPage() {
                                     value={licenseNumber} 
                                     onChange={e => setLicenseNumber(e.target.value)} 
                                     className={inputErr("licenseNumber")}
+                                    suppressHydrationWarning
                                 />
                                 {errors.licenseNumber && <p className="text-xs text-red-600 font-semibold">{errors.licenseNumber}</p>}
                             </div>
@@ -832,6 +868,7 @@ export default function AddPropertyPage() {
                                     placeholder="e.g. RERA-KA-2024-001" 
                                     value={reraId} 
                                     onChange={e => setReraId(e.target.value)} 
+                                    suppressHydrationWarning
                                 />
                             </div>
                         </div>
@@ -851,16 +888,16 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Address with Pincode Auto-Fetch */}
-                <Card>
+                <Card className="border-[7px] border-blue-200 shadow-2xl shadow-blue-900/10">
                     <CardHeader>
-                        <CardTitle>Property Address</CardTitle>
+                        <CardTitle className="text-xl font-black text-blue-700">Property Address</CardTitle>
                         <CardDescription>Enter PIN code to auto-fill city and state.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Street / Locality / Landmark <span className="text-red-500">*</span></label>
                             <Input placeholder="e.g. 12-B, MG Road, Near City Mall" value={address}
-                                onChange={e => setAddress(e.target.value)} className={inputErr("address")} />
+                                onChange={e => setAddress(e.target.value)} className={inputErr("address")} suppressHydrationWarning />
                             {errors.address && <p className="text-xs text-red-500">{errors.address}</p>}
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -871,7 +908,7 @@ export default function AddPropertyPage() {
                                 </label>
                                 <Input placeholder="560001" maxLength={6} value={pincode}
                                     className={`font-mono tracking-wider ${inputErr("pincode")} ${pinError ? "border-red-500" : ""}`}
-                                    onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+                                    onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} suppressHydrationWarning />
                                 {pinError && <p className="text-[10px] text-red-500">{pinError}</p>}
                                 {errors.pincode && <p className="text-xs text-red-500">{errors.pincode}</p>}
                             </div>
@@ -879,27 +916,27 @@ export default function AddPropertyPage() {
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium">Post Office <span className="text-red-500">*</span></label>
                                     <select value={postOffice} onChange={e => setPostOffice(e.target.value)}
-                                        className="w-full h-10 border rounded-md px-3 py-2 text-sm border-input bg-blue-50">
+                                        className="w-full h-10 border rounded-md px-3 py-2 text-sm border-input bg-blue-50" suppressHydrationWarning>
                                         {postOffices.map(po => <option key={po.Name} value={po.Name}>{po.Name}</option>)}
                                     </select>
                                 </div>
                             ) : (
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium">Post Office <span className="text-red-500">*</span></label>
-                                    <Input value={postOffice} onChange={e => setPostOffice(e.target.value)} placeholder="Auto from PIN or type manually" />
+                                    <Input value={postOffice} onChange={e => setPostOffice(e.target.value)} placeholder="Auto from PIN or type manually" suppressHydrationWarning />
                                 </div>
                             )}
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">City <span className="text-red-500">*</span>
                                     {city && postOffices.length > 0 && <span className="text-green-600 text-[10px] ml-1">✓ Auto</span>}
                                 </label>
-                                <Input className={inputErr("city")} value={city} onChange={e => setCity(e.target.value)} placeholder="Auto from PIN or type manually" />
+                                <Input className={inputErr("city")} value={city} onChange={e => setCity(e.target.value)} placeholder="Auto from PIN or type manually" suppressHydrationWarning />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium">State <span className="text-red-500">*</span>
                                     {state && postOffices.length > 0 && <span className="text-green-600 text-[10px] ml-1">✓ Auto</span>}
                                 </label>
-                                <Input className={inputErr("state")} value={state} onChange={e => setState(e.target.value)} placeholder="Auto from PIN or type manually" />
+                                <Input className={inputErr("state")} value={state} onChange={e => setState(e.target.value)} placeholder="Auto from PIN or type manually" suppressHydrationWarning />
                             </div>
                         </div>
                         {city && state && pincode.length === 6 && (
@@ -909,9 +946,9 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Property Details */}
-                <Card>
+                <Card className="border-[7px] border-orange-200 shadow-2xl shadow-orange-900/10">
                     <CardHeader>
-                        <CardTitle>Property Details</CardTitle>
+                        <CardTitle className="text-xl font-black text-orange-700">Property Details</CardTitle>
                         <CardDescription>Gender type, description, and amenities.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -920,7 +957,12 @@ export default function AddPropertyPage() {
                             <div className="flex gap-3">
                                 {["Boys", "Girls", "Co-ed"].map(g => (
                                     <button key={g} type="button" onClick={() => setGender(g as any)}
-                                        className={`px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all ${gender === g ? "bg-purple-600 text-white border-purple-600" : "border-gray-300 text-gray-600 hover:border-purple-400"} ${errors.gender ? "border-red-400" : ""}`}>
+                                        suppressHydrationWarning
+                                        className={`px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all ${
+                                            gender === g 
+                                            ? "bg-purple-600 border-purple-600 text-white shadow-md active:scale-95" 
+                                            : "bg-white border-slate-200 text-slate-500 hover:border-purple-300 active:scale-95"
+                                        } ${errors.gender ? "border-red-400" : ""}`}>
                                         {g === "Boys" ? "🧑 Boys" : g === "Girls" ? "👩 Girls" : "👥 Co-ed"}
                                     </button>
                                 ))}
@@ -932,29 +974,32 @@ export default function AddPropertyPage() {
                             <textarea
                                 className={`w-full border rounded-md p-3 text-sm min-h-[100px] ${inputErr("description")}`}
                                 placeholder="Describe your property — nearby landmarks, rules, USPs etc."
-                                value={description} onChange={e => setDescription(e.target.value)} />
+                                value={description} 
+                                onChange={e => setDescription(e.target.value)} 
+                                suppressHydrationWarning 
+                            />
                             {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Amenities */}
-                <Card>
+                <Card className="border-[7px] border-indigo-200 shadow-2xl shadow-indigo-900/10">
                     <CardHeader>
-                        <CardTitle>Amenities <span className="text-red-500">*</span></CardTitle>
+                        <CardTitle className="text-xl font-black text-indigo-700">Amenities <span className="text-red-500">*</span></CardTitle>
                         <CardDescription>Select what your property offers. (At least 1 required)</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${errors.amenities ? "border-2 border-red-300 rounded-lg p-2" : ""}`}>
                             {amenityOptions.map((item) => (
                                 <label key={item} className={`flex items-center space-x-2 border p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${amenities.includes(item) ? "bg-primary/10 border-primary" : ""}`}>
-                                    <input type="checkbox" className="w-4 h-4 text-primary" checked={amenities.includes(item)} onChange={() => toggleAmenity(item)} />
+                                    <input type="checkbox" className="w-4 h-4 text-primary" checked={amenities.includes(item)} onChange={() => toggleAmenity(item)} suppressHydrationWarning />
                                     <span className="text-sm">{item}</span>
                                 </label>
                             ))}
                             {/* Other Checkbox */}
                             <label className={`flex items-center space-x-2 border p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${showCustomAmenity ? "bg-primary/10 border-primary" : ""}`}>
-                                <input type="checkbox" className="w-4 h-4 text-primary" checked={showCustomAmenity} onChange={() => setShowCustomAmenity(!showCustomAmenity)} />
+                                <input type="checkbox" className="w-4 h-4 text-primary" checked={showCustomAmenity} onChange={() => setShowCustomAmenity(!showCustomAmenity)} suppressHydrationWarning />
                                 <span className="text-sm font-bold">Other (Specify)</span>
                             </label>
                         </div>
@@ -974,13 +1019,14 @@ export default function AddPropertyPage() {
                                             }
                                         }}
                                         className="h-10 text-sm font-bold"
+                                        suppressHydrationWarning
                                     />
                                     <datalist id="amenity-suggestions">
                                         {suggestedAmenities.map(a => (
                                             <option key={a} value={a} />
                                         ))}
                                     </datalist>
-                                    <Button type="button" onClick={addCustomAmenity} className="bg-purple-600 hover:bg-purple-700 h-10 px-6 font-black">
+                                    <Button type="button" onClick={addCustomAmenity} className="bg-purple-600 hover:bg-purple-700 h-10 px-6 font-black" suppressHydrationWarning>
                                         ADD
                                     </Button>
                                 </div>
@@ -994,7 +1040,7 @@ export default function AddPropertyPage() {
                                 {amenities.filter(a => !amenityOptions.includes(a)).map(a => (
                                     <div key={a} className="flex items-center gap-2 px-3 py-1.5 bg-white border-2 border-purple-100 rounded-full shadow-sm animate-in zoom-in-95">
                                         <span className="text-sm font-bold text-slate-700">{a}</span>
-                                        <button type="button" onClick={() => toggleAmenity(a)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                        <button type="button" onClick={() => toggleAmenity(a)} className="text-slate-400 hover:text-red-500 transition-colors" suppressHydrationWarning>
                                             <X className="h-3 w-3" />
                                         </button>
                                     </div>
@@ -1006,9 +1052,9 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Rooms */}
-                <Card>
+                <Card className="border-[7px] border-rose-200 shadow-2xl shadow-rose-900/10">
                     <CardHeader>
-                        <CardTitle>Rooms <span className="text-red-500">*</span></CardTitle>
+                        <CardTitle className="text-xl font-black text-rose-700">Rooms <span className="text-red-500">*</span></CardTitle>
                         <CardDescription>Add rooms with pricing and availability. (At least 1 room required)</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -1019,33 +1065,37 @@ export default function AddPropertyPage() {
                         )}
                         {rooms.map((room, i) => (
                             <div key={i} className="border rounded-lg p-4 space-y-3 relative bg-muted/20">
-                                <button type="button" onClick={() => removeRoom(i)} className="absolute top-2 right-2 text-red-400 hover:text-red-600">
+                                <button type="button" onClick={() => removeRoom(i)} className="absolute top-2 right-2 text-red-400 hover:text-red-600" suppressHydrationWarning>
                                     <X className="h-4 w-4" />
                                 </button>
-                                <p className="text-sm font-bold text-purple-700">Room #{i + 1}</p>
+                                <p className="text-sm font-bold text-rose-700">Room #{i + 1}</p>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Room Number <span className="text-red-500">*</span></label>
-                                        <Input className={`mt-1 ${errors[`room_${i}_number`] ? "border-red-500" : ""}`} placeholder="e.g. 101" value={room.roomNumber} onChange={e => updateRoom(i, "roomNumber", e.target.value)} />
+                                        <Input className={`mt-1 ${errors[`room_${i}_number`] ? "border-red-500" : ""}`} placeholder="e.g. 101" value={room.roomNumber} onChange={e => updateRoom(i, "roomNumber", e.target.value)} suppressHydrationWarning />
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Bed Type <span className="text-red-500">*</span></label>
-                                        <select className="mt-1 w-full border rounded-md p-2 text-sm bg-background" value={room.type} onChange={e => {
-                                            const type = e.target.value;
-                                            let autoAvail = "1";
-                                            if (type === "Double Sharing") autoAvail = "2";
-                                            if (type === "Three Sharing") autoAvail = "3";
-                                            if (type === "Four Sharing") autoAvail = "4";
-                                            if (type === "Five Sharing") autoAvail = "5";
-                                            if (type === "Six Sharing") autoAvail = "6";
+                                        <select 
+                                            className="mt-1 w-full border rounded-md p-2 text-sm bg-background" 
+                                            value={room.type} 
+                                            onChange={e => {
+                                                const type = e.target.value;
+                                                let autoAvail = "1";
+                                                if (type === "Double Sharing") autoAvail = "2";
+                                                if (type === "Three Sharing") autoAvail = "3";
+                                                if (type === "Four Sharing") autoAvail = "4";
+                                                if (type === "Five Sharing") autoAvail = "5";
+                                                if (type === "Six Sharing") autoAvail = "6";
 
-                                            const updated = [...rooms];
-                                            updated[i].type = type;
-                                            updated[i].availability = autoAvail;
-                                            setRooms(updated);
-                                        }}>
-                                            <option value="Single Sharing">Single Sharing</option>
-                                            <option value="Private Room">Private Room (1)</option>
+                                                const updated = [...rooms];
+                                                updated[i].type = type;
+                                                updated[i].availability = autoAvail;
+                                                setRooms(updated);
+                                            }} 
+                                            suppressHydrationWarning
+                                        >
+                                            <option value="Single Sharing">Single Sharing (1)</option>
                                             <option value="Double Sharing">Double Sharing (2)</option>
                                             <option value="Three Sharing">Three Sharing (3)</option>
                                             <option value="Four Sharing">Four Sharing (4)</option>
@@ -1055,7 +1105,7 @@ export default function AddPropertyPage() {
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Monthly Rent (₹) <span className="text-red-500">*</span></label>
-                                        <Input type="number" className={`mt-1 ${errors[`room_${i}_price`] ? "border-red-500" : ""}`} placeholder="5000" min={0} value={room.price} onChange={e => updateRoom(i, "price", e.target.value)} />
+                                        <Input type="number" className={`mt-1 ${errors[`room_${i}_price`] ? "border-red-500" : ""}`} placeholder="5000" min={0} value={room.price} onChange={e => updateRoom(i, "price", e.target.value)} suppressHydrationWarning />
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Beds Available <span className="text-red-500">*</span></label>
@@ -1065,6 +1115,7 @@ export default function AddPropertyPage() {
                                             className={`mt-1 bg-gray-50 cursor-not-allowed font-bold ${errors[`room_${i}_avail`] ? "border-red-500" : ""}`} 
                                             placeholder="1" 
                                             value={room.availability} 
+                                            suppressHydrationWarning
                                         />
                                     </div>
                                 </div>
@@ -1072,20 +1123,21 @@ export default function AddPropertyPage() {
                         ))}
                         <Button 
                             type="button" 
-                            className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest shadow-lg shadow-purple-200 border-2 border-purple-400/20 active:scale-95 transition-all" 
+                            className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-200 border-none active:scale-95 transition-all text-sm" 
                             onClick={addRoom}
+                            suppressHydrationWarning
                         >
-                            <Plus className="h-5 w-5 mr-2 stroke-[3]" /> Add Your Property Room
+                            <Plus className="h-5 w-5 mr-2" /> Add Your Property Room
                         </Button>
                     </CardContent>
                 </Card>
 
                 {/* Photos & Documents */}
-                <Card className="border border-purple-100 shadow-xl overflow-hidden">
+                <Card className="border-[7px] border-purple-200 shadow-2xl shadow-purple-900/10 overflow-hidden">
                     <CardHeader className="bg-slate-50/50 p-6 border-b">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex-1">
-                                <CardTitle className="text-xl font-black text-slate-900 flex items-center gap-3">
+                                <CardTitle className="text-xl font-black text-purple-700 flex items-center gap-3">
                                     Photos & Documents
                                     <span className="text-[9px] bg-red-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest flex items-center gap-1 shadow-sm">
                                         <AlertTriangle className="h-3 w-3" /> LIMIT 25MB
@@ -1117,25 +1169,23 @@ export default function AddPropertyPage() {
                         {/* Property Visuals */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-6 w-1.5 bg-purple-600 rounded-full" />
-                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">1. Property Assets</h3>
-                                <div className="h-px flex-1 bg-slate-100" />
+                                <h3 className="text-md font-black text-purple-700 uppercase tracking-tight">1. Property Assets</h3>
+                                <div className="h-px flex-1 bg-purple-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UploadCard label="Building Photos" sub="(Exterior/Interior Required)" category="buildingPhotos" slotsCount={4} isRequired={true} />
-                                <UploadCard label="Common Area" sub="(Hallway/Lobby/Shared)" category="commonAreaPhotos" slotsCount={2} isRequired={true} />
-                                <UploadCard label="Rooms & Bathroom" sub="(Bed & Living Space)" category="roomsAndBathroomPhotos" slotsCount={4} isRequired={true} />
-                                <UploadCard label="Parking Area" sub="(Parking Facility)" category="parkingPhotos" slotsCount={2} isRequired={false} />
-                                <UploadCard label="Other Amenities" sub="(Gym/Others)" category="amenitiesPhotos" slotsCount={4} isRequired={false} />
+                                <UploadCard label="Building Photos" sub="Exterior / Main Gate (Max 4)" category="buildingPhotos" slotsCount={4} isRequired={false} />
+                                <UploadCard label="Common Area" sub="Hallway / Lobby / Shared (Max 4)" category="commonAreaPhotos" slotsCount={4} isRequired={false} />
+                                <UploadCard label="Rooms & Bathroom" sub="Interior Space Checklist (Max 4)" category="roomsAndBathroomPhotos" slotsCount={4} isRequired={false} />
+                                <UploadCard label="Parking Area" sub="Dedicated Space (Max 4)" category="parkingPhotos" slotsCount={4} isRequired={false} />
+                                <UploadCard label="Other Amenities" sub="Fridge / TV / Washing (Max 4)" category="amenitiesPhotos" slotsCount={4} isRequired={false} />
                             </div>
                         </div>
 
                         {/* Documentation Section */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-6 w-1.5 bg-purple-600 rounded-full" />
-                                <h3 className="text-md font-black text-slate-900 uppercase tracking-tighter">2. Legal Documentation</h3>
-                                <div className="h-px flex-1 bg-slate-100" />
+                                <h3 className="text-md font-black text-purple-700 uppercase tracking-tight">2. Legal Documentation</h3>
+                                <div className="h-px flex-1 bg-purple-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" slotsCount={2} isRequired={true} />
@@ -1152,50 +1202,130 @@ export default function AddPropertyPage() {
                             </div>
                         </div>
 
-                        {/* Capacity Stats Card - Reduced Size */}
-                        <div className="flex items-center justify-between bg-purple-700 py-4 px-8 rounded-2xl text-white shadow-lg">
+                        {/* Capacity Stats Card - Simplified */}
+                        <div className="flex items-center justify-between bg-slate-50/80 border-2 border-slate-200/50 p-5 rounded-2xl shadow-inner">
                              <div className="flex flex-col">
-                                <span className="text-[10px] text-purple-200 uppercase font-black tracking-widest">UTILITIES CONSUMED</span>
+                                <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">UTILITIES CONSUMED</span>
                                 <div className="flex items-baseline gap-1">
-                                    <span className={`text-2xl font-black ${(totalSize / (1024 * 1024)) > 20 ? 'text-orange-400' : 'text-white'}`}>
+                                    <span className={`text-xl font-black ${(totalSize / (1024 * 1024)) > 20 ? 'text-red-500' : 'text-slate-900'}`}>
                                         {(totalSize / (1024 * 1024)).toFixed(2)}
                                     </span>
-                                    <span className="text-xs font-black text-purple-200">MB</span>
+                                    <span className="text-xs font-black text-slate-400">MB</span>
                                 </div>
                              </div>
                              <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-purple-200 uppercase font-black tracking-widest">FREE SPACE</span>
+                                <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">FREE SPACE</span>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-2xl font-black text-emerald-400">
+                                    <span className="text-xl font-black text-emerald-600">
                                         {(Math.max(0, (MAX_TOTAL_SIZE - totalSize)) / (1024 * 1024)).toFixed(2)}
                                     </span>
-                                    <span className="text-xs font-black text-emerald-200">MB</span>
+                                    <span className="text-xs font-black text-emerald-600">MB</span>
                                 </div>
                              </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-purple-600" />
-                    <p className="text-sm text-purple-800 font-medium">
-                        Property will be listed as <span className="font-bold">Pending Approval</span>. It will go live after <span className="font-bold">Verification Team&apos;s final approval</span>.
-                    </p>
-                </div>
+                {/* Legal & Compliance Section */}
+                <Card className="border-[7px] border-emerald-200 shadow-2xl shadow-emerald-900/10 transition-all">
+                    <CardHeader className="bg-slate-50/50 p-4 border-b">
+                        <CardTitle className="text-xl font-black text-emerald-700 flex items-center gap-2 uppercase tracking-wide">
+                            <ShieldCheck className="h-6 w-6" /> Legal Agreement
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <label className="flex items-start gap-3 cursor-pointer group bg-slate-50 p-4 rounded-xl border hover:border-primary transition-all shadow-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={termsAccepted}
+                                        onChange={(e) => {
+                                            setTermsAccepted(e.target.checked);
+                                            if (e.target.checked) setFieldErr("termsAccepted", "");
+                                        }}
+                                        className="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                        suppressHydrationWarning
+                                    />
+                                    <div className="flex flex-col">
+                                        <span className={`text-[11px] font-bold uppercase tracking-wide ${termsAccepted ? 'text-primary' : 'text-slate-600'}`}>
+                                            General Terms & Conditions
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
+                                            I confirm all property details are accurate and I agree to abide by RentPe&apos;s listing policies.
+                                        </span>
+                                    </div>
+                                </label>
+                                {errors.termsAccepted && (
+                                    <p className="text-[10px] text-red-600 font-bold uppercase italic flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" /> {errors.termsAccepted}
+                                    </p>
+                                )}
+                            </div>
 
-                <div className="flex justify-end space-x-4">
-                    <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
+                            {onboardingFee !== null && (
+                                <div className="space-y-4">
+                                    <label className="flex items-start gap-3 cursor-pointer group bg-slate-50 p-4 rounded-xl border hover:border-primary transition-all shadow-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={feeTermsAccepted}
+                                            onChange={(e) => {
+                                                setFeeTermsAccepted(e.target.checked);
+                                                if (e.target.checked) setFieldErr("feeTermsAccepted", "");
+                                            }}
+                                            className="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                            suppressHydrationWarning
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${feeTermsAccepted ? 'text-primary' : 'text-slate-600'}`}>
+                                                Onboarding Fee (₹{onboardingFee})
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
+                                                I acknowledge a non-refundable one-time fee for document verification and listing services provided by the RentPe Team.
+                                            </span>
+                                        </div>
+                                    </label>
+                                    {errors.feeTermsAccepted && (
+                                        <p className="text-[10px] text-red-600 font-bold uppercase italic flex items-center gap-1">
+                                            <AlertTriangle className="h-3 w-3" /> {errors.feeTermsAccepted}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Legal Disclaimer Footer */}
+                        <div className="pt-4 border-t border-slate-100">
+                             <div className="flex items-start gap-2 text-[9px] text-slate-400 font-medium italic">
+                                <AlertTriangle className="h-3 w-3 text-slate-300 mt-0.5 shrink-0" />
+                                <p>
+                                    By submitting this form, you initiate property verification. Listing activation is contingent upon successful check by the RentPe Team. The fee covers verification and setup.
+                                </p>
+                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-center items-center gap-4 pt-6 mb-12">
                     <Button 
-                        size="lg" 
+                        type="button" 
+                        onClick={() => router.back()} 
+                        suppressHydrationWarning
+                        className="px-8 h-12 bg-rose-500 hover:bg-rose-600 text-white font-black uppercase tracking-widest shadow-lg shadow-rose-200 transition-all duration-200 hover:scale-105 active:scale-95"
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
                         type="submit" 
                         disabled={saving || uploadingCount > 0} 
-                        className="bg-purple-700 hover:bg-purple-800"
+                        className="px-10 h-12 bg-indigo-500 hover:bg-indigo-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all duration-200 hover:scale-105 active:scale-95"
+                        suppressHydrationWarning
                     >
-                        {saving 
-                            ? "Processing..." 
-                            : uploadingCount > 0 
-                            ? `⏳ Uploading (${uploadingCount} left)...` 
-                            : "🏠 Submit for Approval"}
+                        {saving ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                        ) : (
+                            "Submit For Approval"
+                        )}
                     </Button>
                 </div>
             </form>
@@ -1203,7 +1333,11 @@ export default function AddPropertyPage() {
             {/* Simple Lightbox for Viewing Images */}
             {viewImage && (
                 <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <button onClick={() => setViewImage(null)} className="absolute top-6 right-6 text-white hover:text-gray-300">
+                    <button 
+                        onClick={() => setViewImage(null)} 
+                        className="absolute top-6 right-6 text-white hover:text-gray-300"
+                        suppressHydrationWarning
+                    >
                         <X className="h-8 w-8" />
                     </button>
                     <img src={viewImage} alt="Full View" className="max-w-full max-h-full rounded-lg shadow-2xl" />

@@ -12,6 +12,7 @@ export function LogoutButton() {
             variant="ghost"
             size="sm"
             className="text-white bg-red-500 hover:bg-red-600 font-semibold px-4 py-2 rounded-lg shadow-sm"
+            suppressHydrationWarning
             onClick={async () => {
                 await logout();
                 router.push("/login");

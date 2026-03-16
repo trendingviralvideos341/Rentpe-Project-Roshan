@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { generateSequentialId } from "@/lib/ids";
 
 export async function getAdminStats() {
     try {
@@ -169,6 +170,7 @@ export async function updateUserStatus(userId: string, status: string, reason: s
     });
 
     revalidatePath('/dashboard/admin/users');
+    revalidatePath('/dashboard/admin/property-approval');
     return user;
 }
 
@@ -566,14 +568,18 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
 
     const where: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
-        where.status = statusFilter;
+        if (statusFilter === 'REJECTED') {
+            where.status = { in: ['REJECTED', 'SUSPENDED'] };
+        } else {
+            where.status = statusFilter;
+        }
     }
 
     return prisma.property.findMany({
         where,
         include: {
             owner: {
-                select: { name: true, email: true, phone: true }
+                select: { id: true, name: true, email: true, phone: true }
             },
             rooms: true
         },
@@ -587,9 +593,9 @@ export async function getAdminPropertyAnalytics() {
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
         const [pending, approved, rejected] = await Promise.all([
-            prisma.property.count({ where: { status: 'PENDING_VERIFICATION' } }),
-            prisma.property.count({ where: { status: 'LIVE' } }),
-            prisma.property.count({ where: { status: 'INACTIVE' } })
+            prisma.property.count({ where: { status: { in: ['PENDING_VERIFICATION', 'VERIFYING_DOCUMENTS', 'UNDER_REVIEW', 'NEEDS_CORRECTION', 'CORRECTED', 'APPROVED_PAYMENT_VERIFIED'] } } }),
+            prisma.property.count({ where: { status: { in: ['APPROVED', 'APPROVED_PENDING_PAYMENT'] } } }),
+            prisma.property.count({ where: { status: { in: ['REJECTED', 'SUSPENDED'] } } })
         ]);
 
         return { pending, approved, rejected };
@@ -598,97 +604,670 @@ export async function getAdminPropertyAnalytics() {
     }
 }
 
+export async function getAdminPropertyStatusCounts() {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+        const counts = await prisma.property.groupBy({
+            by: ['status'],
+            _count: {
+                status: true
+            }
+        });
+
+        const statusCounts: Record<string, number> = {};
+        counts.forEach(count => {
+            statusCounts[count.status] = count._count.status;
+        });
+
+        return statusCounts;
+    } catch (e) {
+        console.error("getAdminPropertyStatusCounts Error:", e);
+        return {};
+    }
+}
+
 export async function getPendingPropertiesCount() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') return 0;
-        return await prisma.property.count({ where: { status: 'SUBMITTED' } });
+        return await prisma.property.count({ where: { status: 'PENDING_VERIFICATION' } });
     } catch (e) {
         return 0;
     }
 }
 
-export async function approveProperty(propertyId: string, approved: boolean, notes: string) {
+export async function startPropertyVerification(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
-    const isFeeEnabled = settings?.feesEnabled && (settings?.ownerOnboardingFeeFlat > 0);
+    const result = await prisma.$transaction(async (tx) => {
+        // Admin can start or resume verification from PENDING, UNDER_REVIEW, or CORRECTED states
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'VERIFYING_DOCUMENTS' }
+        });
 
-    // Phase 31: Industry Standard - Admin Approves Docs -> APPROVED (Payment Pending) -> LIVE
-    const status = approved ? (isFeeEnabled ? 'APPROVED' : 'LIVE') : 'INACTIVE';
-
-    const property = await prisma.property.update({
-        where: { id: propertyId },
-        data: { status, adminNotes: notes || null }
-    });
-
-    try {
-        await prisma.notification.create({
+        await tx.auditLog.create({
             data: {
-                userId: property.ownerId,
-                type: approved ? "PROPERTY_APPROVED" : "PROPERTY_REJECTED",
-                message: approved
-                    ? (isFeeEnabled
-                        ? `Your property "${property.name}" was verified! Please pay the onboarding fee to push it LIVE.`
-                        : `Your property "${property.name}" is now LIVE! ${notes ? `Admin notes: ${notes}` : ""}`)
-                    : `Action Required: Your property "${property.name}" was rejected. Admin Note: ${notes}`
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin started verification for ${property.name}`,
+                newValue: { status: 'VERIFYING_DOCUMENTS' },
+                ipAddress: 'internal', // Placeholder or fetch if possible
+                userAgent: 'server-action'
             }
         });
-    } catch (e) { console.error("notify owner error", e); }
 
-    logAuditEvent({
-        actorId: (session as any).userId,
-        actorRole: session.role as string,
-        actorName: (session as any).name || 'Admin',
-        actionType: approved ? 'APPROVE' : 'REJECT',
-        entityType: 'PROPERTY',
-        entityId: propertyId,
-        entityName: property.name,
-        description: `Property ${property.name} ${approved ? 'approved' : 'rejected'}. Admin Notes: ${notes}`,
-        newValue: { status, notes }
+        return property;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    return result;
+}
+
+export async function verifyPropertyDocuments(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'VERIFIED_SUCCESSFULLY' }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin successfully verified documents for ${property.name}`,
+                newValue: { status: 'VERIFIED_SUCCESSFULLY' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return property;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    return result;
+}
+
+export async function requirePropertyPayment(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'APPROVED_PENDING_PAYMENT' }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_APPROVED",
+                message: `Your property "${property.name}" was verified! Please pay the onboarding fee to push it LIVE.`
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin marked property ${property.name} as APPROVED_PENDING_PAYMENT.`,
+                newValue: { status: 'APPROVED_PENDING_PAYMENT' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return property;
     });
 
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
     revalidatePath('/search');
-
-    return property;
+    return result;
 }
 
-export async function markPropertyPending(propertyId: string, notes: string) {
+export async function exemptPropertyFee(propertyId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const property = await prisma.property.update({
-        where: { id: propertyId },
-        data: { status: 'PENDING_VERIFICATION', adminNotes: notes || null }
+    if (!reason) throw new Error("Exemption reason is required");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.findUnique({ 
+            where: { id: propertyId } ,
+            include: { owner: true }
+        });
+        if (!property) throw new Error("Property not found");
+
+        const newPropertyDisplayId = property.displayId?.replace('APP-RP-', 'RP-REG-') || property.displayId;
+
+        const updated = await tx.property.update({
+            where: { id: propertyId },
+            data: { 
+                status: 'APPROVED', 
+                isVerified: true,
+                displayId: newPropertyDisplayId 
+            }
+        });
+
+        // Create Exemption Record
+        await tx.feeExemption.create({
+            data: {
+                userId: property.ownerId,
+                propertyName: property.name,
+                exemptOwner: true,
+                reason: reason
+            }
+        });
+
+        // Upgrade Owner ID if they are still an application
+        const owner = property.owner;
+        let newOwnerDisplayId = owner?.displayId;
+        if (owner?.displayId?.startsWith('APP-OWN-')) {
+            newOwnerDisplayId = owner.displayId.replace('APP-OWN-', 'REG-OWN-');
+            await tx.user.update({
+                where: { id: owner.id },
+                data: { displayId: newOwnerDisplayId }
+            });
+        }
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_APPROVED",
+                message: `Your property "${property.name}" is now LIVE! Onboarding fee was waived. Reason: ${reason}`
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'APPROVE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin exempted fee and set property ${property.name} LIVE. Reason: ${reason}. Upgraded ID: ${property.displayId} -> ${newPropertyDisplayId}`,
+                newValue: { status: 'APPROVED', displayId: newPropertyDisplayId, ownerDisplayId: newOwnerDisplayId, exemptionReason: reason },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return updated;
     });
 
-    try {
-        await prisma.notification.create({
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+    return result;
+}
+
+export async function rejectProperty(propertyId: string, notes: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'REJECTED', adminNotes: notes || null }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_REJECTED",
+                message: `Action Required: Your property "${property.name}" was rejected. Admin Note: ${notes}`
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'REJECT',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin rejected ${property.name}. Reason: ${notes}`,
+                newValue: { status: 'REJECTED', notes },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return property;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    return result;
+}
+
+export async function requestPropertyCorrections(propertyId: string, notes: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'NEEDS_CORRECTION', adminNotes: notes || null }
+        });
+
+        await tx.notification.create({
             data: {
                 userId: property.ownerId,
                 type: "PROPERTY_PENDING",
-                message: `Your property "${property.name}" has been moved back to Pending Approval. ${notes ? `Admin notes: ${notes}` : ""}`
+                message: `Action Required: Your property "${property.name}" needs corrections. Admin Note: ${notes}`
             }
         });
-    } catch (e) { console.error("notify owner error", e); }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin requested corrections for ${property.name}. Notes: ${notes}`,
+                newValue: { status: 'NEEDS_CORRECTION', notes },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return property;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    return result;
+}
+
+export async function suspendProperty(propertyId: string, notes: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'SUSPENDED', adminNotes: notes || null }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_REJECTED",
+                message: `Your property "${property.name}" has been SUSPENDED. Reason: ${notes}`
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'SUSPEND',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Property ${property.name} suspended by admin. Reason: ${notes}`,
+                newValue: { status: 'SUSPENDED', notes },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return property;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+    return result;
+}
+
+export async function activateProperty(propertyId: string, notes?: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+    
+    // Allow activation if payment is verified OR if it was previously suspended
+    if (property.status !== 'APPROVED_PAYMENT_VERIFIED' && property.status !== 'SUSPENDED') {
+        throw new Error(`Cannot activate property from status: ${property.status}`);
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+        // Upgrade Property ID if it's an application
+        const newPropertyDisplayId = property.displayId?.replace('APP-RP-', 'RP-REG-') || property.displayId;
+
+        const updated = await tx.property.update({ 
+            where: { id: propertyId }, 
+            data: { 
+                status: 'APPROVED', 
+                isVerified: true,
+                displayId: newPropertyDisplayId // Save the upgraded ID
+            } 
+        });
+
+        // Upgrade Owner ID if they are still an application
+        const owner = await tx.user.findUnique({ where: { id: property.ownerId }});
+        let newOwnerDisplayId = owner?.displayId;
+        if (owner?.displayId?.startsWith('APP-OWN-')) {
+            newOwnerDisplayId = owner.displayId.replace('APP-OWN-', 'REG-OWN-');
+            await tx.user.update({
+                where: { id: owner.id },
+                data: { displayId: newOwnerDisplayId }
+            });
+        }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'APPROVE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: property.status === 'SUSPENDED' 
+                    ? `Admin REACTIVATED property "${property.name}". Internal Note: ${notes || 'No note provided'}`
+                    : `Admin activated property "${property.name}". Upgraded ID: ${property.displayId} -> ${newPropertyDisplayId}. Status: APPROVED (Live).`,
+                newValue: { status: 'APPROVED', internalNote: notes, displayId: newPropertyDisplayId, ownerDisplayId: newOwnerDisplayId },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        // Notify Owner
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_LIVE",
+                message: property.status === 'SUSPENDED'
+                    ? `Your property "${property.name}" has been unsuspended and is now LIVE.`
+                    : `Congratulations! Your property "${property.name}" is now LIVE on RentPe.`,
+            }
+        });
+
+        return updated;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+    return result;
+}
+
+export async function unsuspendProperty(propertyId: string, notes?: string) {
+    return activateProperty(propertyId, notes);
+}
+
+export async function rollbackPropertyStatus(propertyId: string, notes: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+
+    // Industry Standard Reverse State Map
+    const reverseMap: Record<string, string> = {
+        'VERIFYING_DOCUMENTS': 'PENDING_VERIFICATION',
+        'VERIFIED_SUCCESSFULLY': 'VERIFYING_DOCUMENTS',
+        'APPROVED_PENDING_PAYMENT': 'VERIFIED_SUCCESSFULLY',
+        'APPROVED_PAYMENT_VERIFIED': 'VERIFIED_SUCCESSFULLY',
+        'APPROVED': 'APPROVED_PENDING_PAYMENT',
+        'NEEDS_CORRECTION': 'VERIFYING_DOCUMENTS'
+    };
+
+    const previousStatus = reverseMap[property.status];
+    if (!previousStatus) {
+        throw new Error(`Cannot rollback from status: ${property.status}`);
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+        const updated = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: previousStatus as any, adminNotes: notes || null }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE', // Categorize as update but describe as rollback
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin ROLLED BACK property "${property.name}" from ${property.status} → ${previousStatus}. Internal Note: ${notes}`,
+                newValue: { status: previousStatus, rollbackReason: notes },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        // NOTE: No owner notification is sent for rollbacks as they are intended for internal stage corrections/mistakes.
+
+        return updated;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
+    return result;
+}
+export async function adminUpdateProperty(propertyId: string, data: any) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const oldProperty = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!oldProperty) throw new Error("Property not found");
+
+    const updated = await prisma.property.update({
+        where: { id: propertyId },
+        data: {
+            ...data,
+            // Ensure amenities is stored correctly if passed as string
+            amenities: typeof data.amenities === 'string' ? data.amenities : data.amenities
+        }
+    });
 
     logAuditEvent({
-        actorId: (session as any).userId,
+        actorId: (session as any).userId as string,
         actorRole: session.role as string,
         actorName: (session as any).name || 'Admin',
         actionType: 'UPDATE',
         entityType: 'PROPERTY',
         entityId: propertyId,
-        entityName: property.name,
-        description: `Property ${property.name} marked as Pending Approval. Admin Notes: ${notes}`,
-        newValue: { status: 'PENDING_APPROVAL', notes }
+        description: `Property "${updated.name}" updated by admin. Fields: ${Object.keys(data).join(', ')}`,
+        previousValue: oldProperty as any,
+        newValue: data as any
     });
 
     revalidatePath('/dashboard/admin/property-approval');
-    revalidatePath('/dashboard/owner/properties');
+    revalidatePath(`/search`);
+    return updated;
+}
+export async function adminUpdateRoom(roomId: string, data: any) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return property;
+    const oldRoom = await prisma.room.findUnique({ 
+        where: { id: roomId },
+        include: { property: true }
+    });
+    if (!oldRoom) throw new Error("Room not found");
+
+    const oldAvailability = oldRoom.availability;
+    const newAvailability = parseInt(data.availability);
+
+    const result = await prisma.$transaction(async (tx) => {
+        const updated = await tx.room.update({
+            where: { id: roomId },
+            data: {
+                ...data,
+                price: parseFloat(data.price),
+                availability: newAvailability,
+                totalBeds: newAvailability
+            }
+        });
+
+        // If availability increased, add more beds
+        if (newAvailability > oldAvailability) {
+            const bedsToAdd = newAvailability - oldAvailability;
+            const bedIdsList = await generateSequentialId('BED', bedsToAdd);
+            
+            for (let i = 0; i < bedsToAdd; i++) {
+                const bedDisplayId = bedIdsList[i];
+                await tx.bed.create({
+                    data: {
+                        displayId: bedDisplayId,
+                        roomId: roomId,
+                        bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + oldAvailability + i + 1)}`,
+                        status: 'AVAILABLE'
+                    }
+                });
+            }
+        } else if (newAvailability < oldAvailability) {
+            // Optional: Handle decreasing availability? 
+            // Usually we shouldn't delete beds if they are booked, but for admin correction we might.
+            // For now, let's keep it consistent with owner edit logic.
+        }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session!.userId,
+                actorRole: 'ADMIN',
+                actorName: session!.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'ROOM',
+                entityId: roomId,
+                description: `Room ${updated.roomNumber} in property "${oldRoom.property.name}" updated by admin.`,
+                newValue: data as any,
+                previousValue: oldRoom as any,
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return updated;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    return result;
+}
+
+export async function adminAddRoom(propertyId: string, data: any) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+
+    const availability = parseInt(data.availability);
+
+    const result = await prisma.$transaction(async (tx) => {
+        const room = await tx.room.create({
+            data: {
+                propertyId,
+                roomNumber: data.roomNumber,
+                type: data.type,
+                price: parseFloat(data.price),
+                availability: availability,
+                totalBeds: availability
+            }
+        });
+
+        // Generate beds
+        const bedIdsList = await generateSequentialId('BED', availability);
+        for (let i = 0; i < availability; i++) {
+            await tx.bed.create({
+                data: {
+                    displayId: bedIdsList[i],
+                    roomId: room.id,
+                    bedNumber: `${room.roomNumber}-${String.fromCharCode(65 + i)}`,
+                    status: 'AVAILABLE'
+                }
+            });
+        }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'CREATE',
+                entityType: 'ROOM',
+                entityId: room.id,
+                description: `Admin added room ${room.roomNumber} to property "${property.name}"`,
+                newValue: data as any,
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return room;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    return result;
+}
+
+export async function adminDeleteRoom(roomId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { property: true, beds: true }
+    });
+    if (!room) throw new Error("Room not found");
+
+    // Check if any beds are occupied
+    const occupiedBeds = room.beds.some(bed => bed.status === 'OCCUPIED');
+    if (occupiedBeds) throw new Error("Cannot delete room with occupied beds");
+
+    const result = await prisma.$transaction(async (tx) => {
+        // Cascade delete beds (Prisma might handle this if configured, but let's be safe)
+        await tx.bed.deleteMany({ where: { roomId: roomId } });
+        const deleted = await tx.room.delete({ where: { id: roomId } });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'DELETE',
+                entityType: 'ROOM',
+                entityId: roomId,
+                description: `Admin deleted room ${room.roomNumber} from property "${room.property.name}"`,
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return deleted;
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    return result;
 }

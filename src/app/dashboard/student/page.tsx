@@ -414,7 +414,7 @@ export default function StudentDashboardPage() {
                     {bookings.length === 0 ? (
                         <Card>
                             <CardContent className="p-8 text-center">
-                                <p className="text-muted-foreground">No bookings yet. Browse PGs and send a booking request!</p>
+                                    <p className="text-muted-foreground mr-6">Discover verified student housing across India with RentPe.</p>
                                 <Button className="mt-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold" asChild>
                                     <Link href="/search">🔍 Find PG</Link>
                                 </Button>
@@ -815,7 +815,7 @@ export default function StudentDashboardPage() {
                                     </div>
                                     <div>
                                         <CardTitle className="text-3xl font-black">
-                                            {profile?.name || "Premium Student"}
+                                            {profile?.name || "Verified Resident"}
                                         </CardTitle>
                                         <CardDescription className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">
                                             {profile?.displayId || "TNT-000000"} • {profile?.occupationType === 'RESIDENT' ? 'Verified Resident' : (profile?.occupationType === 'BOOKED' ? 'Future Resident' : 'Guest Member')}
@@ -889,7 +889,7 @@ export default function StudentDashboardPage() {
                             </div>
 
 
-                            {/* ── Premium Digital Identity ── */}
+                            {/* ── Verified Digital Identity ── */}
                             <div className="relative p-8 bg-slate-900 rounded-[32px] text-white overflow-hidden shadow-2xl border-4 border-slate-800">
                                 {/* Background patterns */}
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
@@ -900,7 +900,7 @@ export default function StudentDashboardPage() {
                                         <div>
                                             <div className="text-[10px] font-black tracking-[0.2em] text-indigo-400 uppercase mb-1">RentPe Digital Identity</div>
                                             <div className="text-2xl font-black italic tracking-tighter">
-                                                {profile?.accountHealth === 'EXCELLENT' ? 'PREMIUM PASS' : 'BASIC PASS'}
+                                                {profile?.accountHealth === 'EXCELLENT' ? 'VERIFIED PASS' : 'BASIC PASS'}
                                             </div>
                                         </div>
                                         <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
@@ -958,7 +958,7 @@ export default function StudentDashboardPage() {
                                         <Shield className="h-4 w-4 text-slate-400" /> Auto-fill Enabled
                                     </h4>
                                     <p className="text-xs text-slate-400 font-medium">
-                                        Your profile details are automatically synced with all booking requests to ensure a seamless premium experience.
+                                        Your profile details are automatically synced with all booking requests to ensure a seamless, high-fidelity experience.
                                     </p>
                                 </div>
                                 <Badge className="bg-emerald-50 text-emerald-700 border-none px-3 font-black text-[9px] uppercase tracking-widest">Active</Badge>

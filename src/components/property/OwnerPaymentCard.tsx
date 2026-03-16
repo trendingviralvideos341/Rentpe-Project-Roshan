@@ -19,7 +19,7 @@ export function OwnerPaymentCard({ propertyId, propertyName, onSuccess }: OwnerP
     const handlePayment = async () => {
         setLoading(true);
         try {
-            const res = await payOnboardingFee(propertyId);
+            const res = await payOnboardingFee(propertyId, "RAZORPAY");
             if (res.success) {
                 toast.success(`"${propertyName}" is now LIVE!`);
                 onSuccess?.();

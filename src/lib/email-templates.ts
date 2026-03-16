@@ -212,7 +212,7 @@ export const WelcomeTemplate = (name: string) => `
 ${BaseLayout(`
   <div class="header">Welcome to RentPe! 🎉</div>
   <p>Hi ${name},</p>
-  <p>We're thrilled to have you on board. RentPe is your one-stop solution for finding and managing premium student housing.</p>
+  <p>We're thrilled to have you on board. RentPe is your one-stop solution for finding and managing high-fidelity student housing.</p>
   <p>Explore verified properties, manage your bookings, and experience hassle-free living.</p>
   <a href="https://rentpe.in/properties" class="btn">Explore Properties</a>
 `)}
