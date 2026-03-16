@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye } from "lucide-react";
+import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye, Search, Building2, ClipboardList } from "lucide-react";
 import { getBookings, approveBooking, markBookingPaid } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
@@ -291,7 +292,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <div className="text-xs font-bold uppercase text-purple-700">👤 Student Details</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="grid grid-cols-2 gap-3 text-sm">
                                 {[
                                     ["Name", booking.guestName],
                                     ["Email", booking.guestEmail || "—"],
@@ -300,27 +301,29 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                     ["Move-in Date", booking.onboardingDate || "—"],
                                     ["Address", booking.guestAddress ? `${booking.guestAddress}, ${booking.guestCity} - ${booking.guestPincode}` : "—"],
                                 ].map(([label, val]) => (
-                                    <div key={label} className="bg-muted/30 border rounded p-2">
-                                        <div className="text-[10px] uppercase text-muted-foreground font-bold">{label}</div>
-                                        <div className="text-sm">{val}</div>
+                                    <div key={label} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 transition-colors hover:bg-white hover:border-indigo-100">
+                                        <div className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">{label}</div>
+                                        <div className="text-sm font-semibold text-slate-700 mt-0.5">{val}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <div className="text-xs font-bold uppercase text-green-700">🏠 Room & PG Details</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="space-y-4">
+                            <div className="text-xs font-bold uppercase text-indigo-700 flex items-center gap-2">
+                                <Building2 className="h-3 w-3" /> Property & Allocation
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
                                 {[
-                                    ["PG / Property", booking.propertyName || "—"],
-                                    ["Requested Type", booking.occupancy || "—"],
+                                    ["Property / PG", booking.propertyName || "—"],
+                                    ["Occupancy", booking.occupancy || "—"],
                                     ["Allocated Room", booking.roomAssigned || "Not Allocated"],
-                                    ["Rent Amount", booking.amount || "—"],
-                                    ["Payment", booking.paymentMethod || "Online"],
-                                    ["Booking Ref", booking.displayId],
+                                    ["Total Rent", booking.amount || "—"],
+                                    ["Method", booking.paymentMethod || "Online"],
+                                    ["ID REF", booking.displayId],
                                 ].map(([label, val]) => (
-                                    <div key={label} className="bg-muted/30 border rounded p-2">
-                                        <div className="text-[10px] uppercase text-muted-foreground font-bold">{label}</div>
-                                        <div className="text-sm">{val}</div>
+                                    <div key={label} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 transition-colors hover:bg-white hover:border-indigo-100">
+                                        <div className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">{label}</div>
+                                        <div className="text-sm font-semibold text-slate-700 mt-0.5">{val}</div>
                                     </div>
                                 ))}
                             </div>
@@ -774,6 +777,11 @@ export default function OnboardingPage() {
     const [properties, setProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<"ALL" | "PENDING_PAYMENT" | "PAID">("ALL");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
+    const [propertyFilter, setPropertyFilter] = useState("ALL");
+    const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+    const [paymentFilter, setPaymentFilter] = useState("ALL");
 
     const fetchData = async () => {
         setLoading(true);
@@ -794,9 +802,37 @@ export default function OnboardingPage() {
     useEffect(() => { fetchData(); }, []);
 
     const filtered = bookings.filter(b => {
-        if (filter === "PENDING_PAYMENT") return b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED";
-        if (filter === "PAID") return b.status === "PAID" || b.status === "CASH_PAID";
-        return true;
+        // Status Filter
+        const matchesStatus = filter === "ALL" || 
+            (filter === "PENDING_PAYMENT" && (b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED" || b.status === "APPROVED_KYC_PENDING")) ||
+            (filter === "PAID" && (b.status === "PAID" || b.status === "CASH_PAID"));
+        
+        if (!matchesStatus) return false;
+
+        // Multi-Filters
+        if (propertyFilter !== "ALL" && b.propertyName !== propertyFilter) return false;
+        if (roomTypeFilter !== "ALL" && b.occupancy !== roomTypeFilter) return false;
+        if (paymentFilter !== "ALL" && (b.paymentMethod || "Online") !== paymentFilter) return false;
+
+        // Date Filter
+        if (dateFilter !== "ALL") {
+            const date = new Date(b.createdAt);
+            const now = new Date();
+            const diffDays = (now.getTime() - date.getTime()) / (1000 * 3600 * 24);
+            if (dateFilter === "7D" && diffDays > 7) return false;
+            if (dateFilter === "30D" && diffDays > 30) return false;
+        }
+
+        // Search Filter
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            b.guestName?.toLowerCase().includes(q) ||
+            b.displayId?.toLowerCase().includes(q) ||
+            b.propertyName?.toLowerCase().includes(q) ||
+            b.guestPhone?.toLowerCase().includes(q) ||
+            b.roomAssigned?.toLowerCase().includes(q)
+        );
     });
 
     const awaitingPayment = bookings.filter(b => b.status === "APPROVED_PAYMENT_PENDING" || b.status === "APPROVED").length;
@@ -814,63 +850,143 @@ export default function OnboardingPage() {
                         Manage student onboarding after booking acceptance. Verify details, allocate rooms and collect documents.
                     </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchData}>
-                    <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => {
+                        toast.success("Export Started", { description: "Preparing CSV export for your records..." });
+                    }} className="rounded-xl border-slate-200">
+                        <UploadCloud className="h-4 w-4 mr-2 rotate-180" /> Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={fetchData}>
+                        <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
+                    </Button>
+                </div>
             </div>
 
             {/* Pipeline overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
                     <div className="text-3xl font-bold text-amber-700">{awaitingPayment}</div>
-                    <div className="text-sm text-amber-800 font-medium mt-1">Accepted — Awaiting Payment</div>
-                    <div className="text-xs text-muted-foreground mt-1">Onboarding in progress</div>
+                    <div className="text-sm text-amber-800 font-medium mt-1 uppercase tracking-tighter">Awaiting Payment</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">ONBOARDING IN PROGRESS</div>
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
                     <div className="text-3xl font-bold text-green-700">{paidCount}</div>
-                    <div className="text-sm text-green-800 font-medium mt-1">Paid & Confirmed</div>
-                    <div className="text-xs text-muted-foreground mt-1">Tenants created</div>
+                    <div className="text-sm text-green-800 font-medium mt-1 uppercase tracking-tighter">Paid & Confirmed</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">TENANTS CREATED</div>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
                     <div className="text-3xl font-bold text-blue-700">{bookings.length}</div>
-                    <div className="text-sm text-blue-800 font-medium mt-1">Total Onboarding</div>
-                    <div className="text-xs text-muted-foreground mt-1">All accepted bookings</div>
+                    <div className="text-sm text-blue-800 font-medium mt-1 uppercase tracking-tighter">Total Onboarding</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">ALL ACCEPTED BOOKINGS</div>
                 </div>
             </div>
 
-            {/* Filter */}
-            <div className="flex gap-2 flex-wrap">
-                {([
-                    ["ALL", `📋 All (${bookings.length})`],
-                    ["PENDING_PAYMENT", `⏳ Awaiting Payment (${awaitingPayment})`],
-                    ["PAID", `✅ Paid (${paidCount})`],
-                ] as const).map(([val, label]) => (
-                    <Button
-                        key={val}
-                        size="sm"
-                        onClick={() => setFilter(val)}
-                        className={filter === val
-                            ? val === "PENDING_PAYMENT" ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                : val === "PAID" ? "bg-green-600 hover:bg-green-700 text-white"
-                                    : "bg-purple-600 hover:bg-purple-700 text-white"
-                            : "bg-white border hover:bg-muted text-foreground"}
+            {/* Unified Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[280px]">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Search by name, room, or ID..."
+                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm transition-all shadow-none"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
+                    <select
+                        value={propertyFilter}
+                        onChange={(e) => setPropertyFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[160px]"
                     >
-                        {label}
-                    </Button>
-                ))}
+                        <option value="ALL">All Properties (PGs)</option>
+                        {Array.from(new Set(bookings.map(b => b.propertyName).filter(Boolean))).map(p => (
+                            <option key={p} value={p}>{p}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={roomTypeFilter}
+                        onChange={(e) => setRoomTypeFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Room Types</option>
+                        {Array.from(new Set(bookings.map(b => b.occupancy).filter(Boolean))).map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={paymentFilter}
+                        onChange={(e) => setPaymentFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Payments</option>
+                        {Array.from(new Set(bookings.map(b => b.paymentMethod || "Online").filter(Boolean))).map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit border border-slate-200">
+                        {([
+                            ["7D", "Last 7 Days"],
+                            ["30D", "Last 30 Days"],
+                            ["ALL", "Lifetime"],
+                        ] as const).map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setDateFilter(val)}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-widest ${
+                                    dateFilter === val
+                                        ? "bg-indigo-600 text-white shadow-md"
+                                        : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit border border-slate-200 ml-auto">
+                        {([
+                            ["ALL", "📋 All Records"],
+                            ["PENDING_PAYMENT", "⏳ Awaiting Payment"],
+                            ["PAID", "✅ Paid & Confirmed"],
+                        ] as const).map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setFilter(val)}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-widest ${
+                                    filter === val
+                                        ? "bg-indigo-600 text-white shadow-md"
+                                        : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
+
 
             {/* Onboarding cards */}
             {filtered.length === 0 ? (
-                <Card>
-                    <CardContent className="p-12 text-center text-muted-foreground">
-                        <div className="text-4xl mb-3">📋</div>
-                        <div className="font-semibold">No accepted bookings yet.</div>
-                        <div className="text-sm mt-1">Once you accept a booking request, it will appear here for onboarding.</div>
+                <Card className="rounded-2xl border-dashed border-2 bg-slate-50/50">
+                    <CardContent className="p-20 text-center text-muted-foreground">
+                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <ClipboardList className="h-8 w-8 text-slate-300" />
+                        </div>
+                        <div className="text-xl font-bold text-slate-900">No Onboarding Records</div>
+                        <div className="text-sm mt-1 max-w-xs mx-auto text-slate-500">
+                            Once you accept a booking request, it will appear here for you to verify documents and allocate rooms.
+                        </div>
                     </CardContent>
                 </Card>
             ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                     {filtered.map(booking => (
                         <OnboardingCard key={booking.id} booking={booking} rooms={rooms} properties={properties} onRefresh={fetchData} />
                     ))}

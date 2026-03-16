@@ -25,14 +25,14 @@ export async function getRoomsAction(propertyId?: string) {
 
 export async function getAvailableRooms(propertyId?: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') {
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) {
         throw new Error("Unauthorized");
     }
 
     const where: any = { availability: { gt: 0 } };
     if (propertyId) {
         where.propertyId = propertyId;
-    } else {
+    } else if (session.role === 'OWNER') {
         where.property = { ownerId: (session as any).userId };
     }
 

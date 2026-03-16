@@ -257,6 +257,10 @@ export default function AdminBookingsPage() {
     const [search, setSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState("ALL");
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
+    const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
+    const [propertyFilter, setPropertyFilter] = useState("ALL");
+    const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+    const [paymentFilter, setPaymentFilter] = useState("ALL");
 
     const fetchBookings = useCallback(async () => {
         setLoading(true);
@@ -320,6 +324,22 @@ export default function AdminBookingsPage() {
             (b.displayId || "").toLowerCase().includes(search.toLowerCase()) ||
             (b.propertyName || "").toLowerCase().includes(search.toLowerCase());
         const matchesStatus = filterStatus === "ALL" || b.status === filterStatus;
+        
+        // Date Logic
+        if (dateFilter !== "ALL") {
+            const date = new Date(b.createdAt);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - date.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (dateFilter === "7D" && diffDays > 7) return false;
+            if (dateFilter === "30D" && diffDays > 30) return false;
+        }
+
+        // Multi-Filters
+        if (propertyFilter !== "ALL" && b.propertyName !== propertyFilter) return false;
+        if (roomTypeFilter !== "ALL" && b.occupancy !== roomTypeFilter) return false;
+        if (paymentFilter !== "ALL" && (b.paymentMethod || "Online") !== paymentFilter) return false;
+
         return matchesSearch && matchesStatus;
     });
 
@@ -335,29 +355,94 @@ export default function AdminBookingsPage() {
                 </Button>
             </div>
 
-            <div className="flex gap-4 items-center">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search by ID, Customer Name, or PG..."
-                        className="pl-9 h-11 rounded-xl shadow-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+            {/* Unified Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[280px]">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Search by name, room, or ID..."
+                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm transition-all shadow-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    <select
+                        value={propertyFilter}
+                        onChange={(e) => setPropertyFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[160px]"
+                    >
+                        <option value="ALL">All Properties (PGs)</option>
+                        {Array.from(new Set(bookings.map(b => b.propertyName).filter(Boolean))).map(p => (
+                            <option key={p} value={p}>{p}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={roomTypeFilter}
+                        onChange={(e) => setRoomTypeFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Room Types</option>
+                        {Array.from(new Set(bookings.map(b => b.occupancy).filter(Boolean))).map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={paymentFilter}
+                        onChange={(e) => setPaymentFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Payments</option>
+                        {Array.from(new Set(bookings.map(b => b.paymentMethod || "Online").filter(Boolean))).map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
+                    </select>
                 </div>
-                <select
-                    className="h-11 border rounded-xl px-4 text-sm bg-background shadow-sm"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                    <option value="ALL">All Statuses</option>
-                    <option value="REQUESTED">Pending Approval</option>
-                    <option value="APPROVED">Awaiting Payment</option>
-                    <option value="CHECKIN_CONFIRMED">Checked-in</option>
-                    <option value="CHECKED_OUT">Checked-out</option>
-                    <option value="REJECTED">Rejected</option>
-                    <option value="CANCELLED">Cancelled</option>
-                </select>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit border border-slate-200">
+                        {([
+                            ["7D", "Last 7 Days"],
+                            ["30D", "Last 30 Days"],
+                            ["ALL", "Lifetime"],
+                        ] as const).map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setDateFilter(val)}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-widest ${
+                                    dateFilter === val
+                                        ? "bg-indigo-600 text-white shadow-md"
+                                        : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                        {(["ALL", "REQUESTED", "APPROVED", "CHECKIN_CONFIRMED", "REJECTED", "CANCELLED"] as const).map(t => (
+                            <Button
+                                key={t}
+                                size="sm"
+                                onClick={() => setFilterStatus(t)}
+                                className={`h-7 text-[10px] font-bold transition-all ${filterStatus === t
+                                    ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+                                    : "bg-white border hover:bg-muted text-foreground"}`}
+                            >
+                                {t === "ALL" ? `📋 All`
+                                    : t === "REQUESTED" ? `🔴 New`
+                                        : t === "APPROVED" ? `💳 Paid`
+                                            : t === "CHECKIN_CONFIRMED" ? `🏡 In`
+                                                : t === "REJECTED" ? `❌ No`
+                                                    : `🚫 Out`}
+                            </Button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {loading ? (
@@ -370,24 +455,26 @@ export default function AdminBookingsPage() {
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider text-left">
                                         <th className="p-4">Booking ID</th>
-                                        <th className="p-4">Guest Info</th>
-                                        <th className="p-4">Property</th>
-                                        <th className="p-4">Allocated</th>
+                                        <th className="p-4">Guest Name</th>
+                                        <th className="p-4">PG Requested</th>
+                                        <th className="p-4">Room</th>
+                                        <th className="p-4">Requested On</th>
                                         <th className="p-4">Status</th>
                                         <th className="p-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filtered.length === 0 ? (
-                                        <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">No bookings found.</td></tr>
+                                        <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">No bookings found.</td></tr>
                                     ) : (
                                         filtered.map(booking => (
                                             <React.Fragment key={booking.id}>
-                                                <tr className={`hover:bg-slate-50/50 transition-colors ${booking.status === "PENDING_APPROVAL" ? "bg-red-50/30" : ""}`}>
+                                                <tr className={`hover:bg-slate-50/50 transition-colors ${booking.status === "REQUESTED" ? "bg-red-50/20" : ""}`}>
                                                     <td className="p-4 font-mono text-xs font-bold text-slate-900">{booking.displayId}</td>
                                                     <td className="p-4">
                                                         <div className="font-bold text-slate-900">{booking.guestName}</div>
                                                         <div className="text-[10px] text-slate-400">{booking.guestEmail}</div>
+                                                        <div className="text-[10px] text-slate-400">{booking.guestPhone}</div>
                                                     </td>
                                                     <td className="p-4">
                                                         <div className="font-bold text-indigo-700">{booking.propertyName}</div>
@@ -395,7 +482,10 @@ export default function AdminBookingsPage() {
                                                     </td>
                                                     <td className="p-4">
                                                         <div className="text-xs font-medium text-slate-700">{booking.roomAssigned || "Not Allocated"}</div>
-                                                        <div className="text-[10px] text-slate-400">In: {booking.moveInDate}</div>
+                                                        <div className="text-[10px] text-slate-400">In: {booking.onboardingDate || booking.moveInDate}</div>
+                                                    </td>
+                                                    <td className="p-4 text-xs text-muted-foreground italic">
+                                                        {new Date(booking.createdAt).toLocaleString()}
                                                     </td>
                                                     <td className="p-4">
                                                         <StatusBadge status={booking.status} />
@@ -413,7 +503,7 @@ export default function AdminBookingsPage() {
                                                                     💵 Mark Cash Paid
                                                                 </Button>
                                                             )}
-                                                            {(booking.status === "PAID" || booking.status === "CASH_PAID") && (
+                                                            {(booking.status === "PAID" || booking.status === "CASH_PAID" || booking.status === "CHECKIN_CONFIRMED") && booking.status !== "CHECKIN_CONFIRMED" && (
                                                                 <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
                                                                     🚀 Check-in
                                                                 </Button>

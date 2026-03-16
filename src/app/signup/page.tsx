@@ -108,13 +108,6 @@ export default function SignupPage() {
                 return;
             }
 
-            // Verify OTP (simulated)
-            if (otp !== "123456") {
-                setOtpError("Invalid OTP. Try 123456 for testing.");
-                setLoading(false);
-                return;
-            }
-
             const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
             const formData = new FormData();
             formData.set("name", fullName);
@@ -122,12 +115,23 @@ export default function SignupPage() {
             formData.set("password", password);
             formData.set("phone", `+91${phone}`);
             formData.set("role", role);
+            formData.set("otp", otp);
             formData.set("agreed", agreed ? "true" : "false");
+            
+            // Honeypot field
+            const formObj = e.target as HTMLFormElement;
+            const hpValue = (formObj.elements.namedItem("hp") as HTMLInputElement)?.value;
+            if (hpValue) formData.set("hp", hpValue);
 
             const result = await signup(formData);
             
             if (result?.error) {
-                setError(result.error);
+                // If it's an OTP error, show it near the OTP field
+                if (result.error.toLowerCase().includes("otp")) {
+                    setOtpError(result.error);
+                } else {
+                    setError(result.error);
+                }
             } else if (result?.success) {
                 setSuccess(true);
                 // Redirect after a short delay so they see the success message
@@ -174,6 +178,9 @@ export default function SignupPage() {
                 </CardHeader>
 
                 <form onSubmit={handleSubmit}>
+                    {/* Honeypot Bot Protection */}
+                    <input type="text" name="hp" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+                    
                     <CardContent className="space-y-5">
                         {error && (
                             <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2">
@@ -219,6 +226,7 @@ export default function SignupPage() {
                                         <button
                                             key={opt.value}
                                             type="button"
+                                            suppressHydrationWarning
                                             onClick={() => {
                                                 setRole(opt.value);
                                                 setAgreed(false);
@@ -320,6 +328,7 @@ export default function SignupPage() {
                                     type="tel"
                                     required
                                     maxLength={10}
+                                    suppressHydrationWarning
                                     className={`flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground ${fieldErrors.phone ? "border-red-400" : ""}`}
                                     value={phone}
                                     onChange={e => {
@@ -392,6 +401,7 @@ export default function SignupPage() {
                                 <input
                                     type="checkbox"
                                     name="agreed"
+                                    suppressHydrationWarning
                                     className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
                                     required
                                     checked={agreed}

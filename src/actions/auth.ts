@@ -16,12 +16,18 @@ import { Session, UserRole } from '@/types/auth';
 const SignupSchema = z.object({
     name: z.string().min(3),
     email: z.string().email(),
-    password: z.string().min(8, "Password must be at least 8 characters long"),
+    password: z.string()
+        .min(8, "Password must be at least 8 characters long")
+        .regex(/[A-Z]/, "Must contain one uppercase letter")
+        .regex(/[a-z]/, "Must contain one lowercase letter")
+        .regex(/[0-9]/, "Must contain one number"),
     phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
+    otp: z.string().length(6, "OTP must be 6 digits"),
     agreed: z.boolean().refine(v => v === true, "You must agree to the Terms of Service"),
     marketingAgreed: z.boolean().optional(),
     dataSharingAgreed: z.boolean().optional(),
+    hp: z.string().max(0, "Bot detected").optional(), // Honeypot
 });
 
 const LoginSchema = z.object({
@@ -38,16 +44,23 @@ export async function signup(formData: FormData) {
         password: data.password,
         phone: data.phone,
         role: data.role,
+        otp: data.otp,
         agreed: data.agreed === 'true' || data.agreed === 'on',
         marketingAgreed: data.marketingAgreed === 'true' || data.marketingAgreed === 'on',
         dataSharingAgreed: data.dataSharingAgreed === 'true' || data.dataSharingAgreed === 'on',
+        hp: data.hp,
     });
 
     if (!validated.success) {
         const errs = validated.error.flatten().fieldErrors;
-        return { error: `Validation failed: ${JSON.stringify(errs)}` };
+        return { error: Object.values(errs).flat()[0] || "Validation failed" };
     }
-    const { name, email, password, phone, role, marketingAgreed, dataSharingAgreed } = validated.data;
+    const { name, email, password, phone, role, otp, marketingAgreed, dataSharingAgreed } = validated.data;
+
+    // OTTP Verification (Mock logic - in production sync with SMS provider)
+    if (otp !== "123456") {
+        return { error: "Invalid OTP. For testing, please use 123456." };
+    }
 
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });

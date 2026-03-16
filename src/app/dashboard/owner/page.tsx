@@ -1,21 +1,24 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building, Users, IndianRupee, Clock, RefreshCcw, TrendingUp } from "lucide-react";
-import { getOwnerDashboardStats } from "@/actions/dashboard";
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { 
+    Building, Users, IndianRupee, Clock, RefreshCcw, TrendingUp, 
+    User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, 
+    ListFilter, Activity, CreditCard, UserCheck, Lock 
+} from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { getOwnerDashboardStats, getOwnerInventory } from "@/actions/dashboard";
+import { getOwnerStaff } from "@/actions/staff";
+import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
+import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 const COLORS = ['#8b5cf6', '#e2e8f0'];
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSearchParams, useRouter } from "next/navigation";
-import { User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, ListFilter, Activity, CreditCard, UserCheck, Lock } from "lucide-react";
-import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
-import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
-import { getOwnerInventory } from "@/actions/dashboard";
-import { getOwnerStaff } from "@/actions/staff";
 
 export default function OwnerDashboard() {
     const [stats, setStats] = useState<any>(null);
@@ -38,7 +41,7 @@ export default function OwnerDashboard() {
             ]);
 
             if (!statsData || (statsData as any).error === "Unauthorized") {
-                window.location.href = "/login";
+                router.push("/login");
                 return;
             }
             setStats(statsData);
@@ -62,13 +65,38 @@ export default function OwnerDashboard() {
         router.push(`?${params.toString()}`);
     };
 
-    if (loading) return <div className="p-20 text-center animate-pulse">Loading dashboard statistics...</div>;
+    if (loading) return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 space-y-6">
+            <div className="w-16 h-16 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+            <div className="space-y-2 text-center">
+                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Syncing Business Data</h3>
+                <p className="text-sm text-slate-400 font-medium">Retrieving your properties, tenants, and revenue metrics...</p>
+            </div>
+        </div>
+    );
 
     if (error || !stats) return (
-        <div className="p-8 text-center text-red-500">
-            <p>Failed to load dashboard statistics. Please ensure you are logged in as an Owner.</p>
-            <Button variant="outline" className="mt-4" onClick={() => window.location.href = "/login"}>Login Again</Button>
-            <Button variant="ghost" className="mt-4 ml-2" onClick={fetchStats}>Retry</Button>
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-red-500/10">
+                <Shield className="w-10 h-10 text-red-600" />
+            </div>
+            <h2 className="text-3xl font-black text-slate-900 mb-2">Access Synchronization Failed</h2>
+            <p className="text-slate-500 max-w-md mb-8 font-medium">We encountered a secure handshake issue while retrieving your data. Please re-authenticate to restore full access.</p>
+            <div className="flex gap-4">
+                <Button 
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-indigo-200 uppercase tracking-tight"
+                    onClick={() => router.push("/login")}
+                >
+                    Re-Authenticate
+                </Button>
+                <Button 
+                    variant="outline" 
+                    className="border-slate-200 text-slate-600 font-bold px-8 h-12 rounded-2xl"
+                    onClick={fetchStats}
+                >
+                    Retry Connection
+                </Button>
+            </div>
         </div>
     );
 

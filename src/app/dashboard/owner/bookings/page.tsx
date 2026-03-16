@@ -2,7 +2,8 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, AlertCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid } from "@/actions/bookings";
@@ -278,6 +279,11 @@ export default function BookingsPage() {
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
     const [expandedTab, setExpandedTab] = useState<"onboarding" | "documents">("onboarding");
     const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "PAID" | "REJECTED" | "CANCELLED">("ALL");
+    const [search, setSearch] = useState("");
+    const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
+    const [propertyFilter, setPropertyFilter] = useState("ALL");
+    const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+    const [paymentFilter, setPaymentFilter] = useState("ALL");
     const router = useRouter();
 
     const fetchData = async () => {
@@ -335,6 +341,28 @@ export default function BookingsPage() {
     };
 
     const filteredBookings = bookings.filter(b => {
+        const matchesSearch = 
+            (b.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
+            (b.displayId || "").toLowerCase().includes(search.toLowerCase()) ||
+            (b.propertyName || "").toLowerCase().includes(search.toLowerCase());
+            
+        if (!matchesSearch) return false;
+
+        // Date Logic
+        if (dateFilter !== "ALL") {
+            const date = new Date(b.createdAt);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - date.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (dateFilter === "7D" && diffDays > 7) return false;
+            if (dateFilter === "30D" && diffDays > 30) return false;
+        }
+
+        // Multi-Filters
+        if (propertyFilter !== "ALL" && b.propertyName !== propertyFilter) return false;
+        if (roomTypeFilter !== "ALL" && b.occupancy !== roomTypeFilter) return false;
+        if (paymentFilter !== "ALL" && (b.paymentMethod || "Online") !== paymentFilter) return false;
+
         if (activeTab === "PENDING") return b.status === "REQUESTED";
         if (activeTab === "APPROVED") return b.status === "APPROVED";
         if (activeTab === "PAID") return b.status === "CHECKIN_CONFIRMED" || b.status === "CHECKED_OUT";
@@ -359,40 +387,109 @@ export default function BookingsPage() {
                 </div>
             </div>
 
-            {/* Filter tabs */}
-            <div className="flex gap-2 flex-wrap">
-                {(["ALL", "PENDING", "APPROVED", "PAID", "REJECTED", "CANCELLED"] as const).map(t => (
-                    <Button
-                        key={t}
-                        size="sm"
-                        onClick={() => setActiveTab(t)}
-                        className={activeTab === t
-                            ? "bg-purple-600 hover:bg-purple-700 text-white"
-                            : "bg-white border hover:bg-muted text-foreground"}
+            {/* Unified Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[280px]">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Search by name, room, or ID..."
+                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm transition-all shadow-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    <select
+                        value={propertyFilter}
+                        onChange={(e) => setPropertyFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[160px]"
                     >
-                        {t === "ALL" ? `📋 All (${bookings.length})`
-                            : t === "PENDING" ? `🔴 New (${bookings.filter(b => b.status === "REQUESTED").length})`
-                                : t === "APPROVED" ? `⏳ Approved (${bookings.filter(b => b.status === "APPROVED").length})`
-                                    : t === "PAID" ? `✅ Completed (${bookings.filter(b => b.status === "CHECKIN_CONFIRMED" || b.status === "CHECKED_OUT").length})`
-                                        : t === "REJECTED" ? `❌ Rejected (${bookings.filter(b => b.status === "REJECTED").length})`
-                                            : `🚫 Cancelled (${bookings.filter(b => b.status === "CANCELLED").length})`}
-                    </Button>
-                ))}
+                        <option value="ALL">All Properties (PGs)</option>
+                        {Array.from(new Set(bookings.map(b => b.propertyName).filter(Boolean))).map(p => (
+                            <option key={p} value={p}>{p}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={roomTypeFilter}
+                        onChange={(e) => setRoomTypeFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Room Types</option>
+                        {Array.from(new Set(bookings.map(b => b.occupancy).filter(Boolean))).map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={paymentFilter}
+                        onChange={(e) => setPaymentFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Payments</option>
+                        {Array.from(new Set(bookings.map(b => b.paymentMethod || "Online").filter(Boolean))).map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit border border-slate-200">
+                        {([
+                            ["7D", "Last 7 Days"],
+                            ["30D", "Last 30 Days"],
+                            ["ALL", "Lifetime"],
+                        ] as const).map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setDateFilter(val)}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-widest ${
+                                    dateFilter === val
+                                        ? "bg-purple-600 text-white shadow-md"
+                                        : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                        {(["ALL", "PENDING", "APPROVED", "PAID", "REJECTED", "CANCELLED"] as const).map(t => (
+                            <Button
+                                key={t}
+                                size="sm"
+                                onClick={() => setActiveTab(t)}
+                                className={`h-7 text-[10px] font-bold transition-all ${activeTab === t
+                                    ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md"
+                                    : "bg-white border hover:bg-muted text-foreground"}`}
+                            >
+                                {t === "ALL" ? `📋 All`
+                                    : t === "PENDING" ? `🔴 New`
+                                        : t === "APPROVED" ? `⏳ Approved`
+                                            : t === "PAID" ? `✅ Paid`
+                                                : t === "REJECTED" ? `❌ No`
+                                                    : `🚫 Out`}
+                            </Button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            <Card>
+            <Card className="rounded-2xl shadow-sm border-slate-200 overflow-hidden">
                 <CardContent className="p-0 text-sm md:text-base">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-muted border-b">
-                                <tr>
-                                    <th className="p-4 text-left font-medium">Booking ID</th>
-                                    <th className="p-4 text-left font-medium">Guest Name</th>
-                                    <th className="p-4 text-left font-medium">PG Requested</th>
-                                    <th className="p-4 text-left font-medium">Room</th>
-                                    <th className="p-4 text-left font-medium">Requested On</th>
-                                    <th className="p-4 text-left font-medium">Status</th>
-                                    <th className="p-4 text-left font-medium">Actions</th>
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider text-left">
+                                    <th className="p-4 ">Booking ID</th>
+                                    <th className="p-4 ">Guest Name</th>
+                                    <th className="p-4 ">PG Requested</th>
+                                    <th className="p-4 ">Room</th>
+                                    <th className="p-4 ">Requested On</th>
+                                    <th className="p-4 ">Status</th>
+                                    <th className="p-4 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -421,27 +518,25 @@ export default function BookingsPage() {
                                             <td className="p-4">
                                                 <StatusBadge status={booking.status} />
                                             </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex gap-2">
-                                                        {booking.status === "REQUESTED" && (
-                                                            <>
-                                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-xs" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                                                                <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => handleReject(booking.id)}>Reject</Button>
-                                                            </>
-                                                        )}
-                                                        {booking.status === "APPROVED" && (
-                                                            <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
-                                                                🚀 Confirm Check-in
-                                                            </Button>
-                                                        )}
-                                                        <Button
-                                                            variant="outline" size="sm" className="h-8 w-8 p-0"
-                                                            onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
-                                                        >
-                                                            {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    {booking.status === "REQUESTED" && (
+                                                        <>
+                                                            <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                                            <Button size="sm" variant="destructive" className="h-8 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
+                                                        </>
+                                                    )}
+                                                    {booking.status === "APPROVED" && (
+                                                        <Button size="sm" className="h-8 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
+                                                            🚀 Confirm Check-in
                                                         </Button>
-                                                    </div>
+                                                    )}
+                                                    <Button
+                                                        variant="outline" size="sm" className="h-8 w-8 p-0"
+                                                        onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
+                                                    >
+                                                        {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                    </Button>
                                                 </div>
                                             </td>
                                         </tr>

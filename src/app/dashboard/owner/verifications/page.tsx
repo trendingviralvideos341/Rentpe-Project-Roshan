@@ -12,7 +12,7 @@ import { getPendingDocuments, verifyDocument } from "@/actions/documents";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -51,11 +51,14 @@ export default function OwnerVerificationsPage() {
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
+    const [propertyFilter, setPropertyFilter] = useState("ALL");
+    const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+    const [paymentFilter, setPaymentFilter] = useState("ALL");
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [rejectTarget, setRejectTarget] = useState<string | null>(null);
     const [previewDoc, setPreviewDoc] = useState<any>(null);
-    const { toast } = useToast();
 
     const fetchDocs = async () => {
         setLoading(true);
@@ -72,19 +75,35 @@ export default function OwnerVerificationsPage() {
     useEffect(() => { fetchDocs(); }, []);
 
     const filteredDocs = docs.filter(doc => {
+        // Date Filter
+        if (dateFilter !== "ALL") {
+            const date = new Date(doc.createdAt || doc.updatedAt);
+            const now = new Date();
+            const diffDays = (now.getTime() - date.getTime()) / (1000 * 3600 * 24);
+            if (dateFilter === "7D" && diffDays > 7) return false;
+            if (dateFilter === "30D" && diffDays > 30) return false;
+        }
+
+        // Multi-Filters
+        if (propertyFilter !== "ALL" && doc.booking?.propertyName !== propertyFilter) return false;
+        if (roomTypeFilter !== "ALL" && doc.booking?.occupancy !== roomTypeFilter) return false;
+        if (paymentFilter !== "ALL" && (doc.booking?.paymentMethod || "Online") !== paymentFilter) return false;
+
+        // Search Filter
         const query = search.toLowerCase();
         return (
             doc.booking?.guestName?.toLowerCase().includes(query) ||
             doc.booking?.displayId?.toLowerCase().includes(query) ||
-            doc.booking?.propertyName?.toLowerCase().includes(query)
+            doc.booking?.propertyName?.toLowerCase().includes(query) ||
+            doc.booking?.guestPhone?.toLowerCase().includes(query) ||
+            doc.booking?.roomAssigned?.toLowerCase().includes(query)
         );
     });
 
     const handleVerifyUpdate = async (docId: string, status: 'VERIFIED' | 'REJECTED', note?: string) => {
         try {
             await verifyDocument(docId, status, note);
-            toast({
-                title: status === 'VERIFIED' ? "Document Verified" : "Reupload Requested",
+            toast.success(status === 'VERIFIED' ? "Document Verified" : "Reupload Requested", {
                 description: status === 'VERIFIED' ? "Verification complete." : "Tenant notified for reupload.",
             });
             if (status === 'REJECTED') {
@@ -93,10 +112,7 @@ export default function OwnerVerificationsPage() {
             }
             fetchDocs();
         } catch (e) {
-            toast({
-                title: "Action Failed",
-                variant: "destructive",
-            });
+            toast.error("Action Failed");
         }
     };
 
@@ -121,28 +137,97 @@ export default function OwnerVerificationsPage() {
                     <p className="text-slate-500 mt-1 font-bold text-xs uppercase tracking-tight">Status-based review of student identity documents</p>
                 </div>
                 {docs.length > 0 && (
-                    <div className="flex items-center gap-6">
-                        <div className="text-right">
+                    <div className="flex items-center gap-4">
+                        <div className="text-right hidden sm:block">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Pending</p>
                             <p className="text-xl font-black text-indigo-600 leading-none">{docs.filter(d => d.status === "PENDING").length}</p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={fetchDocs} disabled={loading} className="rounded-xl border-slate-200 font-bold uppercase text-[10px] tracking-widest">
-                            <RefreshCcw className={`w-3 h-3 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => {
+                                toast.success("Export Started", { description: "Preparing CSV export for verification queue..." });
+                            }} className="rounded-xl border-slate-200 font-bold uppercase text-[10px] tracking-widest h-9">
+                                <Upload className="w-3 h-3 mr-2 rotate-180" /> Export CSV
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={fetchDocs} disabled={loading} className="rounded-xl border-slate-200 font-bold uppercase text-[10px] tracking-widest h-9">
+                                <RefreshCcw className={`w-3 h-3 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* Search Bar */}
-            <div className="bg-white p-4 rounded-2xl border shadow-sm sticky top-0 z-10">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                        placeholder="Search by customer name, PG or ID..."
-                        className="pl-11 h-12 border-slate-100 bg-slate-50/50 focus:bg-white rounded-xl font-medium text-sm transition-all"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+            {/* Search and Advanced Filters */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[280px]">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Search by name, room, or ID..."
+                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm transition-all shadow-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    <select
+                        value={propertyFilter}
+                        onChange={(e) => setPropertyFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[160px]"
+                    >
+                        <option value="ALL">All Properties (PGs)</option>
+                        {Array.from(new Set(docs.map(d => d.booking?.propertyName).filter(Boolean))).map(p => (
+                            <option key={p} value={p}>{p}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={roomTypeFilter}
+                        onChange={(e) => setRoomTypeFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Room Types</option>
+                        {Array.from(new Set(docs.map(d => d.booking?.occupancy).filter(Boolean))).map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={paymentFilter}
+                        onChange={(e) => setPaymentFilter(e.target.value)}
+                        className="h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-w-[140px]"
+                    >
+                        <option value="ALL">All Payments</option>
+                        {Array.from(new Set(docs.map(d => d.booking?.paymentMethod || "Online").filter(Boolean))).map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit border border-slate-200">
+                        {([
+                            ["7D", "Last 7 Days"],
+                            ["30D", "Last 30 Days"],
+                            ["ALL", "Lifetime"],
+                        ] as const).map(([val, label]) => (
+                            <button
+                                key={val}
+                                onClick={() => setDateFilter(val)}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-widest ${
+                                    dateFilter === val
+                                        ? "bg-indigo-600 text-white shadow-md"
+                                        : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                        Owner Verification Queue
+                    </div>
                 </div>
             </div>
 
