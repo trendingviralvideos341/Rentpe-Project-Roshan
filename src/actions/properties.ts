@@ -208,6 +208,8 @@ export async function createProperty(data: FormData | any) {
                 pgLicenceUrl: pgLicenceUrl[0] || null,
                 termsAccepted: true,
                 termsAcceptedAt: new Date(),
+                feeTermsAccepted: true,
+                feeTermsAcceptedAt: new Date(),
             } as any
         });
 

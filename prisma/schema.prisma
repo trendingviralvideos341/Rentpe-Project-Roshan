@@ -129,6 +129,8 @@ model Property {
   reraId                  String?
   termsAccepted           Boolean                      @default(false)
   termsAcceptedAt         DateTime?
+  feeTermsAccepted        Boolean                      @default(false)
+  feeTermsAcceptedAt      DateTime?
   onboardingPaidAt        DateTime?
   onboardingPaymentMethod String?
   applicationId           String?                      @unique
