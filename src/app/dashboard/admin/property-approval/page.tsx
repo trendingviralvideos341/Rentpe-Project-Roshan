@@ -2039,7 +2039,7 @@ export default function AdminPropertyApprovalPage() {
                                             disabled={processing}
                                         >
                                             {isVerified ? <RotateCcw className="w-5 h-5 mr-3" /> : <CheckCircle className="w-5 h-5 mr-3" />}
-                                            {isVerified ? "Revoke Approval" : "Make Live"}
+                                            {isVerified ? "Revoke Approval" : "Approve Now"}
                                         </Button>
 
                                         {/* 5. Close */}
