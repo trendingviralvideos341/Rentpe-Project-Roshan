@@ -77,6 +77,10 @@ export default function OwnerStaffPage() {
             alert("All fields (name, email, phone, designation, address, pincode) are mandatory.");
             return;
         }
+        if (form.phone.length !== 10) {
+            alert("Please enter a valid 10-digit phone number.");
+            return;
+        }
         if (form.permissions.length === 0) {
             alert("Select at least one permission.");
             return;
@@ -160,17 +164,29 @@ export default function OwnerStaffPage() {
                                     {[
                                         { label: "Full Name *", field: "name", placeholder: "Full name" },
                                         { label: "Email *", field: "email", placeholder: "email@pg.com" },
-                                        { label: "Phone *", field: "phone", placeholder: "9XXXXXXXXX" },
+                                        { label: "Phone *", field: "phone", placeholder: "9000000000" },
                                         { label: "Designation *", field: "designation", placeholder: "Property Manager" },
                                     ].map(({ label, field, placeholder }) => (
                                         <div key={field} className="space-y-1">
                                             <label className="text-sm font-medium">{label}</label>
-                                            <Input 
-                                                value={(form as any)[field]} 
-                                                onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))} 
-                                                placeholder={placeholder} 
-                                                className="focus-visible:ring-primary h-10"
-                                            />
+                                            {field === 'phone' ? (
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-bold tracking-wider">+91</span>
+                                                    <Input 
+                                                        value={form.phone} 
+                                                        onChange={e => setForm(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} 
+                                                        placeholder={placeholder} 
+                                                        className="focus-visible:ring-primary h-10 pl-10 tracking-widest font-mono"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <Input 
+                                                    value={(form as any)[field]} 
+                                                    onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))} 
+                                                    placeholder={placeholder} 
+                                                    className="focus-visible:ring-primary h-10"
+                                                />
+                                            )}
                                         </div>
                                     ))}
                                     <div className="space-y-1">
