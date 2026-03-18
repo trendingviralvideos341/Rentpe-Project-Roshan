@@ -245,9 +245,10 @@ export default function OwnerPropertiesPage() {
                                                     <CreditCard className="h-4 w-4" /> ₹{onboardingFee} Fee Pending
                                                 </div>
                                         ) : (
-                                            <span className="font-black flex items-center gap-1 text-slate-950 bg-white px-2 py-1 rounded-lg border-2 border-slate-950/10">
-                                                <Building className="h-4 w-4 text-indigo-600" /> {property.rooms?.length || 0} Rooms
-                                            </span>
+                                            <div className="flex items-center gap-2 bg-slate-50/80 px-4 py-2 rounded-2xl border-2 border-slate-100 shadow-inner">
+                                                <Building className="h-5 w-5 text-indigo-600" />
+                                                <span className="text-sm font-black text-slate-950">{property.rooms?.length || 0} Rooms</span>
+                                            </div>
                                         )}
                                         <div className="flex items-center gap-2">
                                             {property.status === 'APPROVED_PENDING_PAYMENT' && (
@@ -269,14 +270,14 @@ export default function OwnerPropertiesPage() {
                                             )}
                                             {property.status !== 'APPROVED' && (
                                                 <Button 
-                                                    variant="outline" 
+                                                    variant="destructive" 
                                                     size="sm" 
-                                                    className="bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-500 hover:text-white hover:border-rose-500 hover:shadow-lg hover:shadow-rose-100 transition-all duration-300 font-bold uppercase text-[10px] h-8 px-4 rounded-lg active:scale-95"
+                                                    className="bg-rose-500 hover:bg-rose-600 text-white border-b-4 border-rose-700 shadow-xl shadow-rose-100 transition-all duration-300 font-black uppercase text-[11px] h-10 px-6 rounded-2xl active:scale-95 active:border-b-0 active:translate-y-[2px]"
                                                     onClick={(e) => handleCancelClick(e, property.id, property.name)}
                                                     disabled={processingId === property.id}
                                                     suppressHydrationWarning
                                                 >
-                                                    Cancel Application
+                                                    CANCEL APPLICATION
                                                 </Button>
                                             )}
                                         </div>
