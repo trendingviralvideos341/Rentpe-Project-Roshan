@@ -20,7 +20,7 @@ const ownerPermissionsList = [
 ];
 
 const emptyForm = {
-    name: "", email: "", phone: "", designation: "", staffAddress: "",
+    name: "", email: "", phone: "", designation: "", staffAddress: "", pincode: "", city: "", state: "",
     permissions: [] as string[],
 };
 
@@ -30,6 +30,7 @@ export default function OwnerStaffPage() {
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState({ ...emptyForm });
     const [inviteLink, setInviteLink] = useState<string | null>(null);
+    const [pincodeLoading, setPincodeLoading] = useState(false);
 
     const fetchStaff = async () => {
         setLoading(true);
@@ -47,9 +48,33 @@ export default function OwnerStaffPage() {
         }));
     };
 
+    const handlePincodeChange = async (pin: string) => {
+        setForm(p => ({ ...p, pincode: pin }));
+        if (pin.length === 6 && /^\d{6}$/.test(pin)) {
+            setPincodeLoading(true);
+            try {
+                const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+                const data = await res.json();
+                if (data && data[0] && data[0].Status === "Success") {
+                    const first = data[0].PostOffice[0];
+                    setForm(p => ({
+                        ...p,
+                        pincode: pin,
+                        city: first.District,
+                        state: first.State,
+                    }));
+                }
+            } catch (error) {
+                console.error("Pincode fetch error:", error);
+            } finally {
+                setPincodeLoading(false);
+            }
+        }
+    };
+
     const handleAddStaff = async () => {
-        if (!form.name || !form.email || !form.phone || !form.designation || !form.staffAddress) {
-            alert("All fields (name, email, phone, designation, address) are mandatory.");
+        if (!form.name || !form.email || !form.phone || !form.designation || !form.staffAddress || !form.pincode) {
+            alert("All fields (name, email, phone, designation, address, pincode) are mandatory.");
             return;
         }
         if (form.permissions.length === 0) {
@@ -57,9 +82,10 @@ export default function OwnerStaffPage() {
             return;
         }
         try {
+            const fullAddress = `${form.staffAddress}, ${form.city}, ${form.state} - ${form.pincode}`;
             const res = await addOwnerStaff({
                 name: form.name, email: form.email, phone: form.phone,
-                designation: form.designation, staffAddress: form.staffAddress,
+                designation: form.designation, staffAddress: fullAddress,
                 permissions: form.permissions,
             });
             if (res.inviteLink) {
@@ -89,7 +115,7 @@ export default function OwnerStaffPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Management Team</h1>
+                    <h1 className="text-3xl font-bold">Management & Staff Team</h1>
                     <p className="text-muted-foreground">Invite staff members and control their dashboard access.</p>
                 </div>
                 <Button onClick={() => { setShowAdd(!showAdd); setInviteLink(null); }}>
@@ -147,12 +173,28 @@ export default function OwnerStaffPage() {
                                             />
                                         </div>
                                     ))}
-                                    <div className="space-y-1 md:col-span-2">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium flex items-center gap-2">
+                                            Pincode * 
+                                            {pincodeLoading && <span className="text-blue-500 text-[10px] animate-pulse">Searching...</span>}
+                                        </label>
+                                        <Input 
+                                            value={form.pincode} 
+                                            onChange={e => handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))} 
+                                            placeholder="6 digits" 
+                                            className="focus-visible:ring-primary h-10 font-mono tracking-wider"
+                                            maxLength={6}
+                                        />
+                                        {form.city && form.state && form.pincode.length === 6 && (
+                                            <p className="text-xs text-green-600 font-medium pt-1">✅ {form.city}, {form.state}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
                                         <label className="text-sm font-medium">Residential Address *</label>
                                         <Input 
                                             value={form.staffAddress} 
                                             onChange={e => setForm(p => ({ ...p, staffAddress: e.target.value }))} 
-                                            placeholder="Full residential address for records" 
+                                            placeholder="House, Street, Area" 
                                             className="focus-visible:ring-primary h-10"
                                         />
                                     </div>
@@ -285,7 +327,7 @@ export default function OwnerStaffPage() {
                             <div className="bg-muted/30 inline-flex p-4 rounded-full mb-4">
                                 <UsersIcon className="h-8 w-8 text-muted-foreground" />
                             </div>
-                            <h3 className="font-bold">No Staff Members Yet</h3>
+                            <h3 className="font-bold">No Management or Staff Members Yet</h3>
                             <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-1">
                                 Give your team access to the dashboard by inviting them with specific permissions.
                             </p>

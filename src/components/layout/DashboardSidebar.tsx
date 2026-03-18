@@ -122,8 +122,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Team & Help",
             links: [
-                { href: "/dashboard/owner/employees", label: "Staff Members", icon: UserCheck, reqPerm: ["manage_staff"] },
-                { href: "/dashboard/owner/staff", label: "Management Team", icon: UserPlus, reqPerm: ["manage_staff"] },
+                { href: "/dashboard/owner/staff", label: "Management & Staff Team", icon: UserPlus, reqPerm: ["manage_staff"] },
                 { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["support"] },
                 { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList, reqPerm: ["view_activity"] },
             ]
