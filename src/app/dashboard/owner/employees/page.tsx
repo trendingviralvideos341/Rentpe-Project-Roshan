@@ -47,7 +47,18 @@ export default function OwnerEmployeesPage() {
     const [search, setSearch] = useState("");
     
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [newEmp, setNewEmp] = useState({ name: "", email: "", phone: "", role: "Staff" });
+    const [newEmp, setNewEmp] = useState({ 
+        name: "", 
+        email: "", 
+        phone: "", 
+        role: "Staff",
+        pincode: "",
+        city: "",
+        state: "",
+        postOffice: "",
+        address: ""
+    });
+    const [pincodeLoading, setPincodeLoading] = useState(false);
     
     const [selectedEmp, setSelectedEmp] = useState<any>(null);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -55,6 +66,31 @@ export default function OwnerEmployeesPage() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handlePincodeChange = async (pin: string) => {
+        setNewEmp(prev => ({ ...prev, pincode: pin }));
+        if (pin.length === 6 && /^\d{6}$/.test(pin)) {
+            setPincodeLoading(true);
+            try {
+                const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+                const data = await res.json();
+                if (data && data[0] && data[0].Status === "Success") {
+                    const first = data[0].PostOffice[0];
+                    setNewEmp(prev => ({
+                        ...prev,
+                        city: first.District,
+                        state: first.State,
+                        postOffice: first.Name,
+                        address: prev.address || first.Name,
+                    }));
+                }
+            } catch (error) {
+                console.error("Pincode fetch error:", error);
+            } finally {
+                setPincodeLoading(false);
+            }
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -73,15 +109,25 @@ export default function OwnerEmployeesPage() {
     };
 
     const handleAdd = async () => {
-        if (!newEmp.name || !newEmp.email || !newEmp.phone) {
-            toast.error("Please fill all fields");
+        if (!newEmp.name || !newEmp.email || !newEmp.phone || !newEmp.pincode || !newEmp.address) {
+            toast.error("Please fill all fields, including address and pincode");
             return;
         }
         try {
             await createOwnerEmployee(newEmp);
             toast.success("Employee added successfully");
             setIsAddOpen(false);
-            setNewEmp({ name: "", email: "", phone: "", role: "Staff" });
+            setNewEmp({ 
+                name: "", 
+                email: "", 
+                phone: "", 
+                role: "Staff",
+                pincode: "",
+                city: "",
+                state: "",
+                postOffice: "",
+                address: ""
+            });
             fetchData();
         } catch (error: any) {
             toast.error(error.message);
@@ -212,6 +258,35 @@ export default function OwnerEmployeesPage() {
                                     </div>
                                 </div>
                             </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
+                                        Pincode
+                                        {pincodeLoading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                    </label>
+                                    <Input 
+                                        className="h-12 rounded-xl focus:ring-primary font-mono tracking-wider" 
+                                        placeholder="6 digits" 
+                                        value={newEmp.pincode}
+                                        maxLength={6}
+                                        onChange={e => handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                    />
+                                    {newEmp.city && newEmp.state && (
+                                        <p className="text-[10px] text-green-600 font-bold px-1 animate-in fade-in">
+                                            ✅ {newEmp.postOffice}, {newEmp.city}, {newEmp.state}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Staff Address</label>
+                                    <Input 
+                                        className="h-12 rounded-xl focus:ring-primary" 
+                                        placeholder="House No, Street, Landmark" 
+                                        value={newEmp.address}
+                                        onChange={e => setNewEmp({...newEmp, address: e.target.value})}
+                                    />
+                                </div>
+                            </div>
                         </div>
                         <DialogFooter className="pt-4">
                             <Button variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl h-11">Cancel</Button>
@@ -287,6 +362,11 @@ export default function OwnerEmployeesPage() {
                                                 <span className="flex items-center gap-1.5 font-mono text-primary font-black not-italic tracking-wider uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.05)]">🆔 {emp.displayId}</span>
                                                 <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {emp.phone}</span>
                                                 <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-xs truncate max-w-[150px]" /> {emp.email}</span>
+                                                {(emp.address || emp.pincode) && (
+                                                    <span className="flex items-center gap-1.5 text-xs font-bold text-primary/80">
+                                                        📍 {emp.address} {emp.pincode ? `(${emp.pincode})` : ''}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 

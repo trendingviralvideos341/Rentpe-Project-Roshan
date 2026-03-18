@@ -881,6 +881,11 @@ model OwnerEmployee {
   phone       String
   role        String                       @default("Staff")
   status      String                       @default("ACTIVE")
+  pincode     String?
+  city        String?
+  state       String?
+  postOffice  String?
+  address     String?
   createdAt   DateTime                     @default(now())
   updatedAt   DateTime                     @updatedAt
   userId      String?                      @unique

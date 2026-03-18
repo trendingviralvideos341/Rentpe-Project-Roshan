@@ -26,6 +26,11 @@ export async function createOwnerEmployee(data: {
     email: string;
     phone: string;
     role: string;
+    pincode?: string;
+    city?: string;
+    state?: string;
+    postOffice?: string;
+    address?: string;
 }) {
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
