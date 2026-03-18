@@ -155,7 +155,7 @@ export default function PropertyManagePage() {
             aadhaarProof: { name: "Aadhaar Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
             panProof: { name: "PAN Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
             pgLicenceUrl: { name: "PG Licence", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            livePhotoUrl: { name: "Live Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false }
+            livePhotoUrl: { name: "Current Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false }
         };
 
         const cat = categories[docType];
@@ -530,20 +530,15 @@ export default function PropertyManagePage() {
                             </div>
                         </div>
                     ) : cat.isLive ? (
-                        <div className="flex-1 flex flex-col gap-4 items-center justify-center border-2 border-dashed border-cyan-200 rounded-2xl bg-cyan-50/30 p-8 group/live hover:bg-cyan-50/50 transition-all">
-                            <div className="w-20 h-20 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center mb-2 group-hover/live:scale-110 transition-transform duration-500 shadow-inner border-2 border-cyan-200/50">
-                                <Camera className="w-10 h-10" />
+                        <div 
+                            className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-cyan-200 rounded-2xl bg-cyan-50/20 hover:bg-cyan-50/50 hover:border-cyan-400 transition-all p-8 group/upload cursor-pointer shadow-inner"
+                            onClick={handleLivePhoto}
+                        >
+                            <div className="w-14 h-14 rounded-full bg-white shadow-md border-2 border-cyan-50 flex items-center justify-center mb-4 group-hover/upload:scale-110 transition-transform duration-500">
+                                <Plus className="w-7 h-7 text-cyan-400 group-hover/upload:text-cyan-600" />
                             </div>
-                            <div className="text-center">
-                                <p className="text-[12px] font-black text-cyan-900 uppercase tracking-tighter">Live Identity Required</p>
-                                <p className="text-[10px] text-cyan-600 mt-1 max-w-[180px] font-bold">Please capture a live selfie of the property owner for verification.</p>
-                            </div>
-                            <Button 
-                                onClick={handleLivePhoto} 
-                                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-black text-[12px] uppercase tracking-widest py-6 rounded-xl shadow-xl shadow-cyan-100 transition-all active:scale-95 border-b-4 border-cyan-800"
-                            >
-                                Open Secure Camera
-                            </Button>
+                            <span className="text-[12px] font-black text-cyan-600 group-hover/upload:text-cyan-700 transition-colors uppercase tracking-[0.2em] leading-none">Awaiting Photo</span>
+                            <span className="text-[10px] text-cyan-300 mt-2 font-black group-hover/upload:text-cyan-400 uppercase tracking-widest text-center">Click to Capture Current Photo</span>
                         </div>
                     ) : (
                         isLocked ? (
@@ -631,7 +626,7 @@ export default function PropertyManagePage() {
                                         aadhaarProof: "Aadhaar",
                                         panProof: "PAN Card",
                                         pgLicenceUrl: "PG Licence",
-                                        livePhotoUrl: "Live Photo"
+                                        livePhotoUrl: "Current Photo"
                                     };
                                     prefix = mapping[rawKey] || rawKey;
 
@@ -761,7 +756,7 @@ export default function PropertyManagePage() {
                                 ))}
                             </div>
 
-                            {(property.buildingPhotos || property.commonAreaPhoto || property.parkingPhoto || property.bathroomPhoto) && (
+                            {(property.buildingPhotos || property.commonAreaPhotos || property.parkingPhotos || property.roomsAndBathroomPhotos) && (
                                 <div className="mt-8 border-t pt-6">
                                     <h4 className="text-sm font-bold uppercase text-muted-foreground mb-4">Verified Building Photos</h4>
                                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -781,22 +776,22 @@ export default function PropertyManagePage() {
                                                 </div>
                                             </div>
                                         ))}
-                                        {property.parkingPhoto && (
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-semibold">Parking Area</span>
+                                        {property.parkingPhotos && safeParse(property.parkingPhotos).map((img: any, i: number) => (
+                                            <div key={i} className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Parking Area {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
-                                                    <img src={property.parkingPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                    <img src={typeof img === 'string' ? img : img.url} className="object-cover w-full h-full hover:scale-105 transition-transform" />
                                                 </div>
                                             </div>
-                                        )}
-                                        {property.bathroomPhoto && (
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-semibold">Bathroom</span>
+                                        ))}
+                                        {property.roomsAndBathroomPhotos && safeParse(property.roomsAndBathroomPhotos).map((img: any, i: number) => (
+                                            <div key={i} className="flex flex-col gap-1">
+                                                <span className="text-xs font-semibold">Rooms/Bath {i + 1}</span>
                                                 <div className="aspect-square bg-muted rounded-md overflow-hidden relative border shadow-sm">
-                                                    <img src={property.bathroomPhoto} className="object-cover w-full h-full hover:scale-105 transition-transform" />
+                                                    <img src={typeof img === 'string' ? img : img.url} className="object-cover w-full h-full hover:scale-105 transition-transform" />
                                                 </div>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -913,8 +908,8 @@ export default function PropertyManagePage() {
                                         {[
                                             { key: 'aadhaarProof', label: 'Aadhaar Card', desc: 'FRONT & BACK required', icon: <FileText className="w-5 h-5 text-emerald-600" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderHover: 'border-emerald-200 hover:border-emerald-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
                                             { key: 'panProof', label: 'PAN Card', desc: 'FRONT & BACK required', icon: <FileText className="w-5 h-5 text-blue-600" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderHover: 'border-blue-200 hover:border-blue-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
-                                            { key: 'pgLicenceUrl', label: 'Property License / Docs', desc: 'Official property papers', icon: <Building2 className="w-5 h-5 text-purple-600" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
-                                            { key: 'livePhotoUrl', label: 'Identity Photo', desc: 'Selfie verification', icon: <Camera className="w-5 h-5 text-cyan-600" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'border-cyan-200 hover:border-cyan-400', isLive: true }
+                                            { key: 'pgLicenceUrl', label: 'PG/Hostel/Flat/Apartment Licence', desc: 'and if any Others Licence applicable', icon: <Building2 className="w-5 h-5 text-purple-600" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderHover: 'border-purple-200 hover:border-purple-400', accept: 'image/*,.pdf', isArray: true, max: 2 },
+                                            { key: 'livePhotoUrl', label: 'Current Photo', desc: 'Current photo of the person', icon: <Camera className="h-5 w-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderHover: 'hover:border-cyan-400', isLive: true }
                                         ].map((cat) => renderCategory(cat, isLocked))}
                                     </div>
                                 </div>
@@ -1040,7 +1035,7 @@ export default function PropertyManagePage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
                             <Camera className="w-5 h-5 text-cyan-400" />
-                            Live Identity Verification
+                            Current Identity Verification
                         </DialogTitle>
                         <DialogDescription className="text-slate-400">
                             Please position your face clearly in the frame and click capture.

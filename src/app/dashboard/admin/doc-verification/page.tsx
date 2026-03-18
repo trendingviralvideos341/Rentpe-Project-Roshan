@@ -22,12 +22,12 @@ const TYPE_LABELS: Record<string, string> = {
     PAN_BACK: "PAN Card (Back)",
     STUDENT_ID: "Student / University ID",
     COMPANY_ID: "Company ID / Offer Letter",
-    LIVE_PHOTO: "Live Photo",
+    LIVE_PHOTO: "Current Photo",
     OTHER: "Other Documents",
     ID_PROOF: "Identity Proof",
     ADDRESS_PROOF: "Address Proof",
     COLLEGE_COMPANY: "College / Company ID",
-    SELFIE: "Live Identity Check",
+    SELFIE: "Current Identity Check",
 };
 
 const TYPE_ICONS: Record<string, any> = {
@@ -669,12 +669,12 @@ const TYPE_CONFIG: any = {
     PAN_BACK: { label: 'PAN Card Back', desc: 'Back side of PAN card (Optional)', icon: <CreditCard className="w-5 h-5" />, colorClass: 'text-green-500', bgClass: 'bg-green-50', borderClass: 'border-green-200' },
     STUDENT_ID: { label: 'Student / University ID', desc: 'Current academic year', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' },
     COMPANY_ID: { label: 'Company ID / Offer Letter', desc: 'For working professionals', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200' },
-    LIVE_PHOTO: { label: 'Live Photo', desc: 'User identity verification', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
+    LIVE_PHOTO: { label: 'Current Photo', desc: 'User identity verification', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
     OTHER: { label: 'Other Documents', desc: 'Any additional document (Optional)', icon: <FileText className="w-5 h-5" />, colorClass: 'text-slate-600', bgClass: 'bg-slate-50', borderClass: 'border-slate-200' },
     ID_PROOF: { label: 'Identity Proof', desc: 'Aadhaar, PAN or Voter ID', icon: <FileText className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-200' },
     ADDRESS_PROOF: { label: 'Address Proof', desc: 'Electricity Bill or Rent Agreement', icon: <MapPin className="w-5 h-5" />, colorClass: 'text-orange-600', bgClass: 'bg-orange-50', borderClass: 'border-orange-200' },
     COLLEGE_COMPANY: { label: 'College / Work', desc: 'ID Card or Offer Letter', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-200' },
-    SELFIE: { label: 'Live Selfie', desc: 'User identity verification', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
+    SELFIE: { label: 'Current Selfie', desc: 'User identity verification', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
 };
 
 function DocumentDetailCard({ type, doc, onVerify, onReject, onView }: any) {

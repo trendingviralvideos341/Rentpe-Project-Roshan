@@ -16,14 +16,14 @@ const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
     ADDRESS_PROOF: "🏠 Address Proof",
     COLLEGE_COMPANY: "🎓 College / Company",
-    SELFIE: "📸 Live Selfie",
+    SELFIE: "📸 Current Selfie",
     AADHAAR_FRONT: "🪪 Aadhaar Front",
     AADHAAR_BACK: "🪪 Aadhaar Back",
     PAN_FRONT: "💳 PAN Front",
     PAN_BACK: "💳 PAN Back",
     STUDENT_ID: "🎓 Student ID",
     COMPANY_ID: "🏢 Company ID",
-    LIVE_PHOTO: "📸 Live Photo",
+    LIVE_PHOTO: "📸 Current Photo",
     OTHER: "📎 Other",
 };
 

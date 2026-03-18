@@ -588,7 +588,7 @@ export default function AddPropertyPage() {
             if (docs.pgLicenceUrl.length < 1) errs.pgLicenceUrl = "PG/Hostel Licence photo is mandatory";
         }
         
-        if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Live Photo (Selfie) is mandatory";
+        if (docs.livePhotoUrl.length === 0) errs.livePhotoUrl = "Owner Current Photo (Selfie) is mandatory";
 
         rooms.forEach((room, i) => {
             if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
@@ -652,7 +652,7 @@ export default function AddPropertyPage() {
                 termsAccepted,
                 feeTermsAccepted,
                 ...uploadedUrls,
-                livePhotoUrl: docs.livePhotoUrl[0]?.cloudUrl // Single URL for live photo
+                livePhotoUrl: docs.livePhotoUrl[0]?.cloudUrl // Single URL for current photo
             };
 
             const res = await createProperty(submissionData);
@@ -1191,14 +1191,14 @@ export default function AddPropertyPage() {
                                 <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" slotsCount={2} isRequired={true} />
                                 <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" slotsCount={2} isRequired={true} />
                                 <UploadCard 
-                                    label="PG/Hostel Licence" 
-                                    sub={propertyType === "Other" ? "Any other legal doc (Optional)" : "Operational / Approval"} 
+                                    label="PG/Hostel/Flat/Apartment Licence" 
+                                    sub="and if any Others Licence applicable" 
                                     category="pgLicenceUrl" 
                                     slotsCount={2} 
                                     isRequired={propertyType === "PG" || propertyType === "Hostel"} 
                                     minRequired={1}
                                 />
-                                <UploadCard label="Live Photo" sub="Owner Selfie" category="livePhotoUrl" isMultiple={false} slotsCount={1} isRequired={true} />
+                                <UploadCard label="Current Photo" sub="Current photo of the person" category="livePhotoUrl" isMultiple={false} slotsCount={1} isRequired={true} />
                             </div>
                         </div>
 

@@ -14,7 +14,7 @@ const DOC_TYPES = [
     { key: "ID_PROOF", label: "ID Proof", desc: "Aadhaar / PAN / Passport", icon: "🪪" },
     { key: "ADDRESS_PROOF", label: "Address Proof", desc: "Utility bill / Bank statement", icon: "🏠" },
     { key: "COLLEGE_COMPANY", label: "College / Company", desc: "ID card / Offer letter", icon: "🎓" },
-    { key: "SELFIE", label: "Live Selfie", desc: "Take a live photo for verification", icon: "📸", isCamera: true },
+    { key: "SELFIE", label: "Current Photo (Selfie)", desc: "Take a current photo for verification", icon: "📸", isCamera: true },
 ];
 
 const MAX_TOTAL_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -326,7 +326,7 @@ export default function StudentDocumentsPage() {
             {cameraActive && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
-                        <h2 className="text-xl font-bold text-center">📸 Take Your Live Selfie</h2>
+                        <h2 className="text-xl font-bold text-center">📸 Take Your Current Photo (Selfie)</h2>
                         <p className="text-sm text-center text-muted-foreground">Look directly at the camera and click Capture.</p>
                         <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg border" />
                         <canvas ref={canvasRef} className="hidden" />

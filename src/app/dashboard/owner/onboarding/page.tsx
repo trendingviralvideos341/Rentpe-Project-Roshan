@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
     ADDRESS_PROOF: "🏠 Address Proof",
     COLLEGE_COMPANY: "🎓 College / Company",
-    SELFIE: "📸 Live Selfie",
+    SELFIE: "📸 Current Selfie",
 };
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 

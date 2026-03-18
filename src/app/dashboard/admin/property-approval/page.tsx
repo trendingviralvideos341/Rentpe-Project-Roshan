@@ -1167,10 +1167,10 @@ export default function AdminPropertyApprovalPage() {
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                 {[
-                                                                    { key: 'aadhaarProof', label: 'Aadhaar Card', desc: 'Identity Proof (Max 2 Check)', icon: <FileText className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderClass: 'border-amber-100', isArray: true, max: 2 },
-                                                                    { key: 'panProof', label: 'PAN Card', desc: 'Identity Verification (Max 2 Check)', icon: <FileText className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderClass: 'border-rose-100', isArray: true, max: 2 },
-                                                                    { key: 'pgLicenceUrl', label: 'PG Licence', desc: 'Standard Operating Permit', icon: <ShieldCheck className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-100' },
-                                                                    { key: 'livePhotoUrl', label: 'Live Identity', desc: 'Identity Verification Photo', icon: <Camera className="w-5 h-5" />, colorClass: 'text-red-600', bgClass: 'bg-red-50', borderClass: 'border-red-100' }
+                                                                    { key: 'aadhaarProof', label: 'Aadhaar Card', desc: 'FRONT & BACK REQUIRED', icon: <FileText className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderClass: 'border-amber-100', isArray: true, max: 2 },
+                                                                    { key: 'panProof', label: 'PAN Card', desc: 'FRONT & BACK REQUIRED', icon: <FileText className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderClass: 'border-rose-100', isArray: true, max: 2 },
+                                                                    { key: 'pgLicenceUrl', label: 'PG/Hostel/Flat/Apartment Licence', desc: 'and if any Others Licence applicable', icon: <ShieldCheck className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-100' },
+                                                                    { key: 'livePhotoUrl', label: 'Current Photo', desc: 'Current photo of the person', icon: <Camera className="w-5 h-5" />, colorClass: 'text-red-600', bgClass: 'bg-red-50', borderClass: 'border-red-100' }
                                                                 ].map(cat => renderAdminCategory(property, cat))}
                                                             </div>
                                                         </div>

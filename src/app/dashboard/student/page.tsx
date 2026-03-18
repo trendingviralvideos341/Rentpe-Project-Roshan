@@ -24,7 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
     ADDRESS_PROOF: "🏠 Address Proof",
     COLLEGE_COMPANY: "🎓 College / Company Letter",
-    SELFIE: "📸 Live Selfie",
+    SELFIE: "📸 Current Selfie",
 };
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
