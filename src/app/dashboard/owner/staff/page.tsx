@@ -32,6 +32,7 @@ export default function OwnerStaffPage() {
     const [inviteLink, setInviteLink] = useState<string | null>(null);
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const [postOffices, setPostOffices] = useState<any[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const fetchStaff = async () => {
         setLoading(true);
@@ -78,18 +79,21 @@ export default function OwnerStaffPage() {
     };
 
     const handleAddStaff = async () => {
-        if (!form.name || !form.email || !form.phone || !form.designation || !form.staffAddress || !form.pincode) {
-            alert("All fields (name, email, phone, designation, address, pincode) are mandatory.");
+        const errs: Record<string, string> = {};
+        if (!form.name) errs.name = "Name is required";
+        if (!form.email) errs.email = "Email is required";
+        if (!form.phone) errs.phone = "Phone is required";
+        if (form.phone && form.phone.length !== 10) errs.phone = "Must be 10 digits";
+        if (!form.designation) errs.designation = "Designation is required";
+        if (!form.staffAddress) errs.staffAddress = "Address is required";
+        if (!form.pincode) errs.pincode = "Pincode is required";
+        if (form.permissions.length === 0) errs.permissions = "Select at least one permission";
+
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
             return;
         }
-        if (form.phone.length !== 10) {
-            alert("Please enter a valid 10-digit phone number.");
-            return;
-        }
-        if (form.permissions.length === 0) {
-            alert("Select at least one permission.");
-            return;
-        }
+
         try {
             const fullAddress = `${form.staffAddress}, ${form.city}, ${form.state} - ${form.pincode}`;
             const res = await addOwnerStaff({
@@ -100,6 +104,7 @@ export default function OwnerStaffPage() {
             if (res.inviteLink) {
                 setInviteLink(res.inviteLink);
             }
+            setErrors({});
             setPostOffices([]);
             await fetchStaff();
         } catch (e: any) { alert(`Failed to add staff: ${e.message}`); }
@@ -168,41 +173,50 @@ export default function OwnerStaffPage() {
                             <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {[
-                                        { label: "Full Name *", field: "name", placeholder: "Full name" },
-                                        { label: "Email *", field: "email", placeholder: "email@pg.com" },
-                                        { label: "Phone *", field: "phone", placeholder: "9000000000" },
-                                        { label: "Designation *", field: "designation", placeholder: "Property Manager" },
+                                        { label: "Full Name *", field: "name", placeholder: "" },
+                                        { label: "Email *", field: "email", placeholder: "" },
+                                        { label: "Phone *", field: "phone", placeholder: "" },
+                                        { label: "Designation *", field: "designation", placeholder: "" },
                                     ].map(({ label, field, placeholder }) => (
                                         <div key={field} className="space-y-1">
                                             <label className="text-sm font-medium">{label}</label>
                                             {field === 'phone' ? (
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-bold tracking-wider">+91</span>
+                                                <div className="relative flex items-center">
+                                                    <span className="absolute left-3 text-sm text-muted-foreground font-bold tracking-wider">+91</span>
                                                     <Input 
                                                         value={form.phone} 
                                                         onChange={e => setForm(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} 
                                                         placeholder={placeholder} 
-                                                        className="focus-visible:ring-primary h-10 pl-10 tracking-widest font-mono"
+                                                        className={`focus-visible:ring-primary h-10 pl-10 tracking-widest font-mono ${errors.phone ? "border-red-500 bg-red-50" : ""}`}
                                                     />
+                                                    {errors.phone && <p className="text-[10px] text-red-600 font-bold mt-1 px-1">{errors.phone}</p>}
                                                 </div>
                                             ) : (
                                                 <Input 
                                                     value={(form as any)[field]} 
-                                                    onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))} 
+                                                    onChange={e => {
+                                                        setForm(p => ({ ...p, [field]: e.target.value }));
+                                                        if (errors[field]) setErrors(prev => { const n = {...prev}; delete n[field]; return n; });
+                                                    }} 
                                                     placeholder={placeholder} 
-                                                    className="focus-visible:ring-primary h-10"
+                                                    className={`focus-visible:ring-primary h-10 ${errors[field] ? "border-red-500 bg-red-50" : ""}`}
                                                 />
                                             )}
+                                            {field !== 'phone' && errors[field] && <p className="text-[10px] text-red-600 font-bold mt-1 px-1">{errors[field]}</p>}
                                         </div>
                                     ))}
                                     <div className="space-y-1 col-span-1 md:col-span-2">
                                         <label className="text-sm font-medium">Residential Street Address *</label>
                                         <Input 
                                             value={form.staffAddress} 
-                                            onChange={e => setForm(p => ({ ...p, staffAddress: e.target.value }))} 
-                                            placeholder="House No, Street, Landmark" 
-                                            className="focus-visible:ring-primary h-10"
+                                            onChange={e => {
+                                                setForm(p => ({ ...p, staffAddress: e.target.value }));
+                                                if (errors.staffAddress) setErrors(prev => { const n = {...prev}; delete n.staffAddress; return n; });
+                                            }} 
+                                            placeholder="" 
+                                            className={`focus-visible:ring-primary h-10 ${errors.staffAddress ? "border-red-500 bg-red-50" : ""}`}
                                         />
+                                        {errors.staffAddress && <p className="text-[10px] text-red-600 font-bold mt-1 px-1">{errors.staffAddress}</p>}
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium flex items-center gap-2">
@@ -211,11 +225,15 @@ export default function OwnerStaffPage() {
                                         </label>
                                         <Input 
                                             value={form.pincode} 
-                                            onChange={e => handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))} 
-                                            placeholder="6 digits" 
-                                            className="focus-visible:ring-primary h-10 font-mono tracking-wider"
+                                            onChange={e => {
+                                                handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6));
+                                                if (errors.pincode) setErrors(prev => { const n = {...prev}; delete n.pincode; return n; });
+                                            }} 
+                                            placeholder="" 
+                                            className={`focus-visible:ring-primary h-10 font-mono tracking-wider ${errors.pincode ? "border-red-500 bg-red-50" : ""}`}
                                             maxLength={6}
                                         />
+                                        {errors.pincode && <p className="text-[10px] text-red-600 font-bold mt-1 px-1">{errors.pincode}</p>}
                                     </div>
                                     {postOffices.length > 0 && (
                                         <div className="space-y-1">
@@ -235,21 +253,33 @@ export default function OwnerStaffPage() {
                                         </div>
                                     )}
                                     {form.city && (
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-black uppercase text-muted-foreground/60 tracking-widest">Fetched Location</label>
-                                            <div className="h-10 rounded-lg bg-muted/50 px-3 flex items-center text-xs font-bold text-muted-foreground italic border">
-                                                ✅ {form.city}, {form.state}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">District / City</label>
+                                                <Input 
+                                                    value={form.city} 
+                                                    onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
+                                                    className="focus-visible:ring-primary h-10 bg-primary/5 border-primary/10 font-bold"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">State</label>
+                                                <Input 
+                                                    value={form.state} 
+                                                    onChange={e => setForm(p => ({ ...p, state: e.target.value }))}
+                                                    className="focus-visible:ring-primary h-10 bg-primary/5 border-primary/10 font-bold"
+                                                />
                                             </div>
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-sm font-bold flex items-center gap-2">
+                                    <label className={`text-sm font-bold flex items-center gap-2 ${errors.permissions ? "text-red-600" : ""}`}>
                                         🛡️ Dashboard Access Permissions
                                         <span className="text-[10px] font-normal text-muted-foreground">(Select allowed features)</span>
                                     </label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-1 rounded-xl transition-all ${errors.permissions ? "ring-2 ring-red-500 ring-offset-2 bg-red-50" : ""}`}>
                                         {ownerPermissionsList.map(perm => (
                                             <label 
                                                 key={perm.id} 
@@ -262,7 +292,10 @@ export default function OwnerStaffPage() {
                                                 <input 
                                                     type="checkbox" 
                                                     checked={form.permissions.includes(perm.id)} 
-                                                    onChange={() => togglePerm(perm.id)} 
+                                                    onChange={() => {
+                                                        togglePerm(perm.id);
+                                                        if (errors.permissions) setErrors(prev => { const n = {...prev}; delete n.permissions; return n; });
+                                                    }} 
                                                     className="w-4 h-4 accent-primary rounded cursor-pointer" 
                                                 />
                                                 <span className={form.permissions.includes(perm.id) ? "font-bold text-primary" : ""}>
@@ -271,11 +304,12 @@ export default function OwnerStaffPage() {
                                             </label>
                                         ))}
                                     </div>
+                                    {errors.permissions && <p className="text-[10px] text-red-600 font-black uppercase tracking-tight px-1 animate-pulse">Error: {errors.permissions}</p>}
                                 </div>
 
                                 <div className="flex gap-3 pt-4">
                                     <Button onClick={handleAddStaff} className="bg-primary hover:bg-primary/90 flex-1 h-11 font-bold">Generate Invite & Add Staff</Button>
-                                    <Button variant="outline" onClick={() => { setShowAdd(false); setForm({ ...emptyForm }); }} className="h-11 px-6">Cancel</Button>
+                                    <Button variant="destructive" onClick={() => { setShowAdd(false); setInviteLink(null); setForm({ ...emptyForm }); setErrors({}); }} className="bg-red-600 hover:bg-red-700 h-11 px-6 font-black uppercase tracking-widest text-xs">Cancel</Button>
                                 </div>
                             </>
                         )}

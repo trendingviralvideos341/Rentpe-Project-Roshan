@@ -60,6 +60,7 @@ export default function OwnerEmployeesPage() {
     });
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const [postOffices, setPostOffices] = useState<any[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     
     const [selectedEmp, setSelectedEmp] = useState<any>(null);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -113,12 +114,32 @@ export default function OwnerEmployeesPage() {
     };
 
     const handleAdd = async () => {
-        if (!newEmp.name || !newEmp.email || !newEmp.phone || !newEmp.pincode || !newEmp.address) {
-            toast.error("Please fill all fields, including address and pincode");
+        const errs: Record<string, string> = {};
+        if (!newEmp.name) errs.name = "Full name is required";
+        if (!newEmp.email) errs.email = "Email is required";
+        if (!newEmp.phone) errs.phone = "Phone is required";
+        if (newEmp.phone && newEmp.phone.length !== 10) errs.phone = "Must be 10 digits";
+        if (!newEmp.role) errs.role = "Role is required";
+        if (!newEmp.address) errs.address = "Address is required";
+        if (!newEmp.pincode) errs.pincode = "Pincode is required";
+
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
             return;
         }
+
         try {
-            await createOwnerEmployee(newEmp);
+            await createOwnerEmployee({
+                name: newEmp.name,
+                email: newEmp.email,
+                phone: newEmp.phone,
+                role: newEmp.role,
+                pincode: newEmp.pincode,
+                city: newEmp.city,
+                state: newEmp.state,
+                postOffice: newEmp.postOffice,
+                address: newEmp.address
+            });
             toast.success("Employee added successfully");
             setIsAddOpen(false);
             setNewEmp({ 
@@ -132,6 +153,7 @@ export default function OwnerEmployeesPage() {
                 postOffice: "",
                 address: ""
             });
+            setErrors({});
             setPostOffices([]);
             fetchData();
         } catch (error: any) {
@@ -212,66 +234,89 @@ export default function OwnerEmployeesPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-6 py-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Full Name</label>
-                                <div className="relative group">
-                                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                    <Input 
-                                        className="pl-10 h-12 rounded-xl focus:ring-primary" 
-                                        placeholder="Ramesh Kumar" 
-                                        value={newEmp.name}
-                                        onChange={e => setNewEmp({...newEmp, name: e.target.value})}
-                                    />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Full Name</label>
+                                    <div className="relative group">
+                                        <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                        <Input 
+                                            className={`pl-10 h-12 rounded-xl focus:ring-primary ${errors.name ? "border-red-500 bg-red-50" : ""}`}
+                                            placeholder="" 
+                                            value={newEmp.name}
+                                            onChange={e => {
+                                                setNewEmp({...newEmp, name: e.target.value});
+                                                if(errors.name) setErrors(prev => { const n = {...prev}; delete n.name; return n; });
+                                            }}
+                                        />
+                                    </div>
+                                    {errors.name && <p className="text-[10px] text-red-600 font-bold px-1 mt-1">{errors.name}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Email Address</label>
+                                    <div className="relative group">
+                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                        <Input 
+                                            className={`pl-10 h-12 rounded-xl focus:ring-primary ${errors.email ? "border-red-500 bg-red-50" : ""}`}
+                                            type="email" 
+                                            placeholder="" 
+                                            value={newEmp.email}
+                                            onChange={e => {
+                                                setNewEmp({...newEmp, email: e.target.value});
+                                                if(errors.email) setErrors(prev => { const n = {...prev}; delete n.email; return n; });
+                                            }}
+                                        />
+                                    </div>
+                                    {errors.email && <p className="text-[10px] text-red-600 font-bold px-1 mt-1">{errors.email}</p>}
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Email Address</label>
-                                <div className="relative group">
-                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                    <Input 
-                                        type="email"
-                                        className="pl-10 h-12 rounded-xl focus:ring-primary" 
-                                        placeholder="ramesh@example.com" 
-                                        value={newEmp.email}
-                                        onChange={e => setNewEmp({...newEmp, email: e.target.value})}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Phone Number</label>
                                     <div className="relative group">
                                         <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                         <Input 
-                                            className="pl-10 h-12 rounded-xl focus:ring-primary" 
-                                            placeholder="9123456789" 
+                                            className={`pl-10 h-12 rounded-xl focus:ring-primary ${errors.phone ? "border-red-500 bg-red-50" : ""}`}
+                                            placeholder="" 
                                             value={newEmp.phone}
-                                            onChange={e => setNewEmp({...newEmp, phone: e.target.value})}
+                                            onChange={e => {
+                                                setNewEmp({...newEmp, phone: e.target.value.replace(/\D/g, "").slice(0, 10)});
+                                                if(errors.phone) setErrors(prev => { const n = {...prev}; delete n.phone; return n; });
+                                            }}
                                         />
                                     </div>
+                                    {errors.phone && <p className="text-[10px] text-red-600 font-bold px-1 mt-1">{errors.phone}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Designated Role</label>
                                     <div className="relative group">
                                         <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                         <Input 
-                                            className="pl-10 h-12 rounded-xl focus:ring-primary" 
-                                            placeholder="Manager" 
+                                            className={`pl-10 h-12 rounded-xl focus:ring-primary ${errors.role ? "border-red-500 bg-red-50" : ""}`}
+                                            placeholder="" 
                                             value={newEmp.role}
-                                            onChange={e => setNewEmp({...newEmp, role: e.target.value})}
+                                            onChange={e => {
+                                                setNewEmp({...newEmp, role: e.target.value});
+                                                if(errors.role) setErrors(prev => { const n = {...prev}; delete n.role; return n; });
+                                            }}
                                         />
                                     </div>
+                                    {errors.role && <p className="text-[10px] text-red-600 font-bold px-1 mt-1">{errors.role}</p>}
                                 </div>
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Street / Locality / Landmark</label>
                                 <Input 
-                                    className="h-12 rounded-xl focus:ring-primary" 
-                                    placeholder="e.g. 12-B, MG Road, Near City Mall" 
+                                    className={`h-12 rounded-xl focus:ring-primary ${errors.address ? "border-red-500 bg-red-50" : ""}`}
+                                    placeholder="" 
                                     value={newEmp.address}
-                                    onChange={e => setNewEmp({...newEmp, address: e.target.value})}
+                                    onChange={e => {
+                                        setNewEmp({...newEmp, address: e.target.value});
+                                        if(errors.address) setErrors(prev => { const n = {...prev}; delete n.address; return n; });
+                                    }}
                                 />
+                                {errors.address && <p className="text-[10px] text-red-600 font-bold px-1 mt-1">{errors.address}</p>}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -281,12 +326,16 @@ export default function OwnerEmployeesPage() {
                                         {pincodeLoading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                                     </label>
                                     <Input 
-                                        className="h-12 rounded-xl focus:ring-primary font-mono tracking-wider" 
-                                        placeholder="6 digits" 
+                                        className={`h-12 rounded-xl focus:ring-primary font-mono tracking-wider ${errors.pincode ? "border-red-500 bg-red-50" : ""}`}
+                                        placeholder="" 
                                         value={newEmp.pincode}
                                         maxLength={6}
-                                        onChange={e => handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                        onChange={e => {
+                                            handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6));
+                                            if(errors.pincode) setErrors(prev => { const n = {...prev}; delete n.pincode; return n; });
+                                        }}
                                     />
+                                    {errors.pincode && <p className="text-[10px] text-red-600 font-bold px-1 mt-1">{errors.pincode}</p>}
                                 </div>
 
                                 {postOffices.length > 0 && (
@@ -308,18 +357,34 @@ export default function OwnerEmployeesPage() {
                                 )}
 
                                 {newEmp.city && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">City / State</label>
-                                        <div className="h-12 rounded-xl border-2 border-primary/5 bg-primary/5 px-4 flex items-center text-xs font-black italic text-primary/80">
-                                            {newEmp.city}, {newEmp.state}
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">District / City</label>
+                                            <Input 
+                                                value={newEmp.city} 
+                                                onChange={e => setNewEmp({...newEmp, city: e.target.value})}
+                                                className="h-12 rounded-xl border-2 border-primary/5 bg-primary/5 px-4 font-bold text-primary/80"
+                                            />
                                         </div>
-                                    </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">State</label>
+                                            <Input 
+                                                value={newEmp.state} 
+                                                onChange={e => setNewEmp({...newEmp, state: e.target.value})}
+                                                className="h-12 rounded-xl border-2 border-primary/5 bg-primary/5 px-4 font-bold text-primary/80"
+                                            />
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>
                         <DialogFooter className="pt-4">
-                            <Button variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl h-11">Cancel</Button>
-                            <Button onClick={handleAdd} className="rounded-xl h-11 px-8 font-bold">Register Staff</Button>
+                            <Button variant="destructive" onClick={() => { setIsAddOpen(false); setErrors({}); }} className="bg-red-600 hover:bg-red-700 h-11 px-8 font-black uppercase tracking-widest text-xs">
+                                Cancel
+                            </Button>
+                            <Button className="h-11 px-8 font-bold" onClick={handleAdd}>
+                                Add Staff Member
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
