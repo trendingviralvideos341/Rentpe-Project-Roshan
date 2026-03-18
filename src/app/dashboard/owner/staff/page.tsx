@@ -20,7 +20,7 @@ const ownerPermissionsList = [
 ];
 
 const emptyForm = {
-    name: "", email: "", phone: "", designation: "", staffAddress: "", pincode: "", city: "", state: "",
+    name: "", email: "", phone: "", designation: "", staffAddress: "", pincode: "", city: "", state: "", postOffice: "",
     permissions: [] as string[],
 };
 
@@ -62,6 +62,8 @@ export default function OwnerStaffPage() {
                         pincode: pin,
                         city: first.District,
                         state: first.State,
+                        postOffice: first.Name,
+                        staffAddress: p.staffAddress ? p.staffAddress : first.Name,
                     }));
                 }
             } catch (error) {
@@ -202,7 +204,7 @@ export default function OwnerStaffPage() {
                                             maxLength={6}
                                         />
                                         {form.city && form.state && form.pincode.length === 6 && (
-                                            <p className="text-xs text-green-600 font-medium pt-1">✅ {form.city}, {form.state}</p>
+                                            <p className="text-xs text-green-600 font-medium pt-1">✅ {form.postOffice}, {form.city}, {form.state}</p>
                                         )}
                                     </div>
                                     <div className="space-y-1">
