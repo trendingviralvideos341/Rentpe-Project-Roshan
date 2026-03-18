@@ -31,6 +31,7 @@ export default function OwnerStaffPage() {
     const [form, setForm] = useState({ ...emptyForm });
     const [inviteLink, setInviteLink] = useState<string | null>(null);
     const [pincodeLoading, setPincodeLoading] = useState(false);
+    const [postOffices, setPostOffices] = useState<any[]>([]);
 
     const fetchStaff = async () => {
         setLoading(true);
@@ -56,15 +57,17 @@ export default function OwnerStaffPage() {
                 const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
                 const data = await res.json();
                 if (data && data[0] && data[0].Status === "Success") {
-                    const first = data[0].PostOffice[0];
+                    const offices = data[0].PostOffice;
+                    setPostOffices(offices);
+                    const first = offices[0];
                     setForm(p => ({
                         ...p,
-                        pincode: pin,
                         city: first.District,
                         state: first.State,
                         postOffice: first.Name,
-                        staffAddress: p.staffAddress ? p.staffAddress : first.Name,
                     }));
+                } else {
+                    setPostOffices([]);
                 }
             } catch (error) {
                 console.error("Pincode fetch error:", error);
@@ -97,6 +100,7 @@ export default function OwnerStaffPage() {
             if (res.inviteLink) {
                 setInviteLink(res.inviteLink);
             }
+            setPostOffices([]);
             await fetchStaff();
         } catch (e: any) { alert(`Failed to add staff: ${e.message}`); }
     };
@@ -191,6 +195,15 @@ export default function OwnerStaffPage() {
                                             )}
                                         </div>
                                     ))}
+                                    <div className="space-y-1 col-span-1 md:col-span-2">
+                                        <label className="text-sm font-medium">Residential Street Address *</label>
+                                        <Input 
+                                            value={form.staffAddress} 
+                                            onChange={e => setForm(p => ({ ...p, staffAddress: e.target.value }))} 
+                                            placeholder="House No, Street, Landmark" 
+                                            className="focus-visible:ring-primary h-10"
+                                        />
+                                    </div>
                                     <div className="space-y-1">
                                         <label className="text-sm font-medium flex items-center gap-2">
                                             Pincode * 
@@ -203,19 +216,32 @@ export default function OwnerStaffPage() {
                                             className="focus-visible:ring-primary h-10 font-mono tracking-wider"
                                             maxLength={6}
                                         />
-                                        {form.city && form.state && form.pincode.length === 6 && (
-                                            <p className="text-xs text-green-600 font-medium pt-1">✅ {form.postOffice}, {form.city}, {form.state}</p>
-                                        )}
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-medium">Residential Address *</label>
-                                        <Input 
-                                            value={form.staffAddress} 
-                                            onChange={e => setForm(p => ({ ...p, staffAddress: e.target.value }))} 
-                                            placeholder="House, Street, Area" 
-                                            className="focus-visible:ring-primary h-10"
-                                        />
-                                    </div>
+                                    {postOffices.length > 0 && (
+                                        <div className="space-y-1">
+                                            <label className="text-sm font-medium">Post Office *</label>
+                                            <select 
+                                                className="w-full h-10 border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary bg-white outline-none font-bold"
+                                                value={form.postOffice}
+                                                onChange={e => {
+                                                    const po = postOffices.find(p => p.Name === e.target.value);
+                                                    if(po) setForm({...form, postOffice: po.Name, city: po.District, state: po.State});
+                                                }}
+                                            >
+                                                {postOffices.map(po => (
+                                                    <option key={po.Name} value={po.Name}>{po.Name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                    {form.city && (
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-black uppercase text-muted-foreground/60 tracking-widest">Fetched Location</label>
+                                            <div className="h-10 rounded-lg bg-muted/50 px-3 flex items-center text-xs font-bold text-muted-foreground italic border">
+                                                ✅ {form.city}, {form.state}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3">

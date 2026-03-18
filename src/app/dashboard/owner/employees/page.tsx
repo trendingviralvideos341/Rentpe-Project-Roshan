@@ -59,6 +59,7 @@ export default function OwnerEmployeesPage() {
         address: ""
     });
     const [pincodeLoading, setPincodeLoading] = useState(false);
+    const [postOffices, setPostOffices] = useState<any[]>([]);
     
     const [selectedEmp, setSelectedEmp] = useState<any>(null);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -75,14 +76,17 @@ export default function OwnerEmployeesPage() {
                 const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
                 const data = await res.json();
                 if (data && data[0] && data[0].Status === "Success") {
-                    const first = data[0].PostOffice[0];
+                    const offices = data[0].PostOffice;
+                    setPostOffices(offices);
+                    const first = offices[0];
                     setNewEmp(prev => ({
                         ...prev,
                         city: first.District,
                         state: first.State,
                         postOffice: first.Name,
-                        address: prev.address || first.Name,
                     }));
+                } else {
+                    setPostOffices([]);
                 }
             } catch (error) {
                 console.error("Pincode fetch error:", error);
@@ -128,6 +132,7 @@ export default function OwnerEmployeesPage() {
                 postOffice: "",
                 address: ""
             });
+            setPostOffices([]);
             fetchData();
         } catch (error: any) {
             toast.error(error.message);
@@ -258,7 +263,18 @@ export default function OwnerEmployeesPage() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Street / Locality / Landmark</label>
+                                <Input 
+                                    className="h-12 rounded-xl focus:ring-primary" 
+                                    placeholder="e.g. 12-B, MG Road, Near City Mall" 
+                                    value={newEmp.address}
+                                    onChange={e => setNewEmp({...newEmp, address: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2">
                                         Pincode
@@ -271,21 +287,34 @@ export default function OwnerEmployeesPage() {
                                         maxLength={6}
                                         onChange={e => handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                                     />
-                                    {newEmp.city && newEmp.state && (
-                                        <p className="text-[10px] text-green-600 font-bold px-1 animate-in fade-in">
-                                            ✅ {newEmp.postOffice}, {newEmp.city}, {newEmp.state}
-                                        </p>
-                                    )}
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Staff Address</label>
-                                    <Input 
-                                        className="h-12 rounded-xl focus:ring-primary" 
-                                        placeholder="House No, Street, Landmark" 
-                                        value={newEmp.address}
-                                        onChange={e => setNewEmp({...newEmp, address: e.target.value})}
-                                    />
-                                </div>
+
+                                {postOffices.length > 0 && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Post Office</label>
+                                        <select 
+                                            className="w-full h-12 rounded-xl border px-3 py-2 text-sm focus:ring-2 focus:ring-primary bg-white outline-none font-bold"
+                                            value={newEmp.postOffice}
+                                            onChange={e => {
+                                                const po = postOffices.find(p => p.Name === e.target.value);
+                                                if(po) setNewEmp({...newEmp, postOffice: po.Name, city: po.District, state: po.State});
+                                            }}
+                                        >
+                                            {postOffices.map(po => (
+                                                <option key={po.Name} value={po.Name}>{po.Name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {newEmp.city && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">City / State</label>
+                                        <div className="h-12 rounded-xl border-2 border-primary/5 bg-primary/5 px-4 flex items-center text-xs font-black italic text-primary/80">
+                                            {newEmp.city}, {newEmp.state}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <DialogFooter className="pt-4">
