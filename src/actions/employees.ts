@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "./auth";
 import { generateSequentialId } from "@/lib/ids";
 import { logAuditEvent } from "@/lib/audit";
+import crypto from "crypto";
+import { encryptPassword } from "@/lib/auth";
 
 export async function getOwnerEmployees() {
     const user = await getCurrentUser() as any;
@@ -36,12 +38,16 @@ export async function createOwnerEmployee(data: {
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
     const displayId = await generateSequentialId('OWNER_EMPLOYEE');
+    const invitationToken = crypto.randomBytes(32).toString('hex');
+    const invitationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const employee = await prisma.ownerEmployee.create({
         data: {
             ...data,
             displayId,
-            ownerId: user.id
+            ownerId: user.id,
+            invitationToken,
+            invitationExpires
         }
     });
 
@@ -167,4 +173,131 @@ export async function getAssignedPropertyIds(userId: string): Promise<string[]> 
 
     if (!employee) return [];
     return employee.assignments.map(a => a.propertyId);
+}
+
+export async function validateStaffInvite(token: string) {
+    if (!token) throw new Error("Invalid invitation link");
+
+    const employee = await prisma.ownerEmployee.findUnique({
+        where: { invitationToken: token },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            invitationExpires: true,
+            userId: true,
+            ownerId: true,
+            owner: { select: { name: true, businessName: true } }
+        }
+    });
+
+    if (!employee) throw new Error("Invalid or expired invitation link");
+    if (employee.userId) throw new Error("This invitation has already been used");
+    if (employee.invitationExpires && employee.invitationExpires < new Date()) {
+        throw new Error("This invitation has expired");
+    }
+
+    return employee;
+}
+
+export async function activateStaffAccount(token: string, passwordPlain: string) {
+    const employee = await validateStaffInvite(token);
+
+    const hashedPassword = await encryptPassword(passwordPlain);
+    const displayId = await generateSequentialId('USER');
+
+    // Create the User record for the staff member
+    const newStaffUser = await prisma.user.create({
+        data: {
+            name: employee.name,
+            email: employee.email,
+            phone: employee.phone,
+            passwordHash: hashedPassword,
+            role: 'STAFF',
+            roles: 'STAFF',
+            status: 'ACTIVE',
+            parentOwnerId: employee.ownerId,
+            displayId,
+            applicationId: displayId
+        }
+    });
+
+    // Link User to Employee and invalidate token
+    await prisma.ownerEmployee.update({
+        where: { id: employee.id },
+        data: {
+            userId: newStaffUser.id,
+            invitationToken: null,
+            invitationExpires: null,
+            status: 'ACTIVE'
+        }
+    });
+
+    await logAuditEvent({
+        actorId: newStaffUser.id,
+        actorRole: "STAFF",
+        actorName: newStaffUser.name || "Staff",
+        actionType: "ACTIVATE",
+        entityType: "USER",
+        entityId: newStaffUser.id,
+        description: `Staff account activated via invitation token`
+    });
+
+    return { success: true, email: employee.email };
+}
+
+export async function getStaffDashboardData() {
+    const user = await getCurrentUser() as any;
+    if (!user || user.role !== 'STAFF') throw new Error("Unauthorized");
+
+    // 1. Get assigned property IDs
+    const propertyIds = await getAssignedPropertyIds(user.id);
+    
+    if (propertyIds.length === 0) {
+        return {
+            properties: [],
+            propertyCount: 0,
+            todayCheckins: 0,
+            openTickets: 0
+        };
+    }
+
+    // 2. Fetch full property details
+    const properties = await prisma.property.findMany({
+        where: { id: { in: propertyIds } },
+        select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
+            displayId: true
+        }
+    });
+
+    // 3. Today's Check-ins (String match on moveInDate)
+    const today = new Date().toISOString().split('T')[0];
+    const todayCheckins = await prisma.booking.count({
+        where: {
+            propertyId: { in: propertyIds },
+            moveInDate: today,
+            status: { notIn: ['CANCELLED', 'REJECTED'] }
+        }
+    });
+
+    // 4. Open Maintenance Tickets
+    const openTickets = await prisma.ticket.count({
+        where: {
+            propertyId: { in: propertyIds },
+            status: 'OPEN'
+        }
+    });
+
+    return {
+        properties,
+        propertyCount: properties.length,
+        todayCheckins,
+        openTickets
+    };
 }

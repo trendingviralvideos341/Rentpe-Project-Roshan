@@ -204,6 +204,18 @@ export const VerifierNotificationTemplate = (message: string, actionUrl: string)
   <a href="https://rentpe.in${actionUrl}" class="button">Verify Documents</a>
 `);
 
+// 11. EMAIL_VERIFICATION (User)
+export const EmailVerificationTemplate = (name: string, token: string) => LifecycleTemplate({
+  title: "Verify Your Email 🛡️",
+  name,
+  status: "VERIFICATION_PENDING",
+  message: `Welcome to RentPe! To ensure your account is secure, we need you to verify your email address.`,
+  nextStep: "Click the button below to verify your email and activate your account.",
+  actionLabel: "Verify Email Address",
+  actionUrl: `/verify/${token}`,
+  isSuccess: true,
+});
+
 // ─────────────────────────────────────────────
 // RESTORED TEMPLATES (Auth & Billing)
 // ─────────────────────────────────────────────

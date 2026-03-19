@@ -27,7 +27,8 @@ export async function getOwnerStaff() {
             status: true,
             createdAt: true,
             staffPermissions: true,
-            occupationDetail: true
+            occupationDetail: true,
+            resetToken: true
         },
         orderBy: { createdAt: 'desc' }
     });

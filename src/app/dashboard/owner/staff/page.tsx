@@ -1,11 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserPlus, Ban, CheckCircle, Mail, Copy } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription, 
+    DialogFooter,
+    DialogTrigger
+} from "@/components/ui/dialog";
+import { UserPlus, Ban, CheckCircle, Mail, Copy, Loader2, Info } from "lucide-react";
 import { getOwnerStaff, addOwnerStaff, updateStaffStatus } from "@/actions/staff";
+import { toast } from "sonner";
 
 const ownerPermissionsList = [
     { id: "view_bookings", label: "View Bookings" },
@@ -33,6 +45,12 @@ export default function OwnerStaffPage() {
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const [postOffices, setPostOffices] = useState<any[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Status Dialog State
+    const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+    const [statusDialogData, setStatusDialogData] = useState<{ id: string, name: string, targetStatus: "ACTIVE" | "BLOCKED" | "REMOVED" } | null>(null);
+    const [statusReason, setStatusReason] = useState("");
+    const [statusSubmitting, setStatusSubmitting] = useState(false);
 
     const fetchStaff = async () => {
         setLoading(true);
@@ -82,6 +100,7 @@ export default function OwnerStaffPage() {
         const errs: Record<string, string> = {};
         if (!form.name) errs.name = "Name is required";
         if (!form.email) errs.email = "Email is required";
+        if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) errs.email = "Invalid email format";
         if (!form.phone) errs.phone = "Phone is required";
         if (form.phone && form.phone.length !== 10) errs.phone = "Must be 10 digits";
         if (!form.designation) errs.designation = "Designation is required";
@@ -110,18 +129,36 @@ export default function OwnerStaffPage() {
         } catch (e: any) { alert(`Failed to add staff: ${e.message}`); }
     };
 
-    const handleBlockStaff = async (id: string) => {
-        const reason = prompt("Reason for blocking this staff member:");
-        if (!reason) return;
-        try { await updateStaffStatus(id, "BLOCKED", reason); fetchStaff(); }
-        catch { alert("Failed to block staff."); }
+    const handleBlockStaff = (id: string, name: string) => {
+        setStatusDialogData({ id, name, targetStatus: "BLOCKED" });
+        setStatusReason("");
+        setIsStatusDialogOpen(true);
     };
 
-    const handleUnblockStaff = async (id: string) => {
-        const reason = prompt("Reason for unblocking this staff member:");
-        if (!reason) return;
-        try { await updateStaffStatus(id, "ACTIVE", reason); fetchStaff(); }
-        catch { alert("Failed to unblock staff."); }
+    const handleUnblockStaff = (id: string, name: string) => {
+        setStatusDialogData({ id, name, targetStatus: "ACTIVE" });
+        setStatusReason("");
+        setIsStatusDialogOpen(true);
+    };
+
+    const confirmStatusUpdate = async () => {
+        if (!statusDialogData) return;
+        if (!statusReason.trim()) {
+            toast.error("Please provide a reason");
+            return;
+        }
+
+        setStatusSubmitting(true);
+        try {
+            await updateStaffStatus(statusDialogData.id, statusDialogData.targetStatus, statusReason);
+            toast.success(`Staff ${statusDialogData.targetStatus === "ACTIVE" ? "restored" : "blocked"} successfully`);
+            setIsStatusDialogOpen(false);
+            fetchStaff();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to update status");
+        } finally {
+            setStatusSubmitting(false);
+        }
     };
 
     if (loading) return <div className="p-8 text-center text-muted-foreground">Loading staff...</div>;
@@ -193,6 +230,7 @@ export default function OwnerStaffPage() {
                                                 </div>
                                             ) : (
                                                 <Input 
+                                                    type={field === 'email' ? 'email' : 'text'}
                                                     value={(form as any)[field]} 
                                                     onChange={e => {
                                                         setForm(p => ({ ...p, [field]: e.target.value }));
@@ -370,9 +408,26 @@ export default function OwnerStaffPage() {
                                             </td>
                                             <td className="p-4">
                                                 {isInvited ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 border border-blue-200">
-                                                        <Mail className="h-3 w-3" /> INVITED
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 border border-blue-200">
+                                                            <Mail className="h-3 w-3" /> INVITED
+                                                        </span>
+                                                        {s.resetToken && (
+                                                            <Button 
+                                                                size="sm"
+                                                                variant="outline" 
+                                                                className="h-7 px-2 text-[9px] font-black uppercase tracking-tighter bg-green-50 text-green-700 hover:bg-green-100 border-green-200 rounded-lg shadow-sm gap-1"
+                                                                onClick={() => {
+                                                                    const link = `${window.location.origin}/join-team?token=${s.resetToken}`;
+                                                                    navigator.clipboard.writeText(link);
+                                                                    toast.success("Invitation link copied!");
+                                                                }}
+                                                            >
+                                                                <Copy className="h-3 w-3" />
+                                                                Invite Link
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 ) : isBlocked ? (
                                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-700 border border-red-200">
                                                         <Ban className="h-3 w-3" /> BLOCKED
@@ -384,16 +439,16 @@ export default function OwnerStaffPage() {
                                                 )}
                                             </td>
                                             <td className="p-4">
-                                                {!isBlocked ? (
-                                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleBlockStaff(s.id)}>
-                                                        Block Access
-                                                    </Button>
-                                                ) : (
-                                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700" onClick={() => handleUnblockStaff(s.id)}>
-                                                        Restore Access
-                                                    </Button>
-                                                )}
-                                            </td>
+                                                 {!isBlocked ? (
+                                                     <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleBlockStaff(s.id, s.name)}>
+                                                         Block Access
+                                                     </Button>
+                                                 ) : (
+                                                     <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700" onClick={() => handleUnblockStaff(s.id, s.name)}>
+                                                         Restore Access
+                                                     </Button>
+                                                 )}
+                                             </td>
                                         </tr>
                                     );
                                 })}
@@ -413,6 +468,64 @@ export default function OwnerStaffPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-3xl border-2 border-primary/10 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                            {statusDialogData?.targetStatus === "ACTIVE" ? (
+                                <><CheckCircle className="h-6 w-6 text-green-600" /> Restore Access</>
+                            ) : (
+                                <><Ban className="h-6 w-6 text-red-600" /> Block Access</>
+                            )}
+                        </DialogTitle>
+                        <DialogDescription className="font-medium italic">
+                            Are you sure you want to {statusDialogData?.targetStatus === "ACTIVE" ? "restore access for" : "block"} <span className="font-bold text-primary not-italic">{statusDialogData?.name}</span>?
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground px-1">Reason for {statusDialogData?.targetStatus === "ACTIVE" ? "Unblocking" : "Blocking"}</Label>
+                            <Textarea 
+                                placeholder="e.g. Terms of service violation, account compromise, etc."
+                                value={statusReason}
+                                onChange={e => setStatusReason(e.target.value)}
+                                className="min-h-[100px] rounded-2xl resize-none focus:ring-primary border-2 border-muted"
+                            />
+                        </div>
+                        
+                        <div className="bg-muted/30 p-4 rounded-2xl flex items-start gap-3 border border-muted-foreground/10">
+                            <Info className="h-5 w-5 text-primary mt-1" />
+                            <p className="text-xs font-medium text-muted-foreground leading-relaxed italic">
+                                This reason will be logged for audit purposes and may be visible to the staff member in their dashboard notification.
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button 
+                            variant="destructive" 
+                            onClick={() => setIsStatusDialogOpen(false)}
+                            className="bg-red-600 hover:bg-red-700 text-white h-11 px-8 font-black uppercase tracking-widest rounded-xl transition-none shadow-none border-none"
+                            disabled={statusSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={confirmStatusUpdate}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-8 font-black uppercase tracking-widest rounded-xl transition-none border-none shadow-none"
+                            disabled={statusSubmitting}
+                        >
+                            {statusSubmitting ? (
+                                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
+                            ) : (
+                                statusDialogData?.targetStatus === "ACTIVE" ? "Restore Access" : "Confirm Block"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

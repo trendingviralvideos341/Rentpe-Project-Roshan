@@ -11,6 +11,8 @@ datasource db {
 model User {
   id                    String            @id @default(uuid())
   email                 String            @unique
+  emailVerified         Boolean           @default(false)
+  emailVerificationToken String?          @unique
   passwordHash          String
   role                  String            @default("USER")
   roles                 String            @default("USER")
@@ -24,7 +26,7 @@ model User {
   phone                 String?
   phoneVerified         Boolean           @default(false)
   city                  String?
-  status                String            @default("ACTIVE")
+  status                String            @default("PENDING_VERIFICATION")
   loyaltyPoints         Int               @default(0)
   lastLoginAt           DateTime?         @default(now())
   lastLoginIp           String?
@@ -886,6 +888,8 @@ model OwnerEmployee {
   state       String?
   postOffice  String?
   address     String?
+  invitationToken String?   @unique
+  invitationExpires DateTime?
   createdAt   DateTime                     @default(now())
   updatedAt   DateTime                     @updatedAt
   userId      String?                      @unique

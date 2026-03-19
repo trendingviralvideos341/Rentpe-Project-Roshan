@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error("CRITICAL: JWT_SECRET environment variable is not set!");
+}
+
 const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'fallback-secret-for-dev-only-replace-it'
+    process.env.JWT_SECRET || 'unsafe-development-secret-key-1234567890'
 );
 
 // Define protected and public routes

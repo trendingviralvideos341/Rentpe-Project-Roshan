@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import prisma from "@/lib/prisma";
 import { sendEmail } from '@/lib/email';
-import { WelcomeTemplate } from '@/lib/email-templates';
+import { WelcomeTemplate, EmailVerificationTemplate } from '@/lib/email-templates';
 import { verify2FAToken } from "@/lib/2fa";
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -12,6 +12,7 @@ import { logAuditEvent } from '@/lib/audit';
 import { generateSequentialId } from "@/lib/ids";
 import { NotificationService } from "@/lib/notifications";
 import { Session, UserRole } from '@/types/auth';
+import crypto from 'crypto';
 
 const SignupSchema = z.object({
     name: z.string().min(3),
@@ -75,6 +76,7 @@ export async function signup(formData: FormData) {
         const isStudent = roleUp === "USER";
 
         const displayId = await generateSequentialId(role === 'OWNER' ? 'OWNER' : 'USER');
+        const emailVerificationToken = crypto.randomBytes(32).toString('hex');
 
         const user = await prisma.user.create({
             data: {
@@ -83,17 +85,20 @@ export async function signup(formData: FormData) {
                 passwordHash: hashedPassword,
                 phone,
                 phoneVerified: true, // They verified OTP in Signup UI
+                emailVerified: false,
+                emailVerificationToken,
                 role: roleUp,
                 roles: roleUp,          // comma-separated for future multi-role
                 isStudent,
                 isOwner,
                 displayId,
+                status: 'PENDING_VERIFICATION',
                 applicationId: displayId,
             }
         });
 
         // Log T&C Consent for legal compliance (DPDP Phase 2/3)
-        logAuditEvent({
+        await logAuditEvent({
             actorId: user.id,
             actorRole: user.role,
             actorName: user.name || 'User',
@@ -104,14 +109,14 @@ export async function signup(formData: FormData) {
             newValue: { marketingAgreed, dataSharingAgreed }
         });
 
-        // Send Welcome Email (async, don't block redirect)
+        // Send Verification Email instead of Welcome Email initially
         sendEmail({
             to: email,
-            subject: 'Welcome to RentPe! 🚀',
-            html: WelcomeTemplate(name),
-        }).catch(err => console.error('Failed to send welcome email:', err));
+            subject: 'Verify your RentPe account 🛡️',
+            html: EmailVerificationTemplate(name, emailVerificationToken),
+        }).catch(err => console.error('Failed to send verification email:', err));
 
-        return { success: true };
+        return { success: true, message: "Signup successful! Please check your email to verify your account." };
 
     } catch (e) {
         console.error("Signup Error:", e);
@@ -150,6 +155,7 @@ export async function login(formData: FormData) {
                 phone: true,
                 twoFactorEnabled: true,
                 twoFactorSecret: true,
+                emailVerified: true,
             }
         });
 
@@ -169,7 +175,20 @@ export async function login(formData: FormData) {
         }
 
         if (user.status === 'BANNED' || user.status === 'INACTIVE') {
+            await logAuditEvent({
+                actorId: user.id,
+                actorRole: user.role,
+                actorName: user.name || 'User',
+                actionType: 'LOGIN',
+                entityType: 'USER',
+                entityId: user.id,
+                description: `Blocked login attempt for: ${email}. Reason: Account status ${user.status}.`,
+            });
             return { error: 'Your account has been suspended. Please contact support.' };
+        }
+
+        if (!user.emailVerified) {
+            return { error: 'Your email is not verified. Please check your inbox for the verification link.' };
         }
 
         const isMatch = await comparePassword(password, user.passwordHash);
@@ -233,6 +252,17 @@ export async function login(formData: FormData) {
             path: '/',
         });
 
+        // Audit Log Success
+        await logAuditEvent({
+            actorId: user.id,
+            actorRole: user.role,
+            actorName: user.name || 'User',
+            actionType: 'LOGIN',
+            entityType: 'USER',
+            entityId: user.id,
+            description: `User logged in successfully: ${email}.`,
+        });
+
         // Redirect based on active role
         if (user.role === 'ADMIN') {
             redirect('/dashboard/admin');
@@ -242,6 +272,8 @@ export async function login(formData: FormData) {
             redirect('/dashboard/onboarder');
         } else if (user.role === 'VERIFIER') {
             redirect('/dashboard/verifier');
+        } else if (user.role === 'STAFF') {
+            redirect('/dashboard/staff');
         } else {
             redirect('/');
         }
@@ -318,7 +350,7 @@ export async function verify2FALogin(userId: string, token: string) {
             data: { lastLoginAt: new Date() }
         });
 
-        return { success: true, redirect: user.role === 'ADMIN' ? '/dashboard/admin' : user.role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student' };
+        return { success: true, redirect: user.role === 'ADMIN' ? '/dashboard/admin' : user.role === 'OWNER' ? '/dashboard/owner' : user.role === 'STAFF' ? '/dashboard/staff' : '/dashboard/student' };
     } catch (e) {
         console.error("2FA Login Error:", e);
         return { error: 'Authentication failed' };
@@ -326,9 +358,66 @@ export async function verify2FALogin(userId: string, token: string) {
 }
 
 export async function logout() {
+    const session = await getSession();
+    if (session && session.userId) {
+        await logAuditEvent({
+            actorId: session.userId,
+            actorRole: session.role || 'USER',
+            actorName: session.name || 'User',
+            actionType: 'LOGOUT',
+            entityType: 'USER',
+            entityId: session.userId,
+            description: `User logged out: ${session.email}.`,
+        });
+    }
+
     const cookieStore = await cookies();
     cookieStore.delete('rentpe_session');
     // Do NOT call redirect() here — LogoutButton handles client-side redirect.
+}
+
+export async function verifyEmail(token: string) {
+    if (!token) return { error: "Verification token is required." };
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { emailVerificationToken: token }
+        });
+
+        if (!user) return { error: "Invalid or expired verification token." };
+        if (user.emailVerified) return { success: true, message: "Email already verified." };
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                emailVerified: true,
+                emailVerificationToken: null,
+                status: 'ACTIVE'
+            }
+        });
+
+        await logAuditEvent({
+            actorId: user.id,
+            actorRole: user.role,
+            actorName: user.name || 'User',
+            actionType: 'UPDATE',
+            entityType: 'USER',
+            entityId: user.id,
+            description: `Email verified successfully for: ${user.email}.`,
+        });
+
+        // Send final Welcome Email after verification
+        sendEmail({
+            to: user.email,
+            subject: 'Account Verified! Welcome to RentPe 🚀',
+            html: WelcomeTemplate(user.name || 'Resident'),
+        }).catch(err => console.error('Failed to send welcome email:', err));
+
+        return { success: true, message: "Email verified successfully! You can now log in." };
+    } catch (e) {
+        console.error("Email Verification Error:", e);
+        return { error: "Failed to verify email. Please try again." };
+    }
 }
 
 export async function switchRole(targetRole: UserRole) {
@@ -420,6 +509,8 @@ export async function switchRole(targetRole: UserRole) {
         redirect('/dashboard/onboarder');
     } else if (targetRole === 'VERIFIER') {
         redirect('/dashboard/verifier');
+    } else if (targetRole === 'STAFF') {
+        redirect('/dashboard/staff');
     } else {
         redirect('/dashboard/student');
     }

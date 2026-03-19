@@ -27,7 +27,10 @@ import {
     Unlink,
     UserCircle,
     Search,
-    Loader2
+    Loader2,
+    Copy,
+    Send,
+    ExternalLink
 } from "lucide-react";
 import {
     Dialog,
@@ -64,6 +67,7 @@ export default function OwnerEmployeesPage() {
     
     const [selectedEmp, setSelectedEmp] = useState<any>(null);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -475,6 +479,58 @@ export default function OwnerEmployeesPage() {
                                                         Assignments ({emp.assignments?.length || 0})
                                                     </Button>
                                                 </DialogTrigger>
+
+                                                <Dialog open={isInviteOpen && selectedEmp?.id === emp.id} onOpenChange={(open) => {
+                                                    setIsInviteOpen(open);
+                                                    if(open) setSelectedEmp(emp);
+                                                }}>
+                                                    <DialogTrigger asChild>
+                                                        {!emp.userId && (
+                                                            <Button variant="outline" className="flex-1 md:flex-none h-11 font-black italic tracking-tight rounded-xl gap-2 border-purple-200 text-purple-600 hover:bg-purple-50">
+                                                                <Send className="h-4 w-4" /> 
+                                                                Invite
+                                                            </Button>
+                                                        )}
+                                                    </DialogTrigger>
+                                                    <DialogContent className="sm:max-w-[425px] rounded-3xl border-2 border-purple-100 shadow-2xl">
+                                                        <DialogHeader>
+                                                            <DialogTitle className="text-2xl font-black">Staff Invitation</DialogTitle>
+                                                            <DialogDescription className="font-medium italic">
+                                                                Share this link with <span className="text-purple-600 font-bold not-italic">{emp.name}</span> to activate their account.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="py-6 space-y-4">
+                                                            <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 flex flex-col gap-2">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unique Onboarding Link</p>
+                                                                <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-600 break-all select-all flex items-center justify-between gap-3">
+                                                                    <span className="truncate">{`${window.location.origin}/invite/${emp.invitationToken}`}</span>
+                                                                    <Button 
+                                                                        size="icon" 
+                                                                        variant="ghost" 
+                                                                        className="h-8 w-8 text-purple-600 shrink-0"
+                                                                        onClick={() => {
+                                                                            navigator.clipboard.writeText(`${window.location.origin}/invite/${emp.invitationToken}`);
+                                                                            toast.success("Link copied to clipboard!");
+                                                                        }}
+                                                                    >
+                                                                        <Copy className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 flex items-start gap-3">
+                                                                <ExternalLink className="h-5 w-5 text-purple-600 mt-1" />
+                                                                <p className="text-xs font-medium text-purple-900 leading-relaxed">
+                                                                    This link is unique to this employee and will expire in 7 days. Once they set their password, it cannot be used again.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <DialogFooter>
+                                                            <Button className="w-full h-12 rounded-xl font-bold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/20" onClick={() => setIsInviteOpen(false)}>
+                                                                Done
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
                                                 <DialogContent className="sm:max-w-[500px] rounded-3xl border-2 border-primary/10 shadow-2xl">
                                                     <DialogHeader>
                                                         <DialogTitle className="text-2xl font-black">Property Permissions</DialogTitle>
