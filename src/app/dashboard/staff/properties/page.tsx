@@ -1,9 +1,9 @@
 import { PropertiesContainer } from "@/components/dashboard/PropertiesContainer";
 
-export default function OwnerPropertiesPage() {
+export default function StaffPropertiesPage() {
     return (
         <div className="p-4 md:p-8">
-            <PropertiesContainer role="owner" />
+            <PropertiesContainer role="staff" />
         </div>
     );
 }

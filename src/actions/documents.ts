@@ -110,17 +110,31 @@ export async function getTenantDocuments(bookingId: string) {
 
 export async function getPendingDocuments() {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const userId = (session as any).userId;
 
-    if (session.role === 'OWNER') {
-        // Get bookings for this owner's properties
-        const properties = await prisma.property.findMany({
-            where: { ownerId: userId },
-            select: { name: true }
+    if (session.role === 'OWNER' || session.role === 'STAFF') {
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            include: { employeeProfile: true }
         });
-        const propertyNames = properties.map((p: any) => p.name);
+        
+        let propertyNames: string[] = [];
+        
+        if (user?.employeeProfile) {
+            const assignments = await prisma.employeePropertyAssignment.findMany({
+                where: { employeeId: user.employeeProfile.id },
+                include: { property: { select: { name: true } } }
+            });
+            propertyNames = assignments.map(a => a.property.name);
+        } else {
+            const properties = await prisma.property.findMany({
+                where: { ownerId: user?.parentOwnerId || userId },
+                select: { name: true }
+            });
+            propertyNames = properties.map((p: any) => p.name);
+        }
 
         const bookings = await prisma.booking.findMany({
             where: { propertyName: { in: propertyNames } },
@@ -177,16 +191,31 @@ export async function getPendingDocuments() {
 
 export async function getPendingDocumentsCount() {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) return 0;
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) return 0;
 
     const userId = (session as any).userId;
 
-    if (session.role === 'OWNER') {
-        const properties = await prisma.property.findMany({
-            where: { ownerId: userId },
-            select: { name: true }
+    if (session.role === 'OWNER' || session.role === 'STAFF') {
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            include: { employeeProfile: true }
         });
-        const propertyNames = properties.map((p: any) => p.name);
+        
+        let propertyNames: string[] = [];
+        
+        if (user?.employeeProfile) {
+            const assignments = await prisma.employeePropertyAssignment.findMany({
+                where: { employeeId: user.employeeProfile.id },
+                include: { property: { select: { name: true } } }
+            });
+            propertyNames = assignments.map(a => a.property.name);
+        } else {
+            const properties = await prisma.property.findMany({
+                where: { ownerId: user?.parentOwnerId || userId },
+                select: { name: true }
+            });
+            propertyNames = properties.map((p: any) => p.name);
+        }
 
         const bookings = await prisma.booking.findMany({
             where: { propertyName: { in: propertyNames } },
@@ -206,7 +235,7 @@ export async function getPendingDocumentsCount() {
 
 export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECTED', note?: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const userId = (session as any).userId;
     const userRole = session.role;
@@ -272,7 +301,7 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
         });
         if (booking) {
             if (status === 'VERIFIED') {
-                if (session.role === 'OWNER') {
+                if (session.role === 'OWNER' || session.role === 'STAFF') {
                     await NotificationService.onOwnerReviewed(booking);
                 } else if (session.role === 'ADMIN' || session.role === 'VERIFIER') {
                     // Check if overall KYC is now verified (>= 2 docs)

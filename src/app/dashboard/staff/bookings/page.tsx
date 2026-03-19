@@ -2,6 +2,6 @@
 
 import { BookingsContainer } from "@/components/dashboard/BookingsContainer";
 
-export default function BookingsPage() {
+export default function StaffBookingsPage() {
     return <BookingsContainer />;
 }

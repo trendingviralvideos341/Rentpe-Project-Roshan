@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { UserPlus, Ban, CheckCircle, Mail, Copy, Loader2, Info } from "lucide-react";
 import { getOwnerStaff, addOwnerStaff, updateStaffStatus } from "@/actions/staff";
+import { getProperties } from "@/actions/properties";
 import { toast } from "sonner";
 
 const ownerPermissionsList = [
@@ -34,6 +35,7 @@ const ownerPermissionsList = [
 const emptyForm = {
     name: "", email: "", phone: "", designation: "", staffAddress: "", pincode: "", city: "", state: "", postOffice: "",
     permissions: [] as string[],
+    propertyIds: [] as string[],
 };
 
 export default function OwnerStaffPage() {
@@ -44,6 +46,7 @@ export default function OwnerStaffPage() {
     const [inviteLink, setInviteLink] = useState<string | null>(null);
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const [postOffices, setPostOffices] = useState<any[]>([]);
+    const [ownerProperties, setOwnerProperties] = useState<any[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     // Status Dialog State
@@ -59,7 +62,19 @@ export default function OwnerStaffPage() {
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchStaff(); }, []);
+    const fetchProperties = async () => {
+        try {
+            const props = await getProperties();
+            setOwnerProperties(props);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    useEffect(() => { 
+        fetchStaff(); 
+        fetchProperties();
+    }, []);
 
     const togglePerm = (id: string) => {
         setForm(prev => ({
@@ -119,6 +134,7 @@ export default function OwnerStaffPage() {
                 name: form.name, email: form.email, phone: form.phone,
                 designation: form.designation, staffAddress: fullAddress,
                 permissions: form.permissions,
+                propertyIds: form.propertyIds,
             });
             if (res.inviteLink) {
                 setInviteLink(res.inviteLink);
@@ -343,6 +359,69 @@ export default function OwnerStaffPage() {
                                         ))}
                                     </div>
                                     {errors.permissions && <p className="text-[10px] text-red-600 font-black uppercase tracking-tight px-1 animate-pulse">Error: {errors.permissions}</p>}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-sm font-bold flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            🏢 Property Access
+                                            <span className="text-[10px] font-normal text-muted-foreground">(Buildings they can manage)</span>
+                                        </div>
+                                        {ownerProperties.length > 0 && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+                                                onClick={() => {
+                                                    const allIds = ownerProperties.map(p => p.id);
+                                                    setForm(prev => ({
+                                                        ...prev,
+                                                        propertyIds: prev.propertyIds.length === allIds.length ? [] : allIds
+                                                    }));
+                                                }}
+                                            >
+                                                {form.propertyIds.length === ownerProperties.length ? "Deselect All" : "Select All Buildings"}
+                                            </Button>
+                                        )}
+                                    </label>
+                                    {ownerProperties.length === 0 ? (
+                                        <div className="p-4 rounded-xl bg-muted/30 border-2 border-dashed border-muted text-center">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic">No properties found. Please list a property first.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {ownerProperties.map(prop => (
+                                                <label 
+                                                    key={prop.id} 
+                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-sm ${
+                                                        form.propertyIds.includes(prop.id) 
+                                                            ? "bg-blue-50/50 border-blue-400 shadow-sm" 
+                                                            : "hover:bg-muted border-transparent bg-muted/30"
+                                                    }`}
+                                                >
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={form.propertyIds.includes(prop.id)} 
+                                                        onChange={() => {
+                                                            setForm(prev => ({
+                                                                ...prev,
+                                                                propertyIds: prev.propertyIds.includes(prop.id) 
+                                                                    ? prev.propertyIds.filter(id => id !== prop.id)
+                                                                    : [...prev.propertyIds, prop.id]
+                                                            }));
+                                                        }} 
+                                                        className="w-4 h-4 accent-blue-600 rounded cursor-pointer" 
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className={form.propertyIds.includes(prop.id) ? "font-bold text-blue-700" : ""}>
+                                                            {prop.name}
+                                                        </span>
+                                                        <span className="text-[9px] text-muted-foreground font-mono">{prop.displayId} - {prop.city}</span>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-3 pt-4">

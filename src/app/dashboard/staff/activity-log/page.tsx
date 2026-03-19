@@ -1,9 +1,9 @@
 import { ActivityLogContainer } from "@/components/dashboard/ActivityLogContainer";
 
-export default function OwnerActivityLogPage() {
+export default function StaffActivityLogPage() {
     return (
         <div className="p-4 md:p-8">
-            <ActivityLogContainer role="owner" />
+            <ActivityLogContainer role="staff" />
         </div>
     );
 }

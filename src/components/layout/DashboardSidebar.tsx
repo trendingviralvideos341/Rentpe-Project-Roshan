@@ -25,7 +25,7 @@ interface SidebarSection {
 }
 
 interface SidebarProps {
-    role: "owner" | "admin" | "student" | "onboarder" | "verifier";
+    role: "owner" | "admin" | "student" | "onboarder" | "verifier" | "staff";
     permissions?: string[];
     isStaff?: boolean;
     displayId?: string;
@@ -45,7 +45,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
-        if (role === "owner") {
+        if (role === "owner" || role === "staff") {
             const checkOwner = async () => {
                 const count = await getPendingBookingsCount();
                 setPendingCount(count);
@@ -174,7 +174,6 @@ export default function DashboardSidebar(props: SidebarProps) {
         }
     ];
 
-    // Unified student links (wrapped in a single section for rendering consistency)
     const studentSections: SidebarSection[] = [
         {
             title: "Menu",
@@ -188,10 +187,23 @@ export default function DashboardSidebar(props: SidebarProps) {
         }
     ];
 
+    // Staff sections are a subset of owner sections, filtered by their assigned permissions
+    const staffSections: SidebarSection[] = ownerSections.map(section => ({
+        ...section,
+        links: section.links
+            .filter(link => !link.href.endsWith('/owner/staff')) // Staff shouldn't see staff management
+            .filter(link => !link.href.includes('/settings/payment')) // Staff shouldn't see financial settings
+            .map(link => ({
+                ...link,
+                href: link.href.replace('/owner/', '/staff/') // Redirect to staff-scoped routes if they exist
+            }))
+    }));
+
     const panelNames: Record<string, string> = {
         owner: "Owner Panel",
         admin: "Admin Panel",
         student: "Student Dashboard",
+        staff: "Staff Portal",
     };
 
     const perms = props.permissions || [];
@@ -205,6 +217,10 @@ export default function DashboardSidebar(props: SidebarProps) {
         return sections.map(section => ({
             ...section,
             links: section.links.filter(link => {
+                const path = link.href.split('?')[0];
+                if (path === "/dashboard/staff" || path === "/dashboard/owner" || path === "/dashboard/admin" || path === "/dashboard/student") return true; // Always show overview
+                if (path.includes("tab=profile")) return true; // Always show profile
+                
                 if (!link.reqPerm) return true;
                 if (isSuperAdmin) return true;
                 return link.reqPerm.some(p => perms.includes(p));
@@ -216,6 +232,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         owner: filterSectionLinks(ownerSections),
         admin: filterSectionLinks(adminSections),
         student: studentSections,
+        staff: filterSectionLinks(staffSections),
     };
 
     const currentSections = sectionMap[role] || studentSections;

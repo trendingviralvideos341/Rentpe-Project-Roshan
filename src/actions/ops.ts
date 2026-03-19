@@ -15,7 +15,7 @@ export async function getFoodMenu(propertyId: string) {
 
 export async function updateFoodMenu(propertyId: string, day: string, meals: { breakfast?: string, lunch?: string, dinner?: string }) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
     const updateCalls = [];
 
@@ -116,13 +116,28 @@ export async function createStudentTicket(data: {
 // Owner: get tickets routed to them (from students) + their own tickets to admin
 export async function getOwnerTickets() {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
-    const properties = await prisma.property.findMany({
-        where: { ownerId: (session as any).userId },
-        select: { id: true }
+    const user = await prisma.user.findUnique({ 
+        where: { id: session.userId },
+        include: { employeeProfile: true }
     });
-    const propertyIds = properties.map(p => p.id);
+    
+    let propertyIds: string[] = [];
+    
+    if (user?.employeeProfile) {
+        const assignments = await prisma.employeePropertyAssignment.findMany({
+            where: { employeeId: user.employeeProfile.id },
+            select: { propertyId: true }
+        });
+        propertyIds = assignments.map(a => a.propertyId);
+    } else {
+        const properties = await prisma.property.findMany({ 
+            where: { ownerId: user?.parentOwnerId || session.userId }, 
+            select: { id: true } 
+        });
+        propertyIds = properties.map(p => p.id);
+    }
 
     // Get student tickets routed to OWNER for this owner's properties
     const studentTickets = await (prisma.ticket as any).findMany({
@@ -141,7 +156,7 @@ export async function getOwnerTickets() {
 // Owner: get tickets they raised to Admin
 export async function getOwnerRaisedTickets() {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
     return (prisma.ticket as any).findMany({
         where: {
@@ -161,7 +176,7 @@ export async function createOwnerTicket(data: {
     propertyId?: string;
 }) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
     const count = await prisma.ticket.count();
     const displayId = `TKT-${String(count + 1).padStart(4, '0')}`;
@@ -177,7 +192,7 @@ export async function createOwnerTicket(data: {
             status: 'OPEN',
             replies: '[]',
             targetTeam: 'ADMIN',
-            raisedByRole: 'OWNER'
+            raisedByRole: session.role
         }
     });
 
@@ -227,7 +242,7 @@ export async function resolveTicket(id: string, notes?: string) {
 
 export async function escalateTicketToAdmin(id: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
     const ticket = await (prisma.ticket as any).update({
         where: { id },

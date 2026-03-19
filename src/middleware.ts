@@ -70,19 +70,24 @@ export default async function middleware(req: NextRequest) {
         const role = (session as any).role;
         const isImpersonating = !!(session as any).impersonatorId;
 
-        // Block Admins/Owners from wandering into student dashboard, unless they are using 'God Mode' (impersonating a student)
-        if (path.startsWith('/dashboard/student') && role !== 'USER') {
-            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/owner', req.nextUrl));
-        }
-
-        // Block Students/Admins from Owner dashboard (unless impersonating)
-        if (path.startsWith('/dashboard/owner') && role !== 'OWNER') {
-            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/student', req.nextUrl));
-        }
-
         // Block non-Admins from Admin dashboard (strict)
         if (path.startsWith('/dashboard/admin') && role !== 'ADMIN') {
-            return NextResponse.redirect(new URL(role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student', req.nextUrl));
+            return NextResponse.redirect(new URL(role === 'OWNER' ? '/dashboard/owner' : (role === 'STAFF' ? '/dashboard/staff' : '/dashboard/student'), req.nextUrl));
+        }
+
+        // Block non-Staff from Staff dashboard
+        if (path.startsWith('/dashboard/staff') && role !== 'STAFF') {
+            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : (role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student'), req.nextUrl));
+        }
+
+        // --- Role-Specific Restrictions for Dashboard Overlaps ---
+        // (Prevent STAFF from accessing STUDENT or OWNER routes, and vice versa)
+        if (path.startsWith('/dashboard/student') && role !== 'USER') {
+            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : (role === 'OWNER' ? '/dashboard/owner' : '/dashboard/staff'), req.nextUrl));
+        }
+
+        if (path.startsWith('/dashboard/owner') && role !== 'OWNER') {
+            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : (role === 'STAFF' ? '/dashboard/staff' : '/dashboard/student'), req.nextUrl));
         }
 
         // Legacy staff routes redirection
@@ -101,6 +106,8 @@ export default async function middleware(req: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
         } else if (role === 'OWNER') {
             return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+        } else if (role === 'STAFF') {
+            return NextResponse.redirect(new URL('/dashboard/staff', req.nextUrl));
         } else {
             return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }

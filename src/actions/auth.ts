@@ -554,7 +554,7 @@ export async function getCurrentUser() {
             select: {
                 id: true, email: true, name: true, role: true, roles: true,
                 phone: true, twoFactorEnabled: true, businessName: true, profilePhoto: true,
-                staffPermissions: true, parentOwnerId: true, adminRole: true,
+                staffPermissions: true, parentOwnerId: true, adminRole: true, displayId: true,
                 adminProfile: {
                     select: {
                         permissions: true,

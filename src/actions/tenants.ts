@@ -10,12 +10,13 @@ import { generateSequentialId } from "@/lib/ids";
 
 export async function getTenants() {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    const isAuthorized = session && ['OWNER', 'STAFF', 'ADMIN'].includes(session.role);
+    if (!isAuthorized) throw new Error("Unauthorized");
     const userId = session.userId;
 
     const whereClause: Prisma.TenantWhereInput = {};
 
-    if (session.role === 'OWNER') {
+    if (session.role === 'OWNER' || session.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
             where: { id: userId },
             include: { employeeProfile: true }
@@ -128,7 +129,7 @@ export async function createTenantFromBooking(bookingId: string) {
 
 export async function confirmMoveIn(tenantId: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
@@ -212,7 +213,7 @@ export async function confirmMoveIn(tenantId: string) {
 
 export async function markRentAsPaid(recordId: string, note?: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     const record = await prisma.rentRecord.update({
@@ -250,7 +251,7 @@ export async function markRentAsPaid(recordId: string, note?: string) {
 
 export async function markRentAsUnpaid(recordId: string, note?: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const record = await prisma.rentRecord.update({
         where: { id: recordId },
@@ -286,7 +287,7 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
 
 export async function blockTenant(tenantId: string, note: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
     const tenant = await prisma.tenant.update({
@@ -320,7 +321,7 @@ export async function blockTenant(tenantId: string, note: string) {
 
 export async function unblockTenant(tenantId: string, note: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
@@ -359,7 +360,7 @@ export async function unvacateTenant(tenantId: string) {
 
 export async function generateNextRentRecord(tenantId: string, month: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new Error("Tenant not found");
@@ -441,7 +442,7 @@ export async function requestMoveOut(tenantId: string, data: { date: string, rea
 
 export async function approveMoveOutRequest(requestId: string, approved: boolean) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const request = await prisma.moveOutRequest.findUnique({
         where: { id: requestId },
@@ -483,7 +484,7 @@ export async function approveMoveOutRequest(requestId: string, approved: boolean
 
 export async function confirmMoveOut(tenantId: string, deductions: number, note: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },

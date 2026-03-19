@@ -47,6 +47,7 @@ export async function addOwnerStaff(data: {
     designation: string,
     staffAddress: string,
     permissions: string[],
+    propertyIds: string[]
 }) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
@@ -67,25 +68,56 @@ export async function addOwnerStaff(data: {
 
     const displayId = await generateSequentialId('OWNER_EMPLOYEE');
 
-    const staff = await prisma.user.create({
-        data: {
-            displayId,
-            email: data.email,
-            name: data.name,
-            phone: data.phone,
-            passwordHash: 'INVITED_PENDING', // Temp placeholder
-            role: 'OWNER',
-            roles: 'OWNER,STAFF',
-            status: 'INVITED',
-            parentOwnerId: ownerId,
-            staffPermissions: JSON.stringify(data.permissions),
-            resetToken: inviteToken,
-            resetTokenExpiry: inviteTokenExpiry,
-            // designation and occupationDetail can be used to store staff info
-            occupationDetail: data.designation,
-            currentAddress: data.staffAddress,
-            isOwner: true,
+    const result = await prisma.$transaction(async (tx) => {
+        // 1. Create User
+        const staff = await tx.user.create({
+            data: {
+                displayId,
+                email: data.email,
+                name: data.name,
+                phone: data.phone,
+                passwordHash: 'INVITED_PENDING',
+                role: 'STAFF', // Set directly to STAFF for staff users
+                roles: 'STAFF',
+                status: 'INVITED',
+                parentOwnerId: ownerId,
+                staffPermissions: JSON.stringify(data.permissions),
+                resetToken: inviteToken,
+                resetTokenExpiry: inviteTokenExpiry,
+                occupationDetail: data.designation,
+                currentAddress: data.staffAddress,
+                isOwner: false, // Explicitly false for staff
+            }
+        });
+
+        // 2. Create OwnerEmployee Profile (needed for property assignments)
+        const employee = await tx.ownerEmployee.create({
+            data: {
+                displayId,
+                ownerId,
+                userId: staff.id,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                role: data.designation,
+                status: 'ACTIVE',
+                invitationToken: inviteToken, // Keep in sync
+                invitationExpires: inviteTokenExpiry
+            }
+        });
+
+        // 3. Create Property Assignments
+        if (data.propertyIds && data.propertyIds.length > 0) {
+            await tx.employeePropertyAssignment.createMany({
+                data: data.propertyIds.map(pid => ({
+                    employeeId: employee.id,
+                    propertyId: pid,
+                    assignedBy: ownerId
+                }))
+            });
         }
+
+        return { staff, employee };
     });
 
     logAuditEvent({
@@ -94,16 +126,15 @@ export async function addOwnerStaff(data: {
         actorName: (session as any).name || 'Owner',
         actionType: 'CREATE',
         entityType: 'USER',
-        entityId: staff.id,
-        description: `Invited staff ${data.name} as ${data.designation}`,
+        entityId: result.staff.id,
+        description: `Invited staff ${data.name} as ${data.designation} with ${data.propertyIds.length} properties`,
     });
 
     revalidatePath('/dashboard/owner/staff');
 
-    // Return invite link for UI (in production this would be emailed)
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join-team?token=${inviteToken}`;
     
-    return { success: true, inviteLink, staffId: staff.id };
+    return { success: true, inviteLink, staffId: result.staff.id };
 }
 
 export async function updateStaffStatus(id: string, status: 'ACTIVE' | 'BLOCKED' | 'REMOVED', reason: string) {
@@ -152,6 +183,7 @@ export async function joinStaffTeam(token: string, passwordHash: string) {
             data: {
                 passwordHash: hashed,
                 status: 'ACTIVE',
+                emailVerified: true, // Auto-verify upon joining via secure invite token
                 resetToken: null,
                 resetTokenExpiry: null
             }

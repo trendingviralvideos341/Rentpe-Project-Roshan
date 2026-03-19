@@ -2,6 +2,6 @@
 
 import { TenantsContainer } from "@/components/dashboard/TenantsContainer";
 
-export default function TenantsPage() {
+export default function StaffTenantsPage() {
     return <TenantsContainer />;
 }

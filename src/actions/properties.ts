@@ -9,7 +9,7 @@ import { randomUUID } from "crypto";
 import { generateSequentialId } from "@/lib/ids";
 
 async function getEffectiveOwnerId(session: any) {
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) throw new Error("Unauthorized");
     const user = await prisma.user.findUnique({ 
         where: { id: session.userId },
         select: { parentOwnerId: true }
@@ -23,7 +23,7 @@ export async function getProperties(ownerId?: string) {
 
     if (ownerId) {
         where.ownerId = ownerId;
-    } else if (session?.role === 'OWNER') {
+    } else if (session?.role === 'OWNER' || session?.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
             where: { id: session.userId },
             include: { employeeProfile: true }
@@ -56,10 +56,11 @@ export async function getProperties(ownerId?: string) {
 
 export async function getPendingOwnerActionCount() {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') return 0;
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) return 0;
 
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
     const properties = await prisma.property.findMany({
-        where: { ownerId: session.userId },
+        where: { ownerId: effectiveOwnerId },
         select: { status: true, adminNotes: true }
     });
 
@@ -81,7 +82,7 @@ export async function getPropertyById(id: string) {
 
     if (session?.role === 'ADMIN') return property;
 
-    if (session?.role === 'OWNER') {
+    if (session?.role === 'OWNER' || session?.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
             where: { id: session.userId },
             include: { employeeProfile: true }
