@@ -142,11 +142,21 @@ export async function getBookings() {
                 where: { userId },
                 orderBy: { createdAt: 'desc' },
                 include: {
+                    room: {
+                        select: {
+                            id: true,
+                            roomNumber: true,
+                            type: true,
+                            price: true,
+                            depositMonths: true
+                        }
+                    },
                     property: {
                         include: {
                             owner: { select: { name: true, email: true, phone: true } }
                         }
-                    }
+                    },
+                    user: { select: { name: true, email: true } }
                 }
             });
 

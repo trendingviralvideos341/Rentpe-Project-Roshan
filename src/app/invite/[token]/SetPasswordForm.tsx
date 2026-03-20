@@ -19,8 +19,9 @@ export default function SetPasswordForm({ token, email }: { token: string; email
         e.preventDefault();
         setError("");
 
-        if (password.length < 8) {
-            setError("Password must be at least 8 characters");
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            setError("Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, and a number.");
             return;
         }
         if (password !== confirm) {

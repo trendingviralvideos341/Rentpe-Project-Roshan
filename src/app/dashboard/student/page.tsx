@@ -16,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { generateInvoicePDF } from "@/utils/invoiceGenerator";
 import { BookingStepper } from "@/components/booking/BookingStepper";
 import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
+import { PropertyAgreementModal } from "@/components/booking/PropertyAgreementModal";
+import { BookingFeeBreakdown } from "@/components/booking/BookingFeeBreakdown";
 import { toast } from "sonner";
 import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
@@ -55,85 +57,7 @@ function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' |
     );
 }
 
-// ── Agreement Modal ──
-function AgreementModal({ booking, isOpen, onClose, onSigned }: { booking: any; isOpen: boolean; onClose: () => void; onSigned: () => void }) {
-    const [signing, setSigning] = useState(false);
-    const [agreed, setAgreed] = useState(false);
-
-    if (!isOpen || !booking) return null;
-
-    const handleSign = async () => {
-        if (!agreed) return;
-        setSigning(true);
-        try {
-            const { signAgreement } = await import("@/actions/bookings");
-            await signAgreement(booking.id);
-            onSigned();
-            onClose();
-        } catch (e: any) {
-            alert(e.message || "Failed to sign agreement.");
-        } finally {
-            setSigning(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                <CardHeader className="bg-slate-900 text-white p-6">
-                    <CardTitle className="text-xl flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-blue-400" /> Digital Occupancy Agreement
-                    </CardTitle>
-                    <CardDescription className="text-slate-300">Booking ID: {booking.displayId} • {booking.propertyName}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
-                    <div className="prose prose-sm max-w-none text-slate-700">
-                        <h4 className="font-bold text-slate-900 border-b pb-2">1. Terms of Occupancy</h4>
-                        <p>This agreement confirms your stay at <strong>{booking.propertyName}</strong> starting from <strong>{new Date(booking.moveInDate).toLocaleDateString('en-IN')}</strong>. Your allocated bed/room category is <strong>{booking.occupancy}</strong>.</p>
-
-                        <h4 className="font-bold text-slate-900 border-b pb-2 mt-4">2. Payment & Dues</h4>
-                        <p>The monthly rent is <strong>{booking.amount}</strong>. Rent must be paid by the 5th of every month. Late payments may incur a penalty of ₹100/day.</p>
-
-                        <h4 className="font-bold text-slate-900 border-b pb-2 mt-4">3. House Rules</h4>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li>Maintenance of hygiene in common areas is mandatory.</li>
-                            <li>Guests are allowed only during visiting hours (10 AM - 8 PM).</li>
-                            <li>Noise levels must be kept low after 10 PM.</li>
-                            <li>Illegal substances or activities are strictly prohibited.</li>
-                        </ul>
-
-                        <h4 className="font-bold text-slate-900 border-b pb-2 mt-4">4. Verification & Check-in</h4>
-                        <p>Formal check-in is subject to physical verification of original documents (Aadhaar, Student ID/Work ID). Reservation is confirmed only after this digital signature.</p>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="mt-1 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                                checked={agreed}
-                                onChange={e => setAgreed(e.target.checked)}
-                            />
-                            <span className="text-sm font-medium text-blue-900">
-                                I, <strong>{booking.guestName}</strong>, hereby agree to the terms and conditions mentioned above and confirm my reservation for {booking.propertyName}. I understand that this is a legally binding digital signature.
-                            </span>
-                        </label>
-                    </div>
-                </CardContent>
-                <div className="p-6 bg-slate-50 border-t flex gap-3">
-                    <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-                    <Button
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11"
-                        disabled={!agreed || signing}
-                        onClick={handleSign}
-                    >
-                        {signing ? "Processing..." : "✍️ Sign Agreement Digitally"}
-                    </Button>
-                </div>
-            </Card>
-        </div>
-    );
-}
+// ── End of Utility Components ──
 
 function DocumentSection({ booking }: { booking: any }) {
     const [docs, setDocs] = useState<any[]>([]);
@@ -598,11 +522,57 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             )}
 
-                                            <AgreementModal
-                                                booking={signingBooking}
+                                            {/* ── Dynamic Fee Breakdown (Phase 4) ── */}
+                                            {isApproved && booking.room && (
+                                                <div className="border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-sm mb-4">
+                                                    <div className="bg-slate-50 px-4 py-2 border-b border-slate-100">
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Breakdown</p>
+                                                    </div>
+                                                    <BookingFeeBreakdown
+                                                        rent={booking.room.price}
+                                                        depositAmount={booking.depositAmount || (booking.room.price * (booking.depositMonths || 1))}
+                                                        depositMonths={booking.depositMonths || booking.room.depositMonths || 1}
+                                                        platformFee={booking.platformFeeAmount || 499}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* ── Unified Agreement Modal ── */}
+                                            <PropertyAgreementModal
                                                 isOpen={!!signingBooking && signingBooking.id === booking.id}
                                                 onClose={() => setSigningBooking(null)}
-                                                onSigned={() => { fetchData(); }}
+                                                onAccept={async () => {
+                                                    const toastId = toast.loading("Signing agreement...");
+                                                    try {
+                                                        await signAgreement(booking.id);
+                                                        toast.success("Agreement signed successfully!", { id: toastId });
+                                                        await fetchData();
+                                                        setSigningBooking(null);
+                                                    } catch (e: any) {
+                                                        toast.error(e.message || "Failed to sign agreement", { id: toastId });
+                                                    }
+                                                }}
+                                                property={{
+                                                    id: booking.propertyId || "N/A",
+                                                    name: booking.propertyName,
+                                                    address: booking.propertyAddress || booking.property?.address || "N/A",
+                                                    city: booking.propertyCity || booking.property?.city || "N/A",
+                                                    noticePeriod: booking.property?.noticePeriod || 30,
+                                                    refundPolicy: booking.property?.refundPolicy,
+                                                }}
+                                                room={{
+                                                    roomNumber: booking.roomAssigned || booking.room?.roomNumber || "TBD",
+                                                    type: booking.occupancy || booking.room?.type || "N/A",
+                                                    price: booking.room?.price || booking.amount || 0,
+                                                    depositMonths: booking.depositMonths || booking.room?.depositMonths || 1,
+                                                }}
+                                                tenant={{
+                                                    name: booking.guestName,
+                                                    email: booking.guestEmail || profile?.email,
+                                                }}
+                                                moveInDate={booking.onboardingDate || booking.moveInDate}
+                                                depositAmount={booking.depositAmount || 0}
+                                                platformFee={booking.platformFeeAmount || 0}
                                             />
 
                                             {/* ── Professional Journey Stepper (Phase 31) ── */}
