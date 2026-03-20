@@ -36,13 +36,13 @@ export default function PropertyDetailPage() {
         guestEmail: "",
         guestPhone: "",
         moveInDate: "",
-        stayDuration: "6", // Default 6 months
+        stayDuration: "6",
         occupants: "1",
         message: "",
         occupationType: "",
         occupationDetail: "",
     });
-    const [mealPlan, setMealPlan] = useState<"with" | "without">("with");
+    const [foodSelected, setFoodSelected] = useState<boolean | null>(null); // null = not yet chosen (only for OPTIONAL)
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -137,7 +137,7 @@ export default function PropertyDetailPage() {
                 moveInDate: formData.moveInDate,
                 stayDuration: 6,
                 occupants: 1,
-                message: `${formData.message}${property.amenities.includes("Mess/Food") ? `\nMeal Plan: ${mealPlan === 'with' ? 'With Food' : 'Without Food'}` : ''}`,
+                message: formData.message,
                 amount: baseAmount,
                 guestEmail: formData.guestEmail,
                 guestPhone: `+91${formData.guestPhone}`,
@@ -438,27 +438,66 @@ export default function PropertyDetailPage() {
                                 )}
                             </div>
 
-                            {/* Meal Plan Preference (Conditional) */}
-                            {property.amenities.includes("Mess/Food") && (
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Meal Plan Preference <span className="text-red-500">*</span></label>
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setMealPlan("with")}
-                                            className={`flex-1 py-2 rounded-lg text-xs font-bold border-2 transition-all ${mealPlan === "with" ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-600 hover:border-blue-400"}`}
-                                        >
-                                            🍴 With Food
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setMealPlan("without")}
-                                            className={`flex-1 py-2 rounded-lg text-xs font-bold border-2 transition-all ${mealPlan === "without" ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 text-gray-600 hover:border-blue-400"}`}
-                                        >
-                                            🚫 Without Food
-                                        </button>
+                            {/* Section 3 & 4 — Food Service Banner */}
+                            {property.foodType === 'NOT_AVAILABLE' && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200">
+                                    <span className="text-base">🚫</span>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-500 uppercase">No Food Service</p>
+                                        <p className="text-[10px] text-slate-400">This property does not provide meals.</p>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground italic text-center">Price may vary based on meal selection</p>
+                                </div>
+                            )}
+                            {property.foodType === 'INCLUDED' && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50 border-2 border-green-200">
+                                    <span className="text-base">🍱</span>
+                                    <div>
+                                        <p className="text-xs font-black text-green-700 uppercase">Meals Included in Rent</p>
+                                        <p className="text-[10px] text-green-600">Breakfast, Lunch & Dinner included. No extra charge.</p>
+                                    </div>
+                                </div>
+                            )}
+                            {property.foodType === 'OPTIONAL' && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-50 border-2 border-orange-200">
+                                        <span className="text-base">🍴</span>
+                                        <div className="flex-1">
+                                            <p className="text-xs font-black text-orange-700 uppercase">Food Available (Optional)</p>
+                                            <p className="text-[10px] text-orange-600 font-bold">₹{property.foodPricePerMonth?.toLocaleString()}/month — Choose below</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium">Food Service Preference <span className="text-red-500">*</span></label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFoodSelected(true)}
+                                                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                                                    foodSelected === true
+                                                        ? "bg-green-600 text-white border-green-600 shadow-md"
+                                                        : "border-gray-200 text-gray-600 hover:border-green-400 hover:bg-green-50"
+                                                }`}
+                                            >
+                                                🍽 Yes, Include Food <span className="font-normal opacity-80">(+₹{property.foodPricePerMonth?.toLocaleString()}/mo)</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFoodSelected(false)}
+                                                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                                                    foodSelected === false
+                                                        ? "bg-slate-700 text-white border-slate-700 shadow-md"
+                                                        : "border-gray-200 text-gray-600 hover:border-slate-400 hover:bg-slate-50"
+                                                }`}
+                                            >
+                                                🚫 No Thanks
+                                            </button>
+                                        </div>
+                                        {foodSelected !== null && (
+                                            <p className="text-[10px] text-muted-foreground italic text-center">
+                                                {foodSelected ? `Food will be activated when owner approves. (+₹${property.foodPricePerMonth?.toLocaleString()}/mo)` : 'No food charges will apply.'}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

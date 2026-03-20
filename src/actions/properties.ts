@@ -155,9 +155,17 @@ export async function createProperty(data: FormData | any) {
     const termsAccepted = termsAcceptedRaw === "true" || termsAcceptedRaw === "on" || (termsAcceptedRaw as any) === true;
     const feeTermsAcceptedRaw = getVal("feeTermsAccepted");
     const feeTermsAccepted = feeTermsAcceptedRaw === "true" || feeTermsAcceptedRaw === "on" || (feeTermsAcceptedRaw as any) === true;
+    // ── Food & Mess Service (Section 2) ──
+    const foodType = getVal("foodType") || "NOT_AVAILABLE"; // INCLUDED | OPTIONAL | NOT_AVAILABLE
+    const foodPricePerMonthRaw = getVal("foodPricePerMonth");
+    const foodPricePerMonth = foodPricePerMonthRaw ? parseFloat(foodPricePerMonthRaw) : null;
 
     if (!name?.trim()) throw new Error("Property name is required");
     if (!termsAccepted) throw new Error("You must accept general terms to list your property.");
+    // Section 2 — Validation: price required if OPTIONAL
+    if (foodType === 'OPTIONAL' && (!foodPricePerMonth || foodPricePerMonth <= 0)) {
+        throw new Error("Food price per month is required when food service is Optional.");
+    }
 
     // Industry Standard: Fetch platform settings server-side at the moment of creation to lock the fee
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
@@ -212,6 +220,9 @@ export async function createProperty(data: FormData | any) {
                 termsAcceptedAt: new Date(),
                 feeTermsAccepted: true,
                 feeTermsAcceptedAt: new Date(),
+                // Section 1 & 2 — Food Service configuration
+                foodType,
+                foodPricePerMonth: foodType === 'OPTIONAL' ? foodPricePerMonth : null,
             } as any
         });
 

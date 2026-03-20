@@ -135,7 +135,10 @@ export async function getBookings() {
             return await prisma.booking.findMany({
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
-                include: { user: { select: { name: true, email: true } } }
+                include: {
+                    user: { select: { name: true, email: true } },
+                    property: { select: { foodType: true, foodPricePerMonth: true } as any }
+                }
             });
         } else {
             const bookings = await prisma.booking.findMany({
@@ -205,6 +208,9 @@ export async function approveBooking(id: string, data: {
     pendingAmount?: number,
     depositAmount?: number,
     depositMonths?: number,
+    // Section 4 & 5 — Food Service at allocation time
+    foodSelected?: boolean,
+    foodPriceApplied?: number,
 }) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
@@ -232,7 +238,10 @@ export async function approveBooking(id: string, data: {
             pendingAmount: data.pendingAmount || null,
             depositAmount: data.depositAmount || null,
             depositMonths: data.depositMonths || null,
-        }
+            // Section 5 — Lock food price at approval time (SECTION 8 — Billing: price immutable post-approval)
+            foodSelected: data.foodSelected ?? false,
+            foodPriceApplied: data.foodPriceApplied ?? 0,
+        } as any
     });
 
     // Handle bed availability changes if the room assignment has changed

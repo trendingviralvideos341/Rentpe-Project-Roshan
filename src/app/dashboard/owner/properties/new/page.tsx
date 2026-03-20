@@ -63,7 +63,9 @@ export default function AddPropertyPage() {
     const [showCustomAmenity, setShowCustomAmenity] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [feeTermsAccepted, setFeeTermsAccepted] = useState(false);
-    
+    // ── Food & Mess Service (Section 2) ──
+    const [foodType, setFoodType] = useState<'NOT_AVAILABLE' | 'INCLUDED' | 'OPTIONAL'>('NOT_AVAILABLE');
+    const [foodPricePerMonth, setFoodPricePerMonth] = useState('');
     const amenityOptions = ["WiFi", "AC", "Laundry", "Power Backup", "CCTV", "Biometric", "Food", "Cleaning", "Parking", "Gym", "Hot Water", "TV"];
     
     const suggestedAmenities = [
@@ -561,6 +563,10 @@ export default function AddPropertyPage() {
         if (onboardingFee !== null && onboardingFee > 0 && !feeTermsAccepted) {
             errs.feeTermsAccepted = "Fee acknowledgment is required.";
         }
+        // ── Section 2 food validation ──
+        if (foodType === 'OPTIONAL' && (!foodPricePerMonth.trim() || parseFloat(foodPricePerMonth) <= 0)) {
+            errs.foodPricePerMonth = "Monthly food price is required for Optional food service";
+        }
 
         // Conditional Mandatory for PG/Hostel Licence
         if ((propertyType === "PG" || propertyType === "Hostel") && !licenseNumber.trim()) {
@@ -651,6 +657,9 @@ export default function AddPropertyPage() {
                 rooms,
                 termsAccepted,
                 feeTermsAccepted,
+                // Section 2 — Food Service
+                foodType,
+                foodPricePerMonth: foodType === 'OPTIONAL' ? foodPricePerMonth : '',
                 ...uploadedUrls,
                 livePhotoUrl: docs.livePhotoUrl[0]?.cloudUrl // Single URL for current photo
             };
@@ -1048,6 +1057,79 @@ export default function AddPropertyPage() {
                             </div>
                         )}
                         {errors.amenities && <p className="text-xs text-red-500 mt-2">{errors.amenities}</p>}
+                    </CardContent>
+                </Card>
+
+                {/* ── Food & Mess Service ── */}
+                <Card className="border-[7px] border-orange-200 shadow-2xl shadow-orange-900/10 overflow-hidden">
+                    <CardHeader className="bg-slate-50/50 p-6 border-b">
+                        <CardTitle className="text-xl font-black text-orange-700 flex items-center gap-3">
+                            🍽 Food & Mess Service
+                        </CardTitle>
+                        <CardDescription className="text-sm text-slate-500 mt-1 font-medium italic">
+                            Define if your property provides meals — students will see this clearly before booking.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {([
+                                { val: 'NOT_AVAILABLE', emoji: '🚫', title: 'Not Available', desc: 'No food service' },
+                                { val: 'INCLUDED', emoji: '🍱', title: 'Included in Rent', desc: 'Meals included, no extra charge' },
+                                { val: 'OPTIONAL', emoji: '🍴', title: 'Optional (Add-on)', desc: 'Student can opt in/out' },
+                            ] as { val: 'NOT_AVAILABLE' | 'INCLUDED' | 'OPTIONAL'; emoji: string; title: string; desc: string }[]).map(opt => (
+                                <button
+                                    key={opt.val}
+                                    type="button"
+                                    onClick={() => setFoodType(opt.val)}
+                                    suppressHydrationWarning
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col gap-1 ${
+                                        foodType === opt.val
+                                            ? "bg-orange-600 border-orange-600 text-white shadow-lg scale-[1.02]"
+                                            : "bg-white border-slate-100 text-slate-700 hover:border-orange-200 hover:bg-orange-50"
+                                    }`}
+                                >
+                                    <span className="text-2xl">{opt.emoji}</span>
+                                    <span className="text-[11px] font-black uppercase tracking-wide">{opt.title}</span>
+                                    <span className={`text-[10px] font-medium ${foodType === opt.val ? 'text-orange-100' : 'text-slate-400'}`}>{opt.desc}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Conditional price input for OPTIONAL */}
+                        {foodType === 'OPTIONAL' && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-orange-50 p-4 rounded-xl border-2 border-orange-200">
+                                <label className="text-[11px] font-black text-orange-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    💰 Monthly Food Charge (₹) <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="number"
+                                    placeholder="e.g. 2000"
+                                    min={1}
+                                    value={foodPricePerMonth}
+                                    onChange={e => setFoodPricePerMonth(e.target.value)}
+                                    suppressHydrationWarning
+                                    className={`h-12 text-lg font-bold border-2 ${errors.foodPricePerMonth ? 'border-red-500' : 'border-orange-200 focus:border-orange-400'} bg-white`}
+                                />
+                                {errors.foodPricePerMonth && <p className="text-[10px] text-red-500 font-bold mt-1 uppercase italic">{errors.foodPricePerMonth}</p>}
+                                <p className="text-[10px] text-orange-600 font-bold mt-2">
+                                    Students will see this as a monthly add-on. They can opt in/out after booking.
+                                </p>
+                            </div>
+                        )}
+                        {foodType === 'INCLUDED' && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-green-50 p-4 rounded-xl border-2 border-green-200">
+                                <p className="text-sm font-bold text-green-700">
+                                    ✅ Meals are included in rent. Students <strong>cannot</strong> opt out of food.
+                                </p>
+                            </div>
+                        )}
+                        {foodType === 'NOT_AVAILABLE' && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50 p-4 rounded-xl border-2 border-slate-200">
+                                <p className="text-sm font-bold text-slate-500">
+                                    🚫 No food service at this property. Students will manage food independently.
+                                </p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

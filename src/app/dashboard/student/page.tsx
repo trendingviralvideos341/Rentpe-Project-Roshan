@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getBookings, cancelBooking, signAgreement } from "@/actions/bookings";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
+import { changeFoodPreference } from "@/actions/food";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star } from "lucide-react";
@@ -53,6 +54,62 @@ function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' |
                     {actionLabel}
                 </Button>
             )}
+        </div>
+    );
+}
+
+// ── Section 6A & 7A — Food Management (Student) ──
+function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
+    const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
+    const [changing, setChanging] = useState(false);
+    const [lastChanged, setLastChanged] = useState<string | null>(null);
+
+    const handleToggle = async () => {
+        const newVal = !foodEnabled;
+        const label = newVal ? 'enable' : 'disable';
+        if (!confirm(`Are you sure you want to ${label} the food service?\nThis change will take effect from the 1st of next month.`)) return;
+
+        setChanging(true);
+        const result = await changeFoodPreference(booking.id, newVal);
+        if (result.success) {
+            setFoodEnabled(newVal);
+            setLastChanged(result.effectiveFrom || '');
+            await onRefresh();
+        } else {
+            alert(result.error || 'Failed to change food preference. Please try again.');
+        }
+        setChanging(false);
+    };
+
+    return (
+        <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-xs font-black text-orange-700">🍽 Food Service (Optional)</p>
+                    <p className="text-[10px] text-orange-600">
+                        ₹{booking.property?.foodPricePerMonth?.toLocaleString()}/month
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${foodEnabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {foodEnabled ? '✅ Active' : '🚫 Inactive'}
+                    </span>
+                    <button
+                        type="button"
+                        disabled={changing}
+                        onClick={handleToggle}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${foodEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${foodEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </div>
+            {lastChanged && (
+                <p className="text-[10px] text-orange-600 italic font-bold animate-in fade-in duration-300">
+                    ✅ Change saved! Effective from: {lastChanged}
+                </p>
+            )}
+            <p className="text-[10px] text-slate-400">Changes apply from the 1st of next month.</p>
         </div>
     );
 }
@@ -609,6 +666,26 @@ export default function StudentDashboardPage() {
                                                             </div>
                                                         )}
                                                     </div>
+
+                                                    {/* ── Section 6A & 7A — Student Food Management ── */}
+                                                    {booking.property?.foodType === 'INCLUDED' && (
+                                                        <div className="mt-3 flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                                                            <span>🍱</span>
+                                                            <div>
+                                                                <p className="text-xs font-black text-green-700">Meals Included in Rent</p>
+                                                                <p className="text-[10px] text-green-600">Breakfast, Lunch & Dinner. Cannot be removed.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {booking.property?.foodType === 'OPTIONAL' && (
+                                                        <FoodToggleSection booking={booking} onRefresh={fetchData} />
+                                                    )}
+                                                    {(!booking.property?.foodType || booking.property?.foodType === 'NOT_AVAILABLE') && (
+                                                        <div className="mt-3 flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                                            <span>🚫</span>
+                                                            <p className="text-xs font-bold text-slate-500">No food service at this property.</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 

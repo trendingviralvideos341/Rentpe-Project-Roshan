@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
+import { changeFoodPreference, getFoodPreferenceHistory } from "@/actions/food";
 import { toast } from "sonner";
 
 
@@ -50,6 +51,9 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
     const [rejectTarget, setRejectTarget] = useState<string | null>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [previewDoc, setPreviewDoc] = useState<any>(null);
+    // Section 5 & 7B — Food toggle state (owner can set/change food per tenant)
+    const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
+    const [foodChanging, setFoodChanging] = useState(false);
 
     const fetchDocs = async () => {
         setDocsLoading(true);
@@ -147,6 +151,68 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* ── Section 5 & 7B — Food Service Panel ── */}
+                                {booking.property?.foodType !== 'NOT_AVAILABLE' && booking.property?.foodType && (
+                                    <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">
+                                        <div className="text-xs font-black text-orange-700 uppercase flex items-center gap-2">🍽 Food & Mess Service</div>
+                                        {booking.property?.foodType === 'INCLUDED' && (
+                                            <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">✅ Included in Rent — Always Active</span>
+                                        )}
+                                        {booking.property?.foodType === 'OPTIONAL' && (
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] text-slate-500">Monthly charge: <strong>₹{booking.property?.foodPricePerMonth?.toLocaleString()}/mo</strong></p>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-slate-600">
+                                                        {foodEnabled ? '🍽 Food ACTIVE' : '🚫 Food INACTIVE'}
+                                                    </span>
+                                                    {/* Toggle for REQUESTED bookings (pre-approval) */}
+                                                    {booking.status === 'REQUESTED' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFoodEnabled(!foodEnabled)}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                                foodEnabled ? 'bg-green-500' : 'bg-slate-300'
+                                                            }`}
+                                                        >
+                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                                                foodEnabled ? 'translate-x-6' : 'translate-x-1'
+                                                            }`} />
+                                                        </button>
+                                                    )}
+                                                    {/* Change button for already-approved bookings */}
+                                                    {(booking.status === 'APPROVED' || booking.status === 'CHECKIN_CONFIRMED') && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={foodChanging}
+                                                            onClick={async () => {
+                                                                if (!confirm(`Change food preference to ${!foodEnabled ? 'ENABLED' : 'DISABLED'}? This applies from the next billing cycle.`)) return;
+                                                                setFoodChanging(true);
+                                                                const result = await changeFoodPreference(booking.id, !foodEnabled, 'Changed by owner');
+                                                                if (result.success) {
+                                                                    setFoodEnabled(!foodEnabled);
+                                                                    toast.success(`Food ${!foodEnabled ? 'enabled' : 'disabled'}. Effective from ${result.effectiveFrom}`);
+                                                                    onRefresh();
+                                                                } else {
+                                                                    toast.error(result.error || 'Failed to change food preference.');
+                                                                }
+                                                                setFoodChanging(false);
+                                                            }}
+                                                            className="text-[10px] px-3 py-1.5 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 disabled:opacity-50"
+                                                        >
+                                                            {foodChanging ? '...' : foodEnabled ? '🚫 Disable Food' : '🍽 Enable Food'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {booking.status === 'REQUESTED' && (
+                                                    <p className="text-[10px] text-orange-600 italic">
+                                                        Toggle food on/off before approving. {foodEnabled ? `(+₹${booking.property?.foodPricePerMonth?.toLocaleString()}/mo will be charged)` : '(No food charge)'}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Contact management notice */}
                                 {contactInfo && (
