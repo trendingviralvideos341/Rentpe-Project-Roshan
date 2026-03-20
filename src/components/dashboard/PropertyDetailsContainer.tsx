@@ -648,20 +648,10 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                      <div className="bg-indigo-900 rounded-[40px] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
                             <div className="max-w-xl space-y-4">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md">
-                                    <ShieldCheck className="w-5 h-5 text-indigo-300" />
-                                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-100">Official Compliance Center</span>
-                                </div>
-                                <h2 className="text-4xl font-extrabold tracking-tight">System Identity <span className="text-indigo-400">Verification</span></h2>
+                                <h2 className="text-4xl font-extrabold tracking-tight">Verification</h2>
                                 <p className="text-indigo-100/70 font-medium text-lg leading-relaxed">
                                     Upload government-issued IDs and building documentation to activate your property on RentPe. High-quality scans ensure faster approval.
                                 </p>
-                            </div>
-                            <div className="flex items-center gap-6">
-                               <div className="text-center p-6 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-xl">
-                                   <div className="text-4xl font-black mb-1">{(safeParse(property.verifiedDocs).length / 9 * 100).toFixed(0)}%</div>
-                                   <div className="text-[9px] font-black uppercase tracking-widest text-indigo-300">COMPLIANCE SCORE</div>
-                               </div>
                             </div>
                         </div>
                         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl -z-0"></div>

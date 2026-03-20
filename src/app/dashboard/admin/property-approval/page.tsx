@@ -603,7 +603,11 @@ export default function AdminPropertyApprovalPage() {
                             <Icon className={`h-4 w-4 ${isActive ? 'text-indigo-400' : tab.color}`} />
                             {tab.label}
                             {count > 0 && (
-                                <span className={`ml-1 flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[9px] font-black rounded-full ${isActive ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                <span className={`ml-1 flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[9px] font-black rounded-full border shadow-sm ${
+                                    tab.id === 'APPROVED' 
+                                        ? 'bg-emerald-500 text-white border-emerald-600' 
+                                        : 'bg-red-500 text-white border-red-600'
+                                }`}>
                                     {count}
                                 </span>
                             )}
