@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-    throw new Error("CRITICAL: JWT_SECRET environment variable is not set!");
+if (!process.env.JWT_SECRET) {
+    throw new Error("CRITICAL: JWT_SECRET environment variable is not set! This is required to secure user sessions.");
 }
 
 const JWT_SECRET = new TextEncoder().encode(
@@ -14,24 +14,31 @@ const protectedRoutes = ['/dashboard'];
 const publicRoutes = ['/login', '/signup', '/'];
 
 // --- Basic Rate Limiter (In-Memory for Dev/Single-Server) ---
-// For production scale, use Redis-based limiting.
+// --- Granular Rate Limiting (In-Memory) ---
 const IP_REQUESTS = new Map<string, { count: number; lastReset: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS = 60; // 60 requests per minute
 
-function isRateLimited(ip: string): boolean {
+const RATE_LIMITS = {
+    DEFAULT: { count: 60, window: 60 * 1000 },
+    LOGIN: { count: 10, window: 60 * 1000 },  // 10 attempts per minute
+    SIGNUP: { count: 5, window: 60 * 1000 },   // 5 attempts per minute (stricter)
+};
+
+function checkRateLimit(ip: string, action: keyof typeof RATE_LIMITS = 'DEFAULT'): boolean {
     const now = Date.now();
-    const stats = IP_REQUESTS.get(ip) || { count: 0, lastReset: now };
+    const key = `${ip}:${action}`;
+    const limit = RATE_LIMITS[action];
+    
+    const stats = IP_REQUESTS.get(key) || { count: 0, lastReset: now };
 
-    if (now - stats.lastReset > RATE_LIMIT_WINDOW) {
+    if (now - stats.lastReset > limit.window) {
         stats.count = 1;
         stats.lastReset = now;
     } else {
         stats.count++;
     }
 
-    IP_REQUESTS.set(ip, stats);
-    return stats.count > MAX_REQUESTS;
+    IP_REQUESTS.set(key, stats);
+    return stats.count > limit.count;
 }
 
 export default async function middleware(req: NextRequest) {
@@ -39,10 +46,18 @@ export default async function middleware(req: NextRequest) {
 
     // 0. API Rate Limiting (Security Phase 2)
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
-    if (path.startsWith('/api') || path === '/login' || path === '/signup') {
-        if (isRateLimited(ip)) {
-            return new NextResponse('Too many requests. Please try again in a minute.', { status: 429 });
-        }
+    
+    let rateLimited = false;
+    if (path === '/login') {
+        rateLimited = checkRateLimit(ip, 'LOGIN');
+    } else if (path === '/signup') {
+        rateLimited = checkRateLimit(ip, 'SIGNUP');
+    } else if (path.startsWith('/api')) {
+        rateLimited = checkRateLimit(ip, 'DEFAULT');
+    }
+
+    if (rateLimited) {
+        return new NextResponse('Too many requests. Please try again in a minute.', { status: 429 });
     }
     const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
     const isPublicRoute = publicRoutes.some(route => path === route);

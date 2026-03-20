@@ -4,11 +4,7 @@ import { cookies } from 'next/headers';
 import { Session } from '@/types/auth';
 
 if (!process.env.JWT_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error("CRITICAL: JWT_SECRET environment variable is not set!");
-    } else {
-        console.warn("WARNING: JWT_SECRET is not set. Using unsafe default for development ONLY.");
-    }
+    throw new Error("CRITICAL: JWT_SECRET environment variable is not set! This is required to secure user sessions.");
 }
 
 const JWT_SECRET = new TextEncoder().encode(
