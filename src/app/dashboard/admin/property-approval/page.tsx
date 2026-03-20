@@ -420,23 +420,25 @@ export default function AdminPropertyApprovalPage() {
                                                 )}
                                             </div>
 
-                                            {/* Simplified Overlay */}
+                                            {/* Unified Clean Hover Overlay */}
                                             <div 
-                                                onClick={() => setViewDialog({ 
-                                                    isOpen: true, 
-                                                    propertyId: property.id, 
-                                                    catKey: cat.key, 
-                                                    index: i, 
-                                                    isArray: true, 
-                                                    label: cat.label, 
-                                                    desc: cat.desc 
-                                                })}
-                                                className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/20 opacity-0 hover:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[1px] z-30 cursor-crosshair group-hover/img:opacity-100"
+                                                className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/40 opacity-0 hover:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[2px] z-30 group-hover/img:opacity-100 cursor-pointer"
+                                                onClick={() => {
+                                                    setViewDialog({ 
+                                                        isOpen: true, 
+                                                        propertyId: property.id, 
+                                                        catKey: cat.key, 
+                                                        index: i, 
+                                                        isArray: true, 
+                                                        label: cat.label, 
+                                                        desc: cat.desc 
+                                                    });
+                                                }}
                                             >
-                                                <div className="bg-white/90 p-2 rounded-full shadow-lg scale-75 group-hover/img:scale-100 transition-all">
-                                                    <Search className="w-4 h-4 text-slate-900" />
+                                                <div className="bg-white/90 p-4 rounded-full shadow-2xl scale-75 group-hover/img:scale-100 transition-all">
+                                                    <Search className="w-6 h-6 text-slate-900" />
                                                 </div>
-                                                <span className="text-[8px] font-black text-white mt-1.5 uppercase tracking-widest drop-shadow-md">View</span>
+                                                <span className="text-[10px] font-black text-white mt-3 uppercase tracking-[0.2em] drop-shadow-lg">View Document</span>
                                             </div>
                                         </div>
                                     );
@@ -444,14 +446,14 @@ export default function AdminPropertyApprovalPage() {
                                     slots.push(
                                         <div key={`${property.id}-${cat.key}-slot-${i}`} className="border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center h-32 bg-slate-50/50 group/empty relative overflow-hidden">
                                             <ImageIcon className="w-5 h-5 text-slate-300 group-hover/empty:scale-90 transition-transform" />
-                                            <span className="text-[8px] font-bold uppercase text-slate-400 mt-1">Empty Slot</span>
+                                            <span className="text-[8px] font-bold uppercase text-slate-400 mt-1">Add Photo</span>
                                             
                                             {/* Admin Upload Overaly */}
                                             <label className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover/empty:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-all backdrop-blur-[1px]">
                                                 <div className="bg-blue-600 text-white p-3 rounded-full shadow-xl scale-90 group-hover/empty:scale-100 transition-transform">
                                                     <Plus className="w-5 h-5 stroke-[3]" />
                                                 </div>
-                                                <span className="text-[10px] font-black text-blue-800 mt-2.5 uppercase tracking-widest drop-shadow-sm">Admin Upload</span>
+                                                <span className="text-[10px] font-black text-blue-800 mt-2.5 uppercase tracking-widest drop-shadow-sm">Add Photo</span>
                                                 <input 
                                                     type="file" 
                                                     className="hidden" 
@@ -505,35 +507,38 @@ export default function AdminPropertyApprovalPage() {
                                     </div>
                                 )}
 
+                                {/* Unified Clean Hover Overlay (Singleton) */}
                                 <div 
-                                    onClick={() => setViewDialog({ 
-                                        isOpen: true, 
-                                        propertyId: property.id, 
-                                        catKey: cat.key, 
-                                        isArray: false, 
-                                        label: cat.label, 
-                                        desc: cat.desc 
-                                    })}
-                                    className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/20 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[1px] z-30 cursor-crosshair p-4"
+                                    className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[2px] z-30 p-4 cursor-pointer"
+                                    onClick={() => {
+                                        setViewDialog({ 
+                                            isOpen: true, 
+                                            propertyId: property.id, 
+                                            catKey: cat.key, 
+                                            isArray: false, 
+                                            label: cat.label, 
+                                            desc: cat.desc 
+                                        });
+                                    }}
                                 >
-                                    <div className="bg-white/90 p-4 rounded-full shadow-2xl scale-75 group-hover/img:scale-110 transition-all">
-                                        <Search className="w-6 h-6 text-slate-900" />
+                                    <div className="bg-white/90 p-5 rounded-full shadow-2xl scale-75 group-hover/img:scale-110 transition-all">
+                                        <Search className="w-7 h-7 text-slate-900" />
                                     </div>
-                                    <span className="text-[10px] font-black text-white mt-3 uppercase tracking-widest drop-shadow-lg">View Photo</span>
+                                    <span className="text-[11px] font-black text-white mt-4 uppercase tracking-[0.3em] drop-shadow-lg">View Document</span>
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <div key={`${property.id}-${cat.key}-empty`} className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50 p-6 group/empty overflow-hidden relative min-h-[160px]">
                             <Plus className="w-8 h-8 text-slate-300 mb-2 group-hover/empty:scale-90 transition-transform" />
-                            <span className="text-xs font-bold text-slate-400 uppercase">Not Uploaded</span>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Add Photo</span>
                             
                             {/* Admin Upload Overlay */}
                             <label className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover/empty:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-all backdrop-blur-[1px]">
                                 <div className="bg-blue-600 text-white p-3 rounded-full shadow-lg scale-90 group-hover/empty:scale-100 transition-transform">
                                     <Plus className="w-6 h-6" />
                                 </div>
-                                <span className="text-xs font-black text-blue-700 mt-3 uppercase tracking-[0.2em]">Admin Upload</span>
+                                <span className="text-xs font-black text-blue-700 mt-3 uppercase tracking-[0.2em]">Add Photo</span>
                                 <input 
                                     type="file" 
                                     className="hidden" 
@@ -589,12 +594,16 @@ export default function AdminPropertyApprovalPage() {
                         <button
                             key={tab.id}
                             onClick={() => setFilterStatus(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all border font-medium ${isActive ? tab.bgActive : 'bg-white hover:bg-slate-50 text-slate-700'}`}
+                            className={`flex items-center gap-3 px-6 py-2.5 rounded-[18px] whitespace-nowrap transition-all duration-300 border-2 font-black uppercase text-[10px] tracking-widest ${
+                                isActive 
+                                    ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-200 -translate-y-0.5" 
+                                    : "bg-white/80 backdrop-blur-sm text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                            }`}
                         >
-                            <Icon className={`h-4 w-4 ${isActive ? 'text-white' : tab.color}`} />
+                            <Icon className={`h-4 w-4 ${isActive ? 'text-indigo-400' : tab.color}`} />
                             {tab.label}
                             {count > 0 && (
-                                <span className={`ml-1 flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[10px] font-bold rounded-full ${['APPROVED', 'REJECTED'].includes(tab.id) ? 'bg-indigo-600' : 'bg-red-500'} text-white shadow-sm`}>
+                                <span className={`ml-1 flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[9px] font-black rounded-full ${isActive ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                                     {count}
                                 </span>
                             )}
@@ -1044,7 +1053,7 @@ export default function AdminPropertyApprovalPage() {
                                                                 className="h-9 px-4 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-100 flex items-center gap-2 group"
                                                                 onClick={() => setAddRoomDialog({ isOpen: true, propertyId: property.id })}
                                                             >
-                                                                <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+                                                                <Plus className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" />
                                                                 Add New Room
                                                             </Button>
                                                         </div>
@@ -1150,11 +1159,11 @@ export default function AdminPropertyApprovalPage() {
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                 {[
-                                                                    { key: 'buildingPhotos', label: 'Building Photos', desc: 'Exterior / Main Gate (Max 4)', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-100', isArray: true, max: 4 },
-                                                                    { key: 'commonAreaPhotos', label: 'Common Area', desc: 'Hallway / Lobby / Shared (Max 4)', icon: <Users className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-100', isArray: true, max: 4 },
-                                                                    { key: 'roomsAndBathroomPhotos', label: 'Rooms & Bathroom', desc: 'Interior Space Checklist (Max 4)', icon: <BedDouble className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderClass: 'border-blue-100', isArray: true, max: 4 },
-                                                                    { key: 'parkingPhotos', label: 'Parking Area', desc: 'Dedicated Space (Max 4)', icon: <ParkingCircle className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderClass: 'border-emerald-100', isArray: true, max: 4 },
-                                                                    { key: 'amenitiesPhotos', label: 'Other Amenities', desc: 'Fridge/TV/Washing (Max 4)', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-100', isArray: true, max: 4 },
+                                                                    { key: 'buildingPhotos', label: 'Building Exterior', desc: 'Building/MAIN ENTRANCE / STREET VIEW', icon: <Building2 className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-100', isArray: true, max: 4 },
+                                                                    { key: 'commonAreaPhotos', label: 'Common Areas', desc: 'Hallway / Lobby / GYM/ Shared', icon: <Users className="w-5 h-5" />, colorClass: 'text-purple-600', bgClass: 'bg-purple-50', borderClass: 'border-purple-100', isArray: true, max: 4 },
+                                                                    { key: 'roomsAndBathroomPhotos', label: 'Rooms & Bathroom', desc: 'Interior ROOMS & BATHROOMS', icon: <BedDouble className="w-5 h-5" />, colorClass: 'text-blue-600', bgClass: 'bg-blue-50', borderClass: 'border-blue-100', isArray: true, max: 4 },
+                                                                    { key: 'parkingPhotos', label: 'Parking Area', desc: 'BIKE & CAR PARKING', icon: <ParkingCircle className="w-5 h-5" />, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderClass: 'border-emerald-100', isArray: true, max: 2 },
+                                                                    { key: 'amenitiesPhotos', label: 'Other Amenities', desc: 'Fridge/TV/Washing / oTHERS', icon: <ImageIcon className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-100', isArray: true, max: 4 },
                                                                 ].map(cat => renderAdminCategory(property, cat))}
                                                             </div>
                                                         </div>
@@ -1168,9 +1177,9 @@ export default function AdminPropertyApprovalPage() {
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                 {[
                                                                     { key: 'aadhaarProof', label: 'Aadhaar Card', desc: 'FRONT & BACK REQUIRED', icon: <FileText className="w-5 h-5" />, colorClass: 'text-amber-600', bgClass: 'bg-amber-50', borderClass: 'border-amber-100', isArray: true, max: 2 },
-                                                                    { key: 'panProof', label: 'PAN Card', desc: 'FRONT & BACK REQUIRED', icon: <FileText className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderClass: 'border-rose-100', isArray: true, max: 2 },
-                                                                    { key: 'pgLicenceUrl', label: 'PG/Hostel/Flat/Apartment Licence', desc: 'and if any Others Licence applicable', icon: <ShieldCheck className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-100' },
-                                                                    { key: 'livePhotoUrl', label: 'Current Photo', desc: 'Current photo of the person', icon: <Camera className="w-5 h-5" />, colorClass: 'text-red-600', bgClass: 'bg-red-50', borderClass: 'border-red-100' }
+                                                                    { key: 'panProof', label: 'PAN Card', desc: 'PAN Card INDIVIDUAL OR BUSINESS', icon: <FileText className="w-5 h-5" />, colorClass: 'text-rose-600', bgClass: 'bg-rose-50', borderClass: 'border-rose-100', isArray: true, max: 2 },
+                                                                    { key: 'pgLicenceUrl', label: 'Trade Licence', desc: 'GOVT PERMIT / LICENCE', icon: <ShieldCheck className="w-5 h-5" />, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50', borderClass: 'border-indigo-100', isArray: true, max: 2 },
+                                                                    { key: 'livePhotoUrl', label: 'Photo', desc: 'Current photo of the person', icon: <Camera className="w-5 h-5" />, colorClass: 'text-red-600', bgClass: 'bg-red-50', borderClass: 'border-red-100' }
                                                                 ].map(cat => renderAdminCategory(property, cat))}
                                                             </div>
                                                         </div>
@@ -1698,120 +1707,103 @@ export default function AdminPropertyApprovalPage() {
             </Dialog>
 
             {/* Admin Add Room Dialog */}
-            <Dialog open={!!addRoomDialog?.isOpen} onOpenChange={(open) => !open && setAddRoomDialog(null)}>
-                <DialogContent className="sm:max-w-[450px] rounded-[32px] border-2 border-emerald-50 shadow-2xl p-0 overflow-hidden" showCloseButton={false}>
-                    <div className="bg-gradient-to-br from-emerald-50/50 to-white p-6 border-b border-emerald-100/50 relative">
-                        <div className="absolute top-0 right-0 p-6">
-                           <Button 
-                               variant="ghost" 
-                               size="icon" 
-                               onClick={() => setAddRoomDialog(null)}
-                               className="h-10 w-10 rounded-full hover:bg-red-50 hover:text-red-600 transition-colors"
-                           >
-                               <XCircle className="h-6 w-6" />
-                           </Button>
+            <Dialog open={addRoomDialog?.isOpen} onOpenChange={(open: boolean) => !open && setAddRoomDialog(null)}>
+                <DialogContent className="max-w-md p-0 overflow-hidden rounded-[32px] border-none shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)]">
+                    <div className="bg-gradient-to-br from-indigo-700 via-indigo-600 to-indigo-900 p-8 text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl animate-pulse" />
+                        <div className="relative z-10">
+                            <h2 className="text-3xl font-black tracking-tighter uppercase mb-2">New Room Asset</h2>
+                            <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase opacity-80">Add structural unit to property listing</p>
                         </div>
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-3 text-2xl font-black text-slate-800 tracking-tight">
-                                <div className="p-2.5 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-200">
-                                    <Plus className="w-6 h-6 text-white" />
-                                </div>
-                                Add New Room
-                            </DialogTitle>
-                            <DialogDescription className="font-semibold text-slate-400 mt-1 uppercase text-[10px] tracking-widest pl-1">
-                                Create a new room listing for this property
-                            </DialogDescription>
-                        </DialogHeader>
                     </div>
-
-                    {addRoomDialog && (
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-600 transition-colors ml-1">Room Number</Label>
+                    
+                    <div className="p-8 space-y-6 bg-white">
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Identity Tag</Label>
+                                <div className="relative group">
                                     <Input 
-                                        value={newRoomData.roomNumber} 
-                                        onChange={(e) => setNewRoomData({...newRoomData, roomNumber: e.target.value})}
-                                        className="h-14 rounded-2xl border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 font-bold text-slate-700 transition-all shadow-sm"
-                                        placeholder="e.g. 101"
+                                        placeholder="e.g. 101, Suite A" 
+                                        className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 font-black text-slate-900 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all text-lg"
+                                        value={newRoomData.roomNumber}
+                                        onChange={(e) => setNewRoomData({ ...newRoomData, roomNumber: e.target.value })}
                                     />
-                                </div>
-                                <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-600 transition-colors ml-1">Bed Type</Label>
-                                    <select 
-                                        value={newRoomData.type}
-                                        onChange={(e) => {
-                                            const type = e.target.value;
-                                            let autoAvail = 1;
-                                            if (type === "Double Sharing") autoAvail = 2;
-                                            if (type === "Three Sharing") autoAvail = 3;
-                                            if (type === "Four Sharing") autoAvail = 4;
-                                            if (type === "Five Sharing") autoAvail = 5;
-                                            if (type === "Six Sharing") autoAvail = 6;
-                                            setNewRoomData({...newRoomData, type, availability: autoAvail});
-                                        }}
-                                        className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all shadow-sm appearance-none"
-                                    >
-                                        <option value="Single Sharing">Single Sharing (1)</option>
-                                        <option value="Double Sharing">Double Sharing (2)</option>
-                                        <option value="Three Sharing">Three Sharing (3)</option>
-                                        <option value="Four Sharing">Four Sharing (4)</option>
-                                        <option value="Five Sharing">Five Sharing (5)</option>
-                                        <option value="Six Sharing">Six Sharing (6)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-600 transition-colors ml-1">Monthly Rent</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-                                        <Input 
-                                            type="number"
-                                            value={newRoomData.price} 
-                                            onChange={(e) => setNewRoomData({...newRoomData, price: parseInt(e.target.value) || 0})}
-                                            className="h-14 pl-8 rounded-2xl border-slate-200 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 font-bold text-slate-700 transition-all shadow-sm"
-                                            placeholder="e.g. 5000"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-600 transition-colors ml-1">Beds Available</Label>
-                                    <Input 
-                                        type="number"
-                                        readOnly
-                                        value={newRoomData.availability} 
-                                        className="h-14 rounded-2xl border-slate-200 bg-slate-50 cursor-not-allowed font-black text-slate-700 transition-all shadow-sm"
-                                    />
+                                    <Building2 className="absolute right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                                 </div>
                             </div>
                             
-                            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
-                                <AlertCircle className="w-5 h-5 text-emerald-600 mt-0.5" />
-                                <p className="text-[10px] text-emerald-700 font-bold leading-relaxed">
-                                    Adding a room will automatically generate bed records. You can manage individual beds after creation.
-                                </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Occupancy</Label>
+                                    <div className="relative">
+                                        <select 
+                                            className="w-full h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 font-bold text-slate-700 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                            value={newRoomData.type}
+                                            onChange={(e) => {
+                                                const type = e.target.value;
+                                                let autoAvail = 1;
+                                                if (type === "Double Sharing") autoAvail = 2;
+                                                if (type === "Triple Sharing") autoAvail = 3;
+                                                if (type === "Four Sharing") autoAvail = 4;
+                                                setNewRoomData({...newRoomData, type, availability: autoAvail});
+                                            }}
+                                        >
+                                            <option>Single Sharing</option>
+                                            <option>Double Sharing</option>
+                                            <option>Triple Sharing</option>
+                                            <option>Four Sharing</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Beds</Label>
+                                    <Input 
+                                        type="number" 
+                                        readOnly
+                                        className="h-14 bg-slate-100 border-2 border-slate-100 rounded-2xl px-5 font-black text-slate-500 cursor-not-allowed"
+                                        value={newRoomData.availability}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Financial Allocation (Rent)</Label>
+                                <div className="relative group">
+                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xl group-focus-within:text-green-600 transition-colors">₹</span>
+                                    <Input 
+                                        type="number" 
+                                        className="h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl pl-10 pr-5 font-black text-slate-900 focus:ring-4 focus:ring-green-50 focus:border-green-500 transition-all text-2xl"
+                                        value={newRoomData.price}
+                                        onChange={(e) => setNewRoomData({ ...newRoomData, price: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    )}
-                    
-                    <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3">
-                       <Button 
-                           variant="default" 
-                           onClick={() => setAddRoomDialog(null)} 
-                           className="rounded-full font-black text-xs uppercase tracking-widest h-10 px-8 bg-black hover:bg-slate-800 text-white shadow-lg active:scale-95"
-                       >
-                           CANCEL
-                       </Button>
-                        <Button 
-                            onClick={handleAddRoom} 
-                            disabled={processing}
-                            className="h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
-                        >
-                            {processing ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                            CREATE ROOM
-                        </Button>
+
+                        <div className="flex gap-3 pt-2">
+                            <Button 
+                                variant="ghost" 
+                                className="flex-1 h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest text-slate-500 hover:bg-slate-100"
+                                onClick={() => setAddRoomDialog(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                className="flex-[2] h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                                onClick={handleAddRoom}
+                                disabled={processing}
+                            >
+                                {processing ? (
+                                    <RefreshCcw className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                                        Initialize Room
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -1981,7 +1973,6 @@ export default function AdminPropertyApprovalPage() {
                                         {/* 1. Delete */}
                                         <Button 
                                             size="lg"
-                                            variant="destructive"
                                             onClick={() => setDeleteDialog({
                                                 isOpen: true,
                                                 propertyId: viewDialog.propertyId,
@@ -1989,18 +1980,18 @@ export default function AdminPropertyApprovalPage() {
                                                 label: viewDialog.label,
                                                 index: viewDialog.index
                                             })}
-                                            className="h-14 px-8 text-sm font-black uppercase shadow-xl active:scale-95 bg-red-600 hover:bg-red-700"
+                                            className="h-14 px-8 text-[11px] font-black uppercase shadow-xl active:scale-95 bg-red-600 hover:bg-red-700 text-white"
                                             disabled={processing}
                                         >
                                             <Trash2 className="w-5 h-5 mr-3" />
-                                            Delete
+                                            DELETE
                                         </Button>
 
                                         {/* 2. Admin Replace */}
                                         <label className="cursor-pointer group">
                                             <div className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center transition-all shadow-lg font-black uppercase text-sm active:scale-95">
                                                 <RefreshCcw className="w-5 h-5 mr-3 group-hover:rotate-180 transition-transform duration-500" />
-                                                Admin Replace
+                                                REPLACE DOCUMENT
                                             </div>
                                             <input 
                                                 type="file" 
@@ -2048,7 +2039,7 @@ export default function AdminPropertyApprovalPage() {
                                             onClick={() => { setViewDialog(null); setPreviewZoom(1); }}
                                             className="h-14 px-12 bg-black hover:bg-slate-900 text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-xl shadow-xl active:scale-95 transition-all ml-auto"
                                         >
-                                            Close
+                                            CLOSE
                                         </Button>
                                     </div>
                                 </div>
