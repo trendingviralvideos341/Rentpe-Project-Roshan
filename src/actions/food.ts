@@ -3,143 +3,412 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
+import { z } from "zod";
+import { randomUUID } from "crypto";
+import { toUTC, nextBillingCycleStart, isTokenValid } from "@/utils/foodBillingUtils";
+import { createNotification } from "@/actions/notifications";
+import { sendEmail } from "@/lib/email";
 
 /**
- * SECTION 6 & 7 — Post-Booking Food Preference Change
- * 
- * Rules:
- * - Only works for foodType = 'OPTIONAL'
- * - Changes apply from the FIRST day of the NEXT month (Section 8 — Billing Logic)
- * - Tracked in food_preferences table for full audit trail (Section 10)
- * - Can be triggered by USER, OWNER, or ADMIN (Section 6 — A, B, C)
+ * Food Preference Actions — Production Hardened (All 5 Specs)
+ *
+ * Role Logic:
+ *   STUDENT  → Direct CONFIRMED
+ *   OWNER    enable  → PENDING_USER + confirm request to student
+ *   OWNER    disable → Direct CONFIRMED (no student confirm needed)
+ *   ADMIN    → Direct CONFIRMED + mandatory notes
+ *
+ * Security:
+ *   - Zod input validation
+ *   - Zero-price guard
+ *   - Ownership chain check
+ *   - Duplicate + single-PENDING guard
+ *   - effectiveFrom from billing anchor (UTC)
+ *   - No hard deletes — status only
  */
+
+// ─────────────────────────────────────────────
+// INPUT SCHEMA
+// ─────────────────────────────────────────────
+
+const ChangeFoodSchema = z.object({
+    bookingId: z.string().uuid("Invalid booking ID"),
+    foodSelected: z.boolean(),
+    notes: z.string().max(500).optional(),
+});
+
+// ─────────────────────────────────────────────
+// MAIN ACTION: changeFoodPreference
+// ─────────────────────────────────────────────
+
 export async function changeFoodPreference(
     bookingId: string,
     foodSelected: boolean,
-    notes?: string
-): Promise<{ success: boolean; effectiveFrom?: string; error?: string }> {
+    notes?: string,
+): Promise<{ success: boolean; error?: string; pendingConfirmation?: boolean; effectiveFrom?: string }> {
     const session = await getSession();
-    if (!session) return { success: false, error: "Unauthorized" };
+    if (!session) return { success: false, error: 'Unauthorized' };
 
-    // Fetch booking and property details separately for type safety
-    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
-    if (!booking) return { success: false, error: "Booking not found" };
+    // ── Zod validation ──
+    const parsed = ChangeFoodSchema.safeParse({ bookingId, foodSelected, notes });
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message || 'Validation error' };
 
-    const property = booking.propertyId
-        ? await prisma.property.findUnique({
-            where: { id: booking.propertyId },
-            select: { id: true, foodType: true, foodPricePerMonth: true, ownerId: true } as any
-          }) as { id: string; foodType: string; foodPricePerMonth: number | null; ownerId: string } | null
-        : null;
-
-    // SECTION 12 — Validations
-    if (property?.foodType !== 'OPTIONAL') {
-        const reason = property?.foodType === 'INCLUDED'
-            ? "Food is included in rent and cannot be changed."
-            : "This property does not offer a food service.";
-        return { success: false, error: reason };
-    }
-
-    // Guard: No change if already same status
-    if ((booking as any).foodSelected === foodSelected) {
-        return { success: false, error: foodSelected ? "Food is already enabled." : "Food is already disabled." };
-    }
-
-    // Guard: Owner/Staff can only manage bookings of their own properties
-    if (session.role === 'OWNER' || session.role === 'STAFF') {
-        const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { parentOwnerId: true } });
-        const effectiveOwnerId = user?.parentOwnerId || session.userId;
-        if (property?.ownerId !== effectiveOwnerId) return { success: false, error: "Unauthorized" };
-    }
-
-    // Guard: Student can only change their own booking
-    if (session.role === ('STUDENT' as any) || session.role === 'USER') {
-        if (booking.userId !== session.userId) return { success: false, error: "Unauthorized" };
-    }
-
-    // SECTION 8 — Billing Logic: effectiveFrom = 1st day of NEXT month
-    const now = new Date();
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    nextMonth.setHours(0, 0, 0, 0);
-
-    const changedBy = session.role === 'ADMIN' ? 'ADMIN'
-        : (session.role === 'OWNER' || session.role === 'STAFF') ? 'OWNER'
-        : 'USER';
-
-    const foodPriceApplied = foodSelected ? (property?.foodPricePerMonth ?? 0) : 0;
-
-    await prisma.$transaction(async (tx) => {
-        // 1. Create FoodPreference history record (SECTION 9)
-        await (tx as any).foodPreference.create({
-            data: {
-                bookingId,
-                propertyId: property!.id,
-                userId: booking.userId,
-                foodSelected,
-                changedBy,
-                changedById: session.userId,
-                effectiveFrom: nextMonth,
-                notes: notes || null,
-            }
-        });
-
-        // 2. Update booking to reflect new preference immediately (billing reads on next invoice)
-        await tx.booking.update({
+    try {
+        // ── Fetch booking with full ownership chain ──
+        const booking = await (prisma as any).booking.findUnique({
             where: { id: bookingId },
-            data: {
-                foodSelected,
-                foodPriceApplied,
-            } as any
-        });
-
-        // 3. SECTION 10 — Audit Log
-        await tx.auditLog.create({
-            data: {
-                actorId: session.userId,
-                actorRole: session.role,
-                actorName: session.name || session.role,
-                actionType: foodSelected ? 'FOOD_OPT_IN' : 'FOOD_OPT_OUT',
-                entityType: 'BOOKING',
-                entityId: bookingId,
-                entityName: booking.propertyName,
-                description: `${changedBy} ${foodSelected ? 'opted IN to' : 'opted OUT of'} food service for booking ${booking.displayId}. Effective from: ${nextMonth.toLocaleDateString('en-IN')}. ${notes ? `Notes: ${notes}` : ''}`,
-                previousValue: { foodSelected: (booking as any).foodSelected, foodPriceApplied: (booking as any).foodPriceApplied },
-                newValue: { foodSelected, foodPriceApplied, effectiveFrom: nextMonth },
-                ipAddress: 'server-action',
-                userAgent: 'server-action'
+            include: {
+                property: { select: { ownerId: true, foodType: true } },
+                user: { select: { id: true, name: true, email: true } },
             }
         });
-    });
 
-    revalidatePath('/dashboard/student');
-    revalidatePath('/dashboard/owner/bookings');
-    revalidatePath('/dashboard/admin');
+        if (!booking) return { success: false, error: 'Booking not found' };
 
-    return {
-        success: true,
-        effectiveFrom: nextMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric', day: 'numeric' })
-    };
+        const userId = (session as any).userId;
+        const role = session.role as string;
+
+        // ── Ownership chain check ──
+        if (role === 'OWNER' || role === 'STAFF') {
+            if (booking.property?.ownerId !== userId) {
+                return { success: false, error: 'You do not own this property' };
+            }
+        } else if (role === 'USER' || role === 'STUDENT') {
+            if (booking.userId !== userId) {
+                return { success: false, error: 'This is not your booking' };
+            }
+        }
+        // ADMIN passes all checks
+
+        // ── Zero-price guard (only when enabling) ──
+        if (foodSelected && (!booking.foodPriceApplied || booking.foodPriceApplied === 0)) {
+            return { success: false, error: 'Food price was not set at booking approval. Contact admin to set it.' };
+        }
+
+        // ── NOT_AVAILABLE guard ──
+        if (booking.property?.foodType === 'NOT_AVAILABLE') {
+            return { success: false, error: 'Food service is not available at this property.' };
+        }
+
+        // ── Billing anchor for effectiveFrom ──
+        const billingProfile = await (prisma as any).billingProfile.findFirst({
+            where: { tenantId: booking.tenant?.id ?? undefined },
+            select: { billingAnchorDay: true }
+        });
+        const anchorDay = billingProfile?.billingAnchorDay || 1;
+        const effectiveFrom = nextBillingCycleStart(anchorDay, new Date());
+
+        // ── Duplicate guard (same bookingId + effectiveFrom) ──
+        const duplicate = await (prisma as any).foodPreference.findFirst({
+            where: {
+                bookingId,
+                effectiveFrom,
+                status: { in: ['CONFIRMED', 'PENDING_USER'] }
+            }
+        });
+        if (duplicate) {
+            return { success: false, error: 'A food preference change already exists for this billing cycle.' };
+        }
+
+        // ── Single PENDING guard ──
+        const existingPending = await (prisma as any).foodPreference.findFirst({
+            where: { bookingId, status: 'PENDING_USER' }
+        });
+        if (existingPending) {
+            return { success: false, error: 'A pending food request is already awaiting student confirmation.' };
+        }
+
+        const prevFoodSelected = booking.foodSelected;
+
+        // ─────────────────────────────────────────────
+        // ROLE LOGIC
+        // ─────────────────────────────────────────────
+
+        // ── STUDENT: direct CONFIRMED ──
+        if (role === 'USER' || role === 'STUDENT') {
+            const pref = await (prisma as any).foodPreference.create({
+                data: {
+                    bookingId,
+                    propertyId: booking.propertyId,
+                    userId,
+                    foodSelected,
+                    changedBy: 'USER',
+                    changedById: userId,
+                    effectiveFrom: toUTC(effectiveFrom),
+                    notes: notes || null,
+                    status: 'CONFIRMED',
+                    confirmedAt: new Date(),
+                }
+            });
+
+            // Update booking cache
+            await (prisma as any).booking.update({
+                where: { id: bookingId },
+                data: { foodSelected } as any
+            });
+
+            logAuditEvent({
+                actorId: userId, actorRole: role, actorName: (session as any).name || 'Student',
+                actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Student ${foodSelected ? 'enabled' : 'disabled'} food. Effective: ${effectiveFrom.toISOString()}`,
+                previousValue: { foodSelected: prevFoodSelected },
+                newValue: { foodSelected, effectiveFrom: effectiveFrom.toISOString() },
+            });
+
+            revalidatePath('/dashboard/student');
+            return { success: true, effectiveFrom: effectiveFrom.toISOString() };
+        }
+
+        // ── OWNER enable: PENDING_USER confirmation flow ──
+        if ((role === 'OWNER' || role === 'STAFF') && foodSelected) {
+            const token = randomUUID();
+            const tokenExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+            await (prisma as any).foodPreference.create({
+                data: {
+                    bookingId,
+                    propertyId: booking.propertyId,
+                    userId: booking.userId,
+                    foodSelected: true,
+                    changedBy: 'OWNER',
+                    changedById: userId,
+                    effectiveFrom: toUTC(effectiveFrom),
+                    notes: notes || `Owner requested food enablement. Awaiting student confirmation.`,
+                    status: 'PENDING_USER',
+                    confirmationToken: token,
+                    tokenExpiry,
+                    tokenUsed: false,
+                }
+            });
+
+            // Notify student
+            await createNotification(
+                booking.userId,
+                'FOOD_REQUEST',
+                `Your PG owner has requested to enable food service (₹${booking.foodPriceApplied}/month) from ${effectiveFrom.toLocaleDateString()}. Please confirm or reject in your dashboard.`
+            );
+
+            if (booking.user?.email) {
+                sendEmail({
+                    to: booking.user.email,
+                    subject: 'Food Service Request — Action Required',
+                    html: `<h2>Food Service Request</h2><p>Your PG owner has requested to enable food service at <strong>₹${booking.foodPriceApplied}/month</strong>.</p><p>This will be effective from <strong>${effectiveFrom.toLocaleDateString('en-IN')}</strong>.</p><p>Please log in to your dashboard to <strong>confirm or reject</strong> this request within 48 hours.</p><p><a href="https://rentpe.in/dashboard/student">Go to Dashboard →</a></p>`
+                }).catch((e: Error) => console.error('[FoodEmail] Failed:', e.message));
+            }
+
+            logAuditEvent({
+                actorId: userId, actorRole: role, actorName: (session as any).name || 'Owner',
+                actionType: 'CREATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Owner sent food enable request to student. Awaiting confirmation. Effective: ${effectiveFrom.toISOString()}`,
+                previousValue: { foodSelected: prevFoodSelected },
+                newValue: { status: 'PENDING_USER', effectiveFrom: effectiveFrom.toISOString() },
+            });
+
+            revalidatePath('/dashboard/owner');
+            return { success: true, pendingConfirmation: true, effectiveFrom: effectiveFrom.toISOString() };
+        }
+
+        // ── OWNER disable: direct CONFIRMED (no student confirm needed) ──
+        if ((role === 'OWNER' || role === 'STAFF') && !foodSelected) {
+            await (prisma as any).foodPreference.create({
+                data: {
+                    bookingId,
+                    propertyId: booking.propertyId,
+                    userId: booking.userId,
+                    foodSelected: false,
+                    changedBy: 'OWNER',
+                    changedById: userId,
+                    effectiveFrom: toUTC(effectiveFrom),
+                    notes: notes || 'Owner disabled food service.',
+                    status: 'CONFIRMED',
+                    confirmedAt: new Date(),
+                }
+            });
+
+            await (prisma as any).booking.update({
+                where: { id: bookingId },
+                data: { foodSelected: false } as any
+            });
+
+            logAuditEvent({
+                actorId: userId, actorRole: role, actorName: (session as any).name || 'Owner',
+                actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Owner disabled food service. Effective: ${effectiveFrom.toISOString()}`,
+                previousValue: { foodSelected: prevFoodSelected },
+                newValue: { foodSelected: false, effectiveFrom: effectiveFrom.toISOString() },
+            });
+
+            revalidatePath('/dashboard/owner');
+            return { success: true, effectiveFrom: effectiveFrom.toISOString() };
+        }
+
+        // ── ADMIN: direct CONFIRMED + mandatory notes ──
+        if (role === 'ADMIN') {
+            if (!notes?.trim()) {
+                return { success: false, error: 'Admin must provide notes when changing food preference.' };
+            }
+
+            await (prisma as any).foodPreference.create({
+                data: {
+                    bookingId,
+                    propertyId: booking.propertyId,
+                    userId: booking.userId,
+                    foodSelected,
+                    changedBy: 'ADMIN',
+                    changedById: userId,
+                    effectiveFrom: toUTC(effectiveFrom),
+                    notes,
+                    status: 'CONFIRMED',
+                    confirmedAt: new Date(),
+                }
+            });
+
+            await (prisma as any).booking.update({
+                where: { id: bookingId },
+                data: { foodSelected } as any
+            });
+
+            logAuditEvent({
+                actorId: userId, actorRole: role, actorName: (session as any).name || 'Admin',
+                actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Admin ${foodSelected ? 'enabled' : 'disabled'} food service. Notes: ${notes}. Effective: ${effectiveFrom.toISOString()}`,
+                previousValue: { foodSelected: prevFoodSelected },
+                newValue: { foodSelected, effectiveFrom: effectiveFrom.toISOString(), adminNotes: notes },
+            });
+
+            revalidatePath('/dashboard/admin');
+            revalidatePath('/dashboard/student');
+            return { success: true, effectiveFrom: effectiveFrom.toISOString() };
+        }
+
+        return { success: false, error: 'Unrecognized role.' };
+
+    } catch (err: any) {
+        console.error('[changeFoodPreference]', err);
+        if (err.code === 'P2002') {
+            return { success: false, error: 'A food preference for this cycle already exists (duplicate constraint).' };
+        }
+        return { success: false, error: err.message || 'Unexpected error.' };
+    }
 }
 
+// ─────────────────────────────────────────────
+// ACTION: confirmFoodRequest (student confirm/reject)
+// ─────────────────────────────────────────────
+
 /**
- * SECTION 10 — Get full food preference change history for a booking.
+ * Student confirms or rejects an owner-initiated food request.
+ * - Validates token (expiry + tokenUsed)
+ * - Bulk-invalidates all other PENDING_USER tokens for the same booking
+ * - On accept: CONFIRMED + booking.foodSelected cache updated
+ * - On reject: REJECTED
+ * - No hard deletes — status only
  */
+export async function confirmFoodRequest(
+    token: string,
+    accept: boolean,
+): Promise<{ success: boolean; error?: string }> {
+    const session = await getSession();
+    if (!session) return { success: false, error: 'Unauthorized' };
+
+    const userId = (session as any).userId;
+
+    const pref = await (prisma as any).foodPreference.findUnique({
+        where: { confirmationToken: token },
+        include: { booking: { select: { userId: true, foodSelected: true } } }
+    });
+
+    if (!pref) return { success: false, error: 'Invalid token.' };
+
+    // ── Token security ──
+    if (!isTokenValid({ tokenExpiry: pref.tokenExpiry, tokenUsed: pref.tokenUsed })) {
+        return { success: false, error: 'This token has expired or has already been used.' };
+    }
+
+    // ── Ownership: only the student who owns the booking can confirm ──
+    if (pref.booking?.userId !== userId) {
+        return { success: false, error: 'This request is not for your account.' };
+    }
+
+    const prevFoodSelected = pref.booking?.foodSelected;
+
+    // ── Bulk-invalidate all other PENDING_USER tokens for this booking ──
+    await (prisma as any).foodPreference.updateMany({
+        where: {
+            bookingId: pref.bookingId,
+            status: 'PENDING_USER',
+            id: { not: pref.id }
+        },
+        data: { status: 'REJECTED', tokenUsed: true }
+    });
+
+    if (accept) {
+        // Accept: CONFIRMED
+        await (prisma as any).foodPreference.update({
+            where: { id: pref.id },
+            data: { status: 'CONFIRMED', tokenUsed: true, confirmedAt: new Date() }
+        });
+
+        // Update booking.foodSelected cache
+        await (prisma as any).booking.update({
+            where: { id: pref.bookingId },
+            data: { foodSelected: true } as any
+        });
+
+        logAuditEvent({
+            actorId: userId, actorRole: session.role as string, actorName: (session as any).name || 'Student',
+            actionType: 'UPDATE', entityType: 'BOOKING', entityId: pref.bookingId,
+            description: `Student confirmed food enable request. Token used. Effective: ${pref.effectiveFrom.toISOString()}`,
+            previousValue: { foodSelected: prevFoodSelected },
+            newValue: { foodSelected: true, effectiveFrom: pref.effectiveFrom.toISOString() },
+        });
+
+        revalidatePath('/dashboard/student');
+        return { success: true };
+    } else {
+        // Reject: REJECTED
+        await (prisma as any).foodPreference.update({
+            where: { id: pref.id },
+            data: { status: 'REJECTED', tokenUsed: true }
+        });
+
+        logAuditEvent({
+            actorId: userId, actorRole: session.role as string, actorName: (session as any).name || 'Student',
+            actionType: 'UPDATE', entityType: 'BOOKING', entityId: pref.bookingId,
+            description: `Student rejected food enable request. Token invalidated.`,
+            previousValue: { foodSelected: prevFoodSelected },
+            newValue: { foodSelected: prevFoodSelected, status: 'REJECTED' },
+        });
+
+        revalidatePath('/dashboard/student');
+        return { success: true };
+    }
+}
+
+// ─────────────────────────────────────────────
+// ACTION: getPropertyFoodConfig
+// ─────────────────────────────────────────────
+
+export async function getPropertyFoodConfig(propertyId: string) {
+    const property = await (prisma as any).property.findUnique({
+        where: { id: propertyId },
+        select: { foodType: true, foodPricePerMonth: true }
+    });
+    return property;
+}
+
+// ─────────────────────────────────────────────
+// ACTION: getFoodPreferenceHistory (for student dashboard)
+// ─────────────────────────────────────────────
+
 export async function getFoodPreferenceHistory(bookingId: string) {
     const session = await getSession();
-    if (!session) throw new Error("Unauthorized");
+    if (!session) return [];
+
     return (prisma as any).foodPreference.findMany({
         where: { bookingId },
         orderBy: { createdAt: 'desc' },
+        take: 20,
     });
-}
-
-/**
- * SECTION 3 — Get the food service configuration for a property (public + owner).
- */
-export async function getPropertyFoodConfig(propertyId: string) {
-    const property = await prisma.property.findUnique({
-        where: { id: propertyId },
-        select: { foodType: true, foodPricePerMonth: true } as any
-    });
-    return property as { foodType: string; foodPricePerMonth: number | null } | null;
 }

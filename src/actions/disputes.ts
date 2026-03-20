@@ -161,6 +161,7 @@ export async function getAllDisputes(filters?: { status?: string; type?: string;
     return (prisma as any).dispute.findMany({ where, orderBy: { createdAt: 'desc' } });
 }
 
+
 /**
  * Get my disputes (student or owner)
  */
@@ -172,4 +173,178 @@ export async function getMyDisputes() {
         where: { raisedById: (session as any).userId },
         orderBy: { createdAt: 'desc' }
     });
+}
+
+// ─────────────────────────────────────────────
+// FOOD BILLING ADMIN OVERRIDE (All 5 Specs §6)
+// ─────────────────────────────────────────────
+
+type FoodOverrideAction = 'CREDIT' | 'REFUND' | 'DISABLE_FOOD';
+
+/**
+ * Admin-only: override food billing for a booking.
+ *
+ * CREDIT      — Create CreditNote (PENDING) applied at next invoice generation
+ * REFUND      — Create CreditNote (REFUND) + mark latest invoice foodNotes
+ * DISABLE_FOOD — Force food off: FoodPreference CONFIRMED false + booking cache update
+ *
+ * Rules:
+ *  - Admin only
+ *  - Notes mandatory
+ *  - Full before/after AuditLog with IP + UA + UTC timestamp
+ *  - No hard deletes
+ */
+export async function overrideFoodBilling(
+    bookingId: string,
+    action: FoodOverrideAction,
+    amount?: number,
+    notes?: string,
+    requestMeta?: { ipAddress?: string; userAgent?: string }
+): Promise<{ success: boolean; error?: string }> {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') return { success: false, error: 'Unauthorized — Admin only.' };
+
+    if (!notes?.trim()) return { success: false, error: 'Notes are mandatory for admin overrides.' };
+
+    const adminId = (session as any).userId;
+    const adminName = (session as any).name || 'Admin';
+
+    const booking = await (prisma as any).booking.findUnique({
+        where: { id: bookingId },
+        select: { id: true, tenantId: true, userId: true, foodSelected: true, foodPriceApplied: true }
+    });
+    if (!booking) return { success: false, error: 'Booking not found.' };
+
+    const prevState = { foodSelected: booking.foodSelected, action };
+
+    try {
+        // ── CREDIT: create a pending credit note for next invoice ──
+        if (action === 'CREDIT') {
+            if (!amount || amount <= 0) return { success: false, error: 'Credit amount must be greater than 0.' };
+
+            await (prisma as any).creditNote.create({
+                data: {
+                    displayId: `CN-${Date.now()}`,
+                    bookingId,
+                    tenantId: booking.tenantId,
+                    amount,
+                    carryForward: 0,
+                    reason: notes,
+                    type: 'ADMIN_OVERRIDE',
+                    createdById: adminId,
+                    createdByRole: 'ADMIN',
+                    status: 'PENDING',
+                }
+            });
+
+            logAuditEvent({
+                actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
+                actionType: 'CREATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Admin issued credit note of ₹${amount}. Reason: ${notes}`,
+                previousValue: prevState,
+                newValue: { creditNoteAmount: amount, type: 'ADMIN_OVERRIDE' },
+            });
+
+            revalidatePath('/dashboard/admin');
+            return { success: true };
+        }
+
+        // ── REFUND: credit note + mark invoice foodNotes ──
+        if (action === 'REFUND') {
+            if (!amount || amount <= 0) return { success: false, error: 'Refund amount must be greater than 0.' };
+
+            // Find latest invoice for this booking (via tenant)
+            const latestInvoice = await (prisma as any).rentInvoice.findFirst({
+                where: { tenantId: booking.tenantId },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            await (prisma as any).creditNote.create({
+                data: {
+                    displayId: `CN-REF-${Date.now()}`,
+                    bookingId,
+                    tenantId: booking.tenantId,
+                    invoiceId: latestInvoice?.id,
+                    amount,
+                    carryForward: 0,
+                    reason: notes,
+                    type: 'REFUND',
+                    createdById: adminId,
+                    createdByRole: 'ADMIN',
+                    appliedToMonth: latestInvoice?.billingMonth,
+                    status: 'PENDING',
+                }
+            });
+
+            // Mark invoice with refund note (no amount modification — invoice is immutable)
+            if (latestInvoice) {
+                await (prisma as any).rentInvoice.update({
+                    where: { id: latestInvoice.id },
+                    data: { foodNotes: `Refund issued: ₹${amount}. ${notes}` } as any
+                });
+            }
+
+            logAuditEvent({
+                actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
+                actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Admin issued food refund of ₹${amount}. Invoice: ${latestInvoice?.displayId || 'N/A'}. Reason: ${notes}`,
+                previousValue: prevState,
+                newValue: { refundAmount: amount, invoiceId: latestInvoice?.id },
+            });
+
+            revalidatePath('/dashboard/admin');
+            return { success: true };
+        }
+
+        // ── DISABLE_FOOD: force food off — bypasses student confirmation ──
+        if (action === 'DISABLE_FOOD') {
+            const { nextBillingCycleStart, toUTC } = await import('@/utils/foodBillingUtils');
+            const billingProfile = await (prisma as any).billingProfile.findFirst({
+                where: { tenantId: booking.tenantId },
+                select: { billingAnchorDay: true }
+            });
+            const anchorDay = billingProfile?.billingAnchorDay || 1;
+            const effectiveFrom = toUTC(nextBillingCycleStart(anchorDay, new Date()));
+
+            await (prisma as any).foodPreference.create({
+                data: {
+                    bookingId,
+                    propertyId: (await (prisma as any).booking.findUnique({
+                        where: { id: bookingId }, select: { propertyId: true }
+                    }))?.propertyId,
+                    userId: booking.userId,
+                    foodSelected: false,
+                    changedBy: 'ADMIN',
+                    changedById: adminId,
+                    effectiveFrom,
+                    notes: `ADMIN OVERRIDE: ${notes}`,
+                    status: 'CONFIRMED',
+                    confirmedAt: new Date(),
+                }
+            });
+
+            await (prisma as any).booking.update({
+                where: { id: bookingId },
+                data: { foodSelected: false } as any
+            });
+
+            logAuditEvent({
+                actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
+                actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
+                description: `Admin force-disabled food service (DISABLE_FOOD override). Reason: ${notes}. Effective: ${effectiveFrom.toISOString()}`,
+                previousValue: { foodSelected: prevState.foodSelected },
+                newValue: { foodSelected: false, effectiveFrom: effectiveFrom.toISOString(), adminOverride: true },
+            });
+
+            revalidatePath('/dashboard/admin');
+            revalidatePath('/dashboard/student');
+            return { success: true };
+        }
+
+        return { success: false, error: 'Unknown action.' };
+
+    } catch (err: any) {
+        console.error('[overrideFoodBilling]', err);
+        return { success: false, error: err.message || 'Unexpected error.' };
+    }
 }

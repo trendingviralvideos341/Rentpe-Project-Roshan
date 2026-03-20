@@ -254,6 +254,7 @@ model Booking {
   tenant               Tenant?
   documents            TenantDocument[]
   foodPreferences      FoodPreference[]
+  creditNotes          CreditNote[]
 }
 
 model Waitlist {
@@ -314,20 +315,21 @@ model Tenant {
 }
 
 model BillingProfile {
-  id              String           @id @default(uuid())
-  tenantId        String           @unique
-  propertyId      String
-  roomId          String
-  bedId           String?
-  monthlyRent     Float
-  securityDeposit Float
-  billingDay      Int              @default(1)
-  status          String           @default("ACTIVE")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  tenant          Tenant           @relation(fields: [tenantId], references: [id])
-  invoices        RentInvoice[]
-  deposit         SecurityDeposit?
+  id               String           @id @default(uuid())
+  tenantId         String           @unique
+  propertyId       String
+  roomId           String
+  bedId            String?
+  monthlyRent      Float
+  securityDeposit  Float
+  billingDay       Int              @default(1)
+  billingAnchorDay Int              @default(1)  // day-of-month from checkInDate; edge: >28 uses last day of month
+  status           String           @default("ACTIVE")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  invoices         RentInvoice[]
+  deposit          SecurityDeposit?
 }
 
 model RentInvoice {
@@ -337,15 +339,26 @@ model RentInvoice {
   tenantId         String
   propertyId       String
   month            String
+  billingMonth     String?                      // ISO YYYY-MM; used for dedup
   amount           Float
+  rentAmount       Float          @default(0)   // rent portion
+  foodAmount       Float          @default(0)   // food charge this cycle
+  foodProrated     Boolean        @default(false) // true = first-activation partial month
+  foodNotes        String?                      // admin override notes
+  lockedAt         DateTime?                    // set on create; immutability marker
+  creditApplied    Float          @default(0)   // total credits deducted this cycle
   dueDate          DateTime
   status           String         @default("PENDING")
   paidAmount       Float          @default(0)
+  paidRentAmount   Float          @default(0)   // partial payment: rent portion paid
+  paidFoodAmount   Float          @default(0)   // partial payment: food portion paid
   paidAt           DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   payments         Payment[]      @relation("InvoicePayments")
   billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
+
+  @@unique([tenantId, billingMonth])            // prevent duplicate invoices per billing cycle
 }
 
 model SecurityDeposit {
@@ -473,22 +486,29 @@ model FoodMenu {
 
 // ── Food Preference Lifecycle Table (Sections 6, 7, 8, 9, 10) ──
 model FoodPreference {
-  id            String   @id @default(uuid())
-  bookingId     String
-  propertyId    String
-  userId        String
-  foodSelected  Boolean  // true = opted in, false = opted out
-  changedBy     String   // USER | OWNER | ADMIN
-  changedById   String   // ID of the person who made the change
-  effectiveFrom DateTime // Beginning of next billing cycle
-  notes         String?  // optional reason/admin notes
-  createdAt     DateTime @default(now())
-  booking       Booking  @relation(fields: [bookingId], references: [id])
-  property      Property @relation(fields: [propertyId], references: [id])
-  user          User     @relation(fields: [userId], references: [id])
+  id                String    @id @default(uuid())
+  bookingId         String
+  propertyId        String
+  userId            String
+  foodSelected      Boolean               // true = opted in, false = opted out
+  changedBy         String                // USER | OWNER | ADMIN
+  changedById       String                // ID of the person who made the change
+  effectiveFrom     DateTime              // Beginning of next billing cycle (UTC)
+  notes             String?               // optional reason/admin notes
+  // ── Token / Confirmation Flow (owner-request, spec §4) ──
+  status            String    @default("CONFIRMED") // PENDING_USER | CONFIRMED | REJECTED
+  confirmationToken String?   @unique               // short-lived UUID token sent to student
+  tokenExpiry       DateTime?                       // 48h from creation
+  tokenUsed         Boolean   @default(false)       // once used (accept/reject) → true
+  confirmedAt       DateTime?                       // set when student confirms
+  createdAt         DateTime  @default(now())
+  booking           Booking   @relation(fields: [bookingId], references: [id])
+  property          Property  @relation(fields: [propertyId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
 
   @@index([bookingId])
   @@index([userId])
+  @@unique([bookingId, effectiveFrom])              // prevent duplicate/overlapping records
   @@map("food_preferences")
 }
 
@@ -1002,4 +1022,29 @@ model UploadSession {
   user           User     @relation(fields: [userId], references: [id])
 
   @@map("upload_sessions")
+}
+
+// ── Credit Note Ledger (Food Billing — All 5 Specs) ──
+// Applied FIFO (ORDER BY createdAt ASC). No hard deletes — status only.
+model CreditNote {
+  id             String    @id @default(uuid())
+  displayId      String    @unique
+  bookingId      String
+  tenantId       String?
+  invoiceId      String?                          // linked invoice if applicable
+  amount         Float                            // positive = credit to tenant
+  carryForward   Float     @default(0)            // remainder from excess credits
+  reason         String
+  type           String    // FOOD_NOT_PROVIDED | REFUND | ADMIN_OVERRIDE | CARRY_FORWARD
+  createdById    String
+  createdByRole  String
+  appliedToMonth String?                          // ISO YYYY-MM
+  status         String    @default("PENDING")    // PENDING | APPLIED | CANCELLED
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  booking        Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId, status])
+  @@index([status, createdAt])
+  @@map("credit_notes")
 }
