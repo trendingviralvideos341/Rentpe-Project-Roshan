@@ -57,6 +57,9 @@ model User {
   twoFactorSecret       String?
   twoFactorEnabled      Boolean           @default(false)
   applicationId         String?           @unique
+  termsAccepted         Boolean           @default(false)
+  termsAcceptedAt       DateTime?
+  termsVersion          String?           // e.g. "v1.0-2026-03" — bump to force re-acceptance
   actionNotes           ActionNote[]      @relation("TargetUser")
   auditLogs             AuditLog[]        @relation("PerformedBy")
   bookings              Booking[]
@@ -148,22 +151,23 @@ model Property {
 }
 
 model Room {
-  id           String    @id @default(uuid())
-  displayId    String?   @unique
-  propertyId   String
-  roomNumber   String
-  type         String
-  price        Float
-  availability Int
-  totalBeds    Int       @default(1)
-  status       String    @default("AVAILABLE")
-  photoUrl     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  beds         Bed[]
-  bookings     Booking[]
-  property     Property  @relation(fields: [propertyId], references: [id])
-  tenants      Tenant[]
+  id             String    @id @default(uuid())
+  displayId      String?   @unique
+  propertyId     String
+  roomNumber     String
+  type           String
+  price          Float
+  availability   Int
+  totalBeds      Int       @default(1)
+  status         String    @default("AVAILABLE")
+  photoUrl       String?
+  depositMonths  Int       @default(1)  // 1 or 2 — per MTA 2021: max 2 months for residential
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  beds           Bed[]
+  bookings       Booking[]
+  property       Property  @relation(fields: [propertyId], references: [id])
+  tenants        Tenant[]
 }
 
 model Bed {
@@ -228,7 +232,12 @@ model Booking {
   guestPincode         String?
   occupationDetail     String?
   occupationType       String?
-  pendingAmount        Float?
+  pendingAmount                Float?
+  depositAmount                Float?     // = room.price × room.depositMonths (MTA 2021 cap: max 2 months)
+  depositMonths                Int?       // 1 or 2
+  platformFeeAmount            Float?     // platform fee charged at time of booking
+  propertyAgreementAccepted    Boolean    @default(false)
+  propertyAgreementAcceptedAt  DateTime?
   property             Property?        @relation(fields: [propertyId], references: [id])
   room                 Room?            @relation(fields: [roomId], references: [id])
   user                 User             @relation(fields: [userId], references: [id])

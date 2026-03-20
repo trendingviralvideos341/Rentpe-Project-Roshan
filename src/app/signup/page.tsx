@@ -408,7 +408,17 @@ export default function SignupPage() {
                                     onChange={e => setAgreed(e.target.checked)}
                                 />
                                 <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors uppercase tracking-wider font-bold">
-                                    I AGREE TO THE <Link href="/terms" target="_blank" className="text-violet-600 underline">TERMS</Link> AND <Link href="/privacy" target="_blank" className="text-violet-600 underline">PRIVACY POLICY</Link> (REQUIRED)
+                                    I AGREE TO THE{" "}
+                                    <Link
+                                        href={role === "OWNER" ? "/terms/owner" : "/terms/tenant"}
+                                        target="_blank"
+                                        className="text-violet-600 underline"
+                                    >
+                                        {role === "OWNER" ? "OWNER TERMS" : "TENANT TERMS"}
+                                    </Link>{" "}
+                                    AND{" "}
+                                    <Link href="/privacy" target="_blank" className="text-violet-600 underline">PRIVACY POLICY</Link>
+                                    {" "}(REQUIRED)
                                 </span>
                             </label>
 

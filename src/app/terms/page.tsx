@@ -1,101 +1,71 @@
+import { Metadata } from "next";
 import Link from "next/link";
+import { FileText, Shield, Building2, ArrowRight } from "lucide-react";
 
-export const metadata = {
-    title: "Terms of Service | RentPe",
-    description: "Read the Terms of Service for using the RentPe platform, your rights, obligations, and the rules that govern our marketplace.",
+export const metadata: Metadata = {
+    title: "Terms & Conditions | RentPe",
+    description: "Legal Terms and Conditions for all RentPe platform users.",
 };
 
-export default function TermsPage() {
+export default function TermsIndexPage() {
     return (
-        <div className="min-h-screen bg-muted/20">
-            <div className="max-w-4xl mx-auto px-4 py-12">
-                {/* Header */}
-                <div className="mb-10">
-                    <div className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4">Legal</div>
-                    <h1 className="text-4xl font-black text-slate-900 mb-3">Terms of Service</h1>
-                    <p className="text-muted-foreground text-sm">Effective Date: 08 March 2026 &nbsp;·&nbsp; Last Updated: 08 March 2026</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                        By accessing or using RentPe, you agree to be bound by these Terms of Service. If you do not agree, please do not use the platform.
-                    </p>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6 py-16">
+            <div className="max-w-2xl w-full space-y-8">
+                <div className="text-center space-y-3">
+                    <div className="inline-flex p-4 bg-indigo-100 rounded-3xl mb-2">
+                        <FileText className="w-8 h-8 text-indigo-600" />
+                    </div>
+                    <h1 className="text-4xl font-extrabold text-slate-900">Legal Terms</h1>
+                    <p className="text-slate-500 text-lg">Select your role to read the applicable Terms & Conditions</p>
+                    <p className="text-xs text-slate-400">Version v1.0 &bull; Last Updated: March 20, 2026 &bull; Aligned with Model Tenancy Act 2021</p>
                 </div>
 
-                <div className="space-y-10 text-slate-700 leading-relaxed text-sm">
+                <div className="grid gap-5">
+                    <Link href="/terms/tenant" className="group block p-6 bg-white rounded-2xl border-2 border-slate-200 hover:border-indigo-400 transition-all hover:shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-indigo-100 rounded-xl group-hover:bg-indigo-600 transition-colors">
+                                    <Shield className="w-6 h-6 text-indigo-600 group-hover:text-white transition-colors" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900">Student & Tenant Terms</h2>
+                                    <p className="text-sm text-slate-500">For students and tenants booking PG/hostel accommodation</p>
+                                    <div className="flex gap-2 mt-1.5 flex-wrap">
+                                        <span className="text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded-full border border-blue-100">Booking Rights</span>
+                                        <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded-full border border-emerald-100">Deposit Policy</span>
+                                        <span className="text-[10px] bg-purple-50 text-purple-600 font-bold px-2 py-0.5 rounded-full border border-purple-100">MTA 2021</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" />
+                        </div>
+                    </Link>
 
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">1. Introduction</h2>
-                        <p>RentPe (&ldquo;Platform,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; &ldquo;our&rdquo;) is an online marketplace operated by <strong>RentPe Technologies Private Limited</strong>. RentPe connects property owners (&ldquo;Owners&rdquo;) with students and working professionals (&ldquo;Tenants&rdquo;) seeking accommodation across India. We act as an intermediary and are not a party to any rental agreement between Owners and Tenants.</p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">2. User Eligibility</h2>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li><strong>Owners</strong>: Must be at least 18 years of age and legally authorized to list the property.</li>
-                            <li><strong>Students/Tenants</strong>: Must be at least 18 years of age. Users under 18 may use the platform only with the involvement and consent of a parent or legal guardian.</li>
-                            <li>By registering, you warrant that all information provided is accurate, current, and complete.</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">3. Account Registration</h2>
-                        <p>To access certain features, you must register for an account. You agree to provide accurate information and keep it updated. You are responsible for maintaining the confidentiality of your account credentials and for all activities under your account.</p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">4. Property Listing Rules</h2>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li>All listings must be accurate, non-misleading, and represent the actual condition of the property.</li>
-                            <li>Owners must have valid legal rights to lease or license the premises.</li>
-                            <li>Fake listings, bait-and-switch pricing, or misrepresentation of amenities is strictly prohibited.</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">5. Booking Process</h2>
-                        <p>Bookings are subject to Owner approval. A booking token may be required to reserve a unit. RentPe facilitates the communication and payment but does not guarantee the availability or quality of any property.</p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">6. Platform Role Disclaimer</h2>
-                        <p className="bg-amber-50 border-l-4 border-amber-400 p-4 italic">
-                            RentPe is a marketplace. We do not own, manage, or operate any listed properties. Any rental agreement is strictly between the Owner and the Tenant. RentPe is not responsible for the conduct of any user or the condition of any property.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">7. Prohibited Activities</h2>
-                        <p className="mb-2">You agree not to:</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li>Post fraudulent or illegal content.</li>
-                            <li>Circumvent the platform to avoid paying service fees.</li>
-                            <li>Harass or discriminate against other users.</li>
-                            <li>Attempt to disrupt the platform&apos;s security or integrity.</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">8. Account Suspension</h2>
-                        <p>We reserve the right to suspend or terminate accounts that violate these terms, engage in suspicious activity, or receive repeated complaints from other users.</p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">9. Limitation of Liability</h2>
-                        <p>To the maximum extent permitted by law, RentPe shall not be liable for any indirect, incidental, or consequential damages arising from your use of the platform or any property booked through it.</p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">10. Contact Information</h2>
-                        <p>For legal inquiries, contact <a href="mailto:legal@rentpe.in" className="text-blue-600 underline">legal@rentpe.in</a>.</p>
-                    </section>
-
+                    <Link href="/terms/owner" className="group block p-6 bg-white rounded-2xl border-2 border-slate-200 hover:border-emerald-400 transition-all hover:shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-emerald-100 rounded-xl group-hover:bg-emerald-600 transition-colors">
+                                    <Building2 className="w-6 h-6 text-emerald-600 group-hover:text-white transition-colors" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900">Property Owner Terms</h2>
+                                    <p className="text-sm text-slate-500">For PG, hostel, and property operators listing on RentPe</p>
+                                    <div className="flex gap-2 mt-1.5 flex-wrap">
+                                        <span className="text-[10px] bg-amber-50 text-amber-600 font-bold px-2 py-0.5 rounded-full border border-amber-100">Listing Rules</span>
+                                        <span className="text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-100">GST Compliance</span>
+                                        <span className="text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded-full border border-blue-100">Fee Structure</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors shrink-0" />
+                        </div>
+                    </Link>
                 </div>
 
-                {/* Footer nav */}
-                <div className="mt-12 pt-6 border-t flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
-                    <Link href="/refund" className="hover:text-blue-600 transition-colors">Refund Policy</Link>
-                    <Link href="/tenant-agreement" className="hover:text-blue-600 transition-colors">Tenant Agreement</Link>
-                    <Link href="/cookie-policy" className="hover:text-blue-600 transition-colors">Cookie Policy</Link>
-                </div>
+                <p className="text-center text-xs text-slate-400 leading-relaxed">
+                    These Terms are aligned with India's Model Tenancy Act 2021, Consumer Protection Act 2019,<br />
+                    CBIC GST Circular (July 2024), and IT Act 2000. For queries: <strong>legal@rentpe.in</strong>
+                </p>
             </div>
         </div>
     );

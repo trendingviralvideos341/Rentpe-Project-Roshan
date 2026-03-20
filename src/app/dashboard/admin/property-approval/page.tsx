@@ -61,9 +61,9 @@ export default function AdminPropertyApprovalPage() {
         description: string; 
         amenities: string 
     } | null>(null);
-    const [editRoomDialog, setEditRoomDialog] = useState<{ isOpen: boolean; roomId: string; roomNumber: string; type: string; price: number; availability: number } | null>(null);
+    const [editRoomDialog, setEditRoomDialog] = useState<{ isOpen: boolean; roomId: string; roomNumber: string; type: string; price: number; availability: number; depositMonths: number } | null>(null);
     const [addRoomDialog, setAddRoomDialog] = useState<{ isOpen: boolean; propertyId: string } | null>(null);
-    const [newRoomData, setNewRoomData] = useState({ roomNumber: '', type: 'Single Sharing', price: 5000, availability: 1 });
+    const [newRoomData, setNewRoomData] = useState({ roomNumber: '', type: 'Single Sharing', price: 5000, availability: 1, depositMonths: 1 });
 
     // Pincode auto-fetch states for property edit
     const [pinFetching, setPinFetching] = useState(false);
@@ -200,7 +200,8 @@ export default function AdminPropertyApprovalPage() {
                 roomNumber: editRoomDialog.roomNumber,
                 type: editRoomDialog.type,
                 price: editRoomDialog.price,
-                availability: editRoomDialog.availability
+                availability: editRoomDialog.availability,
+                depositMonths: editRoomDialog.depositMonths,
             });
             toast({ title: "Success", description: "Room updated successfully." });
             setEditRoomDialog(null);
@@ -223,7 +224,7 @@ export default function AdminPropertyApprovalPage() {
             await adminAddRoom(addRoomDialog.propertyId, newRoomData);
             toast({ title: "Success", description: "Room added successfully." });
             setAddRoomDialog(null);
-            setNewRoomData({ roomNumber: '', type: 'Single Sharing', price: 10000, availability: 1 });
+            setNewRoomData({ roomNumber: '', type: 'Single Sharing', price: 10000, availability: 1, depositMonths: 1 });
             fetchData(true);
         } catch (e: any) {
             toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -1103,7 +1104,8 @@ export default function AdminPropertyApprovalPage() {
                                                                                          roomNumber: room.roomNumber,
                                                                                          type: room.type,
                                                                                          price: room.price,
-                                                                                         availability: room.availability
+                                                                                         availability: room.availability,
+                                                                                         depositMonths: room.depositMonths ?? 1,
                                                                                      });
                                                                                  }}
                                                                              >
@@ -1687,6 +1689,31 @@ export default function AdminPropertyApprovalPage() {
                                     Adding beds will automatically generate new bed ID records. Removing beds is only possible if they are not currently occupied.
                                 </p>
                             </div>
+
+                            {/* Security Deposit — MTA 2021 */}
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-emerald-600 transition-colors ml-1">
+                                    Security Deposit Months <span className="text-red-500">*</span>
+                                </Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[1, 2].map(m => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setEditRoomDialog({ ...editRoomDialog!, depositMonths: m })}
+                                            className={`h-16 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black text-sm ${
+                                                editRoomDialog?.depositMonths === m
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-4 ring-emerald-100'
+                                                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <span>{m} Month{m > 1 ? 's' : ''}</span>
+                                            <span className="text-[10px] font-normal opacity-70">₹{((editRoomDialog?.price || 0) * m).toLocaleString('en-IN')}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[9px] text-slate-400 ml-1">Per Model Tenancy Act 2021 — Maximum 2 months for residential PG/Hostel • Deposit is refundable</p>
+                            </div>
                         </div>
                     )}
                     
@@ -1782,6 +1809,31 @@ export default function AdminPropertyApprovalPage() {
                                         onChange={(e) => setNewRoomData({ ...newRoomData, price: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Security Deposit — MTA 2021 Compliant */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                    Security Deposit <span className="text-amber-500">*</span> (MTA 2021 — Max 2 Months)
+                                </Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[1, 2].map(m => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setNewRoomData({ ...newRoomData, depositMonths: m })}
+                                            className={`h-16 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black text-sm ${
+                                                newRoomData.depositMonths === m
+                                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-4 ring-indigo-100'
+                                                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <span>{m} Month{m > 1 ? 's' : ''}</span>
+                                            <span className="text-[10px] font-normal opacity-70">₹{((newRoomData.price || 0) * m).toLocaleString('en-IN')}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[9px] text-slate-400 ml-1">Max 2 months per Model Tenancy Act, 2021 • Refundable upon vacating</p>
                             </div>
                         </div>
 

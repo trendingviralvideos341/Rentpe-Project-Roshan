@@ -94,6 +94,10 @@ export async function signup(formData: FormData) {
                 displayId,
                 status: 'PENDING_VERIFICATION',
                 applicationId: displayId,
+                // Legal compliance: T&C acceptance (DPDP Act 2023, MTA 2021, Consumer Protection Act 2019)
+                termsAccepted: true,
+                termsAcceptedAt: new Date(),
+                termsVersion: 'v1.0-2026-03', // Bump this version when T&C changes, to force re-acceptance
             }
         });
 
