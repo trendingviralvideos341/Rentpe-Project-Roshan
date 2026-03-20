@@ -193,6 +193,8 @@ export async function approveBooking(id: string, data: {
     occupationDetail?: string,
     onboardingDate?: string,
     pendingAmount?: number,
+    depositAmount?: number,
+    depositMonths?: number,
 }) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
@@ -218,6 +220,8 @@ export async function approveBooking(id: string, data: {
             occupationDetail: data.occupationDetail,
             onboardingDate: data.onboardingDate,
             pendingAmount: data.pendingAmount || null,
+            depositAmount: data.depositAmount || null,
+            depositMonths: data.depositMonths || null,
         }
     });
 

@@ -71,6 +71,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
     const [selectedBedType, setSelectedBedType] = useState(booking.occupancy || "ALL");
     const [selectedRoomId, setSelectedRoomId] = useState("");
+    const [depositMonths, setDepositMonths] = useState<1 | 2>(1);
     const [editAmount, setEditAmount] = useState(booking.amount || "");
     const [editOccupancy, setEditOccupancy] = useState(booking.occupancy || "");
 
@@ -161,7 +162,9 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
 
         setSaving(true);
         try {
-            const room = selectedRoomId ? rooms.find(r => r.id === selectedRoomId) : null;
+            const room = selectedRoomId ? rooms.find((r: any) => r.id === selectedRoomId) : null;
+            const roomPrice = room ? Number(room.price) : Number(String(editAmount).replace(/[^0-9.]/g, '')) || 0;
+            const depositAmt = roomPrice * depositMonths;
             await approveBooking(booking.id, {
                 roomId: room?.id || booking.roomId,
                 amount: editAmount || booking.amount,
@@ -178,6 +181,8 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                 occupationDetail: form.occupationDetail,
                 onboardingDate: form.onboardingDate,
                 pendingAmount: hasPending && pendingAmount ? Number(pendingAmount.replace(/[^0-9.]/g, '')) : undefined,
+                depositAmount: depositAmt,
+                depositMonths,
             });
             setEditing(false);
             setShowPendingPrompt(false);
@@ -608,8 +613,82 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                         {fieldErrors.roomSelection && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.roomSelection}</p>}
                                     </div>
                                 )}
+
+                                    {/* ── Security Deposit Selector (appears after room is selected) ── */}
+                                    {selectedRoomId && (() => {
+                                        const selRoom = filteredRooms.find((r: any) => r.id === selectedRoomId);
+                                        if (!selRoom) return null;
+                                        const rent = Number(selRoom.price) || 0;
+                                        const deposit1M = rent * 1;
+                                        const deposit2M = rent * 2;
+                                        const depositAmt = rent * depositMonths;
+                                        const totalPayable = rent + depositAmt;
+                                        return (
+                                            <div className="mt-4 p-4 border-2 border-indigo-200 rounded-2xl bg-indigo-50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                                                    <span className="text-[11px] font-black uppercase tracking-widest text-indigo-700">Security Deposit — Select Months</span>
+                                                    <span className="text-[9px] bg-indigo-200 text-indigo-700 px-2 py-0.5 rounded-full font-bold ml-auto">MTA 2021 · Max 2 Months</span>
+                                                </div>
+
+                                                {/* 1M / 2M toggle */}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {([1, 2] as const).map(m => (
+                                                        <button
+                                                            key={m}
+                                                            type="button"
+                                                            onClick={() => setDepositMonths(m)}
+                                                            className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all ${
+                                                                depositMonths === m
+                                                                    ? 'border-indigo-500 bg-white shadow-lg ring-4 ring-indigo-100 scale-[1.02]'
+                                                                    : 'border-indigo-100 bg-white/60 hover:border-indigo-300'
+                                                            }`}
+                                                        >
+                                                            <span className={`text-xs font-black uppercase tracking-widest ${depositMonths === m ? 'text-indigo-700' : 'text-slate-500'}`}>
+                                                                {m} Month{m > 1 ? 's' : ''} Deposit
+                                                            </span>
+                                                            <span className={`text-xl font-black ${depositMonths === m ? 'text-indigo-900' : 'text-slate-400'}`}>
+                                                                ₹{(m === 1 ? deposit1M : deposit2M).toLocaleString('en-IN')}
+                                                            </span>
+                                                            {depositMonths === m && (
+                                                                <span className="text-[9px] bg-indigo-100 text-indigo-600 font-bold px-2 py-0.5 rounded-full">Selected ✓</span>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                {/* Payment Breakdown */}
+                                                <div className="bg-white rounded-xl border border-indigo-100 overflow-hidden">
+                                                    <div className="px-4 py-2 bg-slate-900 flex items-center gap-2">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Payment Breakdown</span>
+                                                    </div>
+                                                    <div className="divide-y divide-slate-100">
+                                                        <div className="flex justify-between items-center px-4 py-2.5">
+                                                            <span className="text-xs font-medium text-slate-600">Monthly Rent (1st month)</span>
+                                                            <span className="text-sm font-black text-slate-900">₹{rent.toLocaleString('en-IN')}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center px-4 py-2.5">
+                                                            <div>
+                                                                <span className="text-xs font-medium text-emerald-700">Security Deposit ({depositMonths} month{depositMonths > 1 ? 's' : ''})</span>
+                                                                <span className="ml-2 text-[9px] bg-emerald-100 text-emerald-600 font-bold px-1.5 py-0.5 rounded-full">Refundable</span>
+                                                            </div>
+                                                            <span className="text-sm font-black text-emerald-700">₹{depositAmt.toLocaleString('en-IN')}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
+                                                            <span className="text-sm font-black text-slate-900">Total Due Now</span>
+                                                            <span className="text-lg font-black text-slate-900">₹{totalPayable.toLocaleString('en-IN')}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] text-indigo-500 font-semibold text-center">
+                                                    Deposit is refundable within 30 days of vacating · Deductions only for documented damage (not normal wear & tear)
+                                                </p>
+                                            </div>
+                                        );
+                                    })()}
+
+                                </div>
                             </div>
-                        </div>
 
                         {/* ── Pending Amount Prompt (for PAID bookings) ── */}
                         {showPendingPrompt && (
