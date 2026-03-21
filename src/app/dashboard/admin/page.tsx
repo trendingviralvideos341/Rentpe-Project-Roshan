@@ -148,7 +148,7 @@ export default function AdminDashboard() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">
-                        {snapshot.user?.adminRole === 'SUPER_ADMIN' ? 'Platform Admin' : 'Employee Portal'}
+                        {snapshot.user?.adminRole === 'SUPER_ADMIN' ? 'Platform Admin' : 'Employee Portal Dashboard'}
                     </h1>
                     <p className="text-muted-foreground">
                         {snapshot.user?.adminRole === 'SUPER_ADMIN' 
