@@ -199,19 +199,19 @@ export default function DashboardSidebar(props: SidebarProps) {
             }))
     }));
 
-    const panelNames: Record<string, string> = {
-        owner: "Owner Panel",
-        admin: "Admin Panel",
-        student: "Student Dashboard",
-        staff: "Staff Portal",
-    };
-
     const perms = props.permissions || [];
     const isSuperAdmin =
         perms.includes("super_admin") ||
         (role === "admin" && props.isSuperAdmin) ||
         (role === "admin" && perms.length === 0 && !props.isStaff) ||
         (role === "owner" && !props.isStaff); // Primary owners have full access
+
+    const panelNames: Record<string, string> = {
+        owner: "Owner Panel",
+        admin: (role === 'admin' && !isSuperAdmin) ? "Employee Portal Dashboard" : "Admin Panel",
+        student: "Student Dashboard",
+        staff: "Staff Portal",
+    };
 
     const filterSectionLinks = (sections: SidebarSection[]) => {
         return sections.map(section => ({
