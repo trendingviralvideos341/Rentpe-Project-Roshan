@@ -766,14 +766,14 @@ export default function AddPropertyPage() {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Basic Info */}
-                <Card className="border-[7px] border-purple-200 shadow-2xl shadow-purple-900/10 overflow-hidden">
-                    <CardHeader className="bg-slate-50/50 p-6 border-b">
+                <Card className="border-[7px] border-purple-200 shadow-xl shadow-purple-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-purple-100/80 via-white/50 to-transparent p-6 border-b border-purple-100">
                         <CardTitle className="text-xl font-black text-purple-700 flex items-center gap-3">
                             <Plus className="h-6 w-6" /> Basic Details
                         </CardTitle>
                         <CardDescription className="text-sm text-slate-500 mt-1 font-medium italic">Standardized property identification details.</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-8">
+                    <CardContent className="p-6 space-y-8 bg-purple-50/10">
                         {/* Property Type Selection */}
                         <div className="space-y-4 bg-purple-50/30 p-5 rounded-2xl border-2 border-purple-100">
                             <label className="text-[11px] font-black text-purple-600 uppercase tracking-widest flex items-center gap-2">
@@ -900,12 +900,12 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Address with Pincode Auto-Fetch */}
-                <Card className="border-[7px] border-blue-200 shadow-2xl shadow-blue-900/10">
-                    <CardHeader>
+                <Card className="border-[7px] border-blue-200 shadow-xl shadow-blue-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-blue-100/80 via-white/50 to-transparent p-6 border-b border-blue-100">
                         <CardTitle className="text-xl font-black text-blue-700">Property Address</CardTitle>
                         <CardDescription>Enter PIN code to auto-fill city and state.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-6 space-y-4 bg-blue-50/10">
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Street / Locality / Landmark <span className="text-red-500">*</span></label>
                             <Input placeholder="e.g. 12-B, MG Road, Near City Mall" value={address}
@@ -958,12 +958,12 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Property Details */}
-                <Card className="border-[7px] border-orange-200 shadow-2xl shadow-orange-900/10">
-                    <CardHeader>
+                <Card className="border-[7px] border-orange-200 shadow-xl shadow-orange-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-orange-100/80 via-white/50 to-transparent p-6 border-b border-orange-100">
                         <CardTitle className="text-xl font-black text-orange-700">Property Details</CardTitle>
                         <CardDescription>Gender type, description, and amenities.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-6 space-y-4 bg-orange-50/10">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Gender Type <span className="text-red-500">*</span></label>
                             <div className="flex gap-3">
@@ -996,12 +996,12 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Amenities */}
-                <Card className="border-[7px] border-indigo-200 shadow-2xl shadow-indigo-900/10">
-                    <CardHeader>
+                <Card className="border-[7px] border-indigo-200 shadow-xl shadow-indigo-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-indigo-100/80 via-white/50 to-transparent p-6 border-b border-indigo-100">
                         <CardTitle className="text-xl font-black text-indigo-700">Amenities <span className="text-red-500">*</span></CardTitle>
                         <CardDescription>Select what your property offers. (At least 1 required)</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6 bg-indigo-50/10">
                         <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${errors.amenities ? "border-2 border-red-300 rounded-lg p-2" : ""}`}>
                             {amenityOptions.map((item) => (
                                 <label key={item} className={`flex items-center space-x-2 border p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${amenities.includes(item) ? "bg-primary/10 border-primary" : ""}`}>
@@ -1064,8 +1064,8 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* ── Food & Mess Service ── */}
-                <Card className="border-[7px] border-orange-200 shadow-2xl shadow-orange-900/10 overflow-hidden">
-                    <CardHeader className="bg-slate-50/50 p-6 border-b">
+                <Card className="border-[7px] border-orange-200 shadow-xl shadow-orange-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-orange-100/80 via-white/50 to-transparent p-6 border-b border-orange-100">
                         <CardTitle className="text-xl font-black text-orange-700 flex items-center gap-3">
                             🍽 Food & Mess Service
                         </CardTitle>
@@ -1073,7 +1073,7 @@ export default function AddPropertyPage() {
                             Define if your property provides meals — students will see this clearly before booking.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-4">
+                    <CardContent className="p-6 space-y-4 bg-orange-50/10">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {([
                                 { val: 'NOT_AVAILABLE', emoji: '🚫', title: 'Not Available', desc: 'No food service' },
@@ -1145,12 +1145,12 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Rooms */}
-                <Card className="border-[7px] border-rose-200 shadow-2xl shadow-rose-900/10">
-                    <CardHeader>
+                <Card className="border-[7px] border-rose-200 shadow-xl shadow-rose-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-rose-100/80 via-white/50 to-transparent p-6 border-b border-rose-100">
                         <CardTitle className="text-xl font-black text-rose-700">Rooms <span className="text-red-500">*</span></CardTitle>
                         <CardDescription>Add rooms with pricing and availability. (At least 1 room required)</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-6 space-y-4 bg-rose-50/10">
                         {rooms.length === 0 && (
                             <div className={`text-center py-6 text-muted-foreground ${errors.rooms ? "bg-red-50 border border-red-200 rounded-lg" : ""}`}>
                                 No rooms added yet. Click below to add your first room.
@@ -1226,8 +1226,8 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Photos & Documents */}
-                <Card className="border-[7px] border-purple-200 shadow-2xl shadow-purple-900/10 overflow-hidden">
-                    <CardHeader className="bg-slate-50/50 p-6 border-b">
+                <Card className="border-[7px] border-purple-200 shadow-xl shadow-purple-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                    <CardHeader className="bg-linear-to-r from-purple-100/80 via-white/50 to-transparent p-6 border-b border-purple-100">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex-1">
                                 <CardTitle className="text-xl font-black text-purple-700 flex items-center gap-3">
@@ -1258,7 +1258,7 @@ export default function AddPropertyPage() {
                         </div>
                     </CardHeader>
                     
-                    <CardContent className="p-6 space-y-10">
+                    <CardContent className="p-6 space-y-10 bg-purple-50/10">
                         {/* Property Visuals */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
@@ -1320,13 +1320,13 @@ export default function AddPropertyPage() {
                 </Card>
 
                 {/* Legal & Compliance Section */}
-                <Card className="border-[7px] border-emerald-200 shadow-2xl shadow-emerald-900/10 transition-all">
-                    <CardHeader className="bg-slate-50/50 p-4 border-b">
+                <Card className="border-[7px] border-emerald-200 shadow-xl shadow-emerald-900/5 overflow-hidden bg-white/80 backdrop-blur-md transition-all">
+                    <CardHeader className="bg-linear-to-r from-emerald-100/80 via-white/50 to-transparent p-4 border-b border-emerald-100">
                         <CardTitle className="text-xl font-black text-emerald-700 flex items-center gap-2 uppercase tracking-wide">
                             <ShieldCheck className="h-6 w-6" /> Legal Agreement
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-6">
+                    <CardContent className="p-6 space-y-6 bg-emerald-50/10">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <label className="flex items-start gap-3 cursor-pointer group bg-slate-50 p-4 rounded-xl border hover:border-primary transition-all shadow-sm">
