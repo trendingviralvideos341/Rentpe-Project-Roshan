@@ -585,7 +585,7 @@ export default function OwnerStaffPage() {
                     <DialogFooter className="gap-3 sm:gap-2">
                         <button 
                             onClick={() => setIsStatusDialogOpen(false)}
-                            className="px-8 py-3 text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all active:scale-95 shadow-sm"
+                            className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                             disabled={statusSubmitting}
                         >
                             CANCEL
