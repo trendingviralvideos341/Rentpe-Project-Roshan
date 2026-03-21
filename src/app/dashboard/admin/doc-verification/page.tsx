@@ -393,9 +393,9 @@ export default function AdminVerificationsPage() {
                     <DialogFooter className="pt-6 gap-3 sm:gap-4">
                         <button 
                             onClick={() => setRejectTarget(null)}
-                            className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                         >
-                            Cancel
+                            CANCEL
                         </button>
                         <button
                             className="bg-red-600 hover:bg-red-700 text-white font-black text-xs tracking-[0.1em] px-10 py-3 rounded-full shadow-lg shadow-red-100 transition-all active:scale-95 flex items-center gap-2 uppercase"

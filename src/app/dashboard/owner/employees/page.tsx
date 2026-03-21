@@ -385,7 +385,7 @@ export default function OwnerEmployeesPage() {
                         <DialogFooter className="pt-6 gap-3 sm:gap-4">
                             <button 
                                 onClick={() => { setIsAddOpen(false); setErrors({}); }} 
-                                className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all active:scale-95 shadow-sm"
+                                className="px-8 py-3 text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                             >
                                 CANCEL
                             </button>
