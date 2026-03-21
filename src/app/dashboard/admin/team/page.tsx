@@ -47,23 +47,30 @@ function BlockModal({
                         <p className="text-sm text-muted-foreground">{member.name} · {member.email}</p>
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-sm font-medium">Reason *</label>
-                    <textarea
-                        value={reason}
-                        onChange={e => setReason(e.target.value)}
-                        placeholder={isBlocked ? "Why are you restoring access?" : "Why are you blocking this member?"}
-                        className="w-full border rounded-lg p-3 text-sm resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Reason for Action *</label>
+                        <textarea
+                            value={reason}
+                            onChange={e => setReason(e.target.value)}
+                            placeholder={isBlocked ? "Why are you restoring access?" : "Why are you blocking this member?"}
+                            className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-28 focus:outline-none focus:border-red-500 focus:bg-red-50/10 transition-all font-medium"
+                        />
+                    </div>
                 </div>
-                <div className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={onCancel}>Cancel</Button>
-                    <Button
+                <div className="flex gap-3 justify-end pt-4">
+                    <button onClick={onCancel} className="px-8 py-2.5 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all">
+                        Cancel
+                    </button>
+                    <button
                         disabled={!reason.trim()}
                         onClick={() => onConfirm(reason)}
-                        className={isBlocked ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}>
-                        {isBlocked ? "✅ Restore Access" : "🚫 Block Access"}
-                    </Button>
+                        className={`px-8 py-2.5 text-xs rounded-full text-white font-black transition-all flex items-center gap-2 shadow-lg ${
+                            isBlocked ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200" : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                        }`}>
+                        {isBlocked ? <ShieldCheck className="h-4 w-4" /> : <ShieldOff className="h-4 w-4" />}
+                        {isBlocked ? "Restore Access" : "Block Access"}
+                    </button>
                 </div>
             </div>
         </div>

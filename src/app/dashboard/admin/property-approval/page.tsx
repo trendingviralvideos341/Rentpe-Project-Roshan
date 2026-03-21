@@ -15,7 +15,8 @@ import {
     CheckCircle, XCircle, AlertCircle, RefreshCcw, Eye, MapPin,
     FileText, Camera, Building2, User as UserIcon, Mail, Phone,
     Smartphone, CreditCard, Landmark, ArrowRight, Home, Users,
-    Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BedDouble, ImageIcon, RotateCcw, Save, Plus, ParkingCircle, Trash2, Search, ShieldCheck, ZoomIn, ZoomOut
+    Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BedDouble, ImageIcon, RotateCcw, Save, Plus, ParkingCircle, Trash2, Search, ShieldCheck, ZoomIn, ZoomOut,
+    AlertTriangle, Edit3
 } from 'lucide-react';
 import { getAllPropertiesForAdmin, getAdminPropertyAnalytics, getAdminPropertyStatusCounts, startPropertyVerification, verifyPropertyDocuments, requirePropertyPayment, exemptPropertyFee, rejectProperty, requestPropertyCorrections, suspendProperty, activateProperty, rollbackPropertyStatus, adminUpdateUserProfile, adminUpdateProperty, adminUpdateRoom, adminAddRoom, adminDeleteRoom } from "@/actions/admin";
 import { requestDocumentReupload, togglePropertyDocumentVerification, savePropertyDocuments, deletePropertyDocument } from "@/actions/properties";
@@ -1285,23 +1286,27 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                     )}
 
-                    <DialogFooter className="flex flex-row items-center justify-end gap-3 sm:gap-3 !space-x-0 pt-2">
-                        <Button 
-                            variant="default" 
+                    <DialogFooter className="flex flex-row items-center justify-end gap-3 sm:gap-4 !space-x-0 pt-4">
+                        <button 
                             onClick={() => setActionDialog(null)} 
                             disabled={processing}
-                            className="rounded-full font-black text-xs uppercase tracking-widest h-10 px-8 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-95"
+                            className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all active:scale-95 shadow-sm"
                         >
                             CANCEL
-                        </Button>
-                        <Button
-                            variant="default"
-                            className={(actionDialog?.actionType === 'REJECT' || actionDialog?.actionType === 'SUSPEND') ? "bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-tight px-10 rounded-xl h-12 shadow-xl shadow-red-200 transition-all active:scale-95" : "bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-tight px-10 rounded-xl h-12 shadow-xl shadow-indigo-200 transition-all active:scale-95"}
+                        </button>
+                        <button
+                            className={cn(
+                                "px-10 py-3 text-xs font-black rounded-full text-white transition-all active:scale-95 shadow-lg flex items-center gap-2",
+                                (actionDialog?.actionType === 'REJECT' || actionDialog?.actionType === 'SUSPEND') 
+                                    ? "bg-red-600 hover:bg-red-700 shadow-red-200" 
+                                    : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200"
+                            )}
                             onClick={handleConfirmAction}
                             disabled={processing}
                         >
-                            {processing ? "Processing..." : "Confirm Action"}
-                        </Button>
+                            {processing ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                            {processing ? "PROCESSING..." : "CONFIRM ACTION"}
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1329,22 +1334,22 @@ export default function AdminPropertyApprovalPage() {
                             />
                         </div>
                     </div>
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button 
-                            variant="default" 
+                    <DialogFooter className="flex flex-row items-center justify-end gap-3 sm:gap-4 !space-x-0 pt-4">
+                        <button 
                             onClick={() => setReuploadDialog(null)} 
-                            className="rounded-full font-black text-xs uppercase tracking-widest h-10 px-8 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-95"
+                            className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all active:scale-95 shadow-sm"
                             disabled={processing}
                         >
                             CANCEL
-                        </Button>
-                        <Button
-                            className="bg-orange-600 hover:bg-orange-700 text-white font-black rounded-xl px-10 shadow-lg shadow-orange-100 transition-all active:scale-95 border-b-4 border-orange-800"
+                        </button>
+                        <button
+                            className="bg-orange-600 hover:bg-orange-700 text-white font-black text-xs px-10 py-3 rounded-full shadow-lg shadow-orange-100 transition-all active:scale-95 flex items-center gap-2"
                             onClick={handleRequestReupload}
                             disabled={processing}
                         >
-                            {processing ? "Sending..." : "Send Request"}
-                        </Button>
+                            {processing ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                            {processing ? "SENDING..." : "SEND REQUEST"}
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

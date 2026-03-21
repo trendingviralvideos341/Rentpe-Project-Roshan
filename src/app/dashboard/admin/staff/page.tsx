@@ -15,7 +15,8 @@ import {
     XCircle,
     AlertTriangle,
     Edit3,
-    Trash2
+    Trash2,
+    RefreshCcw
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -355,15 +356,16 @@ export default function AdminStaffPage() {
                                 <button 
                                     type="button"
                                     onClick={() => setIsAddDialogOpen(false)}
-                                    className="px-6 py-3 rounded-xl text-slate-500 hover:text-slate-900 font-bold transition-all"
+                                    className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
                                     disabled={submitting}
-                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-black shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-10 py-3 rounded-full font-black shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
                                 >
+                                    {submitting ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <UserPlus size={18} />}
                                     {submitting ? "Registering..." : "Onboard Employee"}
                                 </button>
                             </div>

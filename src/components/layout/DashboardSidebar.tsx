@@ -207,10 +207,12 @@ export default function DashboardSidebar(props: SidebarProps) {
         (role === "owner" && !props.isStaff); // Primary owners have full access
 
     const panelNames: Record<string, string> = {
-        owner: "Owner Panel",
-        admin: (role === 'admin' && !isSuperAdmin) ? "Employee Portal Dashboard" : "Admin Panel",
-        student: "Student Dashboard",
-        staff: "Staff Portal",
+        owner: "Owner Dashboard",
+        admin: isSuperAdmin ? "Super Admin Dashboard" : "Employee Portal Dashboard",
+        student: "Tenant Dashboard",
+        staff: "Employee Portal Dashboard",
+        onboarder: "Employee Portal Dashboard",
+        verifier: "Employee Portal Dashboard",
     };
 
     const filterSectionLinks = (sections: SidebarSection[]) => {

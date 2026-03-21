@@ -582,26 +582,32 @@ export default function OwnerStaffPage() {
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button 
-                            variant="destructive" 
+                    <DialogFooter className="gap-3 sm:gap-2">
+                        <button 
                             onClick={() => setIsStatusDialogOpen(false)}
-                            className="bg-red-600 hover:bg-red-700 text-white h-11 px-8 font-black uppercase tracking-widest rounded-xl transition-none shadow-none border-none"
+                            className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all"
                             disabled={statusSubmitting}
                         >
                             Cancel
-                        </Button>
-                        <Button 
+                        </button>
+                        <button 
                             onClick={confirmStatusUpdate}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-8 font-black uppercase tracking-widest rounded-xl transition-none border-none shadow-none"
+                            className={`px-8 py-3 text-xs rounded-full text-white font-black transition-all flex items-center gap-2 shadow-lg ${
+                                statusDialogData?.targetStatus === "ACTIVE" 
+                                ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200" 
+                                : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                            }`}
                             disabled={statusSubmitting}
                         >
                             {statusSubmitting ? (
                                 <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
                             ) : (
-                                statusDialogData?.targetStatus === "ACTIVE" ? "Restore Access" : "Confirm Block"
+                                <>
+                                    {statusDialogData?.targetStatus === "ACTIVE" ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                    {statusDialogData?.targetStatus === "ACTIVE" ? "Restore Access" : "Confirm Block"}
+                                </>
                             )}
-                        </Button>
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

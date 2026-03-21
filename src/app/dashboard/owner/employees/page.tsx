@@ -382,13 +382,19 @@ export default function OwnerEmployeesPage() {
                                 )}
                             </div>
                         </div>
-                        <DialogFooter className="pt-4">
-                            <Button variant="destructive" onClick={() => { setIsAddOpen(false); setErrors({}); }} className="bg-red-600 hover:bg-red-700 h-11 px-8 font-black uppercase tracking-widest text-xs">
-                                Cancel
-                            </Button>
-                            <Button className="h-11 px-8 font-bold" onClick={handleAdd}>
-                                Add Staff Member
-                            </Button>
+                        <DialogFooter className="pt-6 gap-3 sm:gap-4">
+                            <button 
+                                onClick={() => { setIsAddOpen(false); setErrors({}); }} 
+                                className="px-8 py-3 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all active:scale-95 shadow-sm"
+                            >
+                                CANCEL
+                            </button>
+                            <button 
+                                onClick={handleAdd}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-full font-black text-xs shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2 uppercase tracking-widest"
+                            >
+                                <Plus className="h-4 w-4" /> Add Staff Member
+                            </button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -524,10 +530,13 @@ export default function OwnerEmployeesPage() {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <DialogFooter>
-                                                            <Button className="w-full h-12 rounded-xl font-bold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/20" onClick={() => setIsInviteOpen(false)}>
-                                                                Done
-                                                            </Button>
+                                                        <DialogFooter className="pt-4">
+                                                            <button 
+                                                                className="w-full py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/20 transition-all active:scale-95" 
+                                                                onClick={() => setIsInviteOpen(false)}
+                                                            >
+                                                                DONE
+                                                            </button>
                                                         </DialogFooter>
                                                     </DialogContent>
                                                 </Dialog>

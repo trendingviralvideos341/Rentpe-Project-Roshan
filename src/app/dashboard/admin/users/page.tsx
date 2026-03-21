@@ -39,11 +39,13 @@ function PointsModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (poi
                             className="w-full border-2 border-slate-100 rounded-xl p-3 text-sm resize-none h-24 focus:outline-none focus:border-indigo-500 transition-all" />
                     </div>
                 </div>
-                <div className="flex gap-2 justify-end pt-2">
-                    <button onClick={onCancel} className="px-6 py-2.5 text-sm font-bold border-2 rounded-xl hover:bg-muted transition-colors">Cancel</button>
+                <div className="flex gap-3 justify-end pt-4">
+                    <button onClick={onCancel} className="px-8 py-2.5 text-xs font-black border-2 border-indigo-600 text-indigo-600 bg-white hover:bg-indigo-50 rounded-full transition-all">
+                        Cancel
+                    </button>
                     <button disabled={!reason.trim()} onClick={() => onConfirm(points, reason)}
-                        className="px-6 py-2.5 text-sm rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200">
-                        Update Points
+                        className="px-8 py-2.5 text-xs rounded-full text-white font-black bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" /> Save Adjustments
                     </button>
                 </div>
             </div>
@@ -67,17 +69,27 @@ function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reas
                         <p className="text-sm text-muted-foreground">{user.name} · {user.email}</p>
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-sm font-medium">Reason *</label>
-                    <textarea value={reason} onChange={e => setReason(e.target.value)}
-                        placeholder={isBanned ? "Why are you restoring this account?" : "Why are you blocking this account?"}
-                        className="w-full border rounded-lg p-3 text-sm resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary" />
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Reason for Action *</label>
+                        <textarea value={reason} onChange={e => setReason(e.target.value)}
+                            placeholder={isBanned ? "Why are you restoring this account?" : "Why are you blocking this account?"}
+                            className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-28 focus:outline-none focus:border-red-500 focus:bg-red-50/10 transition-all font-medium" />
+                    </div>
                 </div>
-                <div className="flex gap-2 justify-end">
-                    <button onClick={onCancel} className="px-4 py-2 text-sm border rounded-lg hover:bg-muted">Cancel</button>
+                <div className="flex gap-3 justify-end pt-4">
+                    <button onClick={onCancel} className="px-8 py-2.5 text-xs font-black border-2 border-red-600 text-red-600 bg-white hover:bg-red-50 rounded-full transition-all">
+                        Cancel
+                    </button>
                     <button disabled={!reason.trim()} onClick={() => onConfirm(reason)}
-                        className={`px-4 py-2 text-sm rounded-lg text-white font-medium disabled:opacity-50 ${isBanned ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}>
-                        {isBanned ? "✅ Restore Account" : "🚫 Block Account"}
+                        className={cn(
+                            "px-8 py-2.5 text-xs rounded-full text-white font-black transition-all flex items-center gap-2 shadow-lg",
+                            isBanned 
+                                ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200" 
+                                : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                        )}>
+                        {isBanned ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                        {isBanned ? "Restore Account" : "Block Account"}
                     </button>
                 </div>
             </div>
