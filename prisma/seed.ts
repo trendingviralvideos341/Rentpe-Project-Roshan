@@ -56,6 +56,35 @@ async function main() {
     });
     console.log("✅ Admin created:", admin.email);
 
+    const adminStaffPassword = await hash("RentPeStaff@2026", 10);
+    const adminStaff = await prisma.user.create({
+        data: {
+            email: "admin_staff@rentpe.in",
+            passwordHash: adminStaffPassword,
+            role: "ADMIN",
+            roles: "ADMIN",
+            isAdmin: true,
+            adminRole: null,
+            name: "Admin Staff",
+            phone: "9000000002",
+            status: "ACTIVE",
+            emailVerified: true,
+            adminProfile: {
+                create: {
+                    displayId: "ADM-EMP-0002",
+                    name: "Admin Staff",
+                    email: "admin_staff@rentpe.in",
+                    phone: "9000000002",
+                    department: "Operations",
+                    role: "Platform Moderator",
+                    permissions: JSON.stringify(["users", "properties", "bookings", "operations", "tickets"]),
+                    status: "ACTIVE"
+                }
+            }
+        }
+    });
+    console.log("✅ Admin Staff created:", adminStaff.email);
+
     const owner = await prisma.user.create({
         data: {
             email: "owner@rentpe.in",
