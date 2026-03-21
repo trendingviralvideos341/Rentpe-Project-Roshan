@@ -147,8 +147,14 @@ export default function AdminDashboard() {
         <div className="space-y-8 pb-8">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold">Platform Admin</h1>
-                    <p className="text-muted-foreground">Overview of RentPe platform performance.</p>
+                    <h1 className="text-3xl font-bold">
+                        {snapshot.user?.adminRole === 'SUPER_ADMIN' ? 'Platform Admin' : 'Employee Portal'}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {snapshot.user?.adminRole === 'SUPER_ADMIN' 
+                            ? 'Overview of RentPe platform performance.' 
+                            : 'Management hub for platform operations and customer support.'}
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={fetchStats}>
