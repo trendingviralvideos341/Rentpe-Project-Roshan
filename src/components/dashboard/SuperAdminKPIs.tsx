@@ -33,38 +33,59 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
         <div className="space-y-8 pb-12">
             {/* ── Strategic KPI Top Row ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-none shadow-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-white">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-indigo-200">Total Platform Revenue</CardTitle>
+                <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all"></div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <div className="flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-indigo-200" />
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-100/80">Platform Revenue</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-black">₹{snapshot.revenue?.platformEarned?.toLocaleString('en-IN')}</div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-200 mt-2">
-                            <ArrowUpRight className="h-3 w-3" /> +18.5% FROM LAST MONTH
+                    <CardContent className="relative z-10">
+                        <div className="text-4xl font-black tracking-tight">₹{snapshot.revenue?.platformEarned?.toLocaleString('en-IN')}</div>
+                        <div className="flex items-center gap-1.5 mt-3">
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
+                                <ArrowUpRight className="h-3 w-3" /> 18.5%
+                            </div>
+                            <span className="text-[10px] font-bold text-indigo-100/60 uppercase tracking-tighter">vs Last Month</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-lg bg-gradient-to-br from-emerald-600 to-emerald-700 text-white">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-emerald-200">Active Tenants</CardTitle>
+                <Card className="border-none shadow-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all"></div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-emerald-100" />
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/80">Active Tenants</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-black">{snapshot.tenants?.active?.toLocaleString()}</div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200 mt-2">
-                            <Users className="h-3 w-3" /> ACROSS {snapshot.properties?.live} PG PROPERTIES
+                    <CardContent className="relative z-10">
+                        <div className="text-4xl font-black tracking-tight">{snapshot.tenants?.active?.toLocaleString()}</div>
+                        <div className="flex items-center gap-1.5 mt-3">
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
+                                <Activity className="h-3 w-3 text-emerald-200" /> STABLE
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-100/60 uppercase tracking-tighter">Live across {snapshot.properties?.live} PG Properties</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-lg bg-gradient-to-br from-slate-800 to-slate-900 text-white">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-400">Booking Conversion</CardTitle>
+                <Card className="border-none shadow-xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/10 transition-all"></div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-slate-400" />
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Conversion Rate</CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-black">{snapshot.bookings?.conversionRate}%</div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 mt-2">
-                            <Activity className="h-3 w-3" /> {snapshot.bookings?.confirmed} CONFIRMED BOOKINGS
+                    <CardContent className="relative z-10">
+                        <div className="text-4xl font-black tracking-tight">{snapshot.bookings?.conversionRate}%</div>
+                        <div className="flex items-center gap-1.5 mt-3">
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-700/50 backdrop-blur-md rounded-full text-[10px] font-black text-slate-300 border border-slate-700">
+                                <CheckCircle2 className="h-3 w-3 text-slate-400" /> {snapshot.bookings?.confirmed}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Total confirmed bookings</span>
                         </div>
                     </CardContent>
                 </Card>

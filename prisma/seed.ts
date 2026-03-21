@@ -24,7 +24,7 @@ async function main() {
     await prisma.user.deleteMany();
 
     // ─── Create Users ────────────────────────────────
-    const adminPassword = await hash("admin123", 10);
+    const adminPassword = await hash("RentPeAdmin@2026", 10);
     const ownerPassword = await hash("owner123", 10);
     const studentPassword = await hash("student123", 10);
 
@@ -33,9 +33,13 @@ async function main() {
             email: "admin@rentpe.in",
             passwordHash: adminPassword,
             role: "ADMIN",
+            roles: "ADMIN",
+            isAdmin: true,
+            adminRole: "SUPER_ADMIN",
             name: "RentPe Admin",
             phone: "9000000001",
-            status: "ACTIVE"
+            status: "ACTIVE",
+            emailVerified: true
         }
     });
     console.log("✅ Admin created:", admin.email);

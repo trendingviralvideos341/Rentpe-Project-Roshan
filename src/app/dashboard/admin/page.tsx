@@ -158,7 +158,7 @@ export default function AdminDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full max-w-2xl mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
+                <TabsList className="flex flex-wrap h-auto w-full max-w-3xl mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
                     <TabsTrigger
                         value="overview"
                         className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-blue-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                         value="security"
                         className="flex-1 rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 hover:text-slate-900 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <Shield className="h-4 w-4 mr-2" /> Security
+                        <Shield className="h-4 w-4 mr-2" /> Security Log
                     </TabsTrigger>
                 </TabsList>
 
@@ -195,10 +195,11 @@ export default function AdminDashboard() {
                 </TabsContent>
 
                 <TabsContent value="profile" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <Card className="border-none shadow-xl overflow-hidden bg-gradient-to-br from-white to-blue-50/30">
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white">
-                            <div className="flex flex-col md:flex-row items-center gap-6">
-                                <div className="h-24 w-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-2xl">
+                    <Card className="border-none shadow-xl overflow-hidden bg-white/80 backdrop-blur-md">
+                        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 text-white relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+                            <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
+                                <div className="h-24 w-24 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shadow-2xl">
                                     <Shield className="h-12 w-12 text-white" />
                                 </div>
                                 <div className="text-center md:text-left">
@@ -211,42 +212,6 @@ export default function AdminDashboard() {
                                             <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
                                             <span className="text-xs font-bold text-blue-100 uppercase tracking-tighter">System Access: {snapshot.user?.adminRole?.replace('_', ' ') || 'ROOT'}</span>
                                         </div>
-                                    </div>
-                                    {/* Detailed Access Summary */}
-                                    <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                                        {(snapshot.user?.adminRole === 'SUPER_ADMIN' || !snapshot.user?.adminRole) && (
-                                            <>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Full Platform Control</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">System Governance</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Revenue Access</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Team Management</span>
-                                            </>
-                                        )}
-                                        {snapshot.user?.adminRole === 'OPERATIONS' && (
-                                            <>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Booking Lifecycle</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Property Controls</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Dispute Resolution</span>
-                                            </>
-                                        )}
-                                        {snapshot.user?.adminRole === 'SUPPORT' && (
-                                            <>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">User Assistance</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Booking Views</span>
-                                            </>
-                                        )}
-                                        {snapshot.user?.adminRole === 'MODERATION' && (
-                                            <>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Listing Security</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Fraud Prevention</span>
-                                            </>
-                                        )}
-                                        {snapshot.user?.adminRole === 'COMPLIANCE' && (
-                                            <>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">KYC Verification</span>
-                                                <span className="text-[10px] font-black bg-white/10 px-2 py-0.5 rounded border border-white/10">Identity Governance</span>
-                                            </>
-                                        )}
                                     </div>
                                 </div>
                             </div>

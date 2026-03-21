@@ -224,20 +224,34 @@ export default function AdminTeamPage() {
 
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Team Access</h1>
-                    <p className="text-muted-foreground">Manage team members, roles and permissions.</p>
+                    <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        Team Governance
+                    </h1>
+                    <p className="text-muted-foreground mt-1 font-medium italic">
+                        RBAC System: Manage internal staff, roles, and platform permissions.
+                    </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={fetchTeam} disabled={loading}><RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />Refresh</Button>
-                    <Button onClick={() => { setShowAdd(!showAdd); setAddErrors({}); setNewMember({ name: "", email: "", phone: "", role: "", permissions: [] }); }}><UserPlus className="h-4 w-4 mr-2" />Add Member</Button>
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={fetchTeam} disabled={loading} className="bg-white/50 backdrop-blur-md border-indigo-100 text-indigo-700 hover:bg-indigo-50 rounded-xl shadow-sm">
+                        <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh Hub
+                    </Button>
+                    <Button 
+                        onClick={() => { setShowAdd(!showAdd); setAddErrors({}); setNewMember({ name: "", email: "", phone: "", role: "", permissions: [] }); }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200"
+                    >
+                        <UserPlus className="h-4 w-4 mr-2" /> Onboard Admin Member
+                    </Button>
                 </div>
             </div>
 
             {/* ── ADD FORM ── */}
             {showAdd && (
-                <Card className="border-primary/30 border-2">
-                    <CardContent className="p-6 space-y-5">
-                        <h3 className="font-bold text-lg">Add New Team Member</h3>
+                <Card className="border-none shadow-2xl shadow-indigo-900/10 overflow-hidden bg-white/80 backdrop-blur-md animate-in slide-in-from-top-4 duration-500">
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                        <h3 className="font-black text-xl tracking-tight">Onboard New Team Member</h3>
+                        <p className="text-indigo-100 text-sm mt-1">Configure internal access and platform-wide permissions.</p>
+                    </div>
+                    <CardContent className="p-8 space-y-8">
 
                         {/* Role chips */}
                         <div className="space-y-1.5">
@@ -357,7 +371,10 @@ export default function AdminTeamPage() {
             )}
 
             {/* ── TEAM TABLE ── */}
-            <Card>
+            <Card className="border-none shadow-2xl shadow-indigo-900/10 overflow-hidden bg-white/80 backdrop-blur-md">
+                <div className="bg-slate-900/5 p-4 border-b">
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Active Platform Administrators</h3>
+                </div>
                 <CardContent className="p-0">
                     {loading && team.length === 0 ? (
                         <div className="p-8 text-center animate-pulse">Loading team members...</div>
