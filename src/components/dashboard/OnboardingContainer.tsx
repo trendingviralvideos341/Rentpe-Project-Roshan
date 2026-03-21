@@ -72,6 +72,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [selectedRoomId, setSelectedRoomId] = useState("");
     const [editAmount, setEditAmount] = useState(booking.amount || "");
     const [editOccupancy, setEditOccupancy] = useState(booking.occupancy || "");
+    const [consentConfirmed, setConsentConfirmed] = useState(false);
 
     useEffect(() => {
         if (booking.propertyName) {
@@ -251,9 +252,12 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         </div>
                     </div>
                     <div className="flex gap-2 items-center">
-                        <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl font-bold border-2 transition-all hover:bg-slate-50" onClick={() => { setEditing(!editing); setShowPendingPrompt(false); }}>
-                            <Edit2 className="h-3.5 w-3.5 mr-2" /> {editing ? "CANCEL" : "EDIT"}
-                        </Button>
+                        <button 
+                            className="h-9 px-6 text-[10px] font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest border border-indigo-100" 
+                            onClick={() => { setEditing(!editing); setShowPendingPrompt(false); }}
+                        >
+                            {editing ? "CANCEL" : "EDIT"}
+                        </button>
                         {booking.status !== "PAID" && booking.status !== "CASH_PAID" && booking.paymentMethod === "CASH" && (
                             <Button size="sm" className="h-9 px-4 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100" onClick={handleCashPaid}>
                                 MARK PAID
@@ -395,11 +399,38 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             </div>
                         </div>
 
+                        {/* Legal Consent Checkbox for Managers */}
+                        <div className={`mt-4 p-4 rounded-2xl border-2 transition-all ${consentConfirmed ? "border-emerald-200 bg-emerald-50/30" : "border-amber-100 bg-amber-50/30"}`}>
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                                <input 
+                                    type="checkbox" 
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                    checked={consentConfirmed}
+                                    onChange={e => setConsentConfirmed(e.target.checked)}
+                                />
+                                <div className="space-y-1">
+                                    <p className="text-[11px] font-black text-slate-800 uppercase tracking-wide">Managerial Declaration & Consent</p>
+                                    <p className="text-[10px] text-slate-600 leading-relaxed">
+                                        I confirm that I have obtained the tenant's explicit consent to process their personal data and have verified their original identity documents. I understand that Misrepresentation of tenant data is a violation of the property management agreement.
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
                         <div className="flex gap-3 pt-4 border-t-2 border-indigo-100">
-                             <Button className="flex-1 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100" onClick={handleSave} disabled={saving}>
+                             <Button 
+                                className="flex-1 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100 disabled:opacity-40" 
+                                onClick={handleSave} 
+                                disabled={saving || !consentConfirmed}
+                             >
                                  {saving ? "SYNCING..." : "UPDATE & VERIFY"}
                              </Button>
-                             <Button variant="ghost" className="h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-xs" onClick={() => setEditing(false)}>CANCEL</Button>
+                             <button 
+                                 className="h-12 px-8 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                 onClick={() => setEditing(false)}
+                             >
+                                 CANCEL
+                             </button>
                         </div>
                     </div>
                 )}
@@ -474,7 +505,12 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 <h3 className="font-black text-lg tracking-tight">{TYPE_LABELS[previewDoc.type]}</h3>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{previewDoc.status}</p>
                             </div>
-                            <Button variant="ghost" className="text-slate-400 hover:text-white" onClick={() => setPreviewDoc(null)}>CLOSE</Button>
+                             <button 
+                                 className="px-6 py-2 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                 onClick={() => setPreviewDoc(null)}
+                             >
+                                 CLOSE
+                             </button>
                         </div>
                         <div className="p-8 bg-slate-50 flex items-center justify-center min-h-[400px]">
                             {previewDoc.fileData?.includes("pdf") ? (

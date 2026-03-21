@@ -132,14 +132,24 @@ export async function getPropertyById(id: string) {
 
 export async function createProperty(data: FormData | any) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) throw new Error("Unauthorized");
 
     const isFormData = data instanceof FormData;
     const getVal = (key: string) => isFormData ? (data.get(key) as string) : (data[key] as string);
     const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
 
     const userId = session.userId;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ 
+        where: { id: userId },
+        select: { id: true, name: true, role: true, parentOwnerId: true, staffPermissions: true }
+    }) as any;
+
+    if (user?.role === 'STAFF') {
+        const perms = JSON.parse(user.staffPermissions || "[]");
+        if (!perms.includes('register_property')) {
+            throw new Error("You do not have permission to register properties");
+        }
+    }
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");

@@ -113,7 +113,13 @@ export function SubmitReviewModal({ booking, isOpen, onClose }: SubmitReviewModa
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+                    <button 
+                        onClick={onClose} 
+                        disabled={isSubmitting}
+                        className="px-6 py-2 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest disabled:opacity-50"
+                    >
+                        CANCEL
+                    </button>
                     <Button onClick={handleSubmit} disabled={isSubmitting || rating === 0} className="bg-blue-600 hover:bg-blue-700">
                         {isSubmitting ? "Submitting..." : "Submit Review"}
                     </Button>

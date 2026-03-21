@@ -275,7 +275,12 @@ function DocumentSection({ booking }: { booking: any }) {
                         ) : (
                             <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
                         )}
-                        <Button className="w-full" onClick={() => setPreviewDoc(null)}>Close</Button>
+                        <button 
+                            className="w-full py-4 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                            onClick={() => setPreviewDoc(null)}
+                        >
+                            CLOSE
+                        </button>
                     </div>
                 </div>
             )}
@@ -732,14 +737,13 @@ export default function StudentDashboardPage() {
 
                                                     {/* Cancel for pending */}
                                                     {booking.status === 'PENDING_APPROVAL' && (
-                                                        <Button
-                                                            size="sm"
-                                                            className="bg-red-500 hover:bg-red-600 text-white font-bold"
+                                                        <button
                                                             onClick={() => handleCancel(booking.id)}
                                                             disabled={cancellingId === booking.id}
+                                                            className="px-6 py-2 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest disabled:opacity-50"
                                                         >
                                                             {cancellingId === booking.id ? "Cancelling..." : "❌ Cancel Request"}
-                                                        </Button>
+                                                        </button>
                                                     )}
                                                     {isPaid && (
                                                         <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>

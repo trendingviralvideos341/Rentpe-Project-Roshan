@@ -28,6 +28,8 @@ const ownerPermissionsList = [
     { id: "block_tenant", label: "Block/Unblock Tenants" },
     { id: "edit_rooms", label: "Edit Room Allocation" },
     { id: "view_payments", label: "View Payments" },
+    { id: "manage_properties", label: "Manage My Properties" },
+    { id: "register_property", label: "Register My Property" },
     { id: "food_menu", label: "Manage Food Menu" },
     { id: "support", label: "Handle Support Tickets" },
 ];
@@ -212,14 +214,20 @@ export default function OwnerStaffPage() {
                                 </div>
                                 <div className="flex gap-2">
                                     <Input value={inviteLink} readOnly className="bg-white border-green-200 font-mono text-xs h-10 shadow-inner" />
-                                    <Button onClick={() => { navigator.clipboard.writeText(inviteLink); alert("Invite link copied to clipboard!"); }} className="bg-green-600 hover:bg-green-700 h-10 px-4">
-                                        <Copy className="h-4 w-4 mr-2" /> Copy Link
-                                    </Button>
+                                    <button 
+                                        onClick={() => { navigator.clipboard.writeText(inviteLink); toast.success("Invite link copied to clipboard!"); }} 
+                                        className="bg-green-600 hover:bg-green-700 text-white h-10 px-6 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-green-100 transition-all active:scale-95 flex items-center gap-2"
+                                    >
+                                        <Copy className="h-4 w-4" /> Copy Link
+                                    </button>
                                 </div>
                                 <div className="pt-2">
-                                    <Button variant="outline" className="w-full border-green-200 text-green-700 hover:bg-green-100" onClick={() => { setShowAdd(false); setInviteLink(null); setForm({ ...emptyForm }); }}>
-                                        Done
-                                    </Button>
+                                    <button 
+                                        className="w-full py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20 transition-all active:scale-95" 
+                                        onClick={() => { setShowAdd(false); setInviteLink(null); setForm({ ...emptyForm }); }}
+                                    >
+                                        DONE
+                                    </button>
                                 </div>
                             </div>
                         ) : (
@@ -425,8 +433,13 @@ export default function OwnerStaffPage() {
                                 </div>
 
                                 <div className="flex gap-3 pt-4">
-                                    <Button onClick={handleAddStaff} className="bg-primary hover:bg-primary/90 flex-1 h-11 font-bold">Generate Invite & Add Staff</Button>
-                                    <Button variant="destructive" onClick={() => { setShowAdd(false); setInviteLink(null); setForm({ ...emptyForm }); setErrors({}); }} className="bg-red-600 hover:bg-red-700 h-11 px-6 font-black uppercase tracking-widest text-xs">Cancel</Button>
+                                    <button onClick={handleAddStaff} className="bg-primary hover:bg-primary/90 flex-1 h-12 rounded-full text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95">Generate Invite & Add Staff</button>
+                                    <button 
+                                        onClick={() => { setShowAdd(false); setInviteLink(null); setForm({ ...emptyForm }); setErrors({}); }} 
+                                        className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                                    >
+                                        CANCEL
+                                    </button>
                                 </div>
                             </>
                         )}
@@ -517,17 +530,23 @@ export default function OwnerStaffPage() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="p-4">
-                                                 {!isBlocked ? (
-                                                     <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleBlockStaff(s.id, s.name)}>
-                                                         Block Access
-                                                     </Button>
-                                                 ) : (
-                                                     <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700" onClick={() => handleUnblockStaff(s.id, s.name)}>
-                                                         Restore Access
-                                                     </Button>
-                                                 )}
-                                             </td>
+                                             <td className="p-4">
+                                                  {!isBlocked ? (
+                                                      <button 
+                                                        onClick={() => handleBlockStaff(s.id, s.name)}
+                                                        className="h-8 px-4 text-[10px] font-black uppercase tracking-widest border-2 border-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-full transition-all active:scale-95 flex items-center justify-center shadow-sm"
+                                                      >
+                                                          Block Account
+                                                      </button>
+                                                  ) : (
+                                                      <button 
+                                                        onClick={() => handleUnblockStaff(s.id, s.name)}
+                                                        className="h-8 px-4 text-[10px] font-black uppercase tracking-widest border-2 border-green-100 text-green-600 hover:bg-green-600 hover:text-white rounded-full transition-all active:scale-95 flex items-center justify-center shadow-sm"
+                                                      >
+                                                          Restore Account
+                                                      </button>
+                                                  )}
+                                              </td>
                                         </tr>
                                     );
                                 })}
@@ -553,13 +572,13 @@ export default function OwnerStaffPage() {
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black flex items-center gap-2">
                             {statusDialogData?.targetStatus === "ACTIVE" ? (
-                                <><CheckCircle className="h-6 w-6 text-green-600" /> Restore Access</>
+                                <><CheckCircle className="h-6 w-6 text-green-600" /> Restore Account</>
                             ) : (
-                                <><Ban className="h-6 w-6 text-red-600" /> Block Access</>
+                                <><Ban className="h-6 w-6 text-red-600" /> Block Account</>
                             )}
                         </DialogTitle>
                         <DialogDescription className="font-medium italic">
-                            Are you sure you want to {statusDialogData?.targetStatus === "ACTIVE" ? "restore access for" : "block"} <span className="font-bold text-primary not-italic">{statusDialogData?.name}</span>?
+                            Are you sure you want to {statusDialogData?.targetStatus === "ACTIVE" ? "restore account for" : "block"} <span className="font-bold text-primary not-italic">{statusDialogData?.name}</span>?
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -585,7 +604,7 @@ export default function OwnerStaffPage() {
                     <DialogFooter className="gap-3 sm:gap-2">
                         <button 
                             onClick={() => setIsStatusDialogOpen(false)}
-                            className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                             disabled={statusSubmitting}
                         >
                             CANCEL
@@ -604,7 +623,7 @@ export default function OwnerStaffPage() {
                             ) : (
                                 <>
                                     {statusDialogData?.targetStatus === "ACTIVE" ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                                    {statusDialogData?.targetStatus === "ACTIVE" ? "Restore Access" : "Confirm Block"}
+                                    {statusDialogData?.targetStatus === "ACTIVE" ? "Restore Account" : "Block Account"}
                                 </>
                             )}
                         </button>

@@ -496,8 +496,13 @@ export function TenantsContainer() {
                             </div>
                         </div>
 
-                        <DialogFooter className="gap-2 sm:gap-0">
-                            <Button variant="ghost" onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: false }))}>Cancel</Button>
+                        <DialogFooter className="gap-2 sm:gap-2">
+                            <button 
+                                onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: false }))}
+                                className="px-6 py-2 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            >
+                                CANCEL
+                            </button>
                             <Button
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
                                 disabled={!moveOutNote[t.id]?.trim()}

@@ -251,7 +251,12 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                                         <div className="flex gap-1 items-center">
                                                             <input className="border rounded px-2 py-1 text-xs w-36" placeholder="Reason for rejection..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} />
                                                             <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleReject(doc.id)}>Reject</Button>
-                                                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setRejectTarget(null); setRejectNote(""); }}>✕</Button>
+                                                            <button 
+                                                                className="px-4 py-1 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                                                onClick={() => { setRejectTarget(null); setRejectNote(""); }}
+                                                            >
+                                                                CANCEL
+                                                            </button>
                                                         </div>
                                                     ) : (
                                                         <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600" onClick={() => setRejectTarget(doc.id)}><XCircle className="h-3 w-3 mr-1" />Decline</Button>
@@ -328,7 +333,12 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                 ) : (
                                     <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
                                 )}
-                                <Button className="w-full" onClick={() => setPreviewDoc(null)}>Close</Button>
+                                <button 
+                                    className="w-full py-4 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                    onClick={() => setPreviewDoc(null)}
+                                >
+                                    CLOSE
+                                </button>
                             </div>
                         </div>
                     )}

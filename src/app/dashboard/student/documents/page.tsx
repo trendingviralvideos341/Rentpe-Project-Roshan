@@ -332,11 +332,16 @@ export default function StudentDocumentsPage() {
                         <canvas ref={canvasRef} className="hidden" />
                         <div className="flex gap-3">
                             <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={captureSelfie}>📸 Capture</Button>
-                            <Button variant="outline" className="flex-1" onClick={() => {
-                                const stream = videoRef.current?.srcObject as MediaStream;
-                                stream?.getTracks().forEach(t => t.stop());
-                                setCameraActive(false);
-                            }}>Cancel</Button>
+                            <button 
+                                onClick={() => {
+                                    const stream = videoRef.current?.srcObject as MediaStream;
+                                    stream?.getTracks().forEach(t => t.stop());
+                                    setCameraActive(false);
+                                }}
+                                className="flex-1 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            >
+                                CANCEL
+                            </button>
                         </div>
                     </div>
                 </div>

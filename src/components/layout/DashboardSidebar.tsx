@@ -99,7 +99,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Property Mgmt",
             links: [
-                { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount, reqPerm: ["manage_properties"] },
+                { href: "/dashboard/owner/properties", label: "My Properties", icon: Building, badge: pendingPropCount, reqPerm: ["manage_properties", "register_property"] },
                 { href: "/dashboard/owner/food-menu", label: "Service (Food Menu)", icon: Utensils, reqPerm: ["food_menu"] },
             ]
         },

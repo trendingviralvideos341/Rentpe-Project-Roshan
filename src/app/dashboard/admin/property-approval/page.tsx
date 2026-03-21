@@ -1290,7 +1290,7 @@ export default function AdminPropertyApprovalPage() {
                         <button 
                             onClick={() => setActionDialog(null)} 
                             disabled={processing}
-                            className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                         >
                             CANCEL
                         </button>
@@ -1337,7 +1337,7 @@ export default function AdminPropertyApprovalPage() {
                     <DialogFooter className="flex flex-row items-center justify-end gap-3 sm:gap-4 !space-x-0 pt-4">
                         <button 
                             onClick={() => setReuploadDialog(null)} 
-                            className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                             disabled={processing}
                         >
                             CANCEL
@@ -1378,14 +1378,13 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                     </div>
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button 
-                            variant="default" 
+                        <button 
                             onClick={() => setDeleteDialog(null)} 
-                            className="rounded-full font-black text-xs uppercase tracking-widest h-10 px-8 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-95"
+                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                             disabled={processing}
                         >
                             CANCEL
-                        </Button>
+                        </button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white font-black rounded-xl px-10 shadow-lg shadow-red-100 transition-all active:scale-95 border-b-4 border-red-800"
                             onClick={async () => {
@@ -1453,13 +1452,12 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                     )}
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button 
-                            variant="default" 
+                        <button 
                             onClick={() => setEditOwnerDialog(null)} 
-                            className="rounded-full font-black text-xs uppercase tracking-widest h-10 px-8 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-95"
+                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                         >
                             CANCEL
-                        </Button>
+                        </button>
                         <Button 
                             onClick={handleUpdateOwner} 
                             disabled={processing}
@@ -1589,13 +1587,12 @@ export default function AdminPropertyApprovalPage() {
                     )}
                     
                     <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3">
-                        <Button 
-                            variant="default" 
+                        <button 
                             onClick={() => setEditPropertyDialog(null)} 
-                            className="rounded-full font-black text-xs uppercase tracking-widest h-10 px-8 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-95"
+                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                         >
                             CANCEL
-                        </Button>
+                        </button>
                         <Button 
                             onClick={handleUpdateProperty} 
                             disabled={processing}

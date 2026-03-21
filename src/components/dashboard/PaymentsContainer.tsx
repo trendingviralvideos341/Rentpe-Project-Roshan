@@ -219,7 +219,7 @@ export function PaymentsContainer() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        className={`h-8 text-[10px] font-bold gap-1.5 rounded-xl border-2 transition-all ${isHistoryOpen ? "bg-slate-100 border-slate-200" : "border-transparent bg-slate-50 hover:bg-slate-100"}`}
+                                                        className={`h-8 text-[10px] font-black gap-1.5 rounded-xl border-2 transition-all shadow-sm ${isHistoryOpen ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "border-transparent bg-slate-50 hover:bg-slate-100"}`}
                                                         onClick={() => toggleHistory(t.id)}
                                                     >
                                                         <History className="h-3 w-3" />

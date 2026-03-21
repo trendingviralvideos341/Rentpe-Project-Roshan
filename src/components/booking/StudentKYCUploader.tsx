@@ -18,6 +18,7 @@ interface StudentKYCUploaderProps {
 export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSuccess }: StudentKYCUploaderProps) {
     const [uploading, setUploading] = useState<string | null>(null);
     const [uploadingCount, setUploadingCount] = useState(0);
+    const [consentAgreed, setConsentAgreed] = useState(false);
     const { 
         status: uploadStatus, 
         progress: uploadProgress, 
@@ -87,6 +88,24 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                 </CardDescription>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
+                {/* Identity Confirmation Checkbox */}
+                <div className={`p-4 rounded-2xl border-2 transition-all ${consentAgreed ? "border-indigo-200 bg-indigo-50/30" : "border-amber-200 bg-amber-50/30 shadow-inner"}`}>
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                        <input 
+                            type="checkbox" 
+                            className="mt-1 h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0 transition-transform active:scale-90"
+                            checked={consentAgreed}
+                            onChange={e => setConsentAgreed(e.target.checked)}
+                        />
+                        <div className="space-y-1">
+                            <p className="text-xs font-black text-slate-800 tracking-tight uppercase">Identity & Document Declaration</p>
+                            <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                                I hereby confirm that the documents I am about to upload are authentic, belong to me, and are legally valid. I agree to RentPe's <a href="/privacy" target="_blank" className="text-indigo-600 underline font-bold">Privacy Policy</a> regarding the processing and encryption of my sensitive identity data for verification purposes. <span className="text-red-500 font-bold">*</span>
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {docTypes.map((doc) => {
                         const existing = existingDocs.find(d => d.type === doc.key);
@@ -138,9 +157,14 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                                                         type="file"
                                                         className="hidden"
                                                         onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], doc.key)}
-                                                        disabled={!!uploading}
+                                                        disabled={!!uploading || !consentAgreed}
                                                     />
-                                                    <Button variant="outline" size="sm" className="w-full text-[10px] h-8 font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="w-full text-[10px] h-8 font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 disabled:opacity-30"
+                                                        disabled={!consentAgreed}
+                                                    >
                                                         {uploading === doc.key ? "Syncing..." : "Replace"}
                                                     </Button>
                                                 </label>
@@ -152,9 +176,14 @@ export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSucce
                                                 type="file"
                                                 className="hidden"
                                                 onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], doc.key)}
-                                                disabled={!!uploading}
+                                                disabled={!!uploading || !consentAgreed}
                                             />
-                                            <Button variant="outline" size="sm" className="w-full h-10 border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="w-full h-10 border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold disabled:opacity-30"
+                                                disabled={!consentAgreed}
+                                            >
                                                 {uploading === doc.key ? "Syncing..." : "Upload File"}
                                             </Button>
                                         </label>

@@ -101,13 +101,19 @@ export default function RentReceipt({ booking, onClose }: ReceiptProps) {
                         </div>
                     </div>
 
-                    <div className="flex justify-center gap-4 pt-8 print:hidden">
-                        <Button variant="outline" onClick={handlePrint}>
+                    <div className="flex justify-center flex-wrap gap-4 pt-8 print:hidden">
+                        <Button variant="outline" onClick={handlePrint} className="flex-1 max-w-[180px]">
                             <Printer className="h-4 w-4 mr-2" /> Print Receipt
                         </Button>
-                        <Button onClick={handlePrint}>
+                        <Button onClick={handlePrint} className="flex-1 max-w-[180px] bg-slate-900">
                             <Download className="h-4 w-4 mr-2" /> Download PDF
                         </Button>
+                        <button 
+                            onClick={onClose}
+                            className="w-full mt-2 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                        >
+                            CLOSE
+                        </button>
                     </div>
                 </CardContent>
 

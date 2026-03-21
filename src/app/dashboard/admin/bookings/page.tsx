@@ -240,7 +240,12 @@ function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboardin
                                 ) : (
                                     <div className="h-40 flex items-center justify-center bg-muted rounded text-xs">Preview unavailable</div>
                                 )}
-                                <Button className="w-full h-8 text-xs" variant="secondary" onClick={() => setPreviewDoc(null)}>Close</Button>
+                                <button 
+                                    className="w-full py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                                    onClick={() => setPreviewDoc(null)}
+                                >
+                                    CLOSE
+                                </button>
                             </div>
                         </div>
                     )}

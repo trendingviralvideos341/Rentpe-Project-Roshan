@@ -233,7 +233,12 @@ export default function AdminSettingsPage() {
                                     {twoFactorError && <p className="text-xs text-red-600 font-medium">{twoFactorError}</p>}
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button variant="outline" className="flex-1" onClick={() => setTwoFactorStep('IDLE')}>Cancel</Button>
+                                    <button 
+                                        onClick={() => setTwoFactorStep('IDLE')}
+                                        className="flex-1 py-2 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                                    >
+                                        CANCEL
+                                    </button>
                                     <Button 
                                         className={`flex-1 ${user?.twoFactorEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
                                         onClick={user?.twoFactorEnabled ? handleDisable2FA : handleConfirm2FA}

@@ -132,8 +132,13 @@ export default function UserDetailPage() {
                             {!editMode ? (
                                 <Button variant="ghost" size="sm" onClick={() => setEditMode(true)} className="h-7 text-[10px] font-black uppercase text-blue-600 hover:text-blue-700 hover:bg-blue-50">Edit</Button>
                             ) : (
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => setEditMode(false)} className="h-7 text-[10px] font-black uppercase text-slate-500">Cancel</Button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setEditMode(false)}
+                                        className="px-4 py-1.5 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                                    >
+                                        CANCEL
+                                    </button>
                                     <Button variant="ghost" size="sm" onClick={handleSave} disabled={saving} className="h-7 text-[10px] font-black uppercase text-green-600 hover:text-green-700 hover:bg-green-50">Save</Button>
                                 </div>
                             )}

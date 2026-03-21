@@ -43,7 +43,7 @@ function BlockModal({
                         <AlertTriangle className={`h-5 w-5 ${isBlocked ? "text-green-600" : "text-red-600"}`} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-lg">{isBlocked ? "Unblock" : "Block"} Access</h3>
+                        <h3 className="font-bold text-lg">{isBlocked ? "Unblock" : "Block"} Account</h3>
                         <p className="text-sm text-muted-foreground">{member.name} · {member.email}</p>
                     </div>
                 </div>
@@ -53,7 +53,7 @@ function BlockModal({
                         <textarea
                             value={reason}
                             onChange={e => setReason(e.target.value)}
-                            placeholder={isBlocked ? "Why are you restoring access?" : "Why are you blocking this member?"}
+                            placeholder={isBlocked ? "Why are you restoring the account?" : "Why are you blocking this member?"}
                             className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-28 focus:outline-none focus:border-red-500 focus:bg-red-50/10 transition-all font-medium"
                         />
                     </div>
@@ -61,7 +61,7 @@ function BlockModal({
                 <div className="flex gap-3 justify-end pt-4">
                     <button
                         onClick={onCancel}
-                        className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                        className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
                     >
                         CANCEL
                     </button>
@@ -72,7 +72,7 @@ function BlockModal({
                             isBlocked ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200" : "bg-red-600 hover:bg-red-700 shadow-red-200"
                         }`}>
                         {isBlocked ? <ShieldCheck className="h-4 w-4" /> : <ShieldOff className="h-4 w-4" />}
-                        {isBlocked ? "Restore Access" : "Block Access"}
+                        {isBlocked ? "Restore Account" : "Block Account"}
                     </button>
                 </div>
             </div>
@@ -370,11 +370,16 @@ export default function AdminTeamPage() {
 
                         {addErrors.submit && <p className="text-sm text-red-600 bg-red-50 border border-red-200 p-2 rounded">{addErrors.submit}</p>}
 
-                        <div className="flex gap-2">
-                            <Button onClick={handleAddMember} disabled={adding} className="bg-green-600 hover:bg-green-700 text-white">
+                        <div className="flex gap-3">
+                            <Button onClick={handleAddMember} disabled={adding} className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-6 h-11">
                                 {adding ? "Adding..." : "Add Member"}
                             </Button>
-                            <Button variant="outline" onClick={() => { setShowAdd(false); setAddErrors({}); setNewMember({ name: "", email: "", phone: "+91", role: "", permissions: [] }); }}>Cancel</Button>
+                            <button 
+                                onClick={() => { setShowAdd(false); setAddErrors({}); setNewMember({ name: "", email: "", phone: "+91", role: "", permissions: [] }); }}
+                                className="px-8 py-2.5 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            >
+                                CANCEL
+                            </button>
                         </div>
                     </CardContent>
                 </Card>
@@ -461,9 +466,12 @@ export default function AdminTeamPage() {
                                                             <Button size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white" disabled={saving} onClick={() => saveEdit(m.id)}>
                                                                 <Check className="h-3 w-3 mr-1" />{saving ? "Saving..." : "Save"}
                                                             </Button>
-                                                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={cancelEdit}>
-                                                                <X className="h-3 w-3 mr-1" />Cancel
-                                                            </Button>
+                                                            <button 
+                                                                onClick={cancelEdit}
+                                                                className="px-3 py-1.5 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest flex items-center justify-center"
+                                                            >
+                                                                <X className="h-3 w-3 mr-1" /> CANCEL
+                                                            </button>
                                                         </>
                                                     ) : (
                                                         <>

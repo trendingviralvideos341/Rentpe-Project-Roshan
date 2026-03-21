@@ -717,11 +717,16 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                             </div>
                         )}
 
-                        <div className="flex gap-2 pt-2">
-                            <Button className="bg-green-600 hover:bg-green-700 flex-1" onClick={handleSave} disabled={saving}>
+                        <div className="flex gap-3 pt-4">
+                            <Button className="bg-indigo-600 hover:bg-indigo-700 font-black flex-1 rounded-full shadow-lg shadow-indigo-100 transition-all active:scale-95 py-6 uppercase tracking-widest text-xs" onClick={handleSave} disabled={saving}>
                                 {saving ? "Saving..." : showPendingPrompt ? "✅ Confirm & Save" : "✅ Save Changes"}
                             </Button>
-                            <Button variant="ghost" className="flex-1" onClick={() => { setEditing(false); setShowPendingPrompt(false); }}>Cancel</Button>
+                            <button 
+                                onClick={() => { setEditing(false); setShowPendingPrompt(false); }}
+                                className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest flex-1"
+                            >
+                                CANCEL
+                            </button>
                         </div>
                     </div>
                 )}
@@ -842,7 +847,12 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         ) : (
                             <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
                         )}
-                        <Button className="w-full" onClick={() => setPreviewDoc(null)}>Close</Button>
+                        <button 
+                            className="w-full py-4 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            onClick={() => setPreviewDoc(null)}
+                        >
+                            CLOSE PREVIEW
+                        </button>
                     </div>
                 </div>
             )}

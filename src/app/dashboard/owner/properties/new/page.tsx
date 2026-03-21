@@ -133,6 +133,16 @@ export default function AddPropertyPage() {
             ]);
 
             if (user) {
+                // Auth Check: If staff, must have register_property permission
+                if (user.role === 'STAFF') {
+                    const perms = JSON.parse((user as any).staffPermissions || "[]");
+                    if (!perms.includes('register_property')) {
+                        toast.error("Unauthorized: You do not have permission to register properties.");
+                        router.push("/dashboard/staff/properties");
+                        return;
+                    }
+                }
+
                 setOwnerName(user.name || "");
                 setOwnerEmail(user.email || "");
                 let p = user.phone || "";
@@ -1400,14 +1410,14 @@ export default function AddPropertyPage() {
                 </Card>
 
                 <div className="flex justify-center items-center gap-4 pt-6 mb-12">
-                    <Button 
+                    <button 
                         type="button" 
                         onClick={() => router.back()} 
                         suppressHydrationWarning
-                        className="px-8 h-12 bg-rose-500 hover:bg-rose-600 text-white font-black uppercase tracking-widest shadow-lg shadow-rose-200 transition-all duration-200 hover:scale-105 active:scale-95"
+                        className="px-8 h-12 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest font-black text-xs"
                     >
-                        Cancel
-                    </Button>
+                        CANCEL
+                    </button>
                     <Button 
                         type="submit" 
                         disabled={saving || uploadingCount > 0} 

@@ -40,7 +40,7 @@ function PointsModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (poi
                     </div>
                 </div>
                 <div className="flex gap-3 justify-end pt-4">
-                    <button onClick={onCancel} className="px-8 py-2.5 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest">
+                    <button onClick={onCancel} className="px-8 py-2.5 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest">
                         CANCEL
                     </button>
                     <button disabled={!reason.trim()} onClick={() => onConfirm(points, reason)}
@@ -78,7 +78,7 @@ function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reas
                     </div>
                 </div>
                 <div className="flex gap-3 justify-end pt-4">
-                    <button onClick={onCancel} className="px-8 py-3 text-xs font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest">
+                    <button onClick={onCancel} className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest">
                         CANCEL
                     </button>
                     <button disabled={!reason.trim()} onClick={() => onConfirm(reason)}

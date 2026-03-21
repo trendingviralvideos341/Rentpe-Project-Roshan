@@ -24,9 +24,10 @@ import {
 
 interface PropertiesContainerProps {
     role: 'owner' | 'staff';
+    permissions?: string[];
 }
 
-export function PropertiesContainer({ role }: PropertiesContainerProps) {
+export function PropertiesContainer({ role, permissions = [] }: PropertiesContainerProps) {
     const [properties, setProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
@@ -124,7 +125,7 @@ export function PropertiesContainer({ role }: PropertiesContainerProps) {
                     <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-1">My Properties</h1>
                     <p className="text-slate-500 font-medium">Manage and monitor your PG listings in real-time.</p>
                 </div>
-                {role === 'owner' && (
+                {(role === 'owner' || (role === 'staff' && permissions.includes('register_property'))) && (
                     <Link href={`${basePath}/properties/new`}>
                         <Button className="rounded-xl h-11 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 font-bold transition-all active:scale-95">
                             <Plus className="mr-2 h-5 w-5" /> Add New Property
@@ -249,7 +250,7 @@ export function PropertiesContainer({ role }: PropertiesContainerProps) {
                                             </div>
                                         )}
                                         <div className="flex items-center gap-2">
-                                            {property.status === 'APPROVED_PENDING_PAYMENT' && role === 'owner' && (
+                                            {property.status === 'APPROVED_PENDING_PAYMENT' && (role === 'owner' || permissions.includes('manage_properties')) && (
                                                 <Button 
                                                     variant="default" 
                                                     size="sm" 
@@ -260,16 +261,14 @@ export function PropertiesContainer({ role }: PropertiesContainerProps) {
                                                     {processingId === property.id ? "Processing..." : "PAY ₹99"}
                                                 </Button>
                                             )}
-                                            {property.status !== 'APPROVED' && role === 'owner' && (
-                                                <Button 
-                                                    variant="destructive" 
-                                                    size="sm" 
-                                                    className="bg-rose-500 hover:bg-rose-600 text-white border-b-4 border-rose-700 shadow-xl shadow-rose-100 transition-all font-black uppercase text-[11px] h-10 px-6 rounded-2xl active:scale-95"
+                                            {property.status !== 'APPROVED' && (role === 'owner' || permissions.includes('manage_properties')) && (
+                                                <button 
+                                                    className="h-10 px-8 text-[11px] font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl transition-all active:scale-95 shadow-md shadow-indigo-100/50 uppercase tracking-widest border border-indigo-100"
                                                     onClick={(e) => handleCancelClick(e, property.id, property.name)}
                                                     disabled={processingId === property.id}
                                                 >
                                                     CANCEL
-                                                </Button>
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -301,13 +300,12 @@ export function PropertiesContainer({ role }: PropertiesContainerProps) {
                         </DialogHeader>
                     </div>
                     <DialogFooter className="p-6 bg-slate-50 flex flex-col sm:flex-row gap-3">
-                        <Button 
-                            variant="default" 
-                            className="flex-1 rounded-xl h-11 bg-blue-600 hover:bg-blue-700 text-white border-[3px] border-blue-700 active:scale-95 transition-all font-black uppercase tracking-wider text-[11px] shadow-lg"
+                        <button 
+                            className="flex-1 rounded-xl h-11 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all active:scale-95 font-black uppercase tracking-wider text-[11px] shadow-sm border border-indigo-100"
                             onClick={() => setCancelModalOpen(false)}
                         >
                             No, Keep it
-                        </Button>
+                        </button>
                         <Button 
                             variant="destructive" 
                             className="flex-1 rounded-xl h-11 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-wider text-[11px] shadow-lg active:scale-95 transition-all border-[3px] border-rose-700/20"

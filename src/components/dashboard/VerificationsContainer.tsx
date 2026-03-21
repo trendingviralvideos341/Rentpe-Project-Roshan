@@ -389,7 +389,12 @@ export function VerificationsContainer() {
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" className="font-bold text-xs" onClick={() => setRejectTarget(null)}>Cancel</Button>
+                        <button 
+                            className="px-6 py-2 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                            onClick={() => setRejectTarget(null)}
+                        >
+                            CANCEL
+                        </button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 font-black text-xs tracking-widest h-11 px-8 rounded-xl text-white"
                             onClick={() => handleVerifyUpdate(rejectTarget!, 'REJECTED', rejectNote)}
@@ -466,7 +471,12 @@ export function VerificationsContainer() {
                             })()}
                         </div>
                         <div className="p-6 border-t border-white/10">
-                            <Button className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-[11px]" onClick={() => setPreviewDoc(null)}>Close Preview</Button>
+                            <button 
+                                className="w-full py-4 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                onClick={() => setPreviewDoc(null)}
+                            >
+                                CLOSE PREVIEW
+                            </button>
                         </div>
                     </div>
                 </DialogContent>

@@ -229,7 +229,12 @@ export function TicketsContainer() {
                             <Button onClick={handleCreate} disabled={creating || !description.trim()}>
                                 {creating ? "Submitting..." : "Submit to RentPe Team"}
                             </Button>
-                            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+                            <button 
+                                onClick={() => setShowCreate(false)}
+                                className="px-8 py-2.5 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            >
+                                CANCEL
+                            </button>
                         </div>
                     </CardContent>
                 </Card>

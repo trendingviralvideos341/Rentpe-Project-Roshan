@@ -758,7 +758,12 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                             <Button className="flex-1 h-16 rounded-3xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-900/50" onClick={capturePhoto}>
                                 <Camera className="w-5 h-5 mr-3" /> CAPTURE PHOTO
                             </Button>
-                            <Button variant="ghost" className="h-16 px-8 rounded-3xl border-2 border-white/10 font-black uppercase tracking-widest text-xs text-white hover:bg-white/5" onClick={stopCapture}>CANCEL</Button>
+                            <button 
+                                className="h-16 px-10 rounded-3xl border-2 border-indigo-100 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-sm" 
+                                onClick={stopCapture}
+                            >
+                                CANCEL
+                            </button>
                          </div>
                     </div>
                 </DialogContent>
@@ -904,13 +909,12 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                             </>
                                         )}
 
-                                        <Button 
-                                            size="lg"
+                                        <button 
                                             onClick={() => { setViewDialog(null); setPreviewZoom(1); }}
-                                            className="h-16 px-14 bg-black hover:bg-slate-900 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all ml-auto"
+                                            className="h-16 px-14 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all ml-auto border border-indigo-100/50"
                                         >
                                             CLOSE
-                                        </Button>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
