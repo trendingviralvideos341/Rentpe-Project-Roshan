@@ -39,7 +39,19 @@ async function main() {
             name: "RentPe Admin",
             phone: "9000000001",
             status: "ACTIVE",
-            emailVerified: true
+            emailVerified: true,
+            adminProfile: {
+                create: {
+                    displayId: "ADM-EMP-0001",
+                    name: "RentPe Admin",
+                    email: "admin@rentpe.in",
+                    phone: "9000000001",
+                    department: "System Administration",
+                    role: "Super Admin",
+                    permissions: JSON.stringify(["all"]),
+                    status: "ACTIVE"
+                }
+            }
         }
     });
     console.log("✅ Admin created:", admin.email);
