@@ -9,8 +9,8 @@ export async function saveProperty(propertyId: string, note?: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    const existing = await (prisma as any).savedProperty.findUnique({
-        where: { userId_propertyId: { userId: (session as any).userId, propertyId } }
+    const existing = await (prisma as any).savedProperty.findFirst({
+        where: { userId: (session as any).userId, propertyId, status: 'ACTIVE' }
     });
     if (existing) return existing; // already saved
 
@@ -26,8 +26,9 @@ export async function unsaveProperty(propertyId: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    await (prisma as any).savedProperty.deleteMany({
-        where: { userId: (session as any).userId, propertyId }
+    await (prisma as any).savedProperty.updateMany({
+        where: { userId: (session as any).userId, propertyId },
+        data: { status: 'CANCELLED', deletedAt: new Date() }
     });
     revalidatePath('/dashboard/student/saved');
     return { success: true };
@@ -39,7 +40,7 @@ export async function getSavedProperties() {
     if (!session) throw new Error("Unauthorized");
 
     const saved = await (prisma as any).savedProperty.findMany({
-        where: { userId: (session as any).userId },
+        where: { userId: (session as any).userId, status: 'ACTIVE' },
         include: {
             property: {
                 include: { rooms: { select: { price: true, type: true, availability: true } } }
@@ -69,8 +70,8 @@ export async function isPropertySaved(propertyId: string): Promise<boolean> {
     const session = await getSession();
     if (!session) return false;
 
-    const existing = await (prisma as any).savedProperty.findUnique({
-        where: { userId_propertyId: { userId: (session as any).userId, propertyId } }
+    const existing = await (prisma as any).savedProperty.findFirst({
+        where: { userId: (session as any).userId, propertyId, status: 'ACTIVE' }
     });
     return !!existing;
 }

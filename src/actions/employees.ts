@@ -122,13 +122,14 @@ export async function removeEmployeeFromProperty(employeeId: string, propertyId:
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
-    const assignment = await prisma.employeePropertyAssignment.delete({
+    const assignment = await (prisma as any).employeePropertyAssignment.update({
         where: {
             employeeId_propertyId: {
                 employeeId,
                 propertyId
             }
         },
+        data: { status: 'CANCELLED', deletedAt: new Date() },
         include: { employee: true, property: true }
     });
 

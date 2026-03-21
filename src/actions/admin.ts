@@ -342,11 +342,13 @@ export async function adminPurgeUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    // Permanent delete — cascade related data
-    await prisma.booking.deleteMany({ where: { userId } });
-    await prisma.notification.deleteMany({ where: { userId } });
-    await prisma.ticket.deleteMany({ where: { userId } });
-    await prisma.user.delete({ where: { id: userId } });
+    // Permanent delete is now a "Hard Soft Delete"
+    await prisma.$transaction(async (tx) => {
+        await tx.booking.updateMany({ where: { userId }, data: { status: 'PURGED' } });
+        await tx.notification.updateMany({ where: { userId }, data: { isPersistent: false, message: '[PURGED]' } });
+        await tx.ticket.updateMany({ where: { userId }, data: { status: 'PURGED' } });
+        await tx.user.update({ where: { id: userId }, data: { status: 'PURGED', deletedAt: new Date() } });
+    });
 
     logAuditEvent({
         actorId: (session as any).userId as string,
@@ -410,9 +412,11 @@ export async function adminPurgeBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    await prisma.payment.deleteMany({ where: { bookingId } });
-    await prisma.tenantDocument.deleteMany({ where: { bookingId } });
-    await prisma.booking.delete({ where: { id: bookingId } });
+    await prisma.$transaction(async (tx) => {
+        await tx.payment.updateMany({ where: { bookingId }, data: { status: 'PURGED' } });
+        await tx.tenantDocument.updateMany({ where: { bookingId }, data: { status: 'PURGED' } });
+        await tx.booking.update({ where: { id: bookingId }, data: { status: 'PURGED', deletedAt: new Date() } });
+    });
 
     logAuditEvent({
         actorId: (session as any).userId as string,
@@ -431,8 +435,10 @@ export async function adminDeleteTenant(tenantId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    await prisma.rentRecord.deleteMany({ where: { tenantId } });
-    await prisma.tenant.delete({ where: { id: tenantId } });
+    await prisma.$transaction(async (tx) => {
+        await tx.rentRecord.updateMany({ where: { tenantId }, data: { amount: 0, month: 'PURGED' } });
+        await tx.tenant.update({ where: { id: tenantId }, data: { status: 'CANCELLED' } });
+    });
 
     logAuditEvent({
         actorId: (session as any).userId as string,
@@ -451,10 +457,12 @@ export async function adminDeleteProperty(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    await prisma.room.deleteMany({ where: { propertyId } });
-    await prisma.booking.deleteMany({ where: { propertyName: { contains: propertyId } } });
-    await prisma.tenant.deleteMany({ where: { propertyId } });
-    await prisma.property.delete({ where: { id: propertyId } });
+    await prisma.$transaction(async (tx) => {
+        await tx.room.updateMany({ where: { propertyId }, data: { status: 'CANCELLED' } });
+        await tx.booking.updateMany({ where: { propertyName: { contains: propertyId } }, data: { status: 'CANCELLED' } });
+        await tx.tenant.updateMany({ where: { propertyId }, data: { status: 'CANCELLED' } });
+        await tx.property.update({ where: { id: propertyId }, data: { status: 'CANCELLED' } });
+    });
 
     logAuditEvent({
         actorId: (session as any).userId as string,
@@ -1247,9 +1255,9 @@ export async function adminDeleteRoom(roomId: string) {
     if (occupiedBeds) throw new Error("Cannot delete room with occupied beds");
 
     const result = await prisma.$transaction(async (tx) => {
-        // Cascade delete beds (Prisma might handle this if configured, but let's be safe)
-        await tx.bed.deleteMany({ where: { roomId: roomId } });
-        const deleted = await tx.room.delete({ where: { id: roomId } });
+        // Cascade soft-delete beds
+        await tx.bed.updateMany({ where: { roomId: roomId }, data: { status: 'CANCELLED' } });
+        const deleted = await tx.room.update({ where: { id: roomId }, data: { status: 'CANCELLED' } });
 
         await tx.auditLog.create({
             data: {

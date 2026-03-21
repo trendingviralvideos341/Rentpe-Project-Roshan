@@ -44,6 +44,8 @@ export default function PropertyDetailPage() {
     });
     const [foodSelected, setFoodSelected] = useState<boolean | null>(null); // null = not yet chosen (only for OPTIONAL)
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [legalAgreed, setLegalAgreed] = useState(false);
+    const [legalError, setLegalError] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -115,6 +117,10 @@ export default function PropertyDetailPage() {
         if (!formData.moveInDate) errs.moveInDate = "Move-in date is required";
         if (!formData.occupationType) errs.occupationType = "Occupation type is required";
         if (!formData.occupationDetail.trim()) errs.occupationDetail = "Occupation detail is required";
+        if (!legalAgreed) {
+            setLegalError(true);
+            return;
+        }
 
         if (Object.keys(errs).length > 0) {
             setFieldErrors(errs);
@@ -564,17 +570,56 @@ export default function PropertyDetailPage() {
                                 />
                             </div>
 
-                            <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
-                                <strong>No Payment Required Now.</strong>
-                                <p className="mt-1">You only pay after the owner approves your request and allocates a room. Secure your spot today for free!</p>
+                            {/* ⚖️ Legal Consent Checkbox — Mandatory before booking */}
+                            <div className={`rounded-xl border-2 p-3 space-y-2 transition-colors ${
+                                legalError ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"
+                            }`}>
+                                <label className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        id="booking-legal-consent"
+                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                                        checked={legalAgreed}
+                                        onChange={e => {
+                                            setLegalAgreed(e.target.checked);
+                                            if (e.target.checked) setLegalError(false);
+                                        }}
+                                    />
+                                    <span className={`text-[11px] leading-relaxed font-medium ${
+                                        legalError ? "text-red-700" : "text-gray-600 group-hover:text-gray-900"
+                                    } transition-colors`}>
+                                        I have read and agree to the{" "}
+                                        <a href="/terms/tenant" target="_blank" className="text-emerald-700 underline underline-offset-2 font-bold hover:text-emerald-900">
+                                            Student/Tenant Agreement
+                                        </a>
+                                        ,{" "}
+                                        <a href="/terms" target="_blank" className="text-emerald-700 underline underline-offset-2 font-bold hover:text-emerald-900">
+                                            Terms & Conditions
+                                        </a>{" "}
+                                        and{" "}
+                                        <a href="/privacy" target="_blank" className="text-emerald-700 underline underline-offset-2 font-bold hover:text-emerald-900">
+                                            Privacy Policy
+                                        </a>
+                                        . I understand the rent, food billing, deposit, and refund rules. <span className="text-red-500 font-bold">*</span>
+                                    </span>
+                                </label>
+                                {legalError && (
+                                    <p className="text-[11px] text-red-600 font-bold flex items-center gap-1 pl-7">
+                                        ⚠️ You must agree to the terms before requesting a booking.
+                                    </p>
+                                )}
                             </div>
 
                             <Button
-                                className="w-full text-lg h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-lg"
+                                className={`w-full text-lg h-12 font-bold shadow-lg transition-all ${
+                                    legalAgreed
+                                        ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                }`}
                                 onClick={!currentUser ? () => router.push("/login?redirect=" + encodeURIComponent(window.location.pathname)) : handleBooking}
                                 disabled={bookingLoading || property.rooms.length === 0}
                             >
-                                {!currentUser ? "🔒 Sign in to Book" : bookingLoading ? "Processing..." : "🚀 Request Booking"}
+                                {!currentUser ? "🔒 Sign in to Book" : bookingLoading ? "Processing..." : legalAgreed ? "🚀 Request Booking" : "☑️ Agree to Terms to Proceed"}
                             </Button>
                             <p className="text-xs text-center text-muted-foreground">Fastest booking experience. No hidden charges.</p>
                         </CardContent>

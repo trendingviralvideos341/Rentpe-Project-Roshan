@@ -198,13 +198,17 @@ export async function overrideFoodBilling(
     bookingId: string,
     action: FoodOverrideAction,
     amount?: number,
-    notes?: string,
-    requestMeta?: { ipAddress?: string; userAgent?: string }
+    notes?: string
 ): Promise<{ success: boolean; error?: string }> {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') return { success: false, error: 'Unauthorized — Admin only.' };
 
+    // ── Input Validation ──
+    if (!bookingId?.trim()) return { success: false, error: 'bookingId is required.' };
     if (!notes?.trim()) return { success: false, error: 'Notes are mandatory for admin overrides.' };
+    if (amount !== undefined && (typeof amount !== 'number' || amount <= 0 || !isFinite(amount))) {
+        return { success: false, error: 'Amount must be a positive finite number.' };
+    }
 
     const adminId = (session as any).userId;
     const adminName = (session as any).name || 'Admin';
@@ -253,9 +257,9 @@ export async function overrideFoodBilling(
         if (action === 'REFUND') {
             if (!amount || amount <= 0) return { success: false, error: 'Refund amount must be greater than 0.' };
 
-            // Find latest invoice for this booking (via tenant)
+            // Find latest invoice for this booking (correct: keyed by bookingId, not tenantId)
             const latestInvoice = await (prisma as any).rentInvoice.findFirst({
-                where: { tenantId: booking.tenantId },
+                where: { bookingId },
                 orderBy: { createdAt: 'desc' }
             });
 

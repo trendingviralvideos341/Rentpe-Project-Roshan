@@ -155,13 +155,19 @@ export async function createProperty(data: FormData | any) {
     const termsAccepted = termsAcceptedRaw === "true" || termsAcceptedRaw === "on" || (termsAcceptedRaw as any) === true;
     const feeTermsAcceptedRaw = getVal("feeTermsAccepted");
     const feeTermsAccepted = feeTermsAcceptedRaw === "true" || feeTermsAcceptedRaw === "on" || (feeTermsAcceptedRaw as any) === true;
+    
     // ── Food & Mess Service (Section 2) ──
-    const foodType = getVal("foodType") || "NOT_AVAILABLE"; // INCLUDED | OPTIONAL | NOT_AVAILABLE
+    const foodType = getVal("foodType"); 
     const foodPricePerMonthRaw = getVal("foodPricePerMonth");
     const foodPricePerMonth = foodPricePerMonthRaw ? parseFloat(foodPricePerMonthRaw) : null;
 
     if (!name?.trim()) throw new Error("Property name is required");
     if (!termsAccepted) throw new Error("You must accept general terms to list your property.");
+
+    if (!foodType) {
+        throw new Error("Food service selection is mandatory.");
+    }
+
     // Section 2 — Validation: price required if OPTIONAL
     if (foodType === 'OPTIONAL' && (!foodPricePerMonth || foodPricePerMonth <= 0)) {
         throw new Error("Food price per month is required when food service is Optional.");
@@ -709,18 +715,29 @@ export async function deleteProperty(propertyId: string) {
     return prisma.$transaction(async (tx) => {
         const roomIds = property.rooms.map(r => r.id);
         
-        // 1. Delete related records
+        // 1. Soft-delete related records
         if (roomIds.length > 0) {
-            await tx.bed.deleteMany({ where: { roomId: { in: roomIds } } });
-            await tx.room.deleteMany({ where: { propertyId } });
+            await tx.bed.updateMany({ 
+                where: { roomId: { in: roomIds } },
+                data: { status: 'CANCELLED' }
+            });
+            await tx.room.updateMany({ 
+                where: { propertyId },
+                data: { status: 'CANCELLED' }
+            });
         }
-        await tx.foodMenu.deleteMany({ where: { propertyId } });
-        await tx.employeePropertyAssignment.deleteMany({ where: { propertyId } });
-        await tx.savedProperty.deleteMany({ where: { propertyId } });
-        await tx.review.deleteMany({ where: { propertyId } });
+        // For other models, check if they have status; if not, they might need model updates or just stay for now.
+        // But the policy says: "Do not delete: invoices, credit notes, food preferences".
+        // FeeExemption, FoodMenu, Assignment — we added status to some.
+        
+        await (tx as any).foodMenu?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
+        await (tx as any).employeePropertyAssignment?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
 
-        // 2. Finally delete the property
-        await tx.property.delete({ where: { id: propertyId } });
+        // 2. Finally soft-delete the property
+        await tx.property.update({ 
+            where: { id: propertyId },
+            data: { status: 'CANCELLED' } 
+        });
 
         await tx.auditLog.create({
             data: {

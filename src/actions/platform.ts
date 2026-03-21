@@ -232,7 +232,10 @@ export async function removeFeeExemption(id: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    await (prisma as any).feeExemption.delete({ where: { id } });
+    await (prisma as any).feeExemption.update({
+        where: { id },
+        data: { status: 'CANCELLED', deletedAt: new Date() }
+    });
 
     logAuditEvent({
         actorId: (session as any).userId,

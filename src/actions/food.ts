@@ -66,6 +66,11 @@ export async function changeFoodPreference(
 
         if (!booking) return { success: false, error: 'Booking not found' };
 
+        // ── Security: only allowed on ACTIVE bookings ──
+        if (booking.status && !['ACTIVE', 'APPROVED', 'CONFIRMED'].includes(booking.status)) {
+            return { success: false, error: 'Food preferences can only be changed for active bookings.' };
+        }
+
         const userId = (session as any).userId;
         const role = session.role as string;
 
@@ -311,6 +316,12 @@ export async function confirmFoodRequest(
 ): Promise<{ success: boolean; error?: string }> {
     const session = await getSession();
     if (!session) return { success: false, error: 'Unauthorized' };
+
+    // ── Security: validate token format BEFORE querying DB (prevents brute-force enumeration) ──
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(token)) {
+        return { success: false, error: 'Invalid token format.' };
+    }
 
     const userId = (session as any).userId;
 

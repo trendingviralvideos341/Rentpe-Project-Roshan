@@ -64,7 +64,7 @@ export default function AddPropertyPage() {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [feeTermsAccepted, setFeeTermsAccepted] = useState(false);
     // ── Food & Mess Service (Section 2) ──
-    const [foodType, setFoodType] = useState<'NOT_AVAILABLE' | 'INCLUDED' | 'OPTIONAL'>('NOT_AVAILABLE');
+    const [foodType, setFoodType] = useState<'NOT_AVAILABLE' | 'INCLUDED' | 'OPTIONAL' | "">("");
     const [foodPricePerMonth, setFoodPricePerMonth] = useState('');
     const amenityOptions = ["WiFi", "AC", "Laundry", "Power Backup", "CCTV", "Biometric", "Food", "Cleaning", "Parking", "Gym", "Hot Water", "TV"];
     
@@ -566,6 +566,9 @@ export default function AddPropertyPage() {
         // ── Section 2 food validation ──
         if (foodType === 'OPTIONAL' && (!foodPricePerMonth.trim() || parseFloat(foodPricePerMonth) <= 0)) {
             errs.foodPricePerMonth = "Monthly food price is required for Optional food service";
+        }
+        if (!foodType) {
+            errs.foodType = "Please select a food service option (Mandatory)";
         }
 
         // Conditional Mandatory for PG/Hostel Licence
@@ -1130,6 +1133,14 @@ export default function AddPropertyPage() {
                                 </p>
                             </div>
                         )}
+                        {!foodType && (
+                            <div className={`p-4 rounded-xl border-2 border-dashed ${errors.foodType ? 'bg-red-50 border-red-300' : 'bg-orange-50/30 border-orange-200'} transition-all`}>
+                                <p className={`text-sm font-bold ${errors.foodType ? 'text-red-600 animate-pulse' : 'text-orange-600/70'}`}>
+                                    ⚠️ Please select one of the options above to proceed.
+                                </p>
+                            </div>
+                        )}
+                        {errors.foodType && <p className="text-[10px] text-red-500 font-bold uppercase italic mt-1">{errors.foodType}</p>}
                     </CardContent>
                 </Card>
 

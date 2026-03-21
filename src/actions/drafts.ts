@@ -132,8 +132,9 @@ export async function deleteDraftAction(id: string) {
     const session = await getSession();
     if (!session || !session.userId) throw new Error("Unauthorized");
 
-    return await (prisma as any).draft.delete({
-        where: { id, userId: session.userId }
+    return await (prisma as any).draft.update({
+        where: { id, userId: session.userId },
+        data: { status: 'CANCELLED' }
     });
 }
 

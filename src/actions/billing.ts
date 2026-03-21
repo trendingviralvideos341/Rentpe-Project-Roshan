@@ -104,9 +104,17 @@ export async function internalGenerateInvoice(
     // ── 1. Billing month (ISO YYYY-MM) ──
     const billingMonth = toBillingMonth(month.length === 7 ? `${month}-01` : month);
 
-    // ── 2. Duplicate invoice check (also enforced by DB unique constraint) ──
+    // ── VALIDATION: reject non-YYYY-MM formats at runtime ──
+    const BILLING_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+    if (!BILLING_MONTH_RE.test(billingMonth)) {
+        throw new Error(`Invalid billingMonth format: "${billingMonth}". Must be YYYY-MM (e.g. 2026-04).`);
+    }
+
+    const booking = profile.tenant?.booking;
+    if (!booking) throw new Error("No active booking found for this tenant.");
+
     const existing = await (prisma as any).rentInvoice.findFirst({
-        where: { tenantId, billingMonth }
+        where: { bookingId: booking.id, billingMonth }
     });
     if (existing) {
         if (existing.lockedAt) return { skipped: true, reason: 'ALREADY_LOCKED' };
@@ -121,7 +129,6 @@ export async function internalGenerateInvoice(
     cycleEnd.setUTCMonth(cycleEnd.getUTCMonth() + 1);
 
     // ── 4. Food preference (source of truth) — optimized: single row, DESC ──
-    const booking = profile.tenant?.booking;
     let foodAmount = 0;
     let foodProrated = false;
 
@@ -222,6 +229,7 @@ export async function internalGenerateInvoice(
                 billingProfileId: profile.id,
                 tenantId,
                 propertyId: profile.propertyId,
+                bookingId: booking.id,
                 month,
                 billingMonth,
                 rentAmount,
@@ -285,6 +293,15 @@ export async function recordInvoicePayment(
 ) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+    // ── Financial guard: reject invalid amounts (hacker/bounty-hunter class) ──
+    if (typeof paymentAmount !== 'number' || !isFinite(paymentAmount) || paymentAmount <= 0) {
+        throw new Error(`Invalid paymentAmount: ${paymentAmount}. Must be a positive finite number.`);
+    }
+    // Safety ceiling: no single payment > ₹10,00,000 (₹10 lakh) — prevents catastrophic data corruption
+    if (paymentAmount > 1_000_000) {
+        throw new Error(`Payment amount ₹${paymentAmount} exceeds the maximum allowed per transaction (₹10,00,000).`);
+    }
 
     const amount = round2dp(paymentAmount);
     const requestId = randomUUID();
