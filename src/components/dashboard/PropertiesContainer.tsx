@@ -263,7 +263,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             )}
                                             {property.status !== 'APPROVED' && (role === 'owner' || permissions.includes('manage_properties')) && (
                                                 <button 
-                                                    className="h-10 px-8 text-[11px] font-black bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl transition-all active:scale-95 shadow-md shadow-indigo-100/50 uppercase tracking-widest border border-indigo-100"
+                                                    className="h-10 px-8 text-[11px] font-black bg-red-600 hover:bg-red-700 text-white rounded-2xl transition-all active:scale-95 shadow-lg shadow-red-100 uppercase tracking-widest border border-red-700/20"
                                                     onClick={(e) => handleCancelClick(e, property.id, property.name)}
                                                     disabled={processingId === property.id}
                                                 >
@@ -308,7 +308,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                         </button>
                         <Button 
                             variant="destructive" 
-                            className="flex-1 rounded-xl h-11 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-wider text-[11px] shadow-lg active:scale-95 transition-all border-[3px] border-rose-700/20"
+                            className="flex-1 rounded-xl h-11 bg-red-600 hover:bg-red-700 font-black uppercase tracking-wider text-[11px] shadow-lg active:scale-95 transition-all border-[3px] border-red-700/20"
                             onClick={performCancel}
                         >
                             Yes, Cancel Now

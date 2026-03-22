@@ -1841,8 +1841,8 @@ export default function AdminPropertyApprovalPage() {
 
                         <div className="flex gap-3 pt-2">
                             <Button 
-                                variant="ghost" 
-                                className="flex-1 h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest text-slate-500 hover:bg-slate-100"
+                                variant="destructive" 
+                                className="flex-1 h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100"
                                 onClick={() => setAddRoomDialog(null)}
                             >
                                 Cancel

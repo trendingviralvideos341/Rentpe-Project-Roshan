@@ -759,7 +759,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                 <Camera className="w-5 h-5 mr-3" /> CAPTURE PHOTO
                             </Button>
                             <button 
-                                className="h-16 px-10 rounded-3xl border-2 border-indigo-100 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-sm" 
+                                className="h-16 px-10 rounded-3xl border-2 border-red-700 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-red-200" 
                                 onClick={stopCapture}
                             >
                                 CANCEL
@@ -911,7 +911,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
 
                                         <button 
                                             onClick={() => { setViewDialog(null); setPreviewZoom(1); }}
-                                            className="h-16 px-14 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all ml-auto border border-indigo-100/50"
+                                            className="h-16 px-14 bg-black hover:bg-slate-900 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all ml-auto"
                                         >
                                             CLOSE
                                         </button>
