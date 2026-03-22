@@ -137,24 +137,30 @@ export async function createProperty(data: FormData | any) {
     const isFormData = data instanceof FormData;
     const getVal = (key: string) => isFormData ? (data.get(key) as string) : (data[key] as string);
     const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
-
     const userId = session.userId;
-    const user = await prisma.user.findUnique({ 
-        where: { id: userId },
-        select: { id: true, name: true, role: true, parentOwnerId: true, staffPermissions: true }
-    }) as any;
+
+    // ── PHASE 1: PARALLEL PRE-FLIGHT ─────────────────────────────
+    // Fire all independent DB reads CONCURRENTLY. Eliminates one full
+    // round-trip from the cold path (~200-400ms on remote DBs).
+    const [user, settings] = await Promise.all([
+        prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, name: true, role: true, parentOwnerId: true, staffPermissions: true }
+        }),
+        prisma.platformSettings.findUnique({ where: { id: "singleton" } })
+    ]) as any[];
 
     if (user?.role === 'STAFF') {
         const perms = JSON.parse(user.staffPermissions || "[]");
-        if (!perms.includes('register_property')) {
-            throw new Error("You do not have permission to register properties");
-        }
+        if (!perms.includes('register_property')) throw new Error("You do not have permission to register properties");
     }
+
+    // ── PHASE 2: DATA EXTRACTION ────────────────────────────────────
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");
     const description = getVal("description");
-    const amenities = getVal("amenities"); 
+    const amenities = getVal("amenities");
     const ownerName = getVal("ownerName");
     const roomsSource = getVal("rooms");
     const propertyType = getVal("propertyType");
@@ -165,28 +171,18 @@ export async function createProperty(data: FormData | any) {
     const termsAccepted = termsAcceptedRaw === "true" || termsAcceptedRaw === "on" || (termsAcceptedRaw as any) === true;
     const feeTermsAcceptedRaw = getVal("feeTermsAccepted");
     const feeTermsAccepted = feeTermsAcceptedRaw === "true" || feeTermsAcceptedRaw === "on" || (feeTermsAcceptedRaw as any) === true;
-    
-    // ── Food & Mess Service (Section 2) ──
-    const foodType = getVal("foodType"); 
+    const foodType = getVal("foodType");
     const foodPricePerMonthRaw = getVal("foodPricePerMonth");
     const foodPricePerMonth = foodPricePerMonthRaw ? parseFloat(foodPricePerMonthRaw) : null;
 
     if (!name?.trim()) throw new Error("Property name is required");
     if (!termsAccepted) throw new Error("You must accept general terms to list your property.");
-
-    if (!foodType) {
-        throw new Error("Food service selection is mandatory.");
-    }
-
-    // Section 2 — Validation: price required if OPTIONAL
+    if (!foodType) throw new Error("Food service selection is mandatory.");
     if (foodType === 'OPTIONAL' && (!foodPricePerMonth || foodPricePerMonth <= 0)) {
         throw new Error("Food price per month is required when food service is Optional.");
     }
 
-    // Industry Standard: Fetch platform settings server-side at the moment of creation to lock the fee
-    const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
     const onboardingFee = settings?.feesEnabled ? settings.ownerOnboardingFeeFlat : 0;
-
     if (onboardingFee > 0 && !feeTermsAccepted) {
         throw new Error(`Acknowledgment of the ₹${onboardingFee} platform onboarding fee is mandatory.`);
     }
@@ -201,9 +197,57 @@ export async function createProperty(data: FormData | any) {
     const pgLicenceUrl = getAllVal("pgLicenceUrl");
     const livePhotoUrl = getVal("livePhotoUrl");
 
-    const parsedRooms = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
-    const displayId = await generateSequentialId('PROPERTY');
+    const parsedRooms: any[] = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
+    // ── SECURITY: Hard-caps to prevent abuse & DB overload ───────────────
+    const MAX_ROOMS = 50;
+    const MAX_BEDS = 500;
+    if (parsedRooms.length > MAX_ROOMS) throw new Error(`Maximum ${MAX_ROOMS} rooms allowed per registration.`);
+    const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
+    if (totalBedsNeeded > MAX_BEDS) throw new Error(`Maximum ${MAX_BEDS} total beds allowed per registration.`);
+
+    // ── PHASE 3: PARALLEL ID GENERATION ────────────────────────────
+    // All 3 ID-sequence DB reads now run simultaneously.
+    const [displayId, roomIdsList, bedIdsList] = await Promise.all([
+        generateSequentialId('PROPERTY'),
+        parsedRooms.length > 0 ? generateSequentialId('ROOM', parsedRooms.length) : Promise.resolve([] as string[]),
+        totalBedsNeeded > 0 ? generateSequentialId('BED', totalBedsNeeded) : Promise.resolve([] as string[]),
+    ]);
+
+    // ── PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) ───────────
+    // randomUUID() pre-links rooms→beds without sequential DB reads.
+    const roomsToCreate: any[] = [];
+    const bedsToCreate: any[] = [];
+    let bedIdx = 0;
+
+    for (let i = 0; i < parsedRooms.length; i++) {
+        const r = parsedRooms[i];
+        const roomId = randomUUID();
+        const availability = parseInt(r.availability) || 0;
+        roomsToCreate.push({
+            id: roomId,
+            displayId: (roomIdsList as string[])[i],
+            propertyId: '',
+            roomNumber: r.roomNumber.toString(),
+            type: r.type,
+            price: parseFloat(r.price),
+            availability,
+            totalBeds: availability,
+            status: 'AVAILABLE',
+        });
+        for (let j = 0; j < availability; j++) {
+            bedsToCreate.push({
+                id: randomUUID(),
+                displayId: (bedIdsList as string[])[bedIdx++],
+                roomId,
+                bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + j + 1)}`,
+                status: 'AVAILABLE',
+            });
+        }
+    }
+
+    // ── PHASE 5: ATOMIC TRANSACTION — 4 writes total, regardless of scale ──────
+    // Before: O(N×M) sequential writes. After: always exactly 4 bulk writes.
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.create({
             data: {
@@ -236,54 +280,21 @@ export async function createProperty(data: FormData | any) {
                 termsAcceptedAt: new Date(),
                 feeTermsAccepted: true,
                 feeTermsAcceptedAt: new Date(),
-                // Section 1 & 2 — Food Service configuration
                 foodType,
                 foodPricePerMonth: foodType === 'OPTIONAL' ? foodPricePerMonth : null,
             } as any
         });
 
-        const roomIdsList = parsedRooms.length > 0 
-            ? await generateSequentialId('ROOM', parsedRooms.length)
-            : [];
-            
-        // Pre-calculate total beds to fetch Bed IDs in one batch
-        const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
-        const bedIdsList = totalBedsNeeded > 0
-            ? await generateSequentialId('BED', totalBedsNeeded)
-            : [];
+        // ONE bulk write for all rooms (inject real propertyId)
+        if (roomsToCreate.length > 0) {
+            await tx.room.createMany({
+                data: roomsToCreate.map(r => ({ ...r, propertyId: property.id }))
+            });
+        }
 
-        let currentRoomIdx = 0;
-        let currentBedIdx = 0;
-
-        // Atomic Rooms & Beds
-        if (parsedRooms.length > 0) {
-            for (const r of parsedRooms) {
-                const roomDisplayId = roomIdsList[currentRoomIdx++];
-                const room = await tx.room.create({
-                    data: {
-                        displayId: roomDisplayId,
-                        propertyId: property.id,
-                        roomNumber: r.roomNumber.toString(),
-                        type: r.type,
-                        price: parseFloat(r.price),
-                        availability: parseInt(r.availability),
-                        totalBeds: parseInt(r.availability),
-                        status: 'AVAILABLE'
-                    }
-                });
-
-                for (let i = 0; i < room.availability; i++) {
-                    const bedDisplayId = bedIdsList[currentBedIdx++];
-                    await tx.bed.create({
-                        data: {
-                            displayId: bedDisplayId,
-                            roomId: room.id,
-                            bedNumber: `${r.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
-                            status: 'AVAILABLE'
-                        }
-                    });
-                }
-            }
+        // ONE bulk write for all beds (roomId already pre-linked)
+        if (bedsToCreate.length > 0) {
+            await tx.bed.createMany({ data: bedsToCreate });
         }
 
         await tx.auditLog.create({
@@ -294,15 +305,15 @@ export async function createProperty(data: FormData | any) {
                 actionType: 'CREATE',
                 entityType: 'PROPERTY',
                 entityId: property.id,
-                description: `Owner created property ${property.name}. Status: PENDING_VERIFICATION.`,
-                newValue: { status: 'PENDING_VERIFICATION', termsAccepted: true },
+                description: `Owner created property ${property.name} with ${roomsToCreate.length} rooms, ${bedsToCreate.length} beds. Status: PENDING_VERIFICATION.`,
+                newValue: { status: 'PENDING_VERIFICATION', termsAccepted: true, rooms: roomsToCreate.length, beds: bedsToCreate.length },
                 ipAddress: 'internal',
                 userAgent: 'server-action'
             }
         });
 
         return property;
-    });
+    }, { timeout: 15000 });
 
     revalidatePath('/dashboard/owner/properties');
     return result;
