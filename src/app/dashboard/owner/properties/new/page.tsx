@@ -1475,18 +1475,18 @@ export default function AddPropertyPage() {
                 </Card>
 
                 <div className="flex justify-center items-center gap-4 pt-6 mb-12">
-                    <button 
+                    <Button 
                         type="button" 
+                        variant="destructive"
                         onClick={() => router.back()} 
-                        suppressHydrationWarning
-                        className="px-8 h-12 bg-red-50 hover:bg-red-100 text-red-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest font-black text-xs border border-red-100"
+                        className="px-10 h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-red-200 uppercase tracking-widest font-black text-sm"
                     >
                         CANCEL
-                    </button>
+                    </Button>
                     <Button 
                         type="submit" 
                         disabled={saving || uploadingCount > 0} 
-                        className="px-10 h-12 bg-indigo-500 hover:bg-indigo-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all duration-200 hover:scale-105 active:scale-95"
+                        className="px-10 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg shadow-indigo-200 transition-all duration-200 hover:scale-105 active:scale-95 text-sm"
                         suppressHydrationWarning
                     >
                         {saving ? (
