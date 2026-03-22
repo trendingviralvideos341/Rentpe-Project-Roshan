@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera } from "lucide-react";
+import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
@@ -17,6 +17,7 @@ import { useResumableUpload } from "@/hooks/useResumableUpload";
 import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
 import { DraftRecoveryAlert } from "@/components/ui/DraftRecoveryAlert";
 import { compressImage } from "@/lib/imageCompression";
+import { LegalTermsModal } from "@/components/common/LegalTermsModal";
 
 // UPLOAD-ON-SELECT: Each photo uploads immediately when selected
 type DocEntry = { file: File; previewUrl: string; cloudUrl: string | null; uploading: boolean; error?: string };
@@ -63,6 +64,8 @@ export default function AddPropertyPage() {
     const [showCustomAmenity, setShowCustomAmenity] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [feeTermsAccepted, setFeeTermsAccepted] = useState(false);
+    const [isGeneralTermsModalOpen, setIsGeneralTermsModalOpen] = useState(false);
+    const [isFeeTermsModalOpen, setIsFeeTermsModalOpen] = useState(false);
     // ── Food & Mess Service (Section 2) ──
     const [foodType, setFoodType] = useState<'NOT_AVAILABLE' | 'INCLUDED' | 'OPTIONAL' | "">("");
     const [foodPricePerMonth, setFoodPricePerMonth] = useState('');
@@ -1338,58 +1341,94 @@ export default function AddPropertyPage() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-6 bg-emerald-50/10">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <label className="flex items-start gap-3 cursor-pointer group bg-slate-50 p-4 rounded-xl border hover:border-primary transition-all shadow-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={termsAccepted}
-                                        onChange={(e) => {
-                                            setTermsAccepted(e.target.checked);
-                                            if (e.target.checked) setFieldErr("termsAccepted", "");
-                                        }}
-                                        className="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                                        suppressHydrationWarning
-                                    />
-                                    <div className="flex flex-col">
-                                        <span className={`text-[11px] font-bold uppercase tracking-wide ${termsAccepted ? 'text-primary' : 'text-slate-600'}`}>
-                                            General Terms & Conditions
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
-                                            I confirm all property details are accurate and I agree to abide by RentPe&apos;s listing policies.
-                                        </span>
+                            {/* General Terms Card */}
+                            <div className="space-y-3">
+                                <div className={`relative group p-5 rounded-2xl border-2 transition-all shadow-sm flex flex-col gap-4 ${termsAccepted ? 'bg-emerald-50/50 border-emerald-400' : 'bg-white border-slate-200 hover:border-indigo-400'}`}>
+                                    <div className="flex items-start gap-3">
+                                        <div className={`mt-0.5 h-6 w-6 rounded-full flex items-center justify-center border-2 transition-all ${termsAccepted ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-slate-50 border-slate-200 text-slate-300'}`}>
+                                            <CheckCircle className={`w-4 h-4 ${termsAccepted ? 'scale-100' : 'scale-0'}`} />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className={`text-[12px] font-black uppercase tracking-wider ${termsAccepted ? 'text-emerald-700' : 'text-slate-800'}`}>
+                                                General Terms & Conditions
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 font-bold leading-tight mt-1 uppercase tracking-tight">
+                                                Mandatory Listing Policies & Platform Role Agreement
+                                            </span>
+                                        </div>
                                     </div>
-                                </label>
+                                    
+                                    {!termsAccepted ? (
+                                        <Button 
+                                            type="button" 
+                                            onClick={() => setIsGeneralTermsModalOpen(true)}
+                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase h-9 rounded-xl shadow-lg shadow-indigo-100"
+                                        >
+                                            Read & Accept Policies
+                                        </Button>
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-2 py-2 bg-emerald-100/50 rounded-xl border border-emerald-200">
+                                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                            <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest italic">Terms Accepted</span>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setTermsAccepted(false)}
+                                                className="ml-2 text-[9px] text-emerald-600 underline font-bold uppercase hover:text-red-600"
+                                            >
+                                                Revoke
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                                 {errors.termsAccepted && (
-                                    <p className="text-[10px] text-red-600 font-bold uppercase italic flex items-center gap-1">
+                                    <p className="text-[10px] text-red-600 font-black uppercase italic flex items-center gap-1.5 px-2">
                                         <AlertTriangle className="h-3 w-3" /> {errors.termsAccepted}
                                     </p>
                                 )}
                             </div>
 
+                            {/* Onboarding Fee Card */}
                             {onboardingFee !== null && (
-                                <div className="space-y-4">
-                                    <label className="flex items-start gap-3 cursor-pointer group bg-slate-50 p-4 rounded-xl border hover:border-primary transition-all shadow-sm">
-                                        <input
-                                            type="checkbox"
-                                            checked={feeTermsAccepted}
-                                            onChange={(e) => {
-                                                setFeeTermsAccepted(e.target.checked);
-                                                if (e.target.checked) setFieldErr("feeTermsAccepted", "");
-                                            }}
-                                            className="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                                            suppressHydrationWarning
-                                        />
-                                        <div className="flex flex-col">
-                                            <span className={`text-[11px] font-bold uppercase tracking-wide ${feeTermsAccepted ? 'text-primary' : 'text-slate-600'}`}>
-                                                Onboarding Fee (₹{onboardingFee})
-                                            </span>
-                                            <span className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
-                                                I acknowledge a non-refundable one-time fee for document verification and listing services provided by the RentPe Team.
-                                            </span>
+                                <div className="space-y-3">
+                                    <div className={`relative group p-5 rounded-2xl border-2 transition-all shadow-sm flex flex-col gap-4 ${feeTermsAccepted ? 'bg-emerald-50/50 border-emerald-400' : 'bg-white border-slate-200 hover:border-emerald-400'}`}>
+                                        <div className="flex items-start gap-3">
+                                            <div className={`mt-0.5 h-6 w-6 rounded-full flex items-center justify-center border-2 transition-all ${feeTermsAccepted ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-slate-50 border-slate-200 text-slate-300'}`}>
+                                                <CheckCircle className={`w-4 h-4 ${feeTermsAccepted ? 'scale-100' : 'scale-0'}`} />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className={`text-[12px] font-black uppercase tracking-wider ${feeTermsAccepted ? 'text-emerald-700' : 'text-slate-800'}`}>
+                                                    Onboarding Fee (₹{onboardingFee})
+                                                </span>
+                                                <span className="text-[10px] text-slate-500 font-bold leading-tight mt-1 uppercase tracking-tight">
+                                                    One-Time Activation & Verification Service Fee
+                                                </span>
+                                            </div>
                                         </div>
-                                    </label>
+
+                                        {!feeTermsAccepted ? (
+                                            <Button 
+                                                type="button" 
+                                                onClick={() => setIsFeeTermsModalOpen(true)}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase h-9 rounded-xl shadow-lg shadow-emerald-100"
+                                            >
+                                                Read Fee Policy
+                                            </Button>
+                                        ) : (
+                                            <div className="flex items-center justify-center gap-2 py-2 bg-emerald-100/50 rounded-xl border border-emerald-200">
+                                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest italic">Fee Acknowledged</span>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setFeeTermsAccepted(false)}
+                                                    className="ml-2 text-[9px] text-emerald-600 underline font-bold uppercase hover:text-red-600"
+                                                >
+                                                    Revoke
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                     {errors.feeTermsAccepted && (
-                                        <p className="text-[10px] text-red-600 font-bold uppercase italic flex items-center gap-1">
+                                        <p className="text-[10px] text-red-600 font-black uppercase italic flex items-center gap-1.5 px-2">
                                             <AlertTriangle className="h-3 w-3" /> {errors.feeTermsAccepted}
                                         </p>
                                     )}
@@ -1397,9 +1436,35 @@ export default function AddPropertyPage() {
                             )}
                         </div>
 
+                        {/* Modals */}
+                        <LegalTermsModal
+                            isOpen={isGeneralTermsModalOpen}
+                            onClose={() => setIsGeneralTermsModalOpen(false)}
+                            onAccept={() => {
+                                setTermsAccepted(true);
+                                setFieldErr("termsAccepted", "");
+                                setIsGeneralTermsModalOpen(false);
+                                toast.success("Terms & Conditions accepted!");
+                            }}
+                            type="GENERAL_TERMS"
+                        />
+
+                        <LegalTermsModal
+                            isOpen={isFeeTermsModalOpen}
+                            onClose={() => setIsFeeTermsModalOpen(false)}
+                            onAccept={() => {
+                                setFeeTermsAccepted(true);
+                                setFieldErr("feeTermsAccepted", "");
+                                setIsFeeTermsModalOpen(false);
+                                toast.success("Onboarding Fee policy acknowledged!");
+                            }}
+                            type="ONBOARDING_FEE"
+                            feeAmount={onboardingFee}
+                        />
+
                         {/* Legal Disclaimer Footer */}
                         <div className="pt-4 border-t border-slate-100">
-                             <div className="flex items-start gap-2 text-[9px] text-slate-400 font-medium italic">
+                             <div className="flex items-start gap-2 text-[10px] text-slate-400 font-black italic uppercase tracking-tighter">
                                 <AlertTriangle className="h-3 w-3 text-slate-300 mt-0.5 shrink-0" />
                                 <p>
                                     By submitting this form, you initiate property verification. Listing activation is contingent upon successful check by the RentPe Team. The fee covers verification and setup.
