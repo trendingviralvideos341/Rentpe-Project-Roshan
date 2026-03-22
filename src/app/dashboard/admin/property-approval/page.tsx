@@ -374,9 +374,9 @@ export default function AdminPropertyApprovalPage() {
     };
 
     const renderAdminCategory = (property: any, cat: any) => (
-        <div key={cat.key} className={`border-2 ${cat.borderClass} transition-all rounded-xl p-5 flex flex-col h-full shadow-sm bg-white overflow-hidden`}>
-            <div className="flex items-center gap-4 mb-5 pb-3 border-b border-slate-50">
-                <div className={`p-3 ${cat.bgClass} rounded-xl ${cat.colorClass} shadow-inner`}>{cat.icon}</div>
+        <div key={cat.key} className={`border-2 ${cat.borderClass} transition-all rounded-2xl p-4 flex flex-col shadow-sm bg-white overflow-hidden group/card`}>
+            <div className="flex items-center gap-3 mb-3">
+                <div className={`p-2 ${cat.bgClass} rounded-lg ${cat.colorClass}`}> {cat.icon} </div>
                 <div>
                     <h4 className="font-bold text-base tracking-tight text-slate-800">{cat.label}</h4>
                     <p className="text-[10px] text-muted-foreground uppercase font-semibold">{cat.desc}</p>
@@ -394,8 +394,8 @@ export default function AdminPropertyApprovalPage() {
                                     const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
                                     const isVerified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(`${cat.key}-${i}`);
                                     
-                                    slots.push(
-                                        <div key={`${property.id}-${cat.key}-${i}`} className={`relative h-32 rounded-lg border shadow-sm group/img ${isVerified ? 'border-green-500 ring-4 ring-green-100 bg-green-50' : 'bg-white'} overflow-hidden`}>
+                                     slots.push(
+                                        <div key={`${property.id}-${cat.key}-${i}`} className={`relative h-24 sm:h-36 rounded-xl border shadow-sm group/img ${isVerified ? 'border-green-500 ring-4 ring-green-100 bg-green-50' : 'bg-white'} overflow-hidden`}>
                                             <div className="w-full h-full overflow-hidden bg-slate-100">
                                                 <img src={img} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
                                             </div>
@@ -445,8 +445,8 @@ export default function AdminPropertyApprovalPage() {
                                         </div>
                                     );
                                 } else {
-                                    slots.push(
-                                        <div key={`${property.id}-${cat.key}-slot-${i}`} className="border-2 border-dashed border-slate-100 rounded-lg flex flex-col items-center justify-center h-32 bg-slate-50/50 group/empty relative overflow-hidden">
+                                     slots.push(
+                                        <div key={`${property.id}-${cat.key}-slot-${i}`} className="border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center h-24 sm:h-36 bg-slate-50/50 group/empty relative overflow-hidden">
                                             <ImageIcon className="w-5 h-5 text-slate-300 group-hover/empty:scale-90 transition-transform" />
                                             <span className="text-[8px] font-bold uppercase text-slate-400 mt-1">Add Photo</span>
                                             
@@ -477,7 +477,7 @@ export default function AdminPropertyApprovalPage() {
             ) : (
                 <div className="flex flex-col h-full">
                     {property[cat.key] ? (
-                        <div className="flex-1 flex flex-col h-full min-h-[160px]">
+                        <div className="flex flex-col h-36">
                             <div className={`relative flex-1 rounded-lg border shadow-sm group/img ${safeParse(property.verifiedDocs).includes(cat.key) ? 'border-green-500 border-2 ring-4 ring-green-100 bg-green-50' : 'bg-white'} overflow-hidden mb-3`}>
                                 {property[cat.key].endsWith(".pdf") ? (
                                     <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
@@ -531,7 +531,7 @@ export default function AdminPropertyApprovalPage() {
                             </div>
                         </div>
                     ) : (
-                        <div key={`${property.id}-${cat.key}-empty`} className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50 p-6 group/empty overflow-hidden relative min-h-[160px]">
+                        <div key={`${property.id}-${cat.key}-empty`} className="h-36 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50 p-6 group/empty overflow-hidden relative">
                             <Plus className="w-8 h-8 text-slate-300 mb-2 group-hover/empty:scale-90 transition-transform" />
                             <span className="text-xs font-bold text-slate-400 uppercase">Add Photo</span>
                             
