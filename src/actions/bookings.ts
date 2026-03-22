@@ -208,6 +208,7 @@ export async function approveBooking(id: string, data: {
     pendingAmount?: number,
     depositAmount?: number,
     depositMonths?: number,
+    platformFeeAmount?: number,
     // Section 4 & 5 — Food Service at allocation time
     foodSelected?: boolean,
     foodPriceApplied?: number,
@@ -238,6 +239,7 @@ export async function approveBooking(id: string, data: {
             pendingAmount: data.pendingAmount || null,
             depositAmount: data.depositAmount || null,
             depositMonths: data.depositMonths || null,
+            platformFeeAmount: data.platformFeeAmount ?? null,
             // Section 5 — Lock food price at approval time (SECTION 8 — Billing: price immutable post-approval)
             foodSelected: data.foodSelected ?? false,
             foodPriceApplied: data.foodPriceApplied ?? 0,

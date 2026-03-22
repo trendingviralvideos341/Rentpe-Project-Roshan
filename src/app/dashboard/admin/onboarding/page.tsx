@@ -74,6 +74,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [depositMonths, setDepositMonths] = useState<1 | 2>(1);
     const [editAmount, setEditAmount] = useState(booking.amount || "");
     const [editOccupancy, setEditOccupancy] = useState(booking.occupancy || "");
+    const [platformFeeAmount, setPlatformFeeAmount] = useState<string>(String(booking.platformFeeAmount || "499"));
 
     // Auto-select property of the booking if available
     useEffect(() => {
@@ -183,6 +184,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                 pendingAmount: hasPending && pendingAmount ? Number(pendingAmount.replace(/[^0-9.]/g, '')) : undefined,
                 depositAmount: depositAmt,
                 depositMonths,
+                platformFeeAmount: Number(platformFeeAmount.replace(/[^0-9.]/g, '')) || 0,
             });
             setEditing(false);
             setShowPendingPrompt(false);
@@ -679,6 +681,23 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                                             <span className="text-lg font-black text-slate-900">₹{totalPayable.toLocaleString('en-IN')}</span>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                {/* Platform Fee Input */}
+                                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[11px] font-black uppercase tracking-widest text-amber-700">Platform Fee</span>
+                                                        <span className="text-[9px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full ml-auto">Non-Refundable</span>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-amber-800 select-none">₹</span>
+                                                        <input
+                                                            className="w-full border-2 border-amber-300 rounded-lg p-2 pl-7 text-sm bg-white font-bold text-amber-900 focus:border-amber-500 focus:ring-0"
+                                                            value={platformFeeAmount}
+                                                            onChange={e => setPlatformFeeAmount(onlyAmount(e.target.value))}
+                                                            placeholder="e.g. 499"
+                                                        />
+                                                    </div>
+                                                    <p className="text-[9px] text-amber-600 font-semibold">This fee will appear in the student's rental agreement.</p>
                                                 </div>
                                                 <p className="text-[9px] text-indigo-500 font-semibold text-center">
                                                     Deposit is refundable within 30 days of vacating · Deductions only for documented damage (not normal wear & tear)

@@ -101,20 +101,20 @@ export function BookingStepper({ status, reservationExpiresAt }: BookingStepperP
                             const stepStatus = getStepStatus(i, activeIndex, status);
 
                             return (
-                                <div key={step.id} className="flex flex-col items-center gap-2 group min-w-[60px]">
+                                <div key={step.id} className="flex flex-col items-center gap-1.5 group min-w-[44px]">
                                     <div className={`
-                                        w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 relative
+                                        w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 relative
                                         ${stepStatus === 'completed' ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200' :
                                             stepStatus === 'active' ? 'bg-white border-purple-600 text-purple-600 shadow-md scale-110 ring-4 ring-purple-100' :
                                             stepStatus === 'error' ? 'bg-red-500 border-red-500 text-white' :
                                             'bg-white border-gray-200 text-gray-300'}
                                     `}>
-                                        {stepStatus === 'completed' ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                                        {stepStatus === 'completed' ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                                         {stepStatus === 'active' && (
-                                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-purple-600 rounded-full animate-ping opacity-60" />
+                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-purple-600 rounded-full animate-ping opacity-60" />
                                         )}
                                     </div>
-                                    <span className={`text-[9px] font-black uppercase tracking-tight text-center max-w-[60px] leading-tight
+                                    <span className={`text-[8px] font-black uppercase tracking-tighter text-center max-w-[50px] leading-tight
                                         ${stepStatus === 'active' ? 'text-purple-700' :
                                           stepStatus === 'completed' ? 'text-purple-600' :
                                           stepStatus === 'error' ? 'text-red-600' :

@@ -607,7 +607,7 @@ export default function StudentDashboardPage() {
                                                     const toastId = toast.loading("Signing agreement...");
                                                     try {
                                                         await signAgreement(booking.id);
-                                                        toast.success("Agreement signed successfully!", { id: toastId });
+                                                        toast.success("Agreement signed! Welcome aboard 🎉", { id: toastId });
                                                         await fetchData();
                                                         setSigningBooking(null);
                                                     } catch (e: any) {
@@ -623,18 +623,22 @@ export default function StudentDashboardPage() {
                                                     refundPolicy: booking.property?.refundPolicy,
                                                 }}
                                                 room={{
-                                                    roomNumber: booking.roomAssigned || booking.room?.roomNumber || "TBD",
+                                                    roomNumber: booking.roomAssigned?.split(' ')[0] || booking.room?.roomNumber || "TBD",
                                                     type: booking.occupancy || booking.room?.type || "N/A",
-                                                    price: booking.room?.price || booking.amount || 0,
+                                                    price: Number(booking.room?.price) || Number(String(booking.amount).replace(/[^0-9.]/g, '')) || 0,
                                                     depositMonths: booking.depositMonths || booking.room?.depositMonths || 1,
                                                 }}
                                                 tenant={{
                                                     name: booking.guestName,
                                                     email: booking.guestEmail || profile?.email,
                                                 }}
-                                                moveInDate={booking.onboardingDate || booking.moveInDate}
-                                                depositAmount={booking.depositAmount || 0}
-                                                platformFee={booking.platformFeeAmount || 0}
+                                                moveInDate={booking.onboardingDate || booking.moveInDate || "TBD"}
+                                                depositAmount={
+                                                    Number(booking.depositAmount) > 0
+                                                        ? Number(booking.depositAmount)
+                                                        : (Number(booking.room?.price) || Number(String(booking.amount).replace(/[^0-9.]/g, '')) || 0) * (booking.depositMonths || booking.room?.depositMonths || 1)
+                                                }
+                                                platformFee={Number(booking.platformFeeAmount) || 0}
                                             />
 
                                             {/* ── Professional Journey Stepper (Phase 31) ── */}

@@ -121,19 +121,16 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
                                         <AlertTriangle className="absolute -top-2 -right-2 h-6 w-6 text-orange-700 fill-white drop-shadow-sm" />
                                     )}
                                 </div>
-                                <div className="absolute top-14 left-1/2 -translate-x-1/2 min-w-[max-content] flex flex-col items-center pointer-events-none">
+                                <div className="absolute top-14 left-1/2 -translate-x-1/2 w-[60px] flex flex-col items-center pointer-events-none">
                                     <span className={cn(
-                                        "text-[9px] font-black uppercase tracking-tight text-center leading-tight whitespace-nowrap",
-                                        stepStatus === 'active' ? 'text-orange-800' :
+                                        "text-[8px] font-black uppercase tracking-tighter text-center leading-[1.1] break-words",
+                                        stepStatus === 'active' ? 'text-orange-800 scale-110' :
                                         stepStatus === 'completed' ? 'text-emerald-700 font-bold' :
-                                        stepStatus === 'warning' ? 'text-orange-900 border-b border-orange-200 pb-0.5' :
+                                        stepStatus === 'warning' ? 'text-orange-900 border-b border-orange-200' :
                                         stepStatus === 'error' ? 'text-red-700' :
                                         'text-slate-400 opacity-70'
                                     )}>
                                         {step.label}
-                                    </span>
-                                    <span className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5 text-center leading-[1.1] opacity-60">
-                                        {step.desc}
                                     </span>
                                 </div>
                             </div>
