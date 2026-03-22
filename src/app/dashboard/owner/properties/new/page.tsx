@@ -1479,7 +1479,7 @@ export default function AddPropertyPage() {
                         type="button" 
                         onClick={() => router.back()} 
                         suppressHydrationWarning
-                        className="px-8 h-12 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest font-black text-xs"
+                        className="px-8 h-12 bg-red-50 hover:bg-red-100 text-red-700 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest font-black text-xs border border-red-100"
                     >
                         CANCEL
                     </button>
