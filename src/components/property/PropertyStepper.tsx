@@ -83,9 +83,9 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
             <div className="px-1">
                 <div className="flex items-center justify-between relative h-24">
                     {/* Progress Lines Container - Absolutely centered under icons */}
-                    <div className="absolute top-6 left-[8.33%] w-[83.33%] h-1.5 -z-10">
+                    <div className="absolute top-5 left-[8.33%] w-[83.33%] h-1.5 -z-10">
                         {/* Background Line */}
-                        <div className="absolute inset-0 bg-slate-100 rounded-full" />
+                        <div className="absolute inset-0 bg-slate-100 rounded-full shadow-inner" />
                         
                         {/* Progress Line */}
                         <div
@@ -101,12 +101,12 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
                         return (
                             <div key={step.id} className="flex flex-col items-center flex-1 relative h-full">
                                 <div className={cn(
-                                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 relative z-20",
-                                    stepStatus === 'completed' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' :
-                                    stepStatus === 'active' ? 'bg-white text-orange-600 ring-4 ring-orange-50 scale-125' :
-                                    stepStatus === 'warning' ? 'bg-orange-500 text-white shadow-lg shadow-orange-200 animate-bounce' :
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 relative z-20 shadow-sm",
+                                    stepStatus === 'completed' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-100' :
+                                    stepStatus === 'active' ? 'bg-white text-orange-600 ring-4 ring-orange-50 scale-110' :
+                                    stepStatus === 'warning' ? 'bg-orange-500 text-white shadow-md shadow-orange-100 animate-pulse' :
                                     stepStatus === 'error' ? 'bg-red-500 text-white' :
-                                    'bg-white text-slate-300'
+                                    'bg-white text-slate-300 border-2 border-slate-100'
                                 )}>
                                     {stepStatus === 'completed' ? (
                                         <Check className="h-6 w-6 stroke-[4] animate-in zoom-in-50 duration-300" />
@@ -121,18 +121,18 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
                                         <AlertTriangle className="absolute -top-2 -right-2 h-6 w-6 text-orange-700 fill-white drop-shadow-sm" />
                                     )}
                                 </div>
-                                <div className="absolute top-16 left-1/2 -translate-x-1/2 w-full flex flex-col items-center">
+                                <div className="absolute top-14 left-1/2 -translate-x-1/2 min-w-[max-content] flex flex-col items-center pointer-events-none">
                                     <span className={cn(
-                                        "text-[10px] font-black uppercase tracking-tighter text-center leading-tight whitespace-nowrap",
+                                        "text-[9px] font-black uppercase tracking-tight text-center leading-tight whitespace-nowrap",
                                         stepStatus === 'active' ? 'text-orange-800' :
-                                        stepStatus === 'completed' ? 'text-emerald-700' :
-                                        stepStatus === 'warning' ? 'text-orange-900' :
+                                        stepStatus === 'completed' ? 'text-emerald-700 font-bold' :
+                                        stepStatus === 'warning' ? 'text-orange-900 border-b border-orange-200 pb-0.5' :
                                         stepStatus === 'error' ? 'text-red-700' :
-                                        'text-slate-400 opacity-60'
+                                        'text-slate-400 opacity-70'
                                     )}>
                                         {step.label}
                                     </span>
-                                    <span className="text-[8px] font-bold text-slate-300 uppercase mt-1 text-center leading-[1.1] max-w-[55px] truncate">
+                                    <span className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5 text-center leading-[1.1] opacity-60">
                                         {step.desc}
                                     </span>
                                 </div>
