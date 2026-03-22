@@ -1290,7 +1290,7 @@ export default function AdminPropertyApprovalPage() {
                         <button 
                             onClick={() => setActionDialog(null)} 
                             disabled={processing}
-                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-xs font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-red-200 uppercase tracking-widest border border-red-700/30"
                         >
                             CANCEL
                         </button>
