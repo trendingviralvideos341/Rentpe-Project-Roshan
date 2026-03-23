@@ -1064,20 +1064,15 @@ export default function AdminPropertyApprovalPage() {
                                                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                                                                 <div className="space-y-1">
                                                                     <h4 className="text-xs font-black uppercase tracking-[0.2em] text-orange-600 mb-1">Food & Mess Service</h4>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className="p-2 bg-orange-100 rounded-xl">
-                                                                           <CheckCircle className="w-5 h-5 text-orange-600" />
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="text-2xl">{property.foodType === 'INCLUDED' ? '🍱' : property.foodType === 'OPTIONAL' ? '🍴' : '🚫'}</div>
+                                                                            <div>
+                                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Service Status</p>
+                                                                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">
+                                                                                    {property.foodType === 'INCLUDED' ? 'Included in Rent' : property.foodType === 'OPTIONAL' ? 'Optional (Add-on)' : 'Not Available'}
+                                                                                </p>
+                                                                            </div>
                                                                         </div>
-                                                                        <div>
-                                                                            <p className="text-xl font-black text-slate-800 tracking-tight">
-                                                                                {property.foodType === 'NONE' ? "No Food Service" : 
-                                                                                 property.foodType === 'VEG' ? "Pure Vegetarian" :
-                                                                                 property.foodType === 'BOTH' ? "Veg & Non-Veg" :
-                                                                                 property.foodType === 'NON_VEG' ? "Non-Vegetarian" : "Not Specified"}
-                                                                            </p>
-                                                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Available for all tenants</p>
-                                                                        </div>
-                                                                    </div>
                                                                 </div>
 
                                                                 <div className="flex items-center gap-6">
@@ -1117,6 +1112,15 @@ export default function AdminPropertyApprovalPage() {
                                                                         Edit Food Details
                                                                     </Button>
                                                                 </div>
+                                                            </div>
+
+                                                            <div className="mt-4 pt-4 border-t border-orange-100/50 flex items-center gap-2">
+                                                                <div className="text-blue-500 font-bold">🟦</div>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                                    {property.foodType === 'INCLUDED' ? 'STUDENTS WILL RECEIVE MEALS AS PART OF THEIR MONTHLY RENT.' : 
+                                                                     property.foodType === 'OPTIONAL' ? 'STUDENTS CAN CHOOSE TO SUBSCRIBE TO THIS FOOD SERVICE FOR THE EXTRA MONTHLY CHARGE.' : 
+                                                                     'THIS PROPERTY CURRENTLY DOES NOT OFFER MESS OR FOOD SERVICES.'}
+                                                                </p>
                                                             </div>
                                                         </div>
 
@@ -1405,13 +1409,13 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                     </div>
                     <DialogFooter className="flex flex-row items-center justify-end gap-3 sm:gap-4 !space-x-0 pt-4">
-                        <button 
+                        <Button 
                             onClick={() => setReuploadDialog(null)} 
-                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-xl shadow-red-100 uppercase tracking-widest"
                             disabled={processing}
                         >
                             CANCEL
-                        </button>
+                        </Button>
                         <button
                             className="bg-orange-600 hover:bg-orange-700 text-white font-black text-xs px-10 py-3 rounded-full shadow-lg shadow-orange-100 transition-all active:scale-95 flex items-center gap-2"
                             onClick={handleRequestReupload}
@@ -1448,13 +1452,13 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                     </div>
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <button 
+                        <Button 
                             onClick={() => setDeleteDialog(null)} 
-                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-xl shadow-red-100 uppercase tracking-widest"
                             disabled={processing}
                         >
                             CANCEL
-                        </button>
+                        </Button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white font-black rounded-xl px-10 shadow-lg shadow-red-100 transition-all active:scale-95 border-b-4 border-red-800"
                             onClick={async () => {
@@ -1522,12 +1526,12 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                     )}
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <button 
+                        <Button 
                             onClick={() => setEditOwnerDialog(null)} 
-                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-xl shadow-red-100 uppercase tracking-widest"
                         >
                             CANCEL
-                        </button>
+                        </Button>
                         <Button 
                             onClick={handleUpdateOwner} 
                             disabled={processing}
@@ -1727,12 +1731,12 @@ export default function AdminPropertyApprovalPage() {
                     )}
                     
                     <div className="p-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3">
-                        <button 
+                        <Button 
                             onClick={() => setEditPropertyDialog(null)} 
-                            className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
+                            className="px-8 py-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-xl shadow-red-100 uppercase tracking-widest"
                         >
                             CANCEL
-                        </button>
+                        </Button>
                         <Button 
                             onClick={handleUpdateProperty} 
                             disabled={processing}
