@@ -1026,7 +1026,7 @@ export default function AdminPropertyApprovalPage() {
                                                                             postOffice: po,
                                                                             description: property.description || "",
                                                                             amenities: property.amenities || "",
-                                                                            foodType: property.foodType || "NONE",
+                                                                            foodType: property.foodType || "NOT_AVAILABLE",
                                                                             foodPricePerMonth: property.foodPricePerMonth || 0
                                                                         });
                                                                     }}
@@ -1109,7 +1109,7 @@ export default function AdminPropertyApprovalPage() {
                                                                                 postOffice: po,
                                                                                 description: property.description || "",
                                                                                 amenities: property.amenities || "",
-                                                                                foodType: property.foodType || "NONE",
+                                                                                foodType: property.foodType || "NOT_AVAILABLE",
                                                                                 foodPricePerMonth: property.foodPricePerMonth || 0
                                                                             });
                                                                         }}
@@ -1662,34 +1662,66 @@ export default function AdminPropertyApprovalPage() {
                                     <h4 className="text-xs font-black uppercase tracking-widest text-orange-700">Food & Mess Settings</h4>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2 group">
-                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-orange-600 transition-colors ml-1">Food Service Type</Label>
-                                        <select 
-                                            value={editPropertyDialog.foodType}
-                                            onChange={(e) => setEditPropertyDialog({...editPropertyDialog, foodType: e.target.value})}
-                                            className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all shadow-sm appearance-none"
-                                        >
-                                            <option value="NONE">No Food Provided</option>
-                                            <option value="VEG">Pure Vegetarian Only</option>
-                                            <option value="NON_VEG">Non-Vegetarian Only</option>
-                                            <option value="BOTH">Veg & Non-Veg Both</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-2 group">
-                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-orange-600 transition-colors ml-1">Monthly Food Price (₹)</Label>
-                                        <div className="relative">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</div>
-                                            <Input 
-                                                type="number"
-                                                value={editPropertyDialog.foodPricePerMonth} 
-                                                onChange={(e) => setEditPropertyDialog({...editPropertyDialog, foodPricePerMonth: parseFloat(e.target.value) || 0})}
-                                                className="h-14 rounded-2xl border-slate-200 focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 font-black text-orange-600 pl-8 transition-all shadow-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                                <div className="space-y-4">
+                                     <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Food Service Selection</Label>
+                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                         {([
+                                             { val: 'NOT_AVAILABLE', emoji: '🚫', title: 'Not Available', desc: 'No food service' },
+                                             { val: 'INCLUDED', emoji: '🍱', title: 'Included in Rent', desc: 'Meals included' },
+                                             { val: 'OPTIONAL', emoji: '🍴', title: 'Optional (Add-on)', desc: 'Opt in/out' },
+                                         ] as const).map(opt => (
+                                             <button
+                                                 key={opt.val}
+                                                 type="button"
+                                                 onClick={() => setEditPropertyDialog({...editPropertyDialog, foodType: opt.val})}
+                                                 className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col gap-1 ${
+                                                     editPropertyDialog.foodType === opt.val
+                                                         ? "bg-orange-600 border-orange-600 text-white shadow-lg scale-[1.02]"
+                                                         : "bg-white border-slate-100 text-slate-700 hover:border-orange-200 hover:bg-orange-50"
+                                                 }`}
+                                             >
+                                                 <span className="text-2xl">{opt.emoji}</span>
+                                                 <span className="text-[10px] font-black uppercase tracking-widest leading-none mt-1">{opt.title}</span>
+                                                 <span className={`text-[9px] font-medium ${editPropertyDialog.foodType === opt.val ? 'text-orange-100' : 'text-slate-400'}`}>{opt.desc}</span>
+                                             </button>
+                                         ))}
+                                     </div>
+ 
+                                     {/* Conditional price input for OPTIONAL */}
+                                     {editPropertyDialog.foodType === 'OPTIONAL' && (
+                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-orange-100/30 p-4 rounded-2xl border-2 border-orange-200">
+                                             <Label className="text-[11px] font-black text-orange-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                 Monthly Food Charge (₹)
+                                             </Label>
+                                             <div className="relative">
+                                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-600 font-bold">₹</div>
+                                                 <Input 
+                                                     type="number"
+                                                     value={editPropertyDialog.foodPricePerMonth} 
+                                                     onChange={(e) => setEditPropertyDialog({...editPropertyDialog, foodPricePerMonth: parseFloat(e.target.value) || 0})}
+                                                     className="h-14 rounded-2xl border-orange-200 focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 font-black text-orange-600 pl-8 transition-all shadow-sm bg-white"
+                                                 />
+                                             </div>
+                                             <p className="text-[9px] text-orange-600 font-bold mt-2 uppercase tracking-tight">
+                                                 Students can opt in/out for this monthly price.
+                                             </p>
+                                         </div>
+                                     )}
+                                     {editPropertyDialog.foodType === 'INCLUDED' && (
+                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-green-50 p-4 rounded-2xl border-2 border-green-200">
+                                             <p className="text-xs font-bold text-green-700 flex items-center gap-2 uppercase tracking-tight">
+                                                 ✅ Meals are included in rent.
+                                             </p>
+                                         </div>
+                                     )}
+                                     {editPropertyDialog.foodType === 'NOT_AVAILABLE' && (
+                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
+                                             <p className="text-xs font-bold text-slate-500 flex items-center gap-2 uppercase tracking-tight">
+                                                 🚫 No food service provided.
+                                             </p>
+                                         </div>
+                                     )}
+                                 </div>
                             </div>
                         </div>
                     )}

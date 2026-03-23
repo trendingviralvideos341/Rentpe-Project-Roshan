@@ -15,7 +15,7 @@ import {
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
     BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
     Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
-    Home, ShieldCheck
+    Home, ShieldCheck, UtensilsCrossed
 } from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -543,7 +543,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                         <Home className="w-5 h-5" /> Property Details
                     </TabsTrigger>
                     <TabsTrigger value="rooms" className="flex-1 rounded-full font-black uppercase text-[11px] tracking-widest gap-3 h-14 data-[state=active]:bg-emerald-600 data-[state=active]:text-white transition-all">
-                        <BedDouble className="w-5 h-5" /> Rooms ({property.rooms?.length || 0})
+                        <UtensilsCrossed className="w-5 h-5" /> Room & Food ({property.rooms?.length || 0})
                     </TabsTrigger>
                     <TabsTrigger value="verification" className={`flex-1 rounded-full font-black uppercase text-[11px] tracking-widest gap-3 h-14 data-[state=active]:text-white transition-all ${property.adminNotes?.includes('[REUPLOAD') ? 'bg-red-50 text-red-600 data-[state=active]:bg-red-600' : 'data-[state=active]:bg-amber-600'}`}>
                         <ShieldCheck className="w-5 h-5" /> Verification
@@ -605,6 +605,49 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                 </TabsContent>
 
                 <TabsContent value="rooms" className="space-y-6">
+                    {/* Food & Mess Service Section (Standardized with Admin/Owner Registration) */}
+                    <div className="p-6 bg-orange-50/50 rounded-3xl border-2 border-orange-100 space-y-4 mb-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-orange-600 rounded-lg shadow-sm">
+                                    <UtensilsCrossed className="w-4 h-4 text-white" />
+                                </div>
+                                <h4 className="text-xs font-black uppercase tracking-widest text-orange-700">Food & Mess Service</h4>
+                            </div>
+                            <Badge className={`rounded-xl border-2 px-3 py-1 font-black uppercase text-[9px] tracking-widest shadow-sm
+                                ${property.foodType === 'INCLUDED' ? 'bg-green-50 text-green-600 border-green-100' : 
+                                  property.foodType === 'OPTIONAL' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+                                  'bg-slate-50 text-slate-500 border-slate-100'}`}
+                            >
+                                {property.foodType?.replace('_', ' ') || 'NOT AVAILABLE'}
+                            </Badge>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-6">
+                            <div className="flex items-center gap-3">
+                                <div className="text-2xl">{property.foodType === 'INCLUDED' ? '🍱' : property.foodType === 'OPTIONAL' ? '🍴' : '🚫'}</div>
+                                <div>
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Service Status</div>
+                                    <div className="text-sm font-bold text-slate-700 uppercase">
+                                        {property.foodType === 'INCLUDED' ? 'Included in Rent' : property.foodType === 'OPTIONAL' ? 'Optional (Add-on)' : 'Not Available'}
+                                    </div>
+                                </div>
+                            </div>
+                            {property.foodType === 'OPTIONAL' && (
+                                <div className="border-l-2 border-orange-100 pl-6 space-y-1">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Monthly Charge</div>
+                                    <div className="text-lg font-black text-orange-600 tracking-tighter">₹{property.foodPricePerMonth || 0}</div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <p className="text-[10px] font-bold text-orange-600/70 border-t border-orange-100/50 pt-3 uppercase tracking-tight">
+                            {property.foodType === 'INCLUDED' ? '✅ Meals are pre-included in the monthly rent amount.' : 
+                             property.foodType === 'OPTIONAL' ? 'ℹ️ Students can choose to subscribe to this food service for the extra monthly charge.' : 
+                             '❌ This property currently does not offer mess or food services.'}
+                        </p>
+                    </div>
+
                     {/* Add Room Section for Owner/Manager */}
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-slate-800">Room Inventory</h2>
