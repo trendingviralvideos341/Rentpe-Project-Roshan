@@ -1076,14 +1076,18 @@ export default function AdminPropertyApprovalPage() {
                                                                 </div>
 
                                                                 <div className="flex items-center gap-6">
-                                                                    <div className="h-12 w-px bg-orange-200 hidden md:block" />
-                                                                    <div className="text-right">
-                                                                        <p className="text-[10px] font-black uppercase text-slate-400 mb-0.5 tracking-widest">Monthly Charge</p>
-                                                                        <p className="text-2xl font-black text-orange-600">
-                                                                            {property.foodPricePerMonth ? `₹${property.foodPricePerMonth.toLocaleString()}` : "₹0"}
-                                                                            <span className="text-xs text-slate-400 font-bold ml-1 uppercase">/ Month</span>
-                                                                        </p>
-                                                                    </div>
+                                                                    {property.foodType === 'OPTIONAL' && (
+                                                                        <>
+                                                                            <div className="h-12 w-px bg-orange-200 hidden md:block" />
+                                                                            <div className="text-right">
+                                                                                <p className="text-[10px] font-black uppercase text-slate-400 mb-0.5 tracking-widest">Monthly Charge</p>
+                                                                                <p className="text-2xl font-black text-orange-600">
+                                                                                    {property.foodPricePerMonth ? `₹${property.foodPricePerMonth.toLocaleString()}` : "₹0"}
+                                                                                    <span className="text-xs text-slate-400 font-bold ml-1 uppercase">/ Month</span>
+                                                                                </p>
+                                                                            </div>
+                                                                        </>
+                                                                    )}
                                                                     <Button 
                                                                         variant="outline" 
                                                                         size="sm" 
