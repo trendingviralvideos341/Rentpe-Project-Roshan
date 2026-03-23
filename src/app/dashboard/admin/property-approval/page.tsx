@@ -60,7 +60,9 @@ export default function AdminPropertyApprovalPage() {
         state: string;
         postOffice: string;
         description: string; 
-        amenities: string 
+        amenities: string;
+        foodType: string;
+        foodPricePerMonth: number;
     } | null>(null);
     const [editRoomDialog, setEditRoomDialog] = useState<{ isOpen: boolean; roomId: string; roomNumber: string; type: string; price: number; availability: number; depositMonths: number } | null>(null);
     const [addRoomDialog, setAddRoomDialog] = useState<{ isOpen: boolean; propertyId: string } | null>(null);
@@ -181,7 +183,9 @@ export default function AdminPropertyApprovalPage() {
                 address: fullAddress,
                 city: editPropertyDialog.city,
                 description: editPropertyDialog.description,
-                amenities: editPropertyDialog.amenities
+                amenities: editPropertyDialog.amenities,
+                foodType: editPropertyDialog.foodType,
+                foodPricePerMonth: editPropertyDialog.foodPricePerMonth
             });
             toast({ title: "Success", description: "Property updated successfully." });
             setEditPropertyDialog(null);
@@ -900,7 +904,7 @@ export default function AdminPropertyApprovalPage() {
                                                         hover:bg-emerald-50/50 active:scale-95"
                                                     >
                                                         <BedDouble className="w-4 h-4 group-data-[state=active]/tab:scale-110 transition-transform" />
-                                                        <span>Rooms ({property.rooms?.length || 0})</span>
+                                                        <span>Room & Food</span>
                                                     </TabsTrigger>
                                                     <TabsTrigger
                                                         value="verification"
@@ -1021,7 +1025,9 @@ export default function AdminPropertyApprovalPage() {
                                                                             state: state,
                                                                             postOffice: po,
                                                                             description: property.description || "",
-                                                                            amenities: property.amenities || ""
+                                                                            amenities: property.amenities || "",
+                                                                            foodType: property.foodType || "NONE",
+                                                                            foodPricePerMonth: property.foodPricePerMonth || 0
                                                                         });
                                                                     }}
                                                                 >
@@ -1050,6 +1056,70 @@ export default function AdminPropertyApprovalPage() {
 
                                                 <TabsContent value="rooms" className="mt-0">
                                                     <div className="pt-2">
+                                                        {/* Food & Mess Section */}
+                                                        <div className="mb-8 bg-gradient-to-br from-orange-50 to-white p-6 rounded-3xl border-2 border-orange-100 shadow-sm relative overflow-hidden group">
+                                                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                                                                <FileText className="w-24 h-24 text-orange-600" />
+                                                            </div>
+                                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                                                                <div className="space-y-1">
+                                                                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-orange-600 mb-1">Food & Mess Service</h4>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="p-2 bg-orange-100 rounded-xl">
+                                                                           <CheckCircle className="w-5 h-5 text-orange-600" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-xl font-black text-slate-800 tracking-tight">
+                                                                                {property.foodType === 'NONE' ? "No Food Service" : 
+                                                                                 property.foodType === 'VEG' ? "Pure Vegetarian" :
+                                                                                 property.foodType === 'BOTH' ? "Veg & Non-Veg" :
+                                                                                 property.foodType === 'NON_VEG' ? "Non-Vegetarian" : "Not Specified"}
+                                                                            </p>
+                                                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Available for all tenants</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-6">
+                                                                    <div className="h-12 w-px bg-orange-200 hidden md:block" />
+                                                                    <div className="text-right">
+                                                                        <p className="text-[10px] font-black uppercase text-slate-400 mb-0.5 tracking-widest">Monthly Charge</p>
+                                                                        <p className="text-2xl font-black text-orange-600">
+                                                                            {property.foodPricePerMonth ? `₹${property.foodPricePerMonth.toLocaleString()}` : "₹0"}
+                                                                            <span className="text-xs text-slate-400 font-bold ml-1 uppercase">/ Month</span>
+                                                                        </p>
+                                                                    </div>
+                                                                    <Button 
+                                                                        variant="outline" 
+                                                                        size="sm" 
+                                                                        className="h-10 px-4 font-black bg-white hover:bg-orange-600 hover:text-white text-orange-600 rounded-xl uppercase text-[10px] tracking-widest border-2 border-orange-200 shadow-sm transition-all active:scale-95"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            // Reuse edit property dialog for food info
+                                                                            const addr = property.address || "";
+                                                                            const street = addr, po = "", city = property.city || "", state = "", pin = "";
+                                                                            setEditPropertyDialog({
+                                                                                isOpen: true,
+                                                                                propertyId: property.id,
+                                                                                name: property.name,
+                                                                                address: street,
+                                                                                pincode: pin,
+                                                                                city: city,
+                                                                                state: state,
+                                                                                postOffice: po,
+                                                                                description: property.description || "",
+                                                                                amenities: property.amenities || "",
+                                                                                foodType: property.foodType || "NONE",
+                                                                                foodPricePerMonth: property.foodPricePerMonth || 0
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        Edit Food Details
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
                                                         <div className="flex justify-between items-center mb-4">
                                                             <h4 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2">
                                                                 Rooms Breakdown <Badge variant="outline">{property.rooms?.length || 0} Rooms</Badge>
@@ -1582,6 +1652,44 @@ export default function AdminPropertyApprovalPage() {
                                     className="h-14 rounded-2xl border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-bold text-slate-700 transition-all shadow-sm"
                                     placeholder="WiFi, AC, Food..."
                                 />
+                            </div>
+
+                            <div className="p-6 bg-orange-50/50 rounded-3xl border-2 border-orange-100 space-y-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-1.5 bg-orange-600 rounded-lg">
+                                        <FileText className="w-4 h-4 text-white" />
+                                    </div>
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-orange-700">Food & Mess Settings</h4>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2 group">
+                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-orange-600 transition-colors ml-1">Food Service Type</Label>
+                                        <select 
+                                            value={editPropertyDialog.foodType}
+                                            onChange={(e) => setEditPropertyDialog({...editPropertyDialog, foodType: e.target.value})}
+                                            className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all shadow-sm appearance-none"
+                                        >
+                                            <option value="NONE">No Food Provided</option>
+                                            <option value="VEG">Pure Vegetarian Only</option>
+                                            <option value="NON_VEG">Non-Vegetarian Only</option>
+                                            <option value="BOTH">Veg & Non-Veg Both</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="space-y-2 group">
+                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 group-hover:text-orange-600 transition-colors ml-1">Monthly Food Price (₹)</Label>
+                                        <div className="relative">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</div>
+                                            <Input 
+                                                type="number"
+                                                value={editPropertyDialog.foodPricePerMonth} 
+                                                onChange={(e) => setEditPropertyDialog({...editPropertyDialog, foodPricePerMonth: parseFloat(e.target.value) || 0})}
+                                                className="h-14 rounded-2xl border-slate-200 focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 font-black text-orange-600 pl-8 transition-all shadow-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
