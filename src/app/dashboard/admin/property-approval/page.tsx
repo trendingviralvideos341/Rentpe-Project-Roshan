@@ -1165,13 +1165,18 @@ export default function AdminPropertyApprovalPage() {
                                                                             </span>
                                                                             <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">{room.type}</span>
                                                                         </div>
-                                                                             <div className="relative z-10 flex justify-between items-end text-slate-400 mt-2">
-                                                                                 <span className="flex items-center gap-1.5 font-bold bg-emerald-50/50 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
-                                                                                     <BedDouble className="h-4 w-4 text-emerald-600" /> {room.availability} Beds
-                                                                                 </span>
+                                                                        <div className="relative z-10 flex justify-between items-end text-slate-400 mt-2">
+                                                                            <div className="space-y-1">
+                                                                                <span className="flex items-center gap-1.5 font-bold bg-emerald-50/50 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
+                                                                                    <BedDouble className="h-4 w-4 text-emerald-600" /> {room.availability} Beds Ready
+                                                                                </span>
+                                                                                <span className="flex items-center gap-1.5 font-bold bg-amber-50/50 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wide text-amber-700">
+                                                                                    <ShieldCheck className="h-3.5 w-3.5" /> {room.depositMonths} Month Deposit
+                                                                                </span>
+                                                                            </div>
                                                                             <div className="flex flex-col items-end">
                                                                                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
-                                                                                <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{room.price}</span>
+                                                                                <span className="font-black text-emerald-600 text-2xl tracking-tighter leading-none">₹{room.price.toLocaleString()}</span>
                                                                             </div>
                                                                         </div>
                                                                         <div className="relative z-10 mt-3 pt-3 border-t border-emerald-100 flex gap-2">
