@@ -66,7 +66,7 @@ export default function AdminPropertyApprovalPage() {
     } | null>(null);
     const [editRoomDialog, setEditRoomDialog] = useState<{ isOpen: boolean; roomId: string; roomNumber: string; type: string; price: number; availability: number; depositMonths: number } | null>(null);
     const [addRoomDialog, setAddRoomDialog] = useState<{ isOpen: boolean; propertyId: string } | null>(null);
-    const [newRoomData, setNewRoomData] = useState({ roomNumber: '', type: 'Single Sharing', price: 5000, availability: 1, depositMonths: 1 });
+    const [newRoomData, setNewRoomData] = useState({ roomNumber: '', type: 'Single Sharing (1)', price: 5000, availability: 1, depositMonths: 0 });
 
     // Pincode auto-fetch states for property edit
     const [pinFetching, setPinFetching] = useState(false);
@@ -1891,15 +1891,15 @@ export default function AdminPropertyApprovalPage() {
                     <div className="bg-gradient-to-br from-indigo-700 via-indigo-600 to-indigo-900 p-8 text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl animate-pulse" />
                         <div className="relative z-10">
-                            <h2 className="text-3xl font-black tracking-tighter uppercase mb-2">New Room Asset</h2>
-                            <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase opacity-80">Add structural unit to property listing</p>
+                            <h2 className="text-3xl font-black tracking-tighter uppercase mb-2">ADD NEW ROOM</h2>
+                            <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase opacity-80">Enter room details below</p>
                         </div>
                     </div>
                     
                     <div className="p-8 space-y-6 bg-white">
                         <div className="space-y-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Identity Tag</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Room Number</Label>
                                 <div className="relative group">
                                     <Input 
                                         placeholder="e.g. 101, Suite A" 
@@ -1921,16 +1921,20 @@ export default function AdminPropertyApprovalPage() {
                                             onChange={(e) => {
                                                 const type = e.target.value;
                                                 let autoAvail = 1;
-                                                if (type === "Double Sharing") autoAvail = 2;
-                                                if (type === "Triple Sharing") autoAvail = 3;
-                                                if (type === "Four Sharing") autoAvail = 4;
+                                                if (type === "Double Sharing (2)") autoAvail = 2;
+                                                if (type === "Triple Sharing (3)") autoAvail = 3;
+                                                if (type === "Four Sharing (4)") autoAvail = 4;
+                                                if (type === "Five Sharing (5)") autoAvail = 5;
+                                                if (type === "Six Sharing (6)") autoAvail = 6;
                                                 setNewRoomData({...newRoomData, type, availability: autoAvail});
                                             }}
                                         >
-                                            <option>Single Sharing</option>
-                                            <option>Double Sharing</option>
-                                            <option>Triple Sharing</option>
-                                            <option>Four Sharing</option>
+                                            <option>Single Sharing (1)</option>
+                                            <option>Double Sharing (2)</option>
+                                            <option>Triple Sharing (3)</option>
+                                            <option>Four Sharing (4)</option>
+                                            <option>Five Sharing (5)</option>
+                                            <option>Six Sharing (6)</option>
                                         </select>
                                         <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                                     </div>
@@ -2003,7 +2007,7 @@ export default function AdminPropertyApprovalPage() {
                                 ) : (
                                     <>
                                         <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                                        Initialize Room
+                                        Confirm
                                     </>
                                 )}
                             </Button>
