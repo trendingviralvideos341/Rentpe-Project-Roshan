@@ -192,6 +192,7 @@ export async function getAdminBookings() {
 
 export async function approveBooking(id: string, data: {
     roomId?: string,
+    bedId?: string,
     amount?: number,
     occupancy?: string,
     roomAssigned?: string,
@@ -209,7 +210,6 @@ export async function approveBooking(id: string, data: {
     depositAmount?: number,
     depositMonths?: number,
     platformFeeAmount?: number,
-    // Section 4 & 5 — Food Service at allocation time
     foodSelected?: boolean,
     foodPriceApplied?: number,
 }) {
@@ -248,7 +248,6 @@ export async function approveBooking(id: string, data: {
 
     // Handle bed availability changes if the room assignment has changed
     if (existingBooking && data.roomId !== existingBooking.roomId) {
-        // Increment (return) bed to the old room if the booking was already assigned to one
         if (existingBooking.roomId) {
             const oldRoom = await prisma.room.findUnique({ where: { id: existingBooking.roomId } });
             if (oldRoom) {
@@ -258,7 +257,6 @@ export async function approveBooking(id: string, data: {
                 });
             }
         }
-        // Decrement (take) bed from the newly assigned room
         if (data.roomId) {
             const newRoom = await prisma.room.findUnique({ where: { id: data.roomId } });
             if (newRoom && newRoom.availability > 0) {
@@ -270,7 +268,13 @@ export async function approveBooking(id: string, data: {
         }
     }
 
-
+    // Lock the selected bed to this booking
+    if (data.bedId) {
+        await prisma.bed.update({
+            where: { id: data.bedId },
+            data: { status: 'LOCKED', lockedByBookingId: id, lockedAt: new Date() }
+        }).catch(() => {}); // Silent fail if bed not found
+    }
 
     logAuditEvent({
         actorId: session.userId,
@@ -489,6 +493,7 @@ export async function checkInBooking(id: string) {
                 occupationDetail: booking.occupationDetail || null,
                 propertyId: room.propertyId,
                 roomId: booking.roomId!,
+                bedId: (booking as any).bedId || null,
                 roomNumber: room.roomNumber,
                 roomType: room.type,
                 rent: booking.amount,
@@ -497,11 +502,20 @@ export async function checkInBooking(id: string) {
             }
         });
 
-        // 5. Link Tenant back to Booking for robust review system
+        // Link Tenant back to Booking
         await prisma.booking.update({
             where: { id: booking.id },
             data: { tenantId: tenant.id }
         });
+
+        // Mark the assigned bed as OCCUPIED and link to tenant
+        const bookingBedId = (booking as any).bedId;
+        if (bookingBedId) {
+            await prisma.bed.update({
+                where: { id: bookingBedId },
+                data: { status: 'OCCUPIED', tenantId: tenant.id, lockedByBookingId: null, lockedAt: null }
+            }).catch(() => {});
+        }
 
         // 6. Create initial rent record
         await prisma.rentRecord.create({

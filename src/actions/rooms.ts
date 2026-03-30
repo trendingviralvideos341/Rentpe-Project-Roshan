@@ -107,3 +107,23 @@ export async function deleteRoomByOwner(roomId: string) {
     await prisma.room.delete({ where: { id: roomId } });
     return { success: true };
 }
+
+export async function getBedsForRoom(roomId: string) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
+        throw new Error("Unauthorized");
+    }
+
+    return prisma.bed.findMany({
+        where: { roomId },
+        select: {
+            id: true,
+            bedNumber: true,
+            status: true,
+            tenantId: true,
+            lockedByBookingId: true,
+            tenant: { select: { name: true } }
+        },
+        orderBy: { bedNumber: 'asc' }
+    });
+}

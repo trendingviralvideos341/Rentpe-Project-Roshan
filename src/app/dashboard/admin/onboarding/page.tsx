@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye, Search, Building2, ClipboardList } from "lucide-react";
 import { getBookings, approveBooking, markBookingPaid } from "@/actions/bookings";
-import { getAvailableRooms } from "@/actions/rooms";
+import { getAvailableRooms, getBedsForRoom } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
 import { getProperties } from "@/actions/properties";
 import { validateEmail, validatePhone, validateName, normalizePhone } from "@/lib/validators";
@@ -71,6 +71,9 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
     const [selectedBedType, setSelectedBedType] = useState(booking.occupancy || "ALL");
     const [selectedRoomId, setSelectedRoomId] = useState("");
+    const [selectedBedId, setSelectedBedId] = useState("");
+    const [roomBeds, setRoomBeds] = useState<any[]>([]);
+    const [bedsLoading, setBedsLoading] = useState(false);
     const [depositMonths, setDepositMonths] = useState<1 | 2>(1);
     const [editAmount, setEditAmount] = useState(booking.amount || "");
     const [editOccupancy, setEditOccupancy] = useState(booking.occupancy || "");
@@ -90,6 +93,16 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
         if (selectedBedType && selectedBedType !== "ALL" && r.type !== selectedBedType) return false;
         return true;
     });
+
+    // Fetch beds when room changes
+    useEffect(() => {
+        if (!selectedRoomId) { setRoomBeds([]); setSelectedBedId(""); return; }
+        setBedsLoading(true);
+        getBedsForRoom(selectedRoomId)
+            .then(beds => { setRoomBeds(beds); setSelectedBedId(""); })
+            .catch(() => setRoomBeds([]))
+            .finally(() => setBedsLoading(false));
+    }, [selectedRoomId]);
 
     // ── Pending amount prompt state ──
     const [showPendingPrompt, setShowPendingPrompt] = useState(false);
@@ -168,6 +181,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
             const depositAmt = roomPrice * depositMonths;
             await approveBooking(booking.id, {
                 roomId: room?.id || booking.roomId,
+                bedId: selectedBedId || undefined,
                 amount: editAmount || booking.amount,
                 occupancy: editOccupancy || booking.occupancy,
                 roomAssigned: room ? `${room.roomNumber} (${editOccupancy || room.type})` : booking.roomAssigned,
@@ -613,6 +627,53 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                             </div>
                                         )}
                                         {fieldErrors.roomSelection && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.roomSelection}</p>}
+
+                                        {/* ── Bed Picker (appears after room selected) ── */}
+                                        {selectedRoomId && (
+                                            <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-2">
+                                                    🛏️ Select Specific Bed *
+                                                    {bedsLoading && <span className="ml-2 text-blue-500 animate-pulse text-[10px]">Loading beds...</span>}
+                                                </label>
+                                                {!bedsLoading && roomBeds.length === 0 && (
+                                                    <p className="text-[11px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                                        ⚠️ No beds added for this room yet. Add beds from Bed Management tab first.
+                                                    </p>
+                                                )}
+                                                {!bedsLoading && roomBeds.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {roomBeds.map((bed: any) => {
+                                                            const isAvailable = bed.status === 'AVAILABLE';
+                                                            const isSelected = selectedBedId === bed.id;
+                                                            return (
+                                                                <button
+                                                                    key={bed.id}
+                                                                    type="button"
+                                                                    disabled={!isAvailable}
+                                                                    onClick={() => setSelectedBedId(isSelected ? '' : bed.id)}
+                                                                    title={!isAvailable ? `Occupied by: ${bed.tenant?.name || 'Someone'}` : `Bed ${bed.bedNumber} — Available`}
+                                                                    className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all ${
+                                                                        !isAvailable
+                                                                            ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed opacity-70'
+                                                                            : isSelected
+                                                                                ? 'bg-emerald-600 border-emerald-600 text-white ring-4 ring-emerald-100 scale-105 shadow-lg'
+                                                                                : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100'
+                                                                    }`}
+                                                                >
+                                                                    {isAvailable ? '✅' : '🔴'} {bed.bedNumber}
+                                                                    {isSelected && <span className="ml-1">✓</span>}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                                {selectedBedId && (
+                                                    <p className="text-[10px] text-emerald-700 font-bold mt-1">
+                                                        ✅ Bed {roomBeds.find(b => b.id === selectedBedId)?.bedNumber} selected
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -741,8 +802,8 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 {saving ? "Saving..." : showPendingPrompt ? "✅ Confirm & Save" : "✅ Save Changes"}
                             </Button>
                             <button 
-                                onClick={() => { setEditing(false); setShowPendingPrompt(false); }}
-                                className="px-8 py-3 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest flex-1"
+                                onClick={() => { setEditing(false); setShowPendingPrompt(false); setSelectedBedId(''); setRoomBeds([]); }}
+                                className="px-8 py-3 text-xs font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest flex-1"
                             >
                                 CANCEL
                             </button>
