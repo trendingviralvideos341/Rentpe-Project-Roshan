@@ -737,7 +737,7 @@ export default function AdminPropertyApprovalPage() {
                                                             <Clock className="h-3 w-3 text-slate-400" />
                                                             <span>Submitted: {new Date(property.createdAt).toLocaleDateString()}</span>
                                                         </div>
-                                                        {isApproved && (
+                                                        {property.status === 'APPROVED' && (
                                                             <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500 text-white rounded-lg shadow-sm shadow-emerald-100">
                                                                 <CheckCircle className="h-3 w-3" />
                                                                 <span>Live Date: {new Date(property.updatedAt).toLocaleDateString()}</span>
