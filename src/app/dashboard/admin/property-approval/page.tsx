@@ -892,8 +892,8 @@ export default function AdminPropertyApprovalPage() {
                                                         value="details"
                                                         className="flex-1 rounded-full font-black uppercase text-[10px] tracking-[0.1em] gap-2 h-11 transition-all duration-300 
                                                         bg-transparent text-slate-500
-                                                        data-[state=active]:bg-white data-[state=active]:text-indigo-600 
-                                                        data-[state=active]:shadow-lg data-[state=active]:border border-transparent data-[state=active]:border-indigo-100 group/tab 
+                                                        data-[state=active]:bg-emerald-600 data-[state=active]:text-white 
+                                                        data-[state=active]:shadow-xl data-[state=active]:border-emerald-700 group/tab 
                                                         hover:bg-indigo-50/50 active:scale-95"
                                                     >
                                                         <Home className="w-4 h-4 group-data-[state=active]/tab:scale-110 transition-transform" />
@@ -903,8 +903,8 @@ export default function AdminPropertyApprovalPage() {
                                                         value="rooms"
                                                         className="flex-1 rounded-full font-black uppercase text-[10px] tracking-[0.1em] gap-2 h-11 transition-all duration-300 
                                                         bg-transparent text-slate-500
-                                                        data-[state=active]:bg-white data-[state=active]:text-emerald-600 
-                                                        data-[state=active]:shadow-lg data-[state=active]:border border-transparent data-[state=active]:border-emerald-100 group/tab 
+                                                        data-[state=active]:bg-emerald-600 data-[state=active]:text-white 
+                                                        data-[state=active]:shadow-xl data-[state=active]:border-emerald-700 group/tab 
                                                         hover:bg-emerald-50/50 active:scale-95"
                                                     >
                                                         <BedDouble className="w-4 h-4 group-data-[state=active]/tab:scale-110 transition-transform" />
@@ -913,10 +913,10 @@ export default function AdminPropertyApprovalPage() {
                                                     <TabsTrigger
                                                         value="verification"
                                                         className={`flex-1 rounded-full font-black uppercase text-[10px] tracking-[0.1em] gap-2 h-11 transition-all duration-300 relative group/tab active:scale-95 bg-transparent text-slate-500
-                                                            data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border border-transparent
+                                                            data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:border-emerald-700
                                                             ${(property.status === 'PENDING_VERIFICATION' || property.status === 'NEEDS_CORRECTION')
-                                                                ? 'data-[state=active]:text-amber-600 data-[state=active]:border-amber-100 hover:bg-amber-50/50' 
-                                                                : 'data-[state=active]:text-indigo-600 data-[state=active]:border-indigo-100 hover:bg-indigo-50/50'
+                                                                ? 'hover:bg-amber-50/50' 
+                                                                : 'hover:bg-indigo-50/50'
                                                             }`}
                                                     >
                                                         <ShieldCheck className="w-4 h-4 group-data-[state=active]/tab:scale-110 transition-transform" />
