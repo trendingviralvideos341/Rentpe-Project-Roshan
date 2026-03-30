@@ -668,7 +668,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                     <ol className="space-y-1">
                                         <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
                                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">1</span>
-                                            Wait for your property to be <span className="underline underline-offset-2">Approved</span> by Admin.
+                                            Wait for your property to be <span className="underline underline-offset-2">Approved</span> by RentPe Team.
                                         </li>
                                         <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
                                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">2</span>
