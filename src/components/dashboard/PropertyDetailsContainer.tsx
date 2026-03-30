@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom, deletePropertyDocument } from "@/actions/properties";
+import { deleteRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
@@ -292,6 +293,17 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
             toast.error(`Error adding room: ${e.message}`);
         } finally {
             setSavingRoom(false);
+        }
+    };
+
+    const handleDeleteRoom = async (roomId: string, roomNumber: string) => {
+        if (!confirm(`Are you sure you want to delete Room ${roomNumber}? This cannot be undone.`)) return;
+        try {
+            await deleteRoomByOwner(roomId);
+            setProperty({ ...property, rooms: property.rooms.filter((r: any) => r.id !== roomId) });
+            toast.success(`Room ${roomNumber} deleted successfully.`);
+        } catch (e: any) {
+            toast.error(`Error: ${e.message}`);
         }
     };
 
@@ -650,36 +662,26 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                     </div>
 
                     <div className="flex flex-col gap-4 mb-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center flex-wrap gap-3">
                             <div className="space-y-1">
                                 <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                                     Room Inventory <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{property.rooms?.length || 0} Rooms</Badge>
                                 </h2>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Manage available rooms and their pricing</p>
                             </div>
+                            {role === 'owner' && property.status === 'APPROVED' && (
+                                <Button
+                                    className="h-11 px-6 rounded-2xl font-black uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 flex items-center gap-2 active:scale-95 transition-all"
+                                    onClick={() => setIsAddRoomOpen(true)}
+                                >
+                                    <Plus className="w-4 h-4" /> Add New Room
+                                </Button>
+                            )}
                         </div>
-                        {role === 'owner' && (
-                            <div className="flex items-start gap-3 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
-                                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-red-600 flex items-center justify-center mt-0.5">
-                                    <span className="text-white text-xs font-black">!</span>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <p className="text-[11px] font-black text-red-700 uppercase tracking-widest">How to Add Rooms After Approval</p>
-                                    <ol className="space-y-1">
-                                        <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
-                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">1</span>
-                                            Wait for your property to be <span className="underline underline-offset-2">Approved</span> by RentPe Team.
-                                        </li>
-                                        <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
-                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">2</span>
-                                            Go to <span className="font-black underline underline-offset-2">My Properties</span> from the sidebar.
-                                        </li>
-                                        <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
-                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">3</span>
-                                            Open your property and use <span className="font-black underline underline-offset-2">"+ Add New Room"</span> button there.
-                                        </li>
-                                    </ol>
-                                </div>
+                        {role === 'owner' && property.status !== 'APPROVED' && (
+                            <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] font-bold text-amber-700">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                Room management is available once your property is approved by RentPe Team.
                             </div>
                         )}
                     </div>
@@ -714,13 +716,22 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                         </div>
                                     </div>
                                     <div className="relative z-10 mt-3 pt-3 border-t border-emerald-100 flex gap-2">
-                                        {role === 'owner' && (
-                                            <Button 
-                                                className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-md shadow-emerald-100 active:scale-95" 
-                                                onClick={() => openEditRoomDialog(room)}
-                                            >
-                                                EDIT ROOM
-                                            </Button>
+                                        {role === 'owner' && property.status === 'APPROVED' && (
+                                            <>
+                                                <Button 
+                                                    className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-md shadow-emerald-100 active:scale-95" 
+                                                    onClick={() => openEditRoomDialog(room)}
+                                                >
+                                                    EDIT ROOM
+                                                </Button>
+                                                <Button 
+                                                    className="h-10 w-10 p-0 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
+                                                    onClick={() => handleDeleteRoom(room.id, room.roomNumber)}
+                                                    title="Delete Room"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </>
                                         )}
                                     </div>
                                 </div>
