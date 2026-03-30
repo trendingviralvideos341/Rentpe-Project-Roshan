@@ -505,7 +505,8 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
     const isLocked = ['VERIFIED_SUCCESSFULLY', 'APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED', 'APPROVED'].includes(property.status);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 border-[4px] border-slate-950 p-6 md:p-10 rounded-[48px] bg-white shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl -z-0"></div>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-5">
                     <Button variant="outline" size="icon" asChild className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50">
@@ -648,41 +649,59 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                         </p>
                     </div>
 
-                    {/* Add Room Section for Owner/Manager */}
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800">Room Inventory</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                Room Inventory <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{property.rooms?.length || 0} Rooms</Badge>
+                            </h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Manage available rooms and their pricing</p>
+                        </div>
                         {role === 'owner' && (
-                            <Button className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase text-[10px] tracking-widest h-11 px-6 shadow-xl shadow-indigo-100" onClick={() => setIsAddRoomOpen(true)}>
-                                <Plus className="w-4 h-4 mr-2" /> Add New Room
+                            <Button 
+                                className="h-10 px-6 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-100 flex items-center gap-2 group transition-all active:scale-95" 
+                                onClick={() => setIsAddRoomOpen(true)}
+                            >
+                                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Add New Room
                             </Button>
                         )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {property.rooms?.map((room: any) => (
-                            <Card key={room.id} className="rounded-[32px] border-2 border-slate-50 shadow-sm hover:shadow-lg transition-all overflow-hidden group">
-                                <div className="p-6 space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="p-4 rounded-2xl bg-indigo-50 text-indigo-600 font-black text-xl shadow-inner group-hover:scale-110 transition-transform">
-                                            {room.roomNumber}
-                                        </div>
-                                        <Badge variant="outline" className="rounded-xl border-2 px-3 py-1 font-black uppercase text-[9px] tracking-widest text-slate-500">{room.type}</Badge>
+                            <div key={room.id} className="border-2 border-emerald-50 rounded-2xl p-4 text-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-100 transition-all bg-white hover:-translate-y-1">
+                                {room.photoUrl && (
+                                    <div className="absolute inset-0 z-0 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <img src={room.photoUrl} className="w-full h-full object-cover" />
                                     </div>
-                                    <div className="pt-2">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Rent</div>
-                                        <div className="text-2xl font-black text-slate-900 tracking-tighter">₹{room.price.toLocaleString()}</div>
+                                )}
+                                <div className="p-2 space-y-4">
+                                    <div className="relative z-10 flex justify-between items-center mb-4 border-b border-emerald-100 pb-3">
+                                        <span className="font-bold flex items-center gap-1.5 text-base">
+                                            <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
+                                        </span>
+                                        <Badge variant="outline" className="rounded-xl border-emerald-100 bg-blue-50 px-3 py-1 font-black uppercase text-[9px] tracking-widest text-blue-700">{room.type}</Badge>
                                     </div>
-                                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${room.availability > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
-                                            <span className="text-[11px] font-bold text-slate-600">{room.availability} BEDS READY</span>
+                                    <div className="relative z-10 flex justify-between items-end text-muted-foreground mt-2">
+                                        <span className="flex items-center gap-1.5 font-bold bg-emerald-50/50 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
+                                            <BedDouble className="h-4 w-4" /> {room.availability} BEDS READY
+                                        </span>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
+                                            <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{room.price.toLocaleString()}</span>
                                         </div>
+                                    </div>
+                                    <div className="relative z-10 mt-3 pt-3 border-t border-emerald-100 flex gap-2">
                                         {role === 'owner' && (
-                                            <Button variant="ghost" size="sm" className="h-8 rounded-lg font-black text-[10px] text-indigo-600" onClick={() => openEditRoomDialog(room)}>EDIT</Button>
+                                            <Button 
+                                                className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-md shadow-emerald-100 active:scale-95" 
+                                                onClick={() => openEditRoomDialog(room)}
+                                            >
+                                                EDIT ROOM
+                                            </Button>
                                         )}
                                     </div>
                                 </div>
-                            </Card>
+                            </div>
                         ))}
                     </div>
                 </TabsContent>
