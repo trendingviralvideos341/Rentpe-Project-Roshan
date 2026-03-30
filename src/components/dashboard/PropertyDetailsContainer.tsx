@@ -649,20 +649,38 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                         </p>
                     </div>
 
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                                Room Inventory <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{property.rooms?.length || 0} Rooms</Badge>
-                            </h2>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Manage available rooms and their pricing</p>
+                    <div className="flex flex-col gap-4 mb-6">
+                        <div className="flex justify-between items-center">
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                    Room Inventory <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{property.rooms?.length || 0} Rooms</Badge>
+                                </h2>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Manage available rooms and their pricing</p>
+                            </div>
                         </div>
                         {role === 'owner' && (
-                            <Button 
-                                className="h-10 px-6 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-100 flex items-center gap-2 group transition-all active:scale-95" 
-                                onClick={() => setIsAddRoomOpen(true)}
-                            >
-                                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Add New Room
-                            </Button>
+                            <div className="flex items-start gap-3 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+                                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-red-600 flex items-center justify-center mt-0.5">
+                                    <span className="text-white text-xs font-black">!</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <p className="text-[11px] font-black text-red-700 uppercase tracking-widest">How to Add Rooms After Approval</p>
+                                    <ol className="space-y-1">
+                                        <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
+                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">1</span>
+                                            Wait for your property to be <span className="underline underline-offset-2">Approved</span> by Admin.
+                                        </li>
+                                        <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
+                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">2</span>
+                                            Go to <span className="font-black underline underline-offset-2">My Properties</span> from the sidebar.
+                                        </li>
+                                        <li className="text-[11px] font-bold text-red-600 flex items-center gap-2">
+                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">3</span>
+                                            Open your property and use <span className="font-black underline underline-offset-2">"+ Add New Room"</span> button there.
+                                        </li>
+                                    </ol>
+                                </div>
+                            </div>
                         )}
                     </div>
 
