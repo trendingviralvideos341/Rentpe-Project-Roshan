@@ -1134,7 +1134,7 @@ export default function AdminPropertyApprovalPage() {
                                                             </h4>
                                                             <Button 
                                                                 size="sm" 
-                                                                className="h-9 px-4 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-100 flex items-center gap-2 group"
+                                                                className="h-10 px-4 font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-100 flex items-center gap-2 group transition-all active:scale-95"
                                                                 onClick={() => setAddRoomDialog({ isOpen: true, propertyId: property.id })}
                                                             >
                                                                 <Plus className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" />
@@ -1157,24 +1157,22 @@ export default function AdminPropertyApprovalPage() {
                                                                         )}
                                                                         <div className="relative z-10 flex justify-between items-center mb-4 border-b pb-3">
                                                                             <span className="font-bold flex items-center gap-1.5 text-base">
-                                                                                <Building2 className="h-4 w-4 text-indigo-500" /> Room {room.roomNumber}
+                                                                                <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
                                                                             </span>
                                                                             <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">{room.type}</span>
                                                                         </div>
-                                                                        <div className="relative z-10 flex justify-between items-end text-muted-foreground mt-2">
-                                                                            <span className="flex items-center gap-1.5 font-medium bg-muted/50 px-2.5 py-1 rounded-md">
-                                                                                <BedDouble className="h-4 w-4 text-indigo-500" /> {room.availability} Beds
-                                                                            </span>
+                                                                             <div className="relative z-10 flex justify-between items-end text-slate-400 mt-2">
+                                                                                 <span className="flex items-center gap-1.5 font-bold bg-emerald-50/50 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
+                                                                                     <BedDouble className="h-4 w-4 text-emerald-600" /> {room.availability} Beds
+                                                                                 </span>
                                                                             <div className="flex flex-col items-end">
-                                                                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Monthly Rent</span>
-                                                                                <span className="font-bold text-green-700 text-lg leading-none">₹{room.price}</span>
+                                                                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
+                                                                                <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{room.price}</span>
                                                                             </div>
                                                                         </div>
                                                                         <div className="relative z-10 mt-3 pt-3 border-t border-emerald-100 flex gap-2">
                                                                              <Button 
-                                                                                 variant="ghost" 
-                                                                                 size="sm" 
-                                                                                 className="flex-1 h-9 text-[10px] font-black uppercase tracking-widest bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 rounded-xl transition-all border border-emerald-100"
+                                                                                 className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-md shadow-emerald-100 active:scale-95"
                                                                                  onClick={(e) => {
                                                                                      e.stopPropagation();
                                                                                      setEditRoomDialog({

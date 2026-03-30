@@ -674,7 +674,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                         <img src={room.photoUrl} className="w-full h-full object-cover" />
                                     </div>
                                 )}
-                                <div className="p-2 space-y-4">
+                                <div className="p-2 space-y-4 relative z-10">
                                     <div className="relative z-10 flex justify-between items-center mb-4 border-b border-emerald-100 pb-3">
                                         <span className="font-bold flex items-center gap-1.5 text-base">
                                             <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
