@@ -224,12 +224,16 @@ export default function AdminPropertyApprovalPage() {
             toast({ title: "Room Number Required", variant: "destructive" });
             return;
         }
+        if (!newRoomData.depositMonths) {
+            toast({ title: "Security Deposit Required", description: "Please select 1 Month or 2 Months deposit.", variant: "destructive" });
+            return;
+        }
         setProcessing(true);
         try {
             await adminAddRoom(addRoomDialog.propertyId, newRoomData);
             toast({ title: "Success", description: "Room added successfully." });
             setAddRoomDialog(null);
-            setNewRoomData({ roomNumber: '', type: 'Single Sharing', price: 10000, availability: 1, depositMonths: 1 });
+            setNewRoomData({ roomNumber: '', type: 'Single Sharing (1)', price: 5000, availability: 1, depositMonths: 0 });
             fetchData(true);
         } catch (e: any) {
             toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -1998,9 +2002,9 @@ export default function AdminPropertyApprovalPage() {
                                 Cancel
                             </Button>
                             <Button 
-                                className="flex-[2] h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                                className="flex-[2] h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                                 onClick={handleAddRoom}
-                                disabled={processing}
+                                disabled={processing || !newRoomData.depositMonths}
                             >
                                 {processing ? (
                                     <RefreshCcw className="w-5 h-5 animate-spin" />
