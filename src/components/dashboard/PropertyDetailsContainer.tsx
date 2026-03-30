@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, editRoom, deletePropertyDocument } from "@/actions/properties";
-import { deleteRoomByOwner } from "@/actions/rooms";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument } from "@/actions/properties";
+import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
@@ -315,7 +315,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
 
         setEditingRoom(true);
         try {
-            const updatedRoom = await editRoom(editRoomForm.id, {
+            const updatedRoom = await updateRoomByOwner(editRoomForm.id, {
                 roomNumber: editRoomForm.roomNumber,
                 type: editRoomForm.type,
                 price: parseFloat(editRoomForm.price),
@@ -788,7 +788,55 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                 </TabsContent>
             </Tabs>
 
-            {/* Room Add/Edit Dialogs */}
+            {/* Edit Room Dialog */}
+            <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
+                <DialogContent className="rounded-[32px] border-4 border-slate-900 shadow-2xl p-8">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Edit Room</DialogTitle>
+                        <DialogDescription className="font-bold text-slate-400 uppercase tracking-[0.2em] text-[10px]">Update details for Room {editRoomForm.roomNumber}</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-6 font-bold">
+                        <div className="grid gap-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">Room Identifier</Label>
+                            <Input placeholder="e.g. 101, B-4" className="h-12 rounded-2xl border-2 border-slate-100" value={editRoomForm.roomNumber} onChange={e => setEditRoomForm({...editRoomForm, roomNumber: e.target.value})} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">Bed Configuration</Label>
+                            <select className="h-12 rounded-2xl border-2 border-slate-100 bg-white px-4" value={editRoomForm.type} onChange={e => setEditRoomForm({...editRoomForm, type: e.target.value})}>
+                                <option>Single Sharing</option>
+                                <option>Double Sharing</option>
+                                <option>Three Sharing</option>
+                                <option>Four Sharing</option>
+                                <option>Five Sharing</option>
+                                <option>Six Sharing</option>
+                            </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400">Monthly Rent (₹)</Label>
+                                <Input type="number" className="h-12 rounded-2xl border-2 border-slate-100" value={editRoomForm.price} onChange={e => setEditRoomForm({...editRoomForm, price: e.target.value})} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400">Available Beds</Label>
+                                <Input type="number" className="h-12 rounded-2xl border-2 border-slate-100" value={editRoomForm.availability} onChange={e => setEditRoomForm({...editRoomForm, availability: e.target.value})} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="flex gap-3">
+                        <button
+                            onClick={() => setIsEditRoomOpen(false)}
+                            className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95"
+                        >
+                            CANCEL
+                        </button>
+                        <Button className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-xs" onClick={handleEditRoomSave} disabled={editingRoom}>
+                            {editingRoom ? "SAVING..." : "SAVE CHANGES"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Room Dialog */}
             <Dialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen}>
                 <DialogContent className="rounded-[32px] border-4 border-slate-900 shadow-2xl p-8">
                     <DialogHeader>

@@ -127,3 +127,36 @@ export async function getBedsForRoom(roomId: string) {
         orderBy: { bedNumber: 'asc' }
     });
 }
+
+export async function updateRoomByOwner(roomId: string, data: {
+    roomNumber: string;
+    type: string;
+    price: number;
+    availability: number;
+}) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
+        throw new Error("Unauthorized");
+    }
+
+    // Verify ownership
+    const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { property: { select: { ownerId: true } } }
+    });
+
+    if (!room) throw new Error("Room not found.");
+    if (session.role === 'OWNER' && room.property.ownerId !== session.userId) {
+        throw new Error("You do not own this room.");
+    }
+
+    return prisma.room.update({
+        where: { id: roomId },
+        data: {
+            roomNumber: data.roomNumber,
+            type: data.type,
+            price: data.price,
+            availability: data.availability,
+        }
+    });
+}
