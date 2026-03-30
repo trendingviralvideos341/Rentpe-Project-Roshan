@@ -77,12 +77,32 @@ export async function deleteRoomByOwner(roomId: string) {
     // Verify the room belongs to this owner's property
     const room = await prisma.room.findUnique({
         where: { id: roomId },
-        include: { property: { select: { ownerId: true, status: true } } }
+        include: { 
+            property: { select: { ownerId: true, status: true } },
+            tenants: { where: { status: { notIn: ['MOVED_OUT'] } } },
+            bookings: { where: { status: { notIn: ['CANCELLED', 'REJECTED', 'COMPLETED'] } } },
+            beds:    { where: { status: { notIn: ['AVAILABLE', 'MAINTENANCE'] } } }
+        }
     });
 
     if (!room) throw new Error("Room not found.");
     if (room.property.ownerId !== session.userId) throw new Error("You do not own this room.");
     if (room.property.status !== 'APPROVED') throw new Error("Rooms can only be deleted from approved properties.");
+
+    // 🚫 Block 1: Active tenants living in this room
+    if (room.tenants.length > 0) {
+        throw new Error(`This room has ${room.tenants.length} active tenant(s). Move them out before deleting.`);
+    }
+
+    // 🚫 Block 2: Pending/confirmed bookings for this room
+    if (room.bookings.length > 0) {
+        throw new Error(`This room has ${room.bookings.length} active booking(s). Cancel them before deleting.`);
+    }
+
+    // 🚫 Block 3: Any bed currently occupied/locked
+    if (room.beds.length > 0) {
+        throw new Error(`One or more beds in this room are occupied or reserved. Free all beds first.`);
+    }
 
     await prisma.room.delete({ where: { id: roomId } });
     return { success: true };
