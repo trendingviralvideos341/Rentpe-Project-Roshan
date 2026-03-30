@@ -50,12 +50,12 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
 
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
-    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
+    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing", price: "", availability: "1", depositMonths: 1 as 1 | 2 });
     const [savingRoom, setSavingRoom] = useState(false);
 
     // Edit Room State
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
-    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
+    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing", price: "", availability: "1", depositMonths: 1 as 1 | 2 });
     const [editingRoom, setEditingRoom] = useState(false);
 
     // Live Capture State
@@ -287,7 +287,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
 
             setProperty({ ...property, rooms: [...(property.rooms || []), newRoom] });
             setIsAddRoomOpen(false);
-            setRoomForm({ roomNumber: "", type: "Single Sharing", price: "", availability: "1" });
+            setRoomForm({ roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 1 });
             toast.success("Room added successfully!");
         } catch (e: any) {
             toast.error(`Error adding room: ${e.message}`);
@@ -341,6 +341,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
             type: room.type,
             price: room.price.toString(),
             availability: room.availability.toString(),
+            depositMonths: (room.depositMonths as 1 | 2) || 1,
         });
         setIsEditRoomOpen(true);
     };
@@ -788,89 +789,249 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                 </TabsContent>
             </Tabs>
 
-            {/* Edit Room Dialog */}
+            {/* Edit Room Dialog — Premium Design */}
             <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
-                <DialogContent className="rounded-[32px] border-4 border-slate-900 shadow-2xl p-8">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Edit Room</DialogTitle>
-                        <DialogDescription className="font-bold text-slate-400 uppercase tracking-[0.2em] text-[10px]">Update details for Room {editRoomForm.roomNumber}</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-6 py-6 font-bold">
-                        <div className="grid gap-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">Room Identifier</Label>
-                            <Input placeholder="e.g. 101, B-4" className="h-12 rounded-2xl border-2 border-slate-100" value={editRoomForm.roomNumber} onChange={e => setEditRoomForm({...editRoomForm, roomNumber: e.target.value})} />
+                <DialogContent className="max-w-lg rounded-3xl shadow-2xl p-0 overflow-hidden border-0">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 px-8 pt-8 pb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200 flex-shrink-0">
+                            <BedDouble className="w-6 h-6 text-white" />
                         </div>
-                        <div className="grid gap-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">Bed Configuration</Label>
-                            <select className="h-12 rounded-2xl border-2 border-slate-100 bg-white px-4" value={editRoomForm.type} onChange={e => setEditRoomForm({...editRoomForm, type: e.target.value})}>
-                                <option>Single Sharing</option>
-                                <option>Double Sharing</option>
-                                <option>Three Sharing</option>
-                                <option>Four Sharing</option>
-                                <option>Five Sharing</option>
-                                <option>Six Sharing</option>
-                            </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Monthly Rent (₹)</Label>
-                                <Input type="number" className="h-12 rounded-2xl border-2 border-slate-100" value={editRoomForm.price} onChange={e => setEditRoomForm({...editRoomForm, price: e.target.value})} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Available Beds</Label>
-                                <Input type="number" className="h-12 rounded-2xl border-2 border-slate-100" value={editRoomForm.availability} onChange={e => setEditRoomForm({...editRoomForm, availability: e.target.value})} />
-                            </div>
+                        <div>
+                            <h2 className="text-xl font-black tracking-tight text-slate-900">Edit Room Details</h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Manage Inventory and Pricing Strategy</p>
                         </div>
                     </div>
-                    <DialogFooter className="flex gap-3">
-                        <button
-                            onClick={() => setIsEditRoomOpen(false)}
-                            className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95"
-                        >
-                            CANCEL
-                        </button>
-                        <Button className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-xs" onClick={handleEditRoomSave} disabled={editingRoom}>
-                            {editingRoom ? "SAVING..." : "SAVE CHANGES"}
-                        </Button>
-                    </DialogFooter>
+
+                    <div className="px-8 pb-8 space-y-5">
+                        {/* Row 1: Room Number + Bed Type */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number</label>
+                                <div className="relative">
+                                    <Input
+                                        placeholder="e.g. 101, B-4"
+                                        className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                        value={editRoomForm.roomNumber}
+                                        onChange={e => setEditRoomForm({...editRoomForm, roomNumber: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type</label>
+                                <select
+                                    className="w-full h-12 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                    value={editRoomForm.type}
+                                    onChange={e => setEditRoomForm({...editRoomForm, type: e.target.value})}
+                                >
+                                    {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Monthly Price + Beds Available */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Price (₹)</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400">₹</span>
+                                    <Input
+                                        type="number"
+                                        className="h-12 rounded-xl border-2 border-slate-100 pl-7 font-bold text-slate-800 focus:border-emerald-300"
+                                        value={editRoomForm.price}
+                                        onChange={e => setEditRoomForm({...editRoomForm, price: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
+                                <Input
+                                    type="number"
+                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                    value={editRoomForm.availability}
+                                    onChange={e => setEditRoomForm({...editRoomForm, availability: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Info note */}
+                        <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+                            <span className="text-emerald-600 mt-0.5 text-sm">ⓘ</span>
+                            <p className="text-[11px] text-emerald-700 font-semibold leading-relaxed">
+                                Adding beds will automatically generate new bed ID records.<br />
+                                Removing beds is only possible if they are not currently occupied.
+                            </p>
+                        </div>
+
+                        {/* Security Deposit Months */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Security Deposit Months *</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {([1, 2] as const).map(m => {
+                                    const rent = parseFloat(editRoomForm.price) || 0;
+                                    return (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setEditRoomForm({...editRoomForm, depositMonths: m})}
+                                            className={`h-20 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black ${
+                                                editRoomForm.depositMonths === m
+                                                    ? 'border-emerald-500 bg-emerald-50 ring-4 ring-emerald-100 scale-[1.02] shadow-md'
+                                                    : 'border-slate-100 bg-white hover:border-emerald-200'
+                                            }`}
+                                        >
+                                            <span className={`text-xs font-black uppercase tracking-widest ${editRoomForm.depositMonths === m ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                                {m} Month{m > 1 ? 's' : ''}
+                                            </span>
+                                            <span className={`text-lg font-black ${editRoomForm.depositMonths === m ? 'text-emerald-900' : 'text-slate-400'}`}>
+                                                ₹{(rent * m).toLocaleString('en-IN')}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Maximum 2 months for residential PG/Hostel • Deposit is refundable</p>
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => setIsEditRoomOpen(false)}
+                                className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-sm bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm"
+                            >
+                                CANCEL
+                            </button>
+                            <Button
+                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100"
+                                onClick={handleEditRoomSave}
+                                disabled={editingRoom}
+                            >
+                                💾 {editingRoom ? 'SAVING...' : 'SAVE ROOM'}
+                            </Button>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
-            {/* Add Room Dialog */}
+            {/* Add Room Dialog — Premium Design (same layout) */}
             <Dialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen}>
-                <DialogContent className="rounded-[32px] border-4 border-slate-900 shadow-2xl p-8">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Register New Room</DialogTitle>
-                        <DialogDescription className="font-bold text-slate-400 uppercase tracking-[0.2em] text-[10px]">Add inventory to {property.name}</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-6 py-6 font-bold">
-                        <div className="grid gap-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">Room Identifier</Label>
-                            <Input placeholder="e.g. 101, B-4" className="h-12 rounded-2xl border-2 border-slate-100" value={roomForm.roomNumber} onChange={e => setRoomForm({...roomForm, roomNumber: e.target.value})} />
+                <DialogContent className="max-w-lg rounded-3xl shadow-2xl p-0 overflow-hidden border-0">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 px-8 pt-8 pb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200 flex-shrink-0">
+                            <Plus className="w-6 h-6 text-white" />
                         </div>
-                        <div className="grid gap-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">Bed Configuration</Label>
-                            <select className="h-12 rounded-2xl border-2 border-slate-100 bg-white px-4" value={roomForm.type} onChange={e => setRoomForm({...roomForm, type: e.target.value})}>
-                                <option>Single Sharing</option>
-                                <option>Double Sharing</option>
-                                <option>Three Sharing</option>
-                                <option>Four Sharing</option>
-                            </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Monthly Rent (₹)</Label>
-                                <Input type="number" className="h-12 rounded-2xl border-2 border-slate-100" value={roomForm.price} onChange={e => setRoomForm({...roomForm, price: e.target.value})} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Total Bed Count</Label>
-                                <Input type="number" className="h-12 rounded-2xl border-2 border-slate-100" value={roomForm.availability} onChange={e => setRoomForm({...roomForm, availability: e.target.value})} />
-                            </div>
+                        <div>
+                            <h2 className="text-xl font-black tracking-tight text-slate-900">Add New Room</h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Register Inventory for {property?.name}</p>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-xs" onClick={handleSaveRoom} disabled={savingRoom}>{savingRoom ? "PROCESSING..." : "REGISTER ROOM"}</Button>
-                    </DialogFooter>
+
+                    <div className="px-8 pb-8 space-y-5">
+                        {/* Row 1: Room Number + Bed Type */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number</label>
+                                <Input
+                                    placeholder="e.g. 101, B-4"
+                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                    value={roomForm.roomNumber}
+                                    onChange={e => setRoomForm({...roomForm, roomNumber: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type</label>
+                                <select
+                                    className="w-full h-12 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                    value={roomForm.type}
+                                    onChange={e => setRoomForm({...roomForm, type: e.target.value})}
+                                >
+                                    {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Monthly Price + Beds Available */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Price (₹)</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400">₹</span>
+                                    <Input
+                                        type="number"
+                                        className="h-12 rounded-xl border-2 border-slate-100 pl-7 font-bold text-slate-800 focus:border-emerald-300"
+                                        value={roomForm.price}
+                                        onChange={e => setRoomForm({...roomForm, price: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
+                                <Input
+                                    type="number"
+                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                    value={roomForm.availability}
+                                    onChange={e => setRoomForm({...roomForm, availability: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Info note */}
+                        <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+                            <span className="text-emerald-600 mt-0.5 text-sm">ⓘ</span>
+                            <p className="text-[11px] text-emerald-700 font-semibold leading-relaxed">
+                                Adding beds will automatically generate new bed ID records (e.g. 101-A, 101-B).<br />
+                                You can manage individual beds from the Bed Management tab.
+                            </p>
+                        </div>
+
+                        {/* Security Deposit Months */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Security Deposit Months *</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {([1, 2] as const).map(m => {
+                                    const rent = parseFloat(roomForm.price) || 0;
+                                    return (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setRoomForm({...roomForm, depositMonths: m})}
+                                            className={`h-20 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black ${
+                                                roomForm.depositMonths === m
+                                                    ? 'border-emerald-500 bg-emerald-50 ring-4 ring-emerald-100 scale-[1.02] shadow-md'
+                                                    : 'border-slate-100 bg-white hover:border-emerald-200'
+                                            }`}
+                                        >
+                                            <span className={`text-xs font-black uppercase tracking-widest ${roomForm.depositMonths === m ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                                {m} Month{m > 1 ? 's' : ''}
+                                            </span>
+                                            <span className={`text-lg font-black ${roomForm.depositMonths === m ? 'text-emerald-900' : 'text-slate-400'}`}>
+                                                ₹{(rent * m).toLocaleString('en-IN')}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Maximum 2 months for residential PG/Hostel • Deposit is refundable</p>
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 1 }); }}
+                                className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-sm bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm"
+                            >
+                                CANCEL
+                            </button>
+                            <Button
+                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100"
+                                onClick={handleSaveRoom}
+                                disabled={savingRoom}
+                            >
+                                + {savingRoom ? 'REGISTERING...' : 'ADD NEW ROOM'}
+                            </Button>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
