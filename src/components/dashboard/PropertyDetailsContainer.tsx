@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
 import { toast } from "sonner";
 
-export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) {
+export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' | 'staff', permissions?: string[] }) {
     const params = useParams<{ id: string }>();
     const router = useRouter();
     const propertyId = params?.id as string;
@@ -606,7 +606,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                     </div>
                 </div>
             )}
-            {role === 'owner' && property.status === 'APPROVED' && (
+            {(role === 'owner' || (role === 'staff' && permissions?.includes('request_deactivation'))) && property.status === 'APPROVED' && (
                 <div className="flex justify-end">
                     <button
                         onClick={() => setIsDeactivationOpen(true)}

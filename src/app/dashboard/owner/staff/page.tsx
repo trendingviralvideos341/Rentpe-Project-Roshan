@@ -30,6 +30,7 @@ const ownerPermissionsList = [
     { id: "view_payments", label: "View Payments" },
     { id: "manage_properties", label: "Manage My Properties" },
     { id: "register_property", label: "Register My Property" },
+    { id: "request_deactivation", label: "Request Property Deactivation" },
     { id: "food_menu", label: "Manage Food Menu" },
     { id: "support", label: "Handle Support Tickets" },
 ];

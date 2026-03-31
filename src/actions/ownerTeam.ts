@@ -145,7 +145,7 @@ export async function deleteStaffMember(staffId: string) {
  * Middleware-like check for staff permissions
  * Used in other owner actions to restrict sub-account access.
  */
-export async function checkStaffPermission(permission: 'BOOKING_APPROVAL' | 'INQUIRY_RESPONSE' | 'VIEW_FINANCE' | 'MANAGE_PROPERTY') {
+export async function checkStaffPermission(permission: 'BOOKING_APPROVAL' | 'INQUIRY_RESPONSE' | 'VIEW_FINANCE' | 'MANAGE_PROPERTY' | 'REQUEST_DEACTIVATION') {
     const session = await getSession();
     if (!session) return false;
 
@@ -171,7 +171,7 @@ export async function checkStaffPermission(permission: 'BOOKING_APPROVAL' | 'INQ
     return false;
 }
 
-export async function requireStaffPermission(permission: 'BOOKING_APPROVAL' | 'INQUIRY_RESPONSE' | 'VIEW_FINANCE' | 'MANAGE_PROPERTY') {
+export async function requireStaffPermission(permission: 'BOOKING_APPROVAL' | 'INQUIRY_RESPONSE' | 'VIEW_FINANCE' | 'MANAGE_PROPERTY' | 'REQUEST_DEACTIVATION') {
     const hasPerm = await checkStaffPermission(permission);
     if (!hasPerm) throw new Error(`Permission Denied: Missing ${permission}`);
 }

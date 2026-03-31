@@ -786,7 +786,14 @@ export async function deleteProperty(propertyId: string) {
  */
 export async function requestPropertyDeactivation(propertyId: string, reason: string) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) throw new Error("Unauthorized");
+
+    if (session.role === 'STAFF') {
+        const perms = session.permissions || [];
+        if (!perms.includes('request_deactivation')) {
+            throw new Error("Permission Denied: Missing request_deactivation permission.");
+        }
+    }
 
     if (!reason?.trim()) throw new Error("A reason for deactivation is required.");
 
@@ -823,8 +830,20 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
                 data: {
                     userId: admin.id,
                     type: "PROPERTY_PENDING",
-                    message: `Deactivation Request: "${property.name}" (${property.displayId}) — Owner reason: ${reason}`,
+                    message: `Deactivation Request: "${property.name}" (${property.displayId}) — Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
                     targetRole: "ADMIN"
+                }
+            });
+        }
+
+        // Notify Owner if requested by Staff
+        if (session.role === 'STAFF') {
+            await tx.notification.create({
+                data: {
+                    userId: effectiveOwnerId,
+                    type: "SYSTEM_ALERT",
+                    message: `Your staff member ${session.name} has requested deactivation for property "${property.name}".`,
+                    targetRole: "OWNER"
                 }
             });
         }
