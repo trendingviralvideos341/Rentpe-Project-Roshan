@@ -50,12 +50,12 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
 
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
-    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing", price: "", availability: "1", depositMonths: 1 as 1 | 2 });
+    const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 as 0 | 1 | 2 });
     const [savingRoom, setSavingRoom] = useState(false);
 
     // Edit Room State
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
-    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing", price: "", availability: "1", depositMonths: 1 as 1 | 2 });
+    const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 as 0 | 1 | 2 });
     const [editingRoom, setEditingRoom] = useState(false);
 
     // Live Capture State
@@ -822,7 +822,12 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                 <select
                                     className="w-full h-12 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
                                     value={editRoomForm.type}
-                                    onChange={e => setEditRoomForm({...editRoomForm, type: e.target.value})}
+                                    onChange={e => {
+                                        const type = e.target.value;
+                                        const match = type.match(/\((\d+)\)/);
+                                        const count = match ? match[1] : "1";
+                                        setEditRoomForm({...editRoomForm, type, availability: count});
+                                    }}
                                 >
                                     {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
                                 </select>
@@ -847,9 +852,9 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
                                 <Input
                                     type="number"
-                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                    readOnly
+                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-500 bg-slate-50 cursor-not-allowed"
                                     value={editRoomForm.availability}
-                                    onChange={e => setEditRoomForm({...editRoomForm, availability: e.target.value})}
                                 />
                             </div>
                         </div>
@@ -902,11 +907,11 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                 CANCEL
                             </button>
                             <Button
-                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100"
+                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={handleEditRoomSave}
-                                disabled={editingRoom}
+                                disabled={editingRoom || editRoomForm.depositMonths === 0}
                             >
-                                💾 {editingRoom ? 'SAVING...' : 'SAVE ROOM'}
+                                💾 {editingRoom ? 'SAVING...' : editRoomForm.depositMonths === 0 ? 'SELECT DEPOSIT' : 'SAVE ROOM'}
                             </Button>
                         </div>
                     </div>
@@ -944,7 +949,12 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                 <select
                                     className="w-full h-12 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
                                     value={roomForm.type}
-                                    onChange={e => setRoomForm({...roomForm, type: e.target.value})}
+                                    onChange={e => {
+                                        const type = e.target.value;
+                                        const match = type.match(/\((\d+)\)/);
+                                        const count = match ? match[1] : "1";
+                                        setRoomForm({...roomForm, type, availability: count});
+                                    }}
                                 >
                                     {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
                                 </select>
@@ -969,9 +979,9 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
                                 <Input
                                     type="number"
-                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                    readOnly
+                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-500 bg-slate-50 cursor-not-allowed"
                                     value={roomForm.availability}
-                                    onChange={e => setRoomForm({...roomForm, availability: e.target.value})}
                                 />
                             </div>
                         </div>
@@ -1018,17 +1028,17 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                         {/* Buttons */}
                         <div className="flex gap-3 pt-2">
                             <button
-                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 1 }); }}
+                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 }); }}
                                 className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-sm bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm"
                             >
                                 CANCEL
                             </button>
                             <Button
-                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100"
+                                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={handleSaveRoom}
-                                disabled={savingRoom}
+                                disabled={savingRoom || roomForm.depositMonths === 0}
                             >
-                                + {savingRoom ? 'REGISTERING...' : 'ADD NEW ROOM'}
+                                + {savingRoom ? 'REGISTERING...' : roomForm.depositMonths === 0 ? 'SELECT DEPOSIT' : 'ADD NEW ROOM'}
                             </Button>
                         </div>
                     </div>

@@ -1795,13 +1795,13 @@ export default function AdminPropertyApprovalPage() {
                                         value={editRoomDialog.type}
                                         onChange={(e) => {
                                             const type = e.target.value;
-                                            let autoAvail = editRoomDialog.availability;
-                                            if (type === "Single Sharing") autoAvail = 1;
-                                            if (type === "Double Sharing") autoAvail = 2;
-                                            if (type === "Three Sharing") autoAvail = 3;
-                                            if (type === "Four Sharing") autoAvail = 4;
-                                            if (type === "Five Sharing") autoAvail = 5;
-                                            if (type === "Six Sharing") autoAvail = 6;
+                                            let autoAvail = 1;
+                                            if (type === "Single Sharing" || type.includes("(1)")) autoAvail = 1;
+                                            if (type === "Double Sharing" || type.includes("(2)")) autoAvail = 2;
+                                            if (type === "Three Sharing" || type.includes("(3)")) autoAvail = 3;
+                                            if (type === "Four Sharing" || type.includes("(4)")) autoAvail = 4;
+                                            if (type === "Five Sharing" || type.includes("(5)")) autoAvail = 5;
+                                            if (type === "Six Sharing" || type.includes("(6)")) autoAvail = 6;
                                             setEditRoomDialog({...editRoomDialog, type, availability: autoAvail});
                                         }}
                                         className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all shadow-sm appearance-none"
@@ -1884,11 +1884,11 @@ export default function AdminPropertyApprovalPage() {
                         </Button>
                         <Button 
                             onClick={handleUpdateRoom} 
-                            disabled={processing}
-                            className="h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+                            disabled={processing || editRoomDialog?.depositMonths === 0}
+                            className="h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {processing ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            SAVE ROOM
+                            {editRoomDialog?.depositMonths === 0 ? 'SELECT DEPOSIT' : 'SAVE ROOM'}
                         </Button>
                     </div>
                 </DialogContent>
@@ -1930,11 +1930,12 @@ export default function AdminPropertyApprovalPage() {
                                             onChange={(e) => {
                                                 const type = e.target.value;
                                                 let autoAvail = 1;
-                                                if (type === "Double Sharing (2)") autoAvail = 2;
-                                                if (type === "Triple Sharing (3)") autoAvail = 3;
-                                                if (type === "Four Sharing (4)") autoAvail = 4;
-                                                if (type === "Five Sharing (5)") autoAvail = 5;
-                                                if (type === "Six Sharing (6)") autoAvail = 6;
+                                                if (type.includes("(1)")) autoAvail = 1;
+                                                if (type.includes("(2)")) autoAvail = 2;
+                                                if (type.includes("(3)")) autoAvail = 3;
+                                                if (type.includes("(4)")) autoAvail = 4;
+                                                if (type.includes("(5)")) autoAvail = 5;
+                                                if (type.includes("(6)")) autoAvail = 6;
                                                 setNewRoomData({...newRoomData, type, availability: autoAvail});
                                             }}
                                         >
@@ -2016,7 +2017,7 @@ export default function AdminPropertyApprovalPage() {
                                 ) : (
                                     <>
                                         <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                                        Confirm
+                                        {newRoomData.depositMonths === 0 ? 'SELECT DEPOSIT' : 'Confirm'}
                                     </>
                                 )}
                             </Button>
