@@ -969,7 +969,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                     </div>
                     <DialogFooter className="p-6 bg-slate-50/50 flex flex-col sm:flex-row gap-4">
                         <button 
-                            className="flex-1 rounded-2xl h-14 bg-white hover:bg-slate-50 text-slate-600 transition-all active:scale-95 font-black uppercase tracking-[0.2em] text-[11px] shadow-sm border-2 border-slate-100"
+                            className="flex-1 rounded-2xl h-14 bg-slate-900 hover:bg-black text-white transition-all active:scale-95 font-black uppercase tracking-[0.2em] text-[11px] shadow-xl"
                             onClick={() => setRoomToDelete(null)}
                         >
                             {((roomToDelete?.occupiedBeds ?? 0) > 0 || (roomToDelete?.activeTenants ?? 0) > 0) ? 'Close' : 'No, Keep it'}
