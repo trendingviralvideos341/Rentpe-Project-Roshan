@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { generateSequentialId } from "@/lib/ids";
+import { logAuditEvent } from "@/lib/audit";
+
 
 const LOCK_DURATION_MINUTES = 10; // Anti-ghost booking window
 
@@ -98,10 +100,24 @@ export async function occupyBed(bedId: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    return await (prisma as any).bed.update({
+    const updated = await (prisma as any).bed.update({
         where: { id: bedId },
         data: { status: 'OCCUPIED' }
     });
+
+    // ✅ Audit Log: bed check-in
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role,
+        actorName: session.name || session.role,
+        actionType: 'UPDATE',
+        entityType: 'BED',
+        entityId: bedId,
+        description: `Bed ${updated.bedNumber || bedId} marked OCCUPIED (check-in) by ${session.role}.`,
+        newValue: { status: 'OCCUPIED' },
+    });
+
+    return updated;
 }
 
 /**
@@ -163,8 +179,18 @@ export async function createBedsForRoom(roomId: string, count: number) {
         });
     }
     revalidatePath('/dashboard/owner/properties');
-    // The original instruction snippet included `return bedsToCreate;` here,
-    // but `bedsToCreate` is no longer defined. Removing for correctness.
+
+    // ✅ Audit Log: beds created for a room
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role,
+        actorName: session.name || session.role,
+        actionType: 'CREATE',
+        entityType: 'BED',
+        entityId: roomId,
+        description: `${count} bed(s) created for Room ${roomId} by ${session.role}.`,
+        newValue: { bedsCreated: count },
+    });
 }
 
 /**

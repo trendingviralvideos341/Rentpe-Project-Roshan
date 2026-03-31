@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth";
 import { razorpay } from "@/lib/razorpay";
 import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/email";
+import { logAuditEvent } from "@/lib/audit";
+
 
 export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string }) {
     const session = await getSession();
@@ -189,6 +191,19 @@ export async function verifyPayment(data: {
         revalidatePath("/dashboard/student");
         revalidatePath("/dashboard/owner/bookings");
         revalidatePath("/dashboard/owner/financials");
+
+        // ✅ Audit Log — Payment Verified (appears in Admin Audit + Owner Activity Logs)
+        logAuditEvent({
+            actorId: (session as any).userId,
+            actorRole: (session as any).role || 'USER',
+            actorName: user?.name || 'Tenant',
+            actionType: 'UPDATE',
+            entityType: 'PAYMENT',
+            entityId: payment.id,
+            description: `Payment of ₹${payment.amount} verified. Razorpay ID: ${data.razorpay_payment_id}. Booking ID: ${payment.bookingId}.`,
+            newValue: { status: 'VERIFIED', razorpayId: data.razorpay_payment_id, amount: payment.amount },
+        });
+
         return { success: true };
     });
 }
