@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
-import { getPendingPropertiesCount } from "@/actions/admin";
+import { getPendingPropertiesCount, getDeactivationRequestCount } from "@/actions/admin";
 import { getPendingOwnerActionCount } from "@/actions/properties";
 import { getPendingDocumentsCount } from "@/actions/documents";
 import { LogoutButton } from "@/components/layout/LogoutButton";
@@ -42,6 +42,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [pendingDocCount, setPendingDocCount] = useState(0);
     const [studentAlertCount, setStudentAlertCount] = useState(0);
     const [adminAlerts, setAdminAlerts] = useState({ bookings: 0, verifications: 0 });
+    const [deactivationCount, setDeactivationCount] = useState(0);
     const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
@@ -64,6 +65,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setPendingPropCount(propCount);
                 const alerts = await getAdminAlertCounts();
                 setAdminAlerts(alerts);
+                const deactCount = await getDeactivationRequestCount();
+                setDeactivationCount(deactCount);
             };
             checkAdmin();
             const interval = setInterval(checkAdmin, 5000);
@@ -150,6 +153,7 @@ export default function DashboardSidebar(props: SidebarProps) {
             title: "Operations",
             links: [
                 { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/deactivation-requests", label: "Deactivation Requests", icon: PowerOff, badge: deactivationCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
                 { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "operations"] },
                 { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties"] },

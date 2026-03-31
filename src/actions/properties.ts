@@ -777,3 +777,211 @@ export async function deleteProperty(propertyId: string) {
         return { success: true };
     });
 }
+
+// ── Property Deactivation Flow (OYO / Zolo / Stanza standard) ─────────────────
+
+/**
+ * OWNER: Request to deactivate an approved property.
+ * Sets status → DEACTIVATION_REQUESTED for admin review.
+ */
+export async function requestPropertyDeactivation(propertyId: string, reason: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    if (!reason?.trim()) throw new Error("A reason for deactivation is required.");
+
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
+    const property = await prisma.property.findUnique({
+        where: { id: propertyId },
+        include: {
+            tenants: { where: { status: { notIn: ['MOVED_OUT'] } } },
+            bookings: { where: { status: { notIn: ['CANCELLED', 'REJECTED', 'COMPLETED'] } } },
+        }
+    });
+
+    if (!property) throw new Error("Property not found.");
+    if (property.ownerId !== effectiveOwnerId) throw new Error("You do not own this property.");
+    if (property.status !== 'APPROVED') throw new Error("Only approved (live) properties can be deactivated. Current status: " + property.status);
+
+    await prisma.$transaction(async (tx) => {
+        await (tx.property as any).update({
+            where: { id: propertyId },
+            data: {
+                status: 'DEACTIVATION_REQUESTED',
+                deactivationRequestedAt: new Date(),
+                deactivationReason: reason.trim(),
+                deactivationRejectedAt: null,
+                deactivationRejectedBy: null,
+                deactivationRejectedReason: null,
+            }
+        });
+
+        // Notify Admin
+        const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
+        if (admin) {
+            await tx.notification.create({
+                data: {
+                    userId: admin.id,
+                    type: "PROPERTY_PENDING",
+                    message: `Deactivation Request: "${property.name}" (${property.displayId}) — Owner reason: ${reason}`,
+                    targetRole: "ADMIN"
+                }
+            });
+        }
+
+        // ✅ Audit Log
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'OWNER',
+                actorName: session.name || 'Owner',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                entityName: property.name,
+                description: `Owner requested property deactivation for "${property.name}". Reason: ${reason}. Active tenants: ${property.tenants.length}, Active bookings: ${property.bookings.length}.`,
+                previousValue: { status: 'APPROVED' },
+                newValue: { status: 'DEACTIVATION_REQUESTED', reason },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+    });
+
+    revalidatePath('/dashboard/owner/properties');
+    return { success: true };
+}
+
+/**
+ * ADMIN: Approve a deactivation request.
+ * Blocks if active tenants or pending bookings still exist.
+ * Sets status → DEACTIVATED.
+ */
+export async function approvePropertyDeactivation(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({
+        where: { id: propertyId },
+        include: {
+            tenants: { where: { status: { notIn: ['MOVED_OUT'] } } },
+            bookings: { where: { status: { notIn: ['CANCELLED', 'REJECTED', 'COMPLETED'] } } },
+        }
+    });
+
+    if (!property) throw new Error("Property not found.");
+    if (property.status !== 'DEACTIVATION_REQUESTED') {
+        throw new Error("No pending deactivation request for this property.");
+    }
+
+    // 🚫 Business Rule: Cannot deactivate if active tenants exist
+    if (property.tenants.length > 0) {
+        throw new Error(`Cannot deactivate: ${property.tenants.length} active tenant(s) must be moved out first.`);
+    }
+
+    // 🚫 Business Rule: Cannot deactivate if active/pending bookings exist
+    if (property.bookings.length > 0) {
+        throw new Error(`Cannot deactivate: ${property.bookings.length} active booking(s) must be cancelled or completed first.`);
+    }
+
+    await prisma.$transaction(async (tx) => {
+        await (tx.property as any).update({
+            where: { id: propertyId },
+            data: { status: 'DEACTIVATED' }
+        });
+
+        // Notify Owner
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_PENDING",
+                message: `Your property "${property.name}" has been deactivated as requested. It is no longer visible to students. Contact us if you wish to re-list.`,
+                targetRole: "OWNER"
+            }
+        });
+
+        // ✅ Audit Log
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'DELETE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                entityName: property.name,
+                description: `Admin approved deactivation of property "${property.name}" (${property.displayId}). Owner reason was: ${(property as any).deactivationReason}. Property is now DEACTIVATED and hidden from search.`,
+                previousValue: { status: 'DEACTIVATION_REQUESTED' },
+                newValue: { status: 'DEACTIVATED' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+    });
+
+    revalidatePath('/dashboard/admin/deactivation-requests');
+    revalidatePath('/dashboard/admin/property-approval');
+    return { success: true };
+}
+
+/**
+ * ADMIN: Reject a deactivation request.
+ * Reverts property to APPROVED and notifies owner with the rejection reason.
+ */
+export async function rejectPropertyDeactivation(propertyId: string, rejectionReason: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    if (!rejectionReason?.trim()) throw new Error("A rejection reason is required.");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found.");
+    if (property.status !== 'DEACTIVATION_REQUESTED') {
+        throw new Error("No pending deactivation request for this property.");
+    }
+
+    await prisma.$transaction(async (tx) => {
+        await (tx.property as any).update({
+            where: { id: propertyId },
+            data: {
+                status: 'APPROVED',
+                deactivationRejectedAt: new Date(),
+                deactivationRejectedBy: session.userId,
+                deactivationRejectedReason: rejectionReason.trim(),
+            }
+        });
+
+        // Notify Owner
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_PENDING",
+                message: `Deactivation request for "${property.name}" was rejected. Reason: ${rejectionReason}. Your property remains LIVE.`,
+                targetRole: "OWNER"
+            }
+        });
+
+        // ✅ Audit Log
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                entityName: property.name,
+                description: `Admin rejected deactivation request for "${property.name}" (${property.displayId}). Property reverted to APPROVED (LIVE). Rejection reason: ${rejectionReason}.`,
+                previousValue: { status: 'DEACTIVATION_REQUESTED' },
+                newValue: { status: 'APPROVED', rejectionReason },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+    });
+
+    revalidatePath('/dashboard/admin/deactivation-requests');
+    revalidatePath('/dashboard/admin/property-approval');
+    return { success: true };
+}
+

@@ -143,6 +143,12 @@ model Property {
   // ── Food & Mess Service (Section 1 — Food Models) ──
   foodType                String                       @default("NOT_AVAILABLE") // INCLUDED | OPTIONAL | NOT_AVAILABLE
   foodPricePerMonth       Float?                       // Only required when foodType = OPTIONAL
+  // ── Deactivation / Property Exit Flow ──────────────────────────────────────
+  deactivationRequestedAt    DateTime?                 // set when owner requests deactivation
+  deactivationReason         String?                   // owner's reason for leaving
+  deactivationRejectedAt     DateTime?                 // set when admin rejects request
+  deactivationRejectedBy     String?                   // admin userId who rejected
+  deactivationRejectedReason String?                   // reason given by admin for rejection
   bookings                Booking[]
   foodMenu                FoodMenu[]
   foodPreferences         FoodPreference[]

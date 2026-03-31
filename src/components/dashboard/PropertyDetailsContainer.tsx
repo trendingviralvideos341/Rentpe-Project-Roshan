@@ -9,14 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument } from "@/actions/properties";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation } from "@/actions/properties";
 import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
     BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
     Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
-    Home, ShieldCheck, UtensilsCrossed
+    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle
 } from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,6 +60,11 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
 
     // Delete Room Confirmation State
     const [roomToDelete, setRoomToDelete] = useState<{ id: string; roomNumber: string; occupiedBeds: number; activeTenants: number } | null>(null);
+
+    // Deactivation Request State
+    const [isDeactivationOpen, setIsDeactivationOpen] = useState(false);
+    const [deactivationReason, setDeactivationReason] = useState('');
+    const [deactivating, setDeactivating] = useState(false);
 
     // Live Capture State
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
@@ -321,6 +326,24 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
         }
     };
 
+    const handleRequestDeactivation = async () => {
+        if (!deactivationReason.trim()) return;
+        setDeactivating(true);
+        try {
+            await requestPropertyDeactivation(propertyId, deactivationReason);
+            toast.success('Deactivation request submitted. RentPe Team will review and action it.');
+            setIsDeactivationOpen(false);
+            setDeactivationReason('');
+            // Refresh property to show updated status banner
+            const updated = await getPropertyById(propertyId);
+            if (updated) setProperty(updated);
+        } catch (e: any) {
+            toast.error(`Error: ${e.message}`);
+        } finally {
+            setDeactivating(false);
+        }
+    };
+
     const handleEditRoomSave = async () => {
         if (!editRoomForm.roomNumber || !editRoomForm.price) {
             alert("Room Number and Rent Price are required.");
@@ -563,6 +586,37 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                     </div>
                 )}
             </div>
+
+            {/* ── Deactivation Status Banners (OYO/Zolo standard) ──────────── */}
+            {property.status === 'DEACTIVATION_REQUESTED' && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl">
+                    <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-bold text-amber-800 text-sm">⏳ Deactivation Request Under Review</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Your request to deactivate this property has been submitted. The RentPe Operations Team is reviewing it. You will be notified once a decision is made.</p>
+                    </div>
+                </div>
+            )}
+            {property.status === 'DEACTIVATED' && (
+                <div className="flex items-start gap-3 p-4 bg-slate-100 border-2 border-slate-300 rounded-2xl">
+                    <PowerOff className="h-5 w-5 text-slate-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-bold text-slate-700 text-sm">🚫 Property Deactivated</p>
+                        <p className="text-xs text-slate-500 mt-0.5">This property has been deactivated and is no longer visible to students. All data is preserved. Contact support if you wish to re-list.</p>
+                    </div>
+                </div>
+            )}
+            {role === 'owner' && property.status === 'APPROVED' && (
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => setIsDeactivationOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all"
+                    >
+                        <PowerOff className="h-3.5 w-3.5" />
+                        Request Deactivation
+                    </button>
+                </div>
+            )}
 
             {/* Content Tabs */}
             <Tabs defaultValue="details" className="w-full">
@@ -1307,6 +1361,65 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                 </DialogContent>
             </Dialog>
 
+            {/* ── Deactivation Request Dialog ─────────────────────────────── */}
+            <Dialog open={isDeactivationOpen} onOpenChange={(o) => { if (!deactivating) setIsDeactivationOpen(o); }}>
+                <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base font-black">
+                            <PowerOff className="h-5 w-5 text-red-600" />
+                            Request Property Deactivation
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground">
+                            This will submit a deactivation request to the RentPe Operations Team. Your property will remain live until the team reviews and approves your request.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1">
+                            <p className="font-bold flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Before You Request</p>
+                            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+                                <li>All active tenants must be moved out first</li>
+                                <li>All pending bookings must be cancelled</li>
+                                <li>Outstanding payouts will be settled before closure</li>
+                                <li>Property data is preserved — never deleted</li>
+                            </ul>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                Reason for Deactivation <span className="text-red-500">*</span>
+                            </Label>
+                            <textarea
+                                value={deactivationReason}
+                                onChange={(e) => setDeactivationReason(e.target.value)}
+                                placeholder="e.g. Selling the property, moving to a different city, property under renovation..."
+                                rows={3}
+                                disabled={deactivating}
+                                className="w-full border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 flex-col sm:flex-row">
+                        <Button
+                            onClick={handleRequestDeactivation}
+                            disabled={!deactivationReason.trim() || deactivating}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold h-10 px-6 rounded-xl disabled:opacity-50"
+                        >
+                            {deactivating ? 'Submitting...' : 'Submit Request'}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => { setIsDeactivationOpen(false); setDeactivationReason(''); }}
+                            disabled={deactivating}
+                            className="h-10 px-6 rounded-xl font-bold bg-black text-white hover:bg-slate-800 border-0"
+                        >
+                            Cancel
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }
+
