@@ -104,7 +104,12 @@ export async function deleteRoomByOwner(roomId: string) {
         throw new Error(`One or more beds in this room are occupied or reserved. Free all beds first.`);
     }
 
-    await prisma.room.delete({ where: { id: roomId } });
+    // ✅ Industry Standard: delete child Bed records first (cascade), then delete the Room
+    // This prevents Prisma P2003 (Foreign key constraint violated on Bed_roomId_fkey)
+    await prisma.$transaction([
+        prisma.bed.deleteMany({ where: { roomId } }),
+        prisma.room.delete({ where: { id: roomId } }),
+    ]);
     return { success: true };
 }
 
