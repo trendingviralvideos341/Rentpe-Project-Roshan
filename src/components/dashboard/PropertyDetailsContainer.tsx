@@ -9,14 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation } from "@/actions/properties";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation } from "@/actions/properties";
 import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
     BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
     Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
-    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle
+    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle, Zap
 } from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,6 +65,11 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     const [isDeactivationOpen, setIsDeactivationOpen] = useState(false);
     const [deactivationReason, setDeactivationReason] = useState('');
     const [deactivating, setDeactivating] = useState(false);
+
+    // Reactivation Request State
+    const [isReactivationOpen, setIsReactivationOpen] = useState(false);
+    const [reactivationReason, setReactivationReason] = useState('');
+    const [reactivating, setReactivating] = useState(false);
 
     // Live Capture State
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
@@ -587,23 +592,44 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 )}
             </div>
 
-            {/* ── Deactivation Status Banners (OYO/Zolo standard) ──────────── */}
+            {/* ── Status Banners ──────────────────────────────────────────── */}
             {property.status === 'DEACTIVATION_REQUESTED' && (
-                <div className="flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl">
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-500 rounded-2xl">
                     <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="font-bold text-amber-800 text-sm">⏳ Deactivation Request Under Review</p>
-                        <p className="text-xs text-amber-700 mt-0.5">Your request to deactivate this property has been submitted. The RentPe Operations Team is reviewing it. You will be notified once a decision is made.</p>
+                        <p className="font-black text-amber-800 text-sm">⏳ Exit Request Under Review</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Your deactivation request has been submitted. The RentPe Operations Team is reviewing it. You will be notified once a decision is made.</p>
+                    </div>
+                </div>
+            )}
+            {property.status === 'REACTIVATION_REQUESTED' && (
+                <div className="flex items-start gap-3 p-4 bg-emerald-50 border-2 border-emerald-500 rounded-2xl">
+                    <Zap className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-black text-emerald-800 text-sm">⚡ Re-listing Request Under Review</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">Your request to re-list this property has been submitted. The RentPe Operations Team will review and approve it shortly. You will be notified once it is LIVE again.</p>
                     </div>
                 </div>
             )}
             {property.status === 'DEACTIVATED' && (
-                <div className="flex items-start gap-3 p-4 bg-slate-100 border-2 border-slate-300 rounded-2xl">
+                <div className="flex items-start gap-3 p-4 bg-slate-100 border-2 border-slate-400 rounded-2xl">
                     <PowerOff className="h-5 w-5 text-slate-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                        <p className="font-bold text-slate-700 text-sm">🚫 Property Deactivated</p>
-                        <p className="text-xs text-slate-500 mt-0.5">This property has been deactivated and is no longer visible to students. All data is preserved. Contact support if you wish to re-list.</p>
+                    <div className="flex-1">
+                        <p className="font-black text-slate-700 text-sm">🚫 Property Deactivated</p>
+                        <p className="text-xs text-slate-500 mt-0.5">This property is no longer visible to students. All data is preserved for legal compliance.</p>
                     </div>
+                    {role === 'owner' && (
+                        <button
+                            onClick={() => setIsReactivationOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-200 transition-all flex-shrink-0"
+                        >
+                            <Zap className="h-3.5 w-3.5" />
+                            Request Re-listing
+                        </button>
+                    )}
+                    {role === 'staff' && (
+                        <p className="text-[10px] text-slate-400 italic flex-shrink-0">Contact owner to re-list</p>
+                    )}
                 </div>
             )}
             {(role === 'owner' || (role === 'staff' && permissions?.includes('request_deactivation'))) && property.status === 'APPROVED' && (
@@ -1411,6 +1437,79 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             variant="outline"
                             onClick={() => { setIsDeactivationOpen(false); setDeactivationReason(''); }}
                             disabled={deactivating}
+                            className="h-10 px-6 rounded-xl font-bold bg-black text-white hover:bg-slate-800 border-0"
+                        >
+                            Cancel
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Reactivation Request Dialog ───────────────────────────── */}
+            <Dialog open={isReactivationOpen} onOpenChange={(o) => { if (!reactivating) setIsReactivationOpen(o); }}>
+                <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base font-black">
+                            <Zap className="h-5 w-5 text-emerald-600" />
+                            Request Property Re-listing
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground">
+                            This will submit a re-listing request to the RentPe Operations Team. Your property will go LIVE again once the team reviews and approves your request.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 space-y-1">
+                            <p className="font-bold">What happens when approved:</p>
+                            <ul className="list-disc list-inside space-y-0.5 text-emerald-700">
+                                <li>Property becomes visible to students again</li>
+                                <li>Bookings and inquiries re-open</li>
+                                <li>All your existing data, rooms and documents are intact</li>
+                                <li>MoU / agreement will be re-activated</li>
+                            </ul>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                Reason for Re-listing <span className="text-red-500">*</span>
+                            </Label>
+                            <textarea
+                                value={reactivationReason}
+                                onChange={(e) => setReactivationReason(e.target.value)}
+                                placeholder="e.g. Renovation complete and ready to re-open, changed plans on selling property, returned to the city..."
+                                rows={3}
+                                disabled={reactivating}
+                                className="w-full border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 flex-col sm:flex-row">
+                        <Button
+                            onClick={async () => {
+                                if (!reactivationReason.trim()) return;
+                                setReactivating(true);
+                                try {
+                                    await requestPropertyReactivation(propertyId, reactivationReason);
+                                    toast.success('Re-listing request submitted! We will review and notify you.');
+                                    setIsReactivationOpen(false);
+                                    setReactivationReason('');
+                                    const data = await getPropertyById(propertyId);
+                                    setProperty(data);
+                                } catch (err: any) {
+                                    toast.error(err.message || 'Failed to submit re-listing request.');
+                                } finally {
+                                    setReactivating(false);
+                                }
+                            }}
+                            disabled={!reactivationReason.trim() || reactivating}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 px-6 rounded-xl disabled:opacity-50 shadow-lg shadow-emerald-200"
+                        >
+                            {reactivating ? 'Submitting...' : 'Submit Re-listing Request'}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => { setIsReactivationOpen(false); setReactivationReason(''); }}
+                            disabled={reactivating}
                             className="h-10 px-6 rounded-xl font-bold bg-black text-white hover:bg-slate-800 border-0"
                         >
                             Cancel

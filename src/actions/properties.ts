@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -139,7 +139,7 @@ export async function createProperty(data: FormData | any) {
     const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
     const userId = session.userId;
 
-    // ── PHASE 1: PARALLEL PRE-FLIGHT ─────────────────────────────
+    // â”€â”€ PHASE 1: PARALLEL PRE-FLIGHT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Fire all independent DB reads CONCURRENTLY. Eliminates one full
     // round-trip from the cold path (~200-400ms on remote DBs).
     const [user, settings] = await Promise.all([
@@ -155,7 +155,7 @@ export async function createProperty(data: FormData | any) {
         if (!perms.includes('register_property')) throw new Error("You do not have permission to register properties");
     }
 
-    // ── PHASE 2: DATA EXTRACTION ────────────────────────────────────
+    // â”€â”€ PHASE 2: DATA EXTRACTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");
@@ -184,7 +184,7 @@ export async function createProperty(data: FormData | any) {
 
     const onboardingFee = settings?.feesEnabled ? settings.ownerOnboardingFeeFlat : 0;
     if (onboardingFee > 0 && !feeTermsAccepted) {
-        throw new Error(`Acknowledgment of the ₹${onboardingFee} platform onboarding fee is mandatory.`);
+        throw new Error(`Acknowledgment of the â‚¹${onboardingFee} platform onboarding fee is mandatory.`);
     }
 
     const buildingPhotos = getAllVal("buildingPhotos");
@@ -199,14 +199,14 @@ export async function createProperty(data: FormData | any) {
 
     const parsedRooms: any[] = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
-    // ── SECURITY: Hard-caps to prevent abuse & DB overload ───────────────
+    // â”€â”€ SECURITY: Hard-caps to prevent abuse & DB overload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const MAX_ROOMS = 50;
     const MAX_BEDS = 500;
     if (parsedRooms.length > MAX_ROOMS) throw new Error(`Maximum ${MAX_ROOMS} rooms allowed per registration.`);
     const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
     if (totalBedsNeeded > MAX_BEDS) throw new Error(`Maximum ${MAX_BEDS} total beds allowed per registration.`);
 
-    // ── PHASE 3: PARALLEL ID GENERATION ────────────────────────────
+    // â”€â”€ PHASE 3: PARALLEL ID GENERATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // All 3 ID-sequence DB reads now run simultaneously.
     const [displayId, roomIdsList, bedIdsList] = await Promise.all([
         generateSequentialId('PROPERTY'),
@@ -214,8 +214,8 @@ export async function createProperty(data: FormData | any) {
         totalBedsNeeded > 0 ? generateSequentialId('BED', totalBedsNeeded) : Promise.resolve([] as string[]),
     ]);
 
-    // ── PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) ───────────
-    // randomUUID() pre-links rooms→beds without sequential DB reads.
+    // â”€â”€ PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // randomUUID() pre-links roomsâ†’beds without sequential DB reads.
     const roomsToCreate: any[] = [];
     const bedsToCreate: any[] = [];
     let bedIdx = 0;
@@ -246,8 +246,8 @@ export async function createProperty(data: FormData | any) {
         }
     }
 
-    // ── PHASE 5: ATOMIC TRANSACTION — 4 writes total, regardless of scale ──────
-    // Before: O(N×M) sequential writes. After: always exactly 4 bulk writes.
+    // â”€â”€ PHASE 5: ATOMIC TRANSACTION â€” 4 writes total, regardless of scale â”€â”€â”€â”€â”€â”€
+    // Before: O(NÃ—M) sequential writes. After: always exactly 4 bulk writes.
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.create({
             data: {
@@ -261,7 +261,7 @@ export async function createProperty(data: FormData | any) {
                 licenseNumber,
                 reraId,
                 businessName,
-                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - ₹${onboardingFee}]` : null,
+                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - â‚¹${onboardingFee}]` : null,
                 ownerName: ownerName || user?.name || "Owner",
                 ownerId: user?.parentOwnerId || userId,
                 amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
@@ -749,7 +749,7 @@ export async function deleteProperty(propertyId: string) {
         }
         // For other models, check if they have status; if not, they might need model updates or just stay for now.
         // But the policy says: "Do not delete: invoices, credit notes, food preferences".
-        // FeeExemption, FoodMenu, Assignment — we added status to some.
+        // FeeExemption, FoodMenu, Assignment â€” we added status to some.
         
         await (tx as any).foodMenu?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
         await (tx as any).employeePropertyAssignment?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
@@ -778,11 +778,11 @@ export async function deleteProperty(propertyId: string) {
     });
 }
 
-// ── Property Deactivation Flow (OYO / Zolo / Stanza standard) ─────────────────
+// â”€â”€ Property Deactivation Flow (OYO / Zolo / Stanza standard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * OWNER: Request to deactivate an approved property.
- * Sets status → DEACTIVATION_REQUESTED for admin review.
+ * Sets status â†’ DEACTIVATION_REQUESTED for admin review.
  */
 export async function requestPropertyDeactivation(propertyId: string, reason: string) {
     const session = await getSession();
@@ -794,7 +794,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             throw new Error("Permission Denied: Missing request_deactivation permission.");
         }
 
-        // ✅ Scope check: staff can only request deactivation for properties they're assigned to
+        // âœ… Scope check: staff can only request deactivation for properties they're assigned to
         const staffUser = await prisma.user.findUnique({
             where: { id: session.userId },
             include: { employeeProfile: true }
@@ -844,7 +844,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
                 data: {
                     userId: admin.id,
                     type: "PROPERTY_PENDING",
-                    message: `Deactivation Request: "${property.name}" (${property.displayId}) — Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
+                    message: `Deactivation Request: "${property.name}" (${property.displayId}) â€” Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
                     targetRole: "ADMIN"
                 }
             });
@@ -862,11 +862,11 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             });
         }
 
-        // ✅ Audit Log — correctly captures whether Owner or Staff submitted the request
+        // âœ… Audit Log â€” correctly captures whether Owner or Staff submitted the request
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
-                actorRole: session.role,  // 'OWNER' or 'STAFF' — accurate
+                actorRole: session.role,  // 'OWNER' or 'STAFF' â€” accurate
                 actorName: session.name || session.role,
                 actionType: 'UPDATE',
                 entityType: 'PROPERTY',
@@ -892,7 +892,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
 /**
  * ADMIN: Approve a deactivation request.
  * Blocks if active tenants or pending bookings still exist.
- * Sets status → DEACTIVATED.
+ * Sets status â†’ DEACTIVATED.
  */
 export async function approvePropertyDeactivation(propertyId: string) {
     const session = await getSession();
@@ -911,12 +911,12 @@ export async function approvePropertyDeactivation(propertyId: string) {
         throw new Error("No pending deactivation request for this property.");
     }
 
-    // 🚫 Business Rule: Cannot deactivate if active tenants exist
+    // ðŸš« Business Rule: Cannot deactivate if active tenants exist
     if (property.tenants.length > 0) {
         throw new Error(`Cannot deactivate: ${property.tenants.length} active tenant(s) must be moved out first.`);
     }
 
-    // 🚫 Business Rule: Cannot deactivate if active/pending bookings exist
+    // ðŸš« Business Rule: Cannot deactivate if active/pending bookings exist
     if (property.bookings.length > 0) {
         throw new Error(`Cannot deactivate: ${property.bookings.length} active booking(s) must be cancelled or completed first.`);
     }
@@ -937,7 +937,7 @@ export async function approvePropertyDeactivation(propertyId: string) {
             }
         });
 
-        // ✅ Audit Log
+        // âœ… Audit Log
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
@@ -998,7 +998,7 @@ export async function rejectPropertyDeactivation(propertyId: string, rejectionRe
             }
         });
 
-        // ✅ Audit Log
+        // âœ… Audit Log
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
@@ -1021,4 +1021,55 @@ export async function rejectPropertyDeactivation(propertyId: string, rejectionRe
     revalidatePath('/dashboard/admin/property-approval');
     return { success: true };
 }
+// ── Property Reactivation Flow (OYO/Zolo/Stanza standard) ──────────────────────
+export async function requestPropertyReactivation(propertyId: string, reason: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized: Only the property owner can request reactivation.");
+    if (!reason?.trim()) throw new Error("A reason for reactivation is required.");
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found.");
+    if (property.ownerId !== effectiveOwnerId) throw new Error("You do not own this property.");
+    if (property.status !== 'DEACTIVATED') throw new Error("Only DEACTIVATED properties can be re-listed.");
+    await prisma.$transaction(async (tx) => {
+        await (tx.property as any).update({ where: { id: propertyId }, data: { status: 'REACTIVATION_REQUESTED', deactivationReason: reason.trim() } });
+        const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
+        if (admin) await tx.notification.create({ data: { userId: admin.id, type: "PROPERTY_PENDING", message: `Re-list Request: "${property.name}" (${property.displayId}) — Owner wants to re-list. Reason: ${reason}`, targetRole: "ADMIN" } });
+        await tx.auditLog.create({ data: { actorId: session.userId, actorRole: session.role, actorName: session.name || 'Owner', actionType: 'UPDATE', entityType: 'PROPERTY', entityId: propertyId, entityName: property.name, description: `Owner requested reactivation for "${property.name}" (${property.displayId}). Reason: ${reason}.`, previousValue: { status: 'DEACTIVATED' }, newValue: { status: 'REACTIVATION_REQUESTED' }, ipAddress: 'internal', userAgent: 'server-action' } });
+    });
+    revalidatePath('/dashboard/owner/properties');
+    return { success: true };
+}
 
+export async function approvePropertyReactivation(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found.");
+    if (property.status !== 'REACTIVATION_REQUESTED') throw new Error("No pending reactivation request for this property.");
+    await prisma.$transaction(async (tx) => {
+        await (tx.property as any).update({ where: { id: propertyId }, data: { status: 'APPROVED', deactivationRequestedAt: null, deactivationRejectedAt: null, deactivationRejectedBy: null, deactivationRejectedReason: null } });
+        await tx.notification.create({ data: { userId: property.ownerId, type: "PROPERTY_APPROVED", message: `Great news! Your property "${property.name}" has been re-listed and is now LIVE on RentPe. Students can search and book again!`, targetRole: "OWNER" } });
+        await tx.auditLog.create({ data: { actorId: session.userId, actorRole: 'ADMIN', actorName: session.name || 'Admin', actionType: 'APPROVE', entityType: 'PROPERTY', entityId: propertyId, entityName: property.name, description: `Admin approved reactivation (re-listing) of "${property.name}" (${property.displayId}). Property is now LIVE.`, previousValue: { status: 'REACTIVATION_REQUESTED' }, newValue: { status: 'APPROVED' }, ipAddress: 'internal', userAgent: 'server-action' } });
+    });
+    revalidatePath('/dashboard/admin/deactivation-requests');
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/search');
+    return { success: true };
+}
+
+export async function rejectPropertyReactivation(propertyId: string, rejectionReason: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+    if (!rejectionReason?.trim()) throw new Error("A rejection reason is required.");
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found.");
+    if (property.status !== 'REACTIVATION_REQUESTED') throw new Error("No pending reactivation request for this property.");
+    await prisma.$transaction(async (tx) => {
+        await (tx.property as any).update({ where: { id: propertyId }, data: { status: 'DEACTIVATED', deactivationRejectedAt: new Date(), deactivationRejectedBy: session.userId, deactivationRejectedReason: rejectionReason.trim() } });
+        await tx.notification.create({ data: { userId: property.ownerId, type: "PROPERTY_REJECTED", message: `Re-listing request for "${property.name}" was not approved. Reason: ${rejectionReason}. Property remains deactivated.`, targetRole: "OWNER" } });
+        await tx.auditLog.create({ data: { actorId: session.userId, actorRole: 'ADMIN', actorName: session.name || 'Admin', actionType: 'REJECT', entityType: 'PROPERTY', entityId: propertyId, entityName: property.name, description: `Admin rejected reactivation for "${property.name}" (${property.displayId}). Property stays DEACTIVATED. Reason: ${rejectionReason}.`, previousValue: { status: 'REACTIVATION_REQUESTED' }, newValue: { status: 'DEACTIVATED', rejectionReason }, ipAddress: 'internal', userAgent: 'server-action' } });
+    });
+    revalidatePath('/dashboard/admin/deactivation-requests');
+    return { success: true };
+}

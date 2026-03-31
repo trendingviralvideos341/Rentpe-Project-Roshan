@@ -654,7 +654,7 @@ export async function getDeactivationRequestCount() {
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') return 0;
-        return await prisma.property.count({ where: { status: 'DEACTIVATION_REQUESTED' } });
+        return await prisma.property.count({ where: { status: { in: ['DEACTIVATION_REQUESTED', 'REACTIVATION_REQUESTED'] } } });
     } catch (e) {
         return 0;
     }
@@ -665,13 +665,13 @@ export async function getDeactivationRequests() {
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
     return (prisma.property as any).findMany({
-        where: { status: 'DEACTIVATION_REQUESTED' },
+        where: { status: { in: ['DEACTIVATION_REQUESTED', 'REACTIVATION_REQUESTED'] } },
         include: {
             owner: { select: { id: true, name: true, email: true, phone: true, displayId: true } },
             tenants: { where: { status: { notIn: ['MOVED_OUT'] } }, select: { id: true, status: true } },
             bookings: { where: { status: { notIn: ['CANCELLED', 'REJECTED', 'COMPLETED'] } }, select: { id: true, status: true } },
         },
-        orderBy: { deactivationRequestedAt: 'asc' }, // oldest request first
+        orderBy: { deactivationRequestedAt: 'asc' },
     });
 }
 
