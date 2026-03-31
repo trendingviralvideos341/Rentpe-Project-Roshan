@@ -793,6 +793,20 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
         if (!perms.includes('request_deactivation')) {
             throw new Error("Permission Denied: Missing request_deactivation permission.");
         }
+
+        // ✅ Scope check: staff can only request deactivation for properties they're assigned to
+        const staffUser = await prisma.user.findUnique({
+            where: { id: session.userId },
+            include: { employeeProfile: true }
+        });
+        if (staffUser?.employeeProfile) {
+            const assignment = await prisma.employeePropertyAssignment.findFirst({
+                where: { employeeId: staffUser.employeeProfile.id, propertyId }
+            });
+            if (!assignment) {
+                throw new Error("Permission Denied: You are not assigned to this property.");
+            }
+        }
     }
 
     if (!reason?.trim()) throw new Error("A reason for deactivation is required.");
@@ -848,19 +862,23 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             });
         }
 
-        // ✅ Audit Log
+        // ✅ Audit Log — correctly captures whether Owner or Staff submitted the request
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
-                actorRole: 'OWNER',
-                actorName: session.name || 'Owner',
+                actorRole: session.role,  // 'OWNER' or 'STAFF' — accurate
+                actorName: session.name || session.role,
                 actionType: 'UPDATE',
                 entityType: 'PROPERTY',
                 entityId: propertyId,
                 entityName: property.name,
-                description: `Owner requested property deactivation for "${property.name}". Reason: ${reason}. Active tenants: ${property.tenants.length}, Active bookings: ${property.bookings.length}.`,
+                description: `${
+                    session.role === 'STAFF'
+                        ? `Staff member "${session.name}" requested deactivation`
+                        : `Owner requested property deactivation`
+                } for "${property.name}" (${property.displayId}). Reason: ${reason}. Active tenants: ${property.tenants.length}, Active bookings: ${property.bookings.length}.`,
                 previousValue: { status: 'APPROVED' },
-                newValue: { status: 'DEACTIVATION_REQUESTED', reason },
+                newValue: { status: 'DEACTIVATION_REQUESTED', reason, requestedBy: session.role },
                 ipAddress: 'internal',
                 userAgent: 'server-action'
             }
