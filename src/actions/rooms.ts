@@ -2,6 +2,8 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
+
 
 export async function getRoomsAction(propertyId?: string) {
     const session = await getSession();
@@ -110,6 +112,19 @@ export async function deleteRoomByOwner(roomId: string) {
         prisma.bed.deleteMany({ where: { roomId } }),
         prisma.room.delete({ where: { id: roomId } }),
     ]);
+
+    // ✅ Audit Log: captured in BOTH Owner Activity Log + Admin System Audit Log
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role,
+        actorName: session.name || 'Owner',
+        actionType: 'DELETE',
+        entityType: 'ROOM',
+        entityId: roomId,
+        description: `Room "${room.roomNumber}" (${room.type}) permanently deleted by ${session.role}. All ${room.beds.length} bed records removed.`,
+        previousValue: { roomNumber: room.roomNumber, type: room.type, price: (room as any).price },
+    });
+
     return { success: true };
 }
 
@@ -155,7 +170,7 @@ export async function updateRoomByOwner(roomId: string, data: {
         throw new Error("You do not own this room.");
     }
 
-    return prisma.room.update({
+    const updated = await prisma.room.update({
         where: { id: roomId },
         data: {
             roomNumber: data.roomNumber,
@@ -164,4 +179,19 @@ export async function updateRoomByOwner(roomId: string, data: {
             availability: data.availability,
         }
     });
+
+    // ✅ Audit Log: update room — captured in Owner Activity Log + Admin Audit Log
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role,
+        actorName: session.name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'ROOM',
+        entityId: roomId,
+        description: `Room "${data.roomNumber}" updated by ${session.role}. Type: ${data.type}, Price: ₹${data.price}, Beds: ${data.availability}.`,
+        previousValue: { roomNumber: room.roomNumber, type: room.type, price: (room as any).price, availability: room.availability },
+        newValue: data as any,
+    });
+
+    return updated;
 }
