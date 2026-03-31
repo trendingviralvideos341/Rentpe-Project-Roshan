@@ -1197,6 +1197,16 @@ export default function AdminPropertyApprovalPage() {
                                                                              >
                                                                                  Edit Room
                                                                              </Button>
+                                                                             <Button 
+                                                                                 className="h-10 w-10 p-0 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
+                                                                                 onClick={(e) => {
+                                                                                     e.stopPropagation();
+                                                                                     handleDeleteRoom(room.id);
+                                                                                 }}
+                                                                                 title="Delete Room"
+                                                                             >
+                                                                                 <Trash2 className="w-4 h-4" />
+                                                                             </Button>
                                                                          </div>
                                                                     </div>
                                                                 ))}
