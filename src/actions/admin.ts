@@ -589,7 +589,11 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
             owner: {
                 select: { id: true, name: true, email: true, phone: true }
             },
-            rooms: true
+            rooms: {
+                include: {
+                    beds: { select: { id: true, status: true } }
+                }
+            }
         },
         orderBy: { createdAt: 'desc' }
     });

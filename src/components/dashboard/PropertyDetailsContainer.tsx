@@ -59,7 +59,7 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
     const [editingRoom, setEditingRoom] = useState(false);
 
     // Delete Room Confirmation State
-    const [roomToDelete, setRoomToDelete] = useState<{ id: string; roomNumber: string } | null>(null);
+    const [roomToDelete, setRoomToDelete] = useState<{ id: string; roomNumber: string; occupiedBeds: number; activeTenants: number } | null>(null);
 
     // Live Capture State
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
@@ -300,7 +300,11 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
     };
 
     const handleDeleteRoom = (roomId: string, roomNumber: string) => {
-        setRoomToDelete({ id: roomId, roomNumber });
+        // Find the room in the property data to determine occupancy status
+        const room = property?.rooms?.find((r: any) => r.id === roomId);
+        const occupiedBeds = room?.beds?.filter((b: any) => !['AVAILABLE', 'MAINTENANCE'].includes(b.status)).length ?? 0;
+        const activeTenants = room?.tenants?.filter((t: any) => t.status !== 'MOVED_OUT').length ?? 0;
+        setRoomToDelete({ id: roomId, roomNumber, occupiedBeds, activeTenants });
     };
 
     const performDeleteRoom = async () => {
@@ -937,9 +941,30 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                         </div>
                         <DialogHeader className="space-y-3">
                             <DialogTitle className="text-3xl font-black text-slate-900 leading-tight tracking-tight">Delete Room {roomToDelete?.roomNumber}?</DialogTitle>
-                            <DialogDescription className="text-slate-600 font-bold px-4 text-base italic">
-                                This action is <span className="text-rose-600 font-black underline decoration-wavy underline-offset-4">permanent</span> and cannot be undone. All bed records associated with this room will be removed.
-                            </DialogDescription>
+                            {(roomToDelete?.occupiedBeds ?? 0) > 0 || (roomToDelete?.activeTenants ?? 0) > 0 ? (
+                                <div className="mt-2 bg-red-100 border-2 border-red-300 rounded-2xl p-4 text-left space-y-2">
+                                    <p className="text-sm font-black text-red-700 uppercase tracking-wider flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4" /> Cannot Delete — Room is Occupied
+                                    </p>
+                                    {(roomToDelete?.activeTenants ?? 0) > 0 && (
+                                        <p className="text-xs font-bold text-red-600">
+                                            👤 {roomToDelete?.activeTenants} active tenant(s) are currently living in this room.
+                                        </p>
+                                    )}
+                                    {(roomToDelete?.occupiedBeds ?? 0) > 0 && (
+                                        <p className="text-xs font-bold text-red-600">
+                                            🛏 {roomToDelete?.occupiedBeds} bed(s) are occupied or reserved.
+                                        </p>
+                                    )}
+                                    <p className="text-xs text-red-500 font-semibold border-t border-red-200 pt-2 mt-1">
+                                        Please move out or reassign all tenants before deleting this room.
+                                    </p>
+                                </div>
+                            ) : (
+                                <DialogDescription className="text-slate-600 font-bold px-4 text-base">
+                                    This action is <span className="text-rose-600 font-black">permanent</span> and cannot be undone. All bed records associated with this room will be removed.
+                                </DialogDescription>
+                            )}
                         </DialogHeader>
                     </div>
                     <DialogFooter className="p-6 bg-slate-50/50 flex flex-col sm:flex-row gap-4">
@@ -947,15 +972,17 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                             className="flex-1 rounded-2xl h-14 bg-white hover:bg-slate-50 text-slate-600 transition-all active:scale-95 font-black uppercase tracking-[0.2em] text-[11px] shadow-sm border-2 border-slate-100"
                             onClick={() => setRoomToDelete(null)}
                         >
-                            No, Keep it
+                            {((roomToDelete?.occupiedBeds ?? 0) > 0 || (roomToDelete?.activeTenants ?? 0) > 0) ? 'Close' : 'No, Keep it'}
                         </button>
-                        <Button 
-                            variant="destructive" 
-                            className="flex-1 rounded-2xl h-14 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-rose-200 active:scale-95 transition-all border-b-4 border-rose-800"
-                            onClick={performDeleteRoom}
-                        >
-                            Yes, Delete Now
-                        </Button>
+                        {!((roomToDelete?.occupiedBeds ?? 0) > 0 || (roomToDelete?.activeTenants ?? 0) > 0) && (
+                            <Button 
+                                variant="destructive" 
+                                className="flex-1 rounded-2xl h-14 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-rose-200 active:scale-95 transition-all border-b-4 border-rose-800"
+                                onClick={performDeleteRoom}
+                            >
+                                Yes, Delete Now
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

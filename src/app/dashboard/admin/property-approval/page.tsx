@@ -243,7 +243,16 @@ export default function AdminPropertyApprovalPage() {
     };
 
     const handleDeleteRoom = (roomId: string, roomNumber?: string) => {
-        setRoomToDelete({ id: roomId, roomNumber });
+        // Find the room in loaded property list to check bed occupancy
+        let occupiedBeds = 0;
+        for (const prop of properties) {
+            const room = prop.rooms?.find((r: any) => r.id === roomId);
+            if (room) {
+                occupiedBeds = room.beds?.filter((b: any) => !['AVAILABLE', 'MAINTENANCE'].includes(b.status)).length ?? 0;
+                break;
+            }
+        }
+        setRoomToDelete({ id: roomId, roomNumber, occupiedBeds });
     };
 
     const performDeleteRoom = async () => {
@@ -268,7 +277,7 @@ export default function AdminPropertyApprovalPage() {
     const [editOwnerDialog, setEditOwnerDialog] = useState<{ isOpen: boolean; userId: string; name: string; email: string; phone: string } | null>(null);
     const [viewDialog, setViewDialog] = useState<{ isOpen: boolean; propertyId: string; catKey: string; index?: number; isArray: boolean; label: string; desc: string } | null>(null);
     const [previewZoom, setPreviewZoom] = useState(1);
-    const [roomToDelete, setRoomToDelete] = useState<{ id: string; roomNumber?: string } | null>(null);
+    const [roomToDelete, setRoomToDelete] = useState<{ id: string; roomNumber?: string; occupiedBeds: number } | null>(null);
 
     const { toast } = useToast();
 
@@ -2293,9 +2302,23 @@ export default function AdminPropertyApprovalPage() {
                         </div>
                         <DialogHeader className="space-y-3">
                             <DialogTitle className="text-3xl font-black text-slate-900 leading-tight tracking-tight">Delete Room {roomToDelete?.roomNumber}?</DialogTitle>
-                            <DialogDescription className="text-slate-600 font-bold px-4 text-base italic text-center">
-                                This action is <span className="text-rose-600 font-black underline decoration-wavy underline-offset-4">permanent</span> and cannot be undone. All bed records associated with this room will be removed.
-                            </DialogDescription>
+                            {(roomToDelete?.occupiedBeds ?? 0) > 0 ? (
+                                <div className="mt-2 bg-red-100 border-2 border-red-300 rounded-2xl p-4 text-left space-y-2">
+                                    <p className="text-sm font-black text-red-700 uppercase tracking-wider flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4" /> Cannot Delete — Room is Occupied
+                                    </p>
+                                    <p className="text-xs font-bold text-red-600">
+                                        🛏 {roomToDelete?.occupiedBeds} bed(s) are currently occupied or reserved.
+                                    </p>
+                                    <p className="text-xs text-red-500 font-semibold border-t border-red-200 pt-2 mt-1">
+                                        Per RentPe policy (aligned with OYO, Zolo, Stanza Living), rooms with active tenants cannot be deleted. Free all beds first.
+                                    </p>
+                                </div>
+                            ) : (
+                                <DialogDescription className="text-slate-600 font-bold px-4 text-base text-center">
+                                    This action is <span className="text-rose-600 font-black">permanent</span> and cannot be undone. All bed records associated with this room will be removed.
+                                </DialogDescription>
+                            )}
                         </DialogHeader>
                     </div>
                     <DialogFooter className="p-6 bg-slate-50/50 flex flex-col sm:flex-row gap-4">
@@ -2303,15 +2326,17 @@ export default function AdminPropertyApprovalPage() {
                             className="flex-1 rounded-2xl h-14 bg-white hover:bg-slate-50 text-slate-600 transition-all active:scale-95 font-black uppercase tracking-[0.2em] text-[11px] shadow-sm border-2 border-slate-100"
                             onClick={() => setRoomToDelete(null)}
                         >
-                            No, Keep it
+                            {(roomToDelete?.occupiedBeds ?? 0) > 0 ? 'Close' : 'No, Keep it'}
                         </button>
-                        <Button 
-                            variant="destructive" 
-                            className="flex-1 rounded-2xl h-14 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-rose-200 active:scale-95 transition-all border-b-4 border-rose-800"
-                            onClick={performDeleteRoom}
-                        >
-                            Yes, Delete Now
-                        </Button>
+                        {(roomToDelete?.occupiedBeds ?? 0) === 0 && (
+                            <Button 
+                                variant="destructive" 
+                                className="flex-1 rounded-2xl h-14 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-rose-200 active:scale-95 transition-all border-b-4 border-rose-800"
+                                onClick={performDeleteRoom}
+                            >
+                                Yes, Delete Now
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
