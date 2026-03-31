@@ -58,6 +58,9 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
     const [editRoomForm, setEditRoomForm] = useState({ id: "", roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 as 0 | 1 | 2 });
     const [editingRoom, setEditingRoom] = useState(false);
 
+    // Delete Room Confirmation State
+    const [roomToDelete, setRoomToDelete] = useState<{ id: string; roomNumber: string } | null>(null);
+
     // Live Capture State
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
     const [capturing, setCapturing] = useState(false);
@@ -296,14 +299,21 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
         }
     };
 
-    const handleDeleteRoom = async (roomId: string, roomNumber: string) => {
-        if (!confirm(`Are you sure you want to delete Room ${roomNumber}? This cannot be undone.`)) return;
+    const handleDeleteRoom = (roomId: string, roomNumber: string) => {
+        setRoomToDelete({ id: roomId, roomNumber });
+    };
+
+    const performDeleteRoom = async () => {
+        if (!roomToDelete) return;
+        const { id: roomId, roomNumber } = roomToDelete;
+        const toastId = toast.loading(`Deleting Room ${roomNumber}...`);
         try {
             await deleteRoomByOwner(roomId);
             setProperty({ ...property, rooms: property.rooms.filter((r: any) => r.id !== roomId) });
-            toast.success(`Room ${roomNumber} deleted successfully.`);
+            toast.success(`Room ${roomNumber} deleted successfully.`, { id: toastId });
+            setRoomToDelete(null);
         } catch (e: any) {
-            toast.error(`Error: ${e.message}`);
+            toast.error(`Error: ${e.message}`, { id: toastId });
         }
     };
 
@@ -915,6 +925,38 @@ export function PropertyDetailsContainer({ role }: { role: 'owner' | 'staff' }) 
                             </Button>
                         </div>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Room Delete Confirmation Dialog — Premium Design */}
+            <Dialog open={!!roomToDelete} onOpenChange={(open) => !open && setRoomToDelete(null)}>
+                <DialogContent className="max-w-md rounded-3xl shadow-2xl p-0 overflow-hidden border-0 bg-white">
+                    <div className="bg-rose-50 p-8 flex flex-col items-center text-center border-b border-rose-100">
+                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-xl shadow-rose-200/50 border-4 border-rose-500 scale-110">
+                            <Trash2 className="h-10 w-10 text-rose-600" />
+                        </div>
+                        <DialogHeader className="space-y-3">
+                            <DialogTitle className="text-3xl font-black text-slate-900 leading-tight tracking-tight">Delete Room {roomToDelete?.roomNumber}?</DialogTitle>
+                            <DialogDescription className="text-slate-600 font-bold px-4 text-base italic">
+                                This action is <span className="text-rose-600 font-black underline decoration-wavy underline-offset-4">permanent</span> and cannot be undone. All bed records associated with this room will be removed.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <DialogFooter className="p-6 bg-slate-50/50 flex flex-col sm:flex-row gap-4">
+                        <button 
+                            className="flex-1 rounded-2xl h-14 bg-white hover:bg-slate-50 text-slate-600 transition-all active:scale-95 font-black uppercase tracking-[0.2em] text-[11px] shadow-sm border-2 border-slate-100"
+                            onClick={() => setRoomToDelete(null)}
+                        >
+                            No, Keep it
+                        </button>
+                        <Button 
+                            variant="destructive" 
+                            className="flex-1 rounded-2xl h-14 bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-rose-200 active:scale-95 transition-all border-b-4 border-rose-800"
+                            onClick={performDeleteRoom}
+                        >
+                            Yes, Delete Now
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
