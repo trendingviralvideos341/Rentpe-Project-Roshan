@@ -636,9 +636,9 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 <div className="flex justify-end">
                     <button
                         onClick={() => setIsDeactivationOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all"
+                        className="flex items-center gap-2 px-5 py-2.5 text-xs font-black bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg shadow-red-200 transition-all uppercase tracking-wider"
                     >
-                        <PowerOff className="h-3.5 w-3.5" />
+                        <PowerOff className="h-4 w-4" />
                         Request Deactivation
                     </button>
                 </div>
