@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -1021,7 +1021,7 @@ export async function rejectPropertyDeactivation(propertyId: string, rejectionRe
     revalidatePath('/dashboard/admin/property-approval');
     return { success: true };
 }
-// ── Property Reactivation Flow (OYO/Zolo/Stanza standard) ──────────────────────
+// ── RentPe Property Lifecycle (Deactivation & Reactivation) ──────────────────
 export async function requestPropertyReactivation(propertyId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized: Only the property owner can request reactivation.");

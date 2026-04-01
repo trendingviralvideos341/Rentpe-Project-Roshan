@@ -592,7 +592,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 )}
             </div>
 
-            {/* ── Status Banners ──────────────────────────────────────────── */}
+            {/* ── RentPe Property Lifecycle (Deactivation & Reactivation) ── */}
             {property.status === 'DEACTIVATION_REQUESTED' && (
                 <div className="flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-500 rounded-2xl">
                     <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />

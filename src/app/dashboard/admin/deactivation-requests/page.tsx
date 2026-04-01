@@ -296,9 +296,9 @@ export default function DeactivationRequestsPage() {
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-start gap-3">
                 <div className="p-1 bg-blue-100 rounded-lg flex-shrink-0"><Building className="h-4 w-4 text-blue-600" /></div>
                 <p className="text-sm text-blue-800">
-                    <span className="font-black">📋 OYO/Zolo/Stanza Standard:</span> Properties are never deleted — only deactivated.
+                    <span className="font-black">📋 RentPe Operational Policy:</span> Properties are deactivated instead of deleted to maintain full audit history.
                     For <span className="font-black text-orange-700">Exit Requests</span>: ensure 0 active tenants and 0 pending bookings before approving.
-                    For <span className="font-black text-emerald-700">Re-list Requests</span>: no blockers — approve to make property live immediately.
+                    For <span className="font-black text-emerald-700">Re-list Requests</span>: approve to make property live immediately.
                 </p>
             </div>
 
