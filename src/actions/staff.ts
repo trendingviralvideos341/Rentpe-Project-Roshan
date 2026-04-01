@@ -78,7 +78,7 @@ export async function addOwnerStaff(data: {
                 phone: data.phone,
                 passwordHash: 'INVITED_PENDING',
                 role: 'STAFF', // Set directly to STAFF for staff users
-                roles: 'STAFF',
+                roles: ['STAFF'],
                 status: 'INVITED',
                 parentOwnerId: ownerId,
                 staffPermissions: JSON.stringify(data.permissions),

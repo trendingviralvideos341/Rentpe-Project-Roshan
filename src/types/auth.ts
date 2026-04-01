@@ -4,8 +4,9 @@ export type { UserRole };
 export interface Session {
     userId: string;
     email: string;
-    role: UserRole;
-    roles: string | UserRole[]; // Accept both for transition
+    role: UserRole;        // Active role — used for routing and JWT
+    roles: string[];       // All roles this user holds e.g. ['USER', 'OWNER']
+    primaryRole: string;   // Last selected dashboard context
     name: string | null;
     permissions?: string[];
     adminRole?: string | null;

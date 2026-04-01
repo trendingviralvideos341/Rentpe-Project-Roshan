@@ -217,7 +217,7 @@ export async function activateStaffAccount(token: string, passwordPlain: string)
             phone: employee.phone,
             passwordHash: hashedPassword,
             role: 'STAFF',
-            roles: 'STAFF',
+            roles: ['STAFF'],
             status: 'ACTIVE',
             parentOwnerId: employee.ownerId,
             displayId,

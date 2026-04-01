@@ -67,7 +67,7 @@ export async function createAdminEmployee(data: {
                     name: data.name,
                     phone: data.phone,
                     role: 'ADMIN',
-                    roles: 'USER,ADMIN',
+                    roles: ['USER', 'ADMIN'],
                     isAdmin: true,
                     passwordHash,
                     status: 'ACTIVE'
@@ -75,12 +75,14 @@ export async function createAdminEmployee(data: {
             });
         } else {
             // Update role to ADMIN if it was something else
+            const currentRoles = Array.isArray(user.roles) ? user.roles : (user.roles as any as string).split(',').map((r: string) => r.trim());
+            const updatedRoles = Array.from(new Set([...currentRoles, 'ADMIN']));
             await tx.user.update({
                 where: { id: user.id },
                 data: { 
                     isAdmin: true,
                     role: 'ADMIN',
-                    roles: user.roles.includes('ADMIN') ? user.roles : user.roles + ',ADMIN'
+                    roles: updatedRoles
                 }
             });
         }

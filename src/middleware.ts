@@ -83,27 +83,36 @@ export default async function middleware(req: NextRequest) {
     // 3. Strict Role-Based Access Control (RBAC) on Dashboards
     if (isProtectedRoute && session) {
         const role = (session as any).role;
+        const roles: string[] = Array.isArray((session as any).roles)
+            ? (session as any).roles
+            : typeof (session as any).roles === 'string'
+                ? (session as any).roles.split(',').map((r: string) => r.trim())
+                : [role];
         const isImpersonating = !!(session as any).impersonatorId;
 
-        // Block non-Admins from Admin dashboard (strict)
-        if (path.startsWith('/dashboard/admin') && role !== 'ADMIN') {
-            return NextResponse.redirect(new URL(role === 'OWNER' ? '/dashboard/owner' : (role === 'STAFF' ? '/dashboard/staff' : '/dashboard/student'), req.nextUrl));
+        // Block non-Admins from Admin dashboard (strict — roles array must include ADMIN)
+        if (path.startsWith('/dashboard/admin') && !roles.includes('ADMIN') && role !== 'ADMIN') {
+            if (roles.includes('OWNER') || role === 'OWNER') return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            if (roles.includes('STAFF') || role === 'STAFF') return NextResponse.redirect(new URL('/dashboard/staff', req.nextUrl));
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
         // Block non-Staff from Staff dashboard
-        if (path.startsWith('/dashboard/staff') && role !== 'STAFF') {
-            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : (role === 'OWNER' ? '/dashboard/owner' : '/dashboard/student'), req.nextUrl));
+        if (path.startsWith('/dashboard/staff') && !roles.includes('STAFF') && role !== 'STAFF') {
+            if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
+            if (roles.includes('OWNER') || role === 'OWNER') return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
-        // --- Role-Specific Restrictions for Dashboard Overlaps ---
-        // (Prevent STAFF from accessing STUDENT or OWNER routes, and vice versa)
-        if (path.startsWith('/dashboard/student') && role !== 'USER') {
-            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : (role === 'OWNER' ? '/dashboard/owner' : '/dashboard/staff'), req.nextUrl));
+        // Block non-Owner users from Owner dashboard — BUT allow dual-role USER+OWNER users
+        if (path.startsWith('/dashboard/owner') && !roles.includes('OWNER') && role !== 'OWNER') {
+            if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
+            // Send un-upgraded students to the upgrade page
+            return NextResponse.redirect(new URL('/dashboard/student/upgrade-to-owner', req.nextUrl));
         }
 
-        if (path.startsWith('/dashboard/owner') && role !== 'OWNER') {
-            return NextResponse.redirect(new URL(role === 'ADMIN' ? '/dashboard/admin' : (role === 'STAFF' ? '/dashboard/staff' : '/dashboard/student'), req.nextUrl));
-        }
+        // Student dashboard: accessible to any authenticated user (they can all see it)
+        // Dual-role USER+OWNER users can freely visit /dashboard/student
 
         // Legacy staff routes redirection
         if (path.startsWith('/dashboard/onboarder') && role !== 'ONBOARDER') {

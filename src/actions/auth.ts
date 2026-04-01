@@ -88,7 +88,7 @@ export async function signup(formData: FormData) {
                 emailVerified: false,
                 emailVerificationToken,
                 role: roleUp,
-                roles: roleUp,          // comma-separated for future multi-role
+                roles: [roleUp],        // String[] — user starts with one role, can add more later
                 isStudent,
                 isOwner,
                 displayId,
@@ -152,6 +152,7 @@ export async function login(formData: FormData) {
                 passwordHash: true,
                 role: true,
                 roles: true,
+                primaryRole: true,
                 name: true,
                 status: true,
                 adminRole: true,
@@ -238,7 +239,8 @@ export async function login(formData: FormData) {
             userId: user.id,
             email: user.email,
             role: user.role as any,
-            roles: user.roles,
+            roles: user.roles,          // now a real String[] array
+            primaryRole: user.primaryRole ?? user.role,
             name: user.name,
             permissions,
             adminRole: user.adminRole ?? null,
@@ -267,19 +269,20 @@ export async function login(formData: FormData) {
             description: `User logged in successfully: ${email}.`,
         });
 
-        // Redirect based on active role
-        if (user.role === 'ADMIN') {
+        // Redirect based on primaryRole (allows dual-role users to land on last used dashboard)
+        const redirectRole = user.primaryRole || user.role;
+        if (redirectRole === 'ADMIN') {
             redirect('/dashboard/admin');
-        } else if (user.role === 'OWNER') {
+        } else if (redirectRole === 'OWNER') {
             redirect('/dashboard/owner');
-        } else if (user.role === 'ONBOARDER') {
+        } else if (redirectRole === 'ONBOARDER') {
             redirect('/dashboard/onboarder');
-        } else if (user.role === 'VERIFIER') {
+        } else if (redirectRole === 'VERIFIER') {
             redirect('/dashboard/verifier');
-        } else if (user.role === 'STAFF') {
+        } else if (redirectRole === 'STAFF') {
             redirect('/dashboard/staff');
         } else {
-            redirect('/');
+            redirect('/dashboard/student');
         }
     } catch (e: any) {
         if (e.message === 'NEXT_REDIRECT') throw e;
@@ -332,6 +335,7 @@ export async function verify2FALogin(userId: string, token: string) {
             email: user.email,
             role: user.role as any,
             roles: user.roles,
+            primaryRole: (user as any).primaryRole ?? user.role,
             name: user.name,
             phone: user.phone,
             displayId: user.displayId,
@@ -446,7 +450,10 @@ export async function switchRole(targetRole: UserRole) {
     }
 
     // Verify the target role is in the user's allowed roles list
-    const allowedRoles = user.roles.split(',').map(r => r.trim());
+    const allowedRoles: string[] = Array.isArray(user.roles)
+        ? user.roles
+        : (user.roles as unknown as string).split(',').map((r: string) => r.trim());
+    
     if (!allowedRoles.includes(targetRole) && user.role !== targetRole) {
         throw new Error("You do not have permission for this role");
     }

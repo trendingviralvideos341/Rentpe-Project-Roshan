@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
 import { getPendingPropertiesCount, getDeactivationRequestCount } from "@/actions/admin";
 import { getPendingOwnerActionCount } from "@/actions/properties";
 import { getPendingDocumentsCount } from "@/actions/documents";
+import { getPendingUpgradeCount } from "@/actions/roleUpgrade";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 
 interface SidebarLink {
@@ -43,6 +44,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [studentAlertCount, setStudentAlertCount] = useState(0);
     const [adminAlerts, setAdminAlerts] = useState({ bookings: 0, verifications: 0 });
     const [deactivationCount, setDeactivationCount] = useState(0);
+    const [roleUpgradeCount, setRoleUpgradeCount] = useState(0);
     const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
@@ -67,6 +69,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setAdminAlerts(alerts);
                 const deactCount = await getDeactivationRequestCount();
                 setDeactivationCount(deactCount);
+                const upgradeCount = await getPendingUpgradeCount();
+                setRoleUpgradeCount(upgradeCount);
             };
             checkAdmin();
             const interval = setInterval(checkAdmin, 5000);
@@ -147,6 +151,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
                 { href: "/dashboard/admin/employees", label: "Owner Staff Hub", icon: UserCheck, reqPerm: ["super_admin", "staff"] },
                 { href: "/dashboard/admin/staff", label: "Internal Platform Staff", icon: Shield, reqPerm: ["super_admin", "staff"] },
+                { href: "/dashboard/admin/role-upgrades", label: "Role Upgrade Requests", icon: ArrowUpCircle, badge: roleUpgradeCount, reqPerm: ["super_admin", "users"] },
             ]
         },
         {
@@ -186,6 +191,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
                 { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
                 { href: "/search", label: "Find PG", icon: Building },
+                { href: "/dashboard/student/upgrade-to-owner", label: "Become an Owner", icon: ArrowUpCircle },
                 { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
             ]
         }

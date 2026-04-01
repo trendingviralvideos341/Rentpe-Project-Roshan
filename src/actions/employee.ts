@@ -37,7 +37,7 @@ async function autoProvisionAdminUser(emp: any, sessionUserId: string) {
                 email: emp.email,
                 passwordHash: hashedPassword,
                 role: "ADMIN",
-                roles: "ADMIN",
+                roles: ["ADMIN"],
                 isAdmin: true,
                 displayId,
             }

@@ -22,6 +22,8 @@ import { BookingFeeBreakdown } from "@/components/booking/BookingFeeBreakdown";
 import { toast } from "sonner";
 import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
+import { getMyUpgradeRequest } from "@/actions/roleUpgrade";
+import { ArrowUpCircle } from "lucide-react";
 
 const TYPE_LABELS: Record<string, string> = {
     ID_PROOF: "🪪 ID Proof",
@@ -300,6 +302,7 @@ export default function StudentDashboardPage() {
     const [signingBooking, setSigningBooking] = useState<any>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [profile, setProfile] = useState<any>(null);
+    const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined); // undefined = loading
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -313,14 +316,16 @@ export default function StudentDashboardPage() {
         setLoading(true);
         setError(false);
         try {
-            const [bData, pData, profData] = await Promise.all([
+            const [bData, pData, profData, upgradeData] = await Promise.all([
                 getBookings(),
                 getStudentPaymentHistory(),
-                getStudentProfile()
+                getStudentProfile(),
+                getMyUpgradeRequest()
             ]);
             setBookings(bData);
             setPaymentHistory(pData);
             setProfile(profData);
+            setUpgradeRequest(upgradeData);
         } catch (e) {
             console.error(e);
             setError(true);
@@ -382,6 +387,39 @@ export default function StudentDashboardPage() {
                     <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
                 </Button>
             </div>
+
+            {/* ── Owner Upgrade CTA Card (Task 9) ── */}
+            {profile?.roles && !profile.roles.includes('OWNER') && upgradeRequest?.status !== 'APPROVED' && (
+                upgradeRequest?.status === 'PENDING' ? (
+                    <div className="mb-6 flex items-center gap-4 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-200">
+                            <ArrowUpCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-black text-amber-900 text-sm">⏳ Owner Upgrade — Pending Review</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Our team is reviewing your application. Usually takes 24-48 hours.</p>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1.5 rounded-full">PENDING</span>
+                    </div>
+                ) : (
+                    <div className="mb-6 flex items-center gap-4 bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-200">
+                            <span className="text-xl">🏠</span>
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-black text-indigo-900 text-sm">Own a PG? List it on RentPe</p>
+                            <p className="text-xs text-indigo-600 mt-0.5">Earn rental income and manage everything — bookings, payments, tenants — digitally.</p>
+                        </div>
+                        <Link
+                            href="/dashboard/student/upgrade-to-owner"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black rounded-xl transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap"
+                        >
+                            <ArrowUpCircle className="h-4 w-4" />
+                            Become an Owner
+                        </Link>
+                    </div>
+                )
+            )}
 
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
                 <TabsList className="flex flex-wrap md:flex-nowrap w-full mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner h-auto">
