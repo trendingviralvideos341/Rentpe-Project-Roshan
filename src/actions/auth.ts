@@ -88,7 +88,8 @@ export async function signup(formData: FormData) {
                 emailVerified: false,
                 emailVerificationToken,
                 role: roleUp,
-                roles: [roleUp],        // String[] — user starts with one role, can add more later
+                roles: roleUp === 'OWNER' ? ['USER', 'OWNER'] : ['USER'],        // Everyone gets 'USER' as base role
+                primaryRole: roleUp === 'OWNER' ? 'OWNER' : 'USER',
                 isStudent,
                 isOwner,
                 displayId,

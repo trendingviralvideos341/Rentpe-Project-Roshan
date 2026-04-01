@@ -65,6 +65,10 @@ model User {
   auditLogs             AuditLog[]        @relation("PerformedBy")
   bookings              Booking[]
   fraudAlerts           FraudAlert[]
+  fraudFlags            FraudFlag[]
+  fingerprints          UserFingerprint[]
+  linkedAsA             LinkedAccount[]   @relation("UserA")
+  linkedAsB             LinkedAccount[]   @relation("UserB")
   loginLogs             LoginLog[]
   receivedMessages      Message[]         @relation("ReceivedMessages")
   sentMessages          Message[]         @relation("SentMessages")
@@ -241,6 +245,8 @@ model Booking {
   paidAt               DateTime?
   amount               Float
   roomAssigned         String?
+  fraudRiskScore       Int              @default(0)  // Cached risk score for fast admin queries
+  isFraudBlocked       Boolean          @default(false) // Set to true when booking blocked by fraud engine
   agreementSigned      Boolean          @default(false)
   agreementSignedAt    DateTime?
   tenantId             String?          @unique
@@ -280,6 +286,7 @@ model Booking {
   foodPreferences      FoodPreference[]
   creditNotes          CreditNote[]
   invoices             RentInvoice[]    @relation("BookingInvoices")
+  fraudFlags           FraudFlag[]
 }
 
 model Waitlist {
@@ -1082,3 +1089,54 @@ model CreditNote {
   @@index([bookingId, status, createdAt])         // mandatory fix: FIFO performance
   @@map("credit_notes")
 }
+
+model FraudFlag {
+  id          String   @id @default(uuid())
+  userId      String
+  bookingId   String?
+  reason      String
+  riskScore   Int      @default(0)
+  status      String   @default("OPEN") // OPEN | REVIEWED | RESOLVED
+  metadata    Json?    // For storing evidence like { "linkedUserId": "..." }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([userId])
+  @@index([bookingId])
+  @@map("fraud_flags")
+}
+
+model UserFingerprint {
+  id         String   @id @default(uuid())
+  userId     String
+  deviceHash String?
+  ipAddress  String
+  userAgent  String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([deviceHash])
+  @@map("user_fingerprints")
+}
+
+model LinkedAccount {
+  id              String   @id @default(uuid())
+  userAId         String
+  userBId         String
+  // Each row represents one confirmed signal linking A to B
+  linkType        String   // DEVICE | PHONE | EMAIL | IP | PAYMENT
+  reason          String   // Human-readable explanation
+  confidenceScore Int      @default(0) // 0-100 per-signal confidence
+  createdAt       DateTime @default(now())
+  userA           User     @relation("UserA", fields: [userAId], references: [id])
+  userB           User     @relation("UserB", fields: [userBId], references: [id])
+
+  @@unique([userAId, userBId, linkType]) // One row per signal pair
+  @@index([userAId])
+  @@index([userBId])
+  @@map("linked_accounts")
+}
+

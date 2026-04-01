@@ -7,6 +7,7 @@ import { NotificationService } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
+import { validateBooking, recordFingerprint } from "@/lib/fraud";
 
 export async function createBooking(data: {
     roomId?: string,
@@ -23,12 +24,41 @@ export async function createBooking(data: {
     stayDuration?: number,
     occupants?: number,
     message?: string,
+    _deviceHash?: string,
+    _ipAddress?: string,
+    _userAgent?: string,
 }) {
     const session = await getSession();
     if (!session) throw new Error("You must be logged in to book.");
 
     const userId = session.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    // ─── FRAUD GATE (must run BEFORE writing anything to DB) ──────────────────
+    if (data.propertyId) {
+        // Record this fingerprint for future tracking
+        await recordFingerprint(userId, {
+            deviceHash: data._deviceHash,
+            ipAddress: data._ipAddress || '0.0.0.0',
+            userAgent: data._userAgent || 'unknown',
+        });
+
+        const fraudCheck = await validateBooking(
+            userId,
+            data.propertyId,
+            { deviceHash: data._deviceHash },
+            data._ipAddress,
+            data._userAgent
+        );
+
+        if (!fraudCheck.allowed) {
+            throw new Error(fraudCheck.reason || 'Booking blocked by security check.');
+        }
+
+        // Attach risk score to booking data for admin visibility
+        (data as any)._fraudRiskScore = fraudCheck.riskScore;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Auto-fill from profile if not provided
     const guestName = data.guestName || user?.name || "Anonymous";
@@ -64,7 +94,8 @@ export async function createBooking(data: {
             stayDuration: data.stayDuration,
             occupants: data.occupants,
             message: data.message,
-        }
+            fraudRiskScore: (data as any)._fraudRiskScore || 0,
+        } as any
     });
 
     logAuditEvent({
@@ -75,7 +106,7 @@ export async function createBooking(data: {
         entityType: 'BOOKING',
         entityId: booking.id,
         entityName: data.propertyName,
-        description: `Booking for ${data.propertyName} requested by ${data.guestName}`,
+        description: `Booking for ${data.propertyName} requested by ${data.guestName}. FraudScore: ${(data as any)._fraudRiskScore || 0}`,
         newValue: booking
     });
     try {

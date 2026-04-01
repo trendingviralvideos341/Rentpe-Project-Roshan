@@ -252,7 +252,7 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                                             <input className="border rounded px-2 py-1 text-xs w-36" placeholder="Reason for rejection..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} />
                                                             <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleReject(doc.id)}>Reject</Button>
                                                             <button 
-                                                                className="px-4 py-1 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                                                className="px-4 py-1 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-md border border-red-700 uppercase tracking-widest" 
                                                                 onClick={() => { setRejectTarget(null); setRejectNote(""); }}
                                                             >
                                                                 CANCEL
@@ -334,7 +334,7 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                     <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
                                 )}
                                 <button 
-                                    className="w-full py-4 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
+                                    className="w-full py-4 text-xs font-black bg-slate-950 hover:bg-black text-white rounded-xl transition-all active:scale-95 shadow-lg border border-slate-800 uppercase tracking-widest" 
                                     onClick={() => setPreviewDoc(null)}
                                 >
                                     CLOSE

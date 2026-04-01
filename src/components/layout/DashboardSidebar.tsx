@@ -175,6 +175,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "System & Settings",
             links: [
+                { href: "/dashboard/admin/fraud", label: "🛡️ Fraud Management", icon: Shield, reqPerm: ["super_admin", "audit"] },
                 { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
                 { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "audit"] },
                 { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
