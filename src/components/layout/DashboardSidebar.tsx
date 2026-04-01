@@ -192,7 +192,6 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
                 { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
                 { href: "/search", label: "Find PG", icon: Building },
-                { href: "/dashboard/student/upgrade-to-owner", label: "Become an Owner", icon: ArrowUpCircle },
                 { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
             ]
         }

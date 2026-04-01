@@ -66,7 +66,11 @@ export async function signup(formData: FormData) {
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
-            return { error: 'User already exists' };
+            // Industry-standard: guide user to correct path instead of generic error
+            if (role === 'OWNER') {
+                return { error: 'This email is already registered. Please login to your existing account. To upgrade to Owner, contact RentPe support.' };
+            }
+            return { error: 'An account with this email already exists. Please login instead.' };
         }
 
         const hashedPassword = await encryptPassword(password);
@@ -88,7 +92,9 @@ export async function signup(formData: FormData) {
                 emailVerified: false,
                 emailVerificationToken,
                 role: roleUp,
-                roles: roleUp === 'OWNER' ? ['USER', 'OWNER'] : ['USER'],        // Everyone gets 'USER' as base role
+                // Strict role separation: Owners get ONLY OWNER, Students get ONLY USER
+                // Dual-role is only granted manually by Admin
+                roles: roleUp === 'OWNER' ? ['OWNER'] : ['USER'],
                 primaryRole: roleUp === 'OWNER' ? 'OWNER' : 'USER',
                 isStudent,
                 isOwner,

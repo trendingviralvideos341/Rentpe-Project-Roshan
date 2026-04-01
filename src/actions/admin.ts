@@ -569,6 +569,64 @@ export async function searchUserByEmail(email: string) {
         select: { id: true, name: true, email: true, role: true, displayId: true, createdAt: true },
     });
 }
+
+// ── Admin: Manually Upgrade User to Owner ─────────────────────────────
+export async function upgradeUserToOwner(userId: string) {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const adminId = (session as any).userId as string;
+
+    const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, roles: true, role: true, isOwner: true }
+    });
+
+    if (!targetUser) throw new Error("User not found");
+    if (targetUser.roles.includes('OWNER') || targetUser.isOwner) {
+        return { error: "This user already has Owner access." };
+    }
+
+    // Grant dual-role (USER + OWNER) so they can switch between dashboards
+    const updatedRoles = Array.from(new Set([...targetUser.roles, 'OWNER']));
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            roles: updatedRoles,
+            isOwner: true,
+            primaryRole: 'OWNER', // Land on owner dashboard on next login
+        }
+    });
+
+    // Notify the user
+    await prisma.notification.create({
+        data: {
+            userId,
+            type: 'ROLE_UPGRADE_APPROVED',
+            category: 'ACCOUNT',
+            message: '🏠 Your account has been upgraded to Property Owner. You can now list your PG on RentPe! Use the role switcher to access your Owner Dashboard.',
+            targetRole: 'USER',
+            isPersistent: true,
+        }
+    });
+
+    // Full audit trail
+    await logAuditEvent({
+        actorId: adminId,
+        actorRole: 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        description: `Admin manually upgraded user to OWNER role. Roles updated to: ${updatedRoles.join(', ')}. User: ${targetUser.name || targetUser.email}.`,
+        newValue: { roles: updatedRoles, primaryRole: 'OWNER', isOwner: true } as any,
+    });
+
+    revalidatePath('/dashboard/admin/users');
+    revalidatePath(`/dashboard/admin/users/${userId}`);
+    return { success: true };
+}
 // ── Property Approval ────────────────────────────────
 export async function getAllPropertiesForAdmin(statusFilter?: string) {
     const session = await getSession();

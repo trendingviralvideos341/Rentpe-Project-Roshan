@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { 
     User, Mail, Phone, Calendar, Shield, Building, 
     FileText, ClipboardList, Ban, CheckCircle, ArrowLeft, 
-    Save, RefreshCcw, Activity, LayoutDashboard, Clock
+    Save, RefreshCcw, Activity, LayoutDashboard, Clock, ArrowUpCircle
 } from "lucide-react";
-import { getUserById, adminUpdateUserProfile, updateUserStatus } from "@/actions/admin";
+import { getUserById, adminUpdateUserProfile, updateUserStatus, upgradeUserToOwner } from "@/actions/admin";
+import { toast } from "sonner";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -24,6 +25,7 @@ export default function UserDetailPage() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [upgrading, setUpgrading] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -83,6 +85,21 @@ export default function UserDetailPage() {
         }
     };
 
+    const handleUpgradeToOwner = async () => {
+        if (!confirm(`Upgrade ${user.name} to Property Owner? This will send them a notification and grant Owner dashboard access.`)) return;
+        setUpgrading(true);
+        try {
+            const result = await upgradeUserToOwner(id);
+            if ((result as any)?.error) { toast.error((result as any).error); return; }
+            toast.success(`✅ ${user.name} has been upgraded to Owner!`);
+            fetchUser();
+        } catch (e: any) {
+            toast.error(e.message || 'Failed to upgrade user.');
+        } finally {
+            setUpgrading(false);
+        }
+    };
+
     if (loading) return <div className="p-20 text-center animate-pulse">Loading user details...</div>;
     if (!user) return <div className="p-20 text-center text-red-500">User not found.</div>;
 
@@ -111,6 +128,16 @@ export default function UserDetailPage() {
                     <Button variant="outline" onClick={fetchUser} disabled={saving} className="rounded-xl border-slate-200">
                         <RefreshCcw className={cn("h-4 w-4 mr-2", saving && "animate-spin")} />
                     </Button>
+                    {!user.isOwner && !user.roles?.includes('OWNER') && (
+                        <Button
+                            onClick={handleUpgradeToOwner}
+                            disabled={upgrading}
+                            className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                            <ArrowUpCircle className="h-4 w-4 mr-2" />
+                            {upgrading ? 'Upgrading...' : 'Upgrade to Owner'}
+                        </Button>
+                    )}
                     <Button 
                         variant={user.status === "BANNED" ? "outline" : "destructive"} 
                         onClick={handleToggleStatus}
