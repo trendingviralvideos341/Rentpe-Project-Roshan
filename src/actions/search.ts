@@ -26,11 +26,8 @@ export async function searchProperties(query?: string, filters?: {
         ];
     }
 
-    // Location filter
     if (filters?.city) where.city = { contains: filters.city, mode: 'insensitive' };
 
-    // Price filters at DB level if possible (prisma doesn't support complex mapping here)
-    
     try {
         const properties = await prisma.property.findMany({
             where,
@@ -49,7 +46,6 @@ export async function searchProperties(query?: string, filters?: {
                 const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
                 const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
                 const totalAvailable = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
-                const parsedAmenities: string[] = JSON.parse(p.amenities || '[]');
                 
                 const verifiedDocs = JSON.parse(p.verifiedDocs || '[]');
                 
@@ -70,7 +66,7 @@ export async function searchProperties(query?: string, filters?: {
                     minPrice,
                     maxPrice,
                     totalAvailableBeds: totalAvailable,
-                    amenities: parsedAmenities,
+                    amenities: JSON.parse(p.amenities || '[]'),
                     image: verifiedBuildingPhotos[0] || verifiedCommonAreaPhotos[0] || '',
                     buildingPhotos: verifiedBuildingPhotos,
                     commonAreaPhotos: verifiedCommonAreaPhotos,
@@ -94,7 +90,7 @@ export async function searchProperties(query?: string, filters?: {
             );
         }
 
-        // Only show available
+        // Only show properties with available beds
         results = results.filter(r => r.totalAvailableBeds > 0);
 
         // Sorting
@@ -106,7 +102,7 @@ export async function searchProperties(query?: string, filters?: {
             default: results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
         }
 
-        console.log(`[SEARCH_ACTION] Returning ${results.length} enriched results.`);
+        console.log(`[SEARCH_ACTION] Returning ${results.length} enriched results for query: "${query}"`);
         return results;
     } catch (error) {
         console.error("[SEARCH_ACTION] Global Search Error:", error);
@@ -115,27 +111,31 @@ export async function searchProperties(query?: string, filters?: {
 }
 
 export async function getSearchFilterOptions() {
-    const properties = await prisma.property.findMany({
-        where: { status: 'APPROVED' },
-        select: { city: true, amenities: true, genderType: true, propertyType: true }
-    });
+    try {
+        const properties = await prisma.property.findMany({
+            where: { status: 'APPROVED' },
+            select: { city: true, amenities: true, genderType: true, propertyType: true }
+        });
 
-    const cities = [...new Set(properties.map(p => p.city))].sort();
-    const amenitySet = new Set<string>();
-    properties.forEach(p => {
-        try { JSON.parse(p.amenities || '[]').forEach((a: string) => amenitySet.add(a)); } catch {}
-    });
+        const cities = [...new Set(properties.map(p => p.city))].sort();
+        const amenitySet = new Set<string>();
+        properties.forEach(p => {
+            try { JSON.parse(p.amenities || '[]').forEach((a: string) => amenitySet.add(a)); } catch {}
+        });
 
-    return {
-        cities,
-        amenities: [...amenitySet].sort(),
-        genderTypes: ['BOYS', 'GIRLS', 'COED'],
-        propertyTypes: ['PG', 'HOSTEL', 'COLIVING'],
-        sortOptions: [
-            { value: 'rating', label: 'Top Rated' },
-            { value: 'price_asc', label: 'Price: Low to High' },
-            { value: 'price_desc', label: 'Price: High to Low' },
-            { value: 'newest', label: 'Newest First' },
-        ]
-    };
+        return {
+            cities,
+            amenities: [...amenitySet].sort(),
+            genderTypes: ['BOYS', 'GIRLS', 'COED'],
+            propertyTypes: ['PG', 'HOSTEL', 'COLIVING'],
+            sortOptions: [
+                { value: 'rating', label: 'Top Rated' },
+                { value: 'price_asc', label: 'Price: Low to High' },
+                { value: 'price_desc', label: 'Price: High to Low' },
+                { value: 'newest', label: 'Newest First' },
+            ]
+        };
+    } catch (e) {
+        return { cities: [], amenities: [], genderTypes: [], propertyTypes: [], sortOptions: [] };
+    }
 }
