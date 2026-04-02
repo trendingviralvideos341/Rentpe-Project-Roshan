@@ -20,18 +20,21 @@ const Navbar = ({ session }: { session: any }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    const isOwner = session?.role === "OWNER";
-    const isAdmin = session?.role === "ADMIN";
-    const userRole = isOwner ? "Owner" : isAdmin ? "Admin" : session ? "Student" : null;
-    const isLoggedIn = !!session;
-
-    // Support both old comma-string and new String[] formats
     const rolesList: string[] = Array.isArray(session?.roles)
         ? session.roles
         : typeof session?.roles === 'string'
             ? session.roles.split(',').map((r: string) => r.trim())
             : [session?.role].filter(Boolean);
-    const hasMultipleRoles = rolesList.includes('OWNER') && (rolesList.includes('USER') || rolesList.includes('STUDENT'));
+
+    const hasOwnerAccess = rolesList.includes('OWNER');
+    const hasAdminAccess = rolesList.includes('ADMIN');
+    const hasStaffAccess = rolesList.includes('STAFF');
+
+    const isOwner = session?.role === "OWNER";
+    const isAdmin = session?.role === "ADMIN";
+    const isLoggedIn = !!session;
+    const userRole = isOwner ? "Owner" : isAdmin ? "Admin" : session ? "Student" : null;
+    const hasMultipleRoles = hasOwnerAccess && (rolesList.includes('USER') || rolesList.includes('STUDENT'));
 
     const handleSwitch = (target: UserRole) => {
         startTransition(async () => {
@@ -43,7 +46,18 @@ const Navbar = ({ session }: { session: any }) => {
         });
     };
 
-    const dashboardHref = userRole === 'Owner' ? "/dashboard/owner" : userRole === 'Admin' ? "/dashboard/admin" : "/dashboard/student";
+    // The Dashboard button should take the user to their business context if they have one.
+    // Logic: If session.role is explicitly set, use it. Otherwise, default to highest available.
+    let dashboardHref = "/dashboard/student";
+    if (session?.role === 'ADMIN' || (hasAdminAccess && !session?.role)) {
+        dashboardHref = "/dashboard/admin";
+    } else if (session?.role === 'OWNER' || (hasOwnerAccess && !session?.role)) {
+        dashboardHref = "/dashboard/owner";
+    } else if (session?.role === 'STAFF' || (hasStaffAccess && !session?.role)) {
+        dashboardHref = "/dashboard/staff";
+    } else if (session?.role === 'USER') {
+        dashboardHref = "/dashboard/student";
+    }
 
     const isImpersonating = !!session?.impersonatorId;
 

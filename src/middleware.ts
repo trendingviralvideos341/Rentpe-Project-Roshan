@@ -104,30 +104,44 @@ export default async function middleware(req: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
-        // Block non-Owner users from Owner dashboard
-        if (path.startsWith('/dashboard/owner') && !roles.includes('OWNER') && role !== 'OWNER') {
-            if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
-            // Un-upgraded students → student dashboard (upgrade-to-owner route was removed; admin handles upgrades)
-            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
-        }
-
-        // ── CRITICAL RBAC: Redirect privileged roles away from the student dashboard ──
-        // Admins and pure Owners should NEVER land on /dashboard/student.
-        // Exception: a dual-role user whose ACTIVE role is currently 'USER' is allowed.
+        // ── CRITICAL RBAC & IDENTITY HARDENING ──
+        // (1) Redirect any privileged role (ADMIN, OWNER, STAFF) away from /dashboard/student
+        // unless they are dual-role (USER + OWNER) AND have explicitly switched to 'USER' mode.
         if (path.startsWith('/dashboard/student')) {
-            // Admin trying to browse /dashboard/student? Send them to admin.
+            // Admin landing on student? Send them back to admin.
             if (role === 'ADMIN' || roles.includes('ADMIN')) {
                 return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
             }
-            // Pure Owner (no USER role in their roles[]) trying to go to student? Send to owner.
-            if ((role === 'OWNER' || roles.includes('OWNER')) && !roles.includes('USER')) {
-                return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
-            }
-            // Staff trying to go to student? Send to staff.
+            
+            // Staff landing on student? Send them back to staff.
             if (role === 'STAFF' || roles.includes('STAFF')) {
                 return NextResponse.redirect(new URL('/dashboard/staff', req.nextUrl));
             }
-            // Dual-role users (USER+OWNER) whose active role is USER are allowed through.
+
+            // Owner landing on student:
+            // (a) If they ONLY have the OWNER role → Redirect to /dashboard/owner
+            // (b) If they are dual-role (USER + OWNER) BUT their active session role is 'OWNER' → Redirect to /dashboard/owner
+            const isOwner = role === 'OWNER' || roles.includes('OWNER');
+            const isUser = role === 'USER' || roles.includes('USER');
+            
+            if (isOwner && !isUser) {
+                return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            }
+
+            // Dual-role users whose active session role is NOT 'USER' (i.e. they are in 'OWNER' mode)
+            // should not be allowed on the student dashboard. Land them on Owner.
+            if (isOwner && isUser && role !== 'USER') {
+                return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            }
+
+            // Only pure Students OR Dual-role users in 'USER' mode are allowed through.
+        }
+
+        // (2) Block non-Owner users from Owner dashboard
+        if (path.startsWith('/dashboard/owner') && !roles.includes('OWNER') && role !== 'OWNER') {
+            if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
+            // Un-upgraded students → student dashboard
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
         // Legacy staff routes redirection
