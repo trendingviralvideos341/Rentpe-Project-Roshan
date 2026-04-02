@@ -1,5 +1,10 @@
 "use client";
 
+// Force dynamic rendering and disable caching for search results
+// This ensures that new property listings are visible immediately without waiting for re-builds.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";

@@ -31,75 +31,88 @@ export async function searchProperties(query?: string, filters?: {
 
     // ... rest of filters
 
-    const properties = await prisma.property.findMany({
-        where,
-        include: {
-            rooms: { select: { price: true, type: true, availability: true } },
-            _count: { select: { reviews: true } }
+    try {
+        const properties = await prisma.property.findMany({
+            where,
+            include: {
+                rooms: { select: { price: true, type: true, availability: true } },
+                _count: { select: { reviews: true } }
+            }
+        }) as (Property & { rooms: any[], _count: { reviews: number } })[];
+
+        console.log(`[SEARCH_ACTION] Found ${properties.length} raw properties for query: "${query}"`);
+
+        // Map and enrich results
+        let results = properties.map((p: any) => {
+            try {
+                const prices = p.rooms.map((r: any) => r.price).filter(Boolean);
+                const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+                const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+                const totalAvailable = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
+                const parsedAmenities: string[] = JSON.parse(p.amenities || '[]');
+                
+                const verifiedDocs = JSON.parse(p.verifiedDocs || '[]');
+                
+                // Filter building photos to only show verified ones
+                const buildingPhotos = p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [];
+                const verifiedBuildingPhotos = buildingPhotos.map((url: string, i: number) => {
+                    return verifiedDocs.includes(`buildingPhotos-${i}`) ? url : null;
+                }).filter(Boolean);
+
+                // Common area photos
+                const commonAreaPhotos = p.commonAreaPhotos ? JSON.parse(p.commonAreaPhotos) : [];
+                const verifiedCommonAreaPhotos = commonAreaPhotos.map((url: string, i: number) => {
+                    return verifiedDocs.includes(`commonAreaPhotos-${i}`) ? url : null;
+                }).filter(Boolean);
+
+                return {
+                    ...p,
+                    minPrice,
+                    maxPrice,
+                    totalAvailableBeds: totalAvailable,
+                    amenities: parsedAmenities,
+                    image: verifiedBuildingPhotos[0] || verifiedCommonAreaPhotos[0] || '',
+                    buildingPhotos: verifiedBuildingPhotos,
+                    commonAreaPhotos: verifiedCommonAreaPhotos,
+                    isVerified: p.isVerified || false,
+                    genderType: p.genderType || 'COED',
+                    propertyType: p.propertyType || 'PG',
+                };
+            } catch (err) {
+                console.error(`[SEARCH_ACTION] Error processing property ${p.id}:`, err);
+                return null; // Skip corrupted properties
+            }
+        }).filter(Boolean) as any[];
+
+        // Price filters (post-fetch for SQLite compatibility)
+        if (filters?.minPrice) results = results.filter(r => r.minPrice >= filters.minPrice!);
+        if (filters?.maxPrice) results = results.filter(r => r.minPrice <= filters.maxPrice!);
+
+        // Amenity filters
+        if (filters?.amenities?.length) {
+            results = results.filter(r =>
+                filters.amenities!.every((a: string) => r.amenities.includes(a))
+            );
         }
-    }) as (Property & { rooms: any[], _count: { reviews: number } })[];
 
-    // Map and enrich results
-    let results = properties.map((p: any) => {
-        const prices = p.rooms.map((r: any) => r.price).filter(Boolean);
-        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-        const totalAvailable = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
-        const parsedAmenities: string[] = JSON.parse(p.amenities || '[]');
-        
-        const verifiedDocs = JSON.parse(p.verifiedDocs || '[]');
-        
-        // Filter building photos to only show verified ones
-        const buildingPhotos = p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [];
-        const verifiedBuildingPhotos = buildingPhotos.map((url: string, i: number) => {
-            return verifiedDocs.includes(`buildingPhotos-${i}`) ? url : null;
-        }).filter(Boolean);
+        // Only show properties with available beds
+        results = results.filter(r => r.totalAvailableBeds > 0);
 
-        // Common area photos
-        const commonAreaPhotos = p.commonAreaPhotos ? JSON.parse(p.commonAreaPhotos) : [];
-        const verifiedCommonAreaPhotos = commonAreaPhotos.map((url: string, i: number) => {
-            return verifiedDocs.includes(`commonAreaPhotos-${i}`) ? url : null;
-        }).filter(Boolean);
+        // Sorting
+        switch (filters?.sortBy) {
+            case 'price_asc': results.sort((a, b) => a.minPrice - b.minPrice); break;
+            case 'price_desc': results.sort((a, b) => b.minPrice - a.minPrice); break;
+            case 'rating': results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)); break;
+            case 'newest': results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
+            default: results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)); // default: rating
+        }
 
-        return {
-            ...p,
-            minPrice,
-            maxPrice,
-            totalAvailableBeds: totalAvailable,
-            amenities: parsedAmenities,
-            image: verifiedBuildingPhotos[0] || verifiedCommonAreaPhotos[0] || '',
-            buildingPhotos: verifiedBuildingPhotos,
-            commonAreaPhotos: verifiedCommonAreaPhotos,
-            isVerified: p.isVerified || false,
-            genderType: p.genderType || 'COED',
-            propertyType: p.propertyType || 'PG',
-        };
-    });
-
-    // Price filters (post-fetch for SQLite compatibility)
-    if (filters?.minPrice) results = results.filter(r => r.minPrice >= filters.minPrice!);
-    if (filters?.maxPrice) results = results.filter(r => r.minPrice <= filters.maxPrice!);
-
-    // Amenity filters
-    if (filters?.amenities?.length) {
-        results = results.filter(r =>
-            filters.amenities!.every((a: string) => r.amenities.includes(a))
-        );
+        console.log(`[SEARCH_ACTION] Returning ${results.length} enriched results for query: "${query}"`);
+        return results;
+    } catch (error) {
+        console.error("[SEARCH_ACTION] Global Search Error:", error);
+        return []; // Always return an array to prevent frontend crash
     }
-
-    // Only show properties with available beds
-    results = results.filter(r => r.totalAvailableBeds > 0);
-
-    // Sorting
-    switch (filters?.sortBy) {
-        case 'price_asc': results.sort((a, b) => a.minPrice - b.minPrice); break;
-        case 'price_desc': results.sort((a, b) => b.minPrice - a.minPrice); break;
-        case 'rating': results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)); break;
-        case 'newest': results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
-        default: results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)); // default: rating
-    }
-
-    return results;
 }
 
 /**
