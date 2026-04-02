@@ -29,8 +29,8 @@ export async function searchProperties(query?: string, filters?: {
     // Location filter
     if (filters?.city) where.city = { contains: filters.city, mode: 'insensitive' };
 
-    // ... rest of filters
-
+    // Price filters at DB level if possible (prisma doesn't support complex mapping here)
+    
     try {
         const properties = await prisma.property.findMany({
             where,
@@ -80,22 +80,21 @@ export async function searchProperties(query?: string, filters?: {
                 };
             } catch (err) {
                 console.error(`[SEARCH_ACTION] Error processing property ${p.id}:`, err);
-                return null; // Skip corrupted properties
+                return null;
             }
         }).filter(Boolean) as any[];
 
-        // Price filters (post-fetch for SQLite compatibility)
+        // Post-fetch filters
         if (filters?.minPrice) results = results.filter(r => r.minPrice >= filters.minPrice!);
         if (filters?.maxPrice) results = results.filter(r => r.minPrice <= filters.maxPrice!);
 
-        // Amenity filters
         if (filters?.amenities?.length) {
             results = results.filter(r =>
                 filters.amenities!.every((a: string) => r.amenities.includes(a))
             );
         }
 
-        // Only show properties with available beds
+        // Only show available
         results = results.filter(r => r.totalAvailableBeds > 0);
 
         // Sorting
@@ -104,20 +103,17 @@ export async function searchProperties(query?: string, filters?: {
             case 'price_desc': results.sort((a, b) => b.minPrice - a.minPrice); break;
             case 'rating': results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)); break;
             case 'newest': results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
-            default: results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)); // default: rating
+            default: results.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
         }
 
-        console.log(`[SEARCH_ACTION] Returning ${results.length} enriched results for query: "${query}"`);
+        console.log(`[SEARCH_ACTION] Returning ${results.length} enriched results.`);
         return results;
     } catch (error) {
         console.error("[SEARCH_ACTION] Global Search Error:", error);
-        return []; // Always return an array to prevent frontend crash
+        return [];
     }
 }
 
-/**
- * Get filter metadata for the search page (available cities, amenities, etc.)
- */
 export async function getSearchFilterOptions() {
     const properties = await prisma.property.findMany({
         where: { status: 'APPROVED' },
