@@ -465,10 +465,12 @@ export async function switchRole(targetRole: UserRole) {
         throw new Error("You do not have permission for this role");
     }
 
-    // Update active role in DB
+    // IMPORTANT: Only update `primaryRole` (the user's PREFERENCE / last-used dashboard).
+    // NEVER overwrite `role` — that is the authoritative role set at account creation
+    // or by Admin upgrade only. Overwriting it causes permanent role corruption.
     await prisma.user.update({
         where: { id: user.id },
-        data: { role: targetRole }
+        data: { primaryRole: targetRole }   // ← preference only, NOT the authoritative role
     });
 
     // Issue a fresh JWT with the new active role

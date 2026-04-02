@@ -104,15 +104,31 @@ export default async function middleware(req: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
-        // Block non-Owner users from Owner dashboard — BUT allow dual-role USER+OWNER users
+        // Block non-Owner users from Owner dashboard
         if (path.startsWith('/dashboard/owner') && !roles.includes('OWNER') && role !== 'OWNER') {
             if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
-            // Send un-upgraded students to the upgrade page
-            return NextResponse.redirect(new URL('/dashboard/student/upgrade-to-owner', req.nextUrl));
+            // Un-upgraded students → student dashboard (upgrade-to-owner route was removed; admin handles upgrades)
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
-        // Student dashboard: accessible to any authenticated user (they can all see it)
-        // Dual-role USER+OWNER users can freely visit /dashboard/student
+        // ── CRITICAL RBAC: Redirect privileged roles away from the student dashboard ──
+        // Admins and pure Owners should NEVER land on /dashboard/student.
+        // Exception: a dual-role user whose ACTIVE role is currently 'USER' is allowed.
+        if (path.startsWith('/dashboard/student')) {
+            // Admin trying to browse /dashboard/student? Send them to admin.
+            if (role === 'ADMIN' || roles.includes('ADMIN')) {
+                return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
+            }
+            // Pure Owner (no USER role in their roles[]) trying to go to student? Send to owner.
+            if ((role === 'OWNER' || roles.includes('OWNER')) && !roles.includes('USER')) {
+                return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            }
+            // Staff trying to go to student? Send to staff.
+            if (role === 'STAFF' || roles.includes('STAFF')) {
+                return NextResponse.redirect(new URL('/dashboard/staff', req.nextUrl));
+            }
+            // Dual-role users (USER+OWNER) whose active role is USER are allowed through.
+        }
 
         // Legacy staff routes redirection
         if (path.startsWith('/dashboard/onboarder') && role !== 'ONBOARDER') {
