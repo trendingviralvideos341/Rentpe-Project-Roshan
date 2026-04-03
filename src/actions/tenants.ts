@@ -82,20 +82,25 @@ export async function createTenantFromBooking(bookingId: string) {
     }
 
     return await prisma.$transaction(async (tx) => {
-        // 1. Create Tenant record
-        // === UNIFIED IDENTITY: Reuse the student's existing REN-USER-XXXX ID ===
-        // We never generate a new sequential ID for a tenant. The person's
-        // identity is their User.displayId — forever.
+        // === UNIFIED IDENTITY: One Passport for Life ===
+        // Inherit the student's REN-USER-XXXX display ID.
+        // We append a suffix (-02, -03) for subsequent stays to maintain DB uniqueness.
         const studentUser = await prisma.user.findUnique({
             where: { id: booking.userId },
             select: { displayId: true }
         });
-        const displayId = studentUser?.displayId || `REN-USER-${booking.userId.slice(0, 8).toUpperCase()}`;
+        
+        const stayCount = await prisma.tenant.count({
+            where: { studentId: booking.userId }
+        });
+        
+        const baseId = studentUser?.displayId || `REN-USER-${booking.userId.slice(0, 8).toUpperCase()}`;
+        const tenantDisplayId = stayCount > 0 ? `${baseId}-${(stayCount + 1).toString().padStart(2, '0')}` : baseId;
 
         const tenant = await tx.tenant.create({
             data: {
-                displayId,
-                applicationId: displayId,
+                displayId: tenantDisplayId,
+                applicationId: tenantDisplayId,
                 studentId: booking.userId,
                 bookingId: booking.id,
                 propertyId: booking.propertyId!,
