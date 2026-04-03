@@ -1,6 +1,7 @@
+"use server";
+
 import prisma from "@/lib/prisma";
 import { Property } from "@/types/models";
-import { UserRole } from "@/types/auth";
 
 export async function searchProperties(query?: string, filters?: {
     city?: string;
