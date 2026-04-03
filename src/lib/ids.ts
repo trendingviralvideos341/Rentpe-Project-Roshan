@@ -55,18 +55,31 @@ export async function generateSequentialId(type: EntityType, count?: number): Pr
             lastId = ownerNum > 0 ? `APP-OWN-${ownerNum.toString().padStart(4, '0')}` : null;
             break;
         case 'PROPERTY':
+            // Gen 3 (current): APP-RP-XXXX
             const lastProp = await prisma.property.findFirst({ 
                 where: { displayId: { startsWith: 'APP-RP-' } },
                 orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
+            // Gen 1 (legacy): RP-REG-XXXX
             const lastRegProp = await prisma.property.findFirst({
                 where: { displayId: { startsWith: 'RP-REG-' } },
                 orderBy: { displayId: 'desc' },
                 select: { displayId: true }
             });
+            // Gen 2 (intermediate): REN-PROP-XXXX — must also be covered
+            const lastRenProp = await prisma.property.findFirst({
+                where: { displayId: { startsWith: 'REN-PROP-' } },
+                orderBy: { displayId: 'desc' },
+                select: { displayId: true }
+            });
             
-            const propNum = Math.max(extractNum(lastProp?.displayId), extractNum(lastRegProp?.displayId));
+            // Take the MAX across all 3 generations to ensure no future collisions
+            const propNum = Math.max(
+                extractNum(lastProp?.displayId),
+                extractNum(lastRegProp?.displayId),
+                extractNum(lastRenProp?.displayId)
+            );
             lastId = propNum > 0 ? `APP-RP-${propNum.toString().padStart(4, '0')}` : null;
             break;
         case 'ROOM':
