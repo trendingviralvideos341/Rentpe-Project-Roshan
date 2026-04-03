@@ -118,19 +118,13 @@ export async function generateSequentialId(type: EntityType, count?: number): Pr
             lastId = lastBooking?.displayId || null;
             break;
         case 'TENANT':
-            const lastTenant = await prisma.tenant.findFirst({ 
-                where: { displayId: { startsWith: 'APP-TEN-' } },
-                orderBy: { displayId: 'desc' }, 
-                select: { displayId: true } 
-            });
-            const lastRegTenant = await prisma.tenant.findFirst({
-                where: { displayId: { startsWith: 'REG-TEN-' } },
-                orderBy: { displayId: 'desc' },
-                select: { displayId: true }
-            });
-            
-            const tenNum = Math.max(extractNum(lastTenant?.displayId), extractNum(lastRegTenant?.displayId));
-            lastId = tenNum > 0 ? `APP-TEN-${tenNum.toString().padStart(4, '0')}` : null;
+            // ⚠️ RETIRED: Tenant IDs are no longer independently generated.
+            // As of the Unified Identity Architecture (Apr 2026), a Tenant record
+            // inherits the student's existing REN-USER-XXXX displayId.
+            // This case is kept as a tombstone to prevent future regression.
+            // See: src/actions/bookings.ts → checkInBooking()
+            //      src/actions/tenants.ts  → createTenantFromBooking()
+            lastId = null;
             break;
         case 'OWNER_EMPLOYEE':
             const lastOwnerEmp = await prisma.ownerEmployee.findFirst({ 

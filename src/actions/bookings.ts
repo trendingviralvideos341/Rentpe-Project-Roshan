@@ -507,7 +507,17 @@ export async function checkInBooking(id: string) {
 
     if (room) {
         const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-        const tenantDisplayId = `TNT-${Math.floor(Math.random() * 900000) + 100000}`;
+
+        // === UNIFIED IDENTITY: One Passport for Life ===
+        // Instead of generating a new random TNT- ID, we inherit the student's
+        // existing REN-USER-XXXX display ID. This means the same identity
+        // follows the person from sign-up → booking → tenancy → move-out.
+        const studentUser = await prisma.user.findUnique({
+            where: { id: booking.userId },
+            select: { displayId: true }
+        });
+        // Safety fallback: if user has no displayId yet (very old accounts), use userId prefix
+        const tenantDisplayId = studentUser?.displayId || `REN-USER-${booking.userId.slice(0, 8).toUpperCase()}`;
 
         const tenant = await prisma.tenant.create({
             data: {

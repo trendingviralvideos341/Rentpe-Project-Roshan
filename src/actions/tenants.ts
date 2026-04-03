@@ -83,7 +83,15 @@ export async function createTenantFromBooking(bookingId: string) {
 
     return await prisma.$transaction(async (tx) => {
         // 1. Create Tenant record
-        const displayId = await generateSequentialId('TENANT');
+        // === UNIFIED IDENTITY: Reuse the student's existing REN-USER-XXXX ID ===
+        // We never generate a new sequential ID for a tenant. The person's
+        // identity is their User.displayId — forever.
+        const studentUser = await prisma.user.findUnique({
+            where: { id: booking.userId },
+            select: { displayId: true }
+        });
+        const displayId = studentUser?.displayId || `REN-USER-${booking.userId.slice(0, 8).toUpperCase()}`;
+
         const tenant = await tx.tenant.create({
             data: {
                 displayId,
@@ -141,19 +149,14 @@ export async function confirmMoveIn(tenantId: string) {
     }
 
     return await prisma.$transaction(async (tx) => {
-        // 0. Upgrade ID if needed
-        let newDisplayId = tenant.displayId;
-        if (newDisplayId.startsWith('APP-TEN-')) {
-            newDisplayId = newDisplayId.replace('APP-TEN-', 'REG-TEN-');
-        }
+        // === UNIFIED IDENTITY: No ID upgrade needed ===
+        // The displayId is already REN-USER-XXXX (set at check-in).
+        // We simply flip the status to Active.
 
         // 1. Update Tenant
         await tx.tenant.update({
             where: { id: tenantId },
-            data: { 
-                status: 'Active',
-                displayId: newDisplayId
-            }
+            data: { status: 'Active' }
         });
 
         // 2. Update Bed to OCCUPIED
@@ -202,7 +205,7 @@ export async function confirmMoveIn(tenantId: string) {
             actionType: 'UPDATE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Tenant ${tenant.name} moved in. Financials active. ID Upgraded: ${tenant.displayId} -> ${newDisplayId}`,
+            description: `Tenant ${tenant.name} moved in. Unified ID: ${tenant.displayId}. Financials now active.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
