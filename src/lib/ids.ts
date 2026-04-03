@@ -4,7 +4,7 @@ export type EntityType = 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKI
 
 const PREFIXES: Record<EntityType, string> = {
     USER: 'REN-USER',
-    OWNER: 'APP-OWN',
+    OWNER: 'REN-OWN',
     PROPERTY: 'APP-RP',
     ROOM: 'REN-ROOM',
     BED: 'REN-BED',
@@ -39,20 +39,31 @@ export async function generateSequentialId(type: EntityType, count?: number): Pr
             lastId = lastUser?.displayId || null;
             break;
         case 'OWNER':
+            // Current format: REN-OWN-XXXX
             const lastOwner = await prisma.user.findFirst({ 
+                where: { isOwner: true, displayId: { startsWith: 'REN-OWN-' } }, 
+                orderBy: { displayId: 'desc' }, 
+                select: { displayId: true } 
+            });
+            // Legacy Gen 2: APP-OWN-XXXX
+            const lastAppOwner = await prisma.user.findFirst({ 
                 where: { isOwner: true, displayId: { startsWith: 'APP-OWN-' } }, 
                 orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
-            // Also need to check for upgraded IDs to ensure sequence continues
+            // Legacy Gen 1: REG-OWN-XXXX
             const lastRegOwner = await prisma.user.findFirst({
                 where: { isOwner: true, displayId: { startsWith: 'REG-OWN-' } },
                 orderBy: { displayId: 'desc' },
                 select: { displayId: true }
             });
 
-            const ownerNum = Math.max(extractNum(lastOwner?.displayId), extractNum(lastRegOwner?.displayId));
-            lastId = ownerNum > 0 ? `APP-OWN-${ownerNum.toString().padStart(4, '0')}` : null;
+            const ownerNum = Math.max(
+                extractNum(lastOwner?.displayId), 
+                extractNum(lastAppOwner?.displayId), 
+                extractNum(lastRegOwner?.displayId)
+            );
+            lastId = ownerNum > 0 ? `REN-OWN-${ownerNum.toString().padStart(4, '0')}` : null;
             break;
         case 'PROPERTY':
             // Gen 3 (current): APP-RP-XXXX
