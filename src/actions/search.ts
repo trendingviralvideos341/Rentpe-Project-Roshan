@@ -46,33 +46,46 @@ export async function searchProperties(query?: string, filters?: {
                 const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
                 const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
                 const totalAvailable = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
-                
-                const verifiedDocs = JSON.parse(p.verifiedDocs || '[]');
-                
-                // Filter building photos to only show verified ones
-                const buildingPhotos = p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [];
-                const verifiedBuildingPhotos = buildingPhotos.map((url: string, i: number) => {
-                    return verifiedDocs.includes(`buildingPhotos-${i}`) ? url : null;
-                }).filter(Boolean);
 
-                // Common area photos
-                const commonAreaPhotos = p.commonAreaPhotos ? JSON.parse(p.commonAreaPhotos) : [];
-                const verifiedCommonAreaPhotos = commonAreaPhotos.map((url: string, i: number) => {
-                    return verifiedDocs.includes(`commonAreaPhotos-${i}`) ? url : null;
-                }).filter(Boolean);
+                // For APPROVED properties, show ALL uploaded photos (no verification gating)
+                // Verification gating is for the admin review step, not for public visibility
+                const buildingPhotos: string[] = [];
+                try {
+                    const parsed = p.buildingPhotos ? JSON.parse(p.buildingPhotos) : [];
+                    parsed.forEach((url: string) => { if (url) buildingPhotos.push(url); });
+                } catch {}
+
+                const commonAreaPhotos: string[] = [];
+                try {
+                    const parsed = p.commonAreaPhotos ? JSON.parse(p.commonAreaPhotos) : [];
+                    parsed.forEach((url: string) => { if (url) commonAreaPhotos.push(url); });
+                } catch {}
+
+                // Also pull from legacy images field as fallback
+                const legacyImages: string[] = [];
+                try {
+                    const parsed = p.images ? JSON.parse(p.images) : [];
+                    parsed.forEach((url: string) => { if (url) legacyImages.push(url); });
+                } catch {}
+
+                const allPhotos = [...buildingPhotos, ...commonAreaPhotos, ...legacyImages];
 
                 return {
                     ...p,
                     minPrice,
                     maxPrice,
                     totalAvailableBeds: totalAvailable,
+                    // Industry standard: show as full/waitlist, not hidden
+                    isFull: totalAvailable === 0,
                     amenities: JSON.parse(p.amenities || '[]'),
-                    image: verifiedBuildingPhotos[0] || verifiedCommonAreaPhotos[0] || '',
-                    buildingPhotos: verifiedBuildingPhotos,
-                    commonAreaPhotos: verifiedCommonAreaPhotos,
+                    image: allPhotos[0] || '',
+                    buildingPhotos,
+                    commonAreaPhotos,
+                    allPhotos,
                     isVerified: p.isVerified || false,
                     genderType: p.genderType || 'COED',
                     propertyType: p.propertyType || 'PG',
+                    rating: p.averageRating || 0,
                 };
             } catch (err) {
                 console.error(`[SEARCH_ACTION] Error processing property ${p.id}:`, err);
@@ -90,8 +103,9 @@ export async function searchProperties(query?: string, filters?: {
             );
         }
 
-        // Only show properties with available beds
-        results = results.filter(r => r.totalAvailableBeds > 0);
+        // Industry standard: Show ALL approved properties in search.
+        // Properties with 0 availability are shown with isFull=true so students
+        // can still view, save, or join a waitlist — same as OYO, Stanza, NestAway.
 
         // Sorting
         switch (filters?.sortBy) {

@@ -162,26 +162,30 @@ export default function SearchPage() {
                         {properties.map((prop) => (
                             <Card key={prop.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
                                 <Link href={`/property/${prop.id}`} className="block">
-                                    <div className="h-48 overflow-hidden relative bg-muted cursor-pointer group/image">
+                                <div className="h-48 overflow-hidden relative bg-muted cursor-pointer group/image">
                                         {(() => {
-                                            const mergedImages: string[] = [];
-                                            if (prop.buildingPhotos && Array.isArray(prop.buildingPhotos)) {
-                                                prop.buildingPhotos.forEach((p: any) => {
-                                                    if (p) mergedImages.push(typeof p === 'string' ? p : p.url);
-                                                });
-                                            }
-                                            if (prop.commonAreaPhotos && Array.isArray(prop.commonAreaPhotos)) {
-                                                prop.commonAreaPhotos.forEach((p: any) => {
-                                                    if (p) mergedImages.push(typeof p === 'string' ? p : p.url);
-                                                });
-                                            }
+                                            // Use allPhotos (already enriched by server action)
+                                            const mergedImages: string[] = prop.allPhotos && prop.allPhotos.length > 0
+                                                ? prop.allPhotos
+                                                : [
+                                                    ...(Array.isArray(prop.buildingPhotos) ? prop.buildingPhotos : []),
+                                                    ...(Array.isArray(prop.commonAreaPhotos) ? prop.commonAreaPhotos : [])
+                                                ].filter(Boolean);
 
                                             return <ImageCarousel images={mergedImages} alt={prop.name} />;
                                         })()}
 
+                                        {/* Rating badge */}
                                         <div className="absolute top-2 right-2 z-[30] bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-bold flex items-center shadow-sm">
-                                            <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" /> {prop.rating}
+                                            <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" /> {prop.rating || "New"}
                                         </div>
+
+                                        {/* Full badge — industry standard: show property, not hide it */}
+                                        {prop.isFull && (
+                                            <div className="absolute top-2 left-2 z-[30] bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold shadow-sm">
+                                                Currently Full
+                                            </div>
+                                        )}
                                     </div>
                                 </Link>
                                 <CardHeader className="p-4 pb-2">
@@ -201,8 +205,14 @@ export default function SearchPage() {
                                     </div>
                                     <div className="flex items-end justify-between">
                                         <div>
-                                            <span className="text-2xl font-bold text-primary">₹{prop.minPrice.toLocaleString()}</span>
-                                            <span className="text-sm text-muted-foreground">/mo onwards</span>
+                                            <span className="text-2xl font-bold text-primary">₹{prop.minPrice > 0 ? prop.minPrice.toLocaleString() : "—"}</span>
+                                            {prop.minPrice > 0 && <span className="text-sm text-muted-foreground">/mo onwards</span>}
+                                        </div>
+                                        <div className="text-xs text-right">
+                                            {prop.isFull
+                                                ? <span className="text-orange-500 font-semibold">Waitlist Available</span>
+                                                : <span className="text-green-600 font-semibold">{prop.totalAvailableBeds} bed{prop.totalAvailableBeds !== 1 ? 's' : ''} available</span>
+                                            }
                                         </div>
                                     </div>
                                 </CardContent>
