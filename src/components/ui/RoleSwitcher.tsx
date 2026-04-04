@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { toast } from 'sonner';
@@ -9,7 +8,6 @@ export function RoleSwitcher({ currentRole, roles }: {
     currentRole: string,
     roles: string[]
 }) {
-    const router = useRouter();
     const [isPending, startTransition] = useTransition();
 
     const handleSwitch = (targetRole: string) => {
@@ -22,21 +20,20 @@ export function RoleSwitcher({ currentRole, roles }: {
             try {
                 await switchRole(targetRole as any);
             } catch (err: any) {
-                // switchRole() calls Next.js redirect() server-side which throws NEXT_REDIRECT.
-                // This is expected behaviour — navigation must happen here in the catch block.
-                // router.push()   — changes the URL to the correct dashboard
-                // router.refresh() — forces Next.js to re-fetch all server components with the new role JWT cookie
-                // Without refresh(), stale cached server components may still render the old role's data.
-                if (targetRole === 'OWNER') {
-                    router.push('/dashboard/owner');
-                } else {
-                    router.push('/dashboard/student');
-                }
-                router.refresh();
+                // switchRole() calls Next.js redirect() server-side which throws NEXT_REDIRECT — expected.
+                // WHY window.location.href (not router.push + router.refresh):
+                // router.push()    = client-side nav, reuses existing session cache ❌
+                // router.refresh() = re-fetches server components but has cookie timing race ❌
+                // window.location.href = full browser reload, reads fresh JWT cookie from scratch ✅
                 toast.success(
                     `Switched to ${targetRole === 'OWNER' ? '🏠 Owner' : '🎓 Student'} Dashboard`,
                     { id: toastId }
                 );
+                if (targetRole === 'OWNER') {
+                    window.location.href = '/dashboard/owner';
+                } else {
+                    window.location.href = '/dashboard/student';
+                }
             }
         });
     };
