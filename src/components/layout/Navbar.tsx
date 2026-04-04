@@ -180,21 +180,21 @@ const Navbar = ({ session }: { session: any }) => {
                             <>
                                 <Link
                                     href="/search"
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
                                     <Search className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Find PG
                                 </Link>
                                 <Link
                                     href="/list-property"
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group whitespace-nowrap"
                                 >
                                     <Building className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     List Your PG
                                 </Link>
                                 <Link
                                     href="/about"
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
                                     <Info className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     About Us
@@ -215,13 +215,13 @@ const Navbar = ({ session }: { session: any }) => {
                                         title={isOwner ? 'Switch to Student Dashboard' : 'Switch to Owner Dashboard'}
                                         className="flex items-center gap-0.5 bg-slate-100 hover:bg-slate-200 border-2 border-slate-200 rounded-xl p-1 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${!isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
+                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black transition-all ${!isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
                                             🎓 Student
                                         </div>
                                         <div className="px-1">
-                                            {isPending ? <Loader2 className="h-3 w-3 text-slate-400 animate-spin" /> : <ArrowLeftRight className="h-3 w-3 text-slate-400" />}
+                                            {isPending ? <Loader2 className="h-2.5 w-2.5 text-slate-400 animate-spin" /> : <ArrowLeftRight className="h-2.5 w-2.5 text-slate-400" />}
                                         </div>
-                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
+                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black transition-all ${isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
                                             🏠 Owner
                                         </div>
                                     </button>
@@ -249,13 +249,13 @@ const Navbar = ({ session }: { session: any }) => {
                             <>
                                 <Link 
                                     href="/login"
-                                    className="px-5 py-2 text-sm font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
+                                    className="px-3.5 py-1.5 text-xs font-black rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap"
                                 >
                                     Sign In
                                 </Link>
                                 <Link 
                                     href="/signup"
-                                    className="px-5 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:opacity-90 transition-opacity shadow-md"
+                                    className="px-3.5 py-1.5 text-xs font-black rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:opacity-90 transition-opacity shadow-md whitespace-nowrap"
                                 >
                                     Sign Up
                                 </Link>
