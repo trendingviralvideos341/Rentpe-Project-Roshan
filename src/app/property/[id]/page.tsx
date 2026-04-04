@@ -478,24 +478,26 @@ export default function PropertyDetailPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setFoodSelected(true)}
-                                                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                                                className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center min-h-[56px] text-center ${
                                                     foodSelected === true
                                                         ? "bg-green-600 text-white border-green-600 shadow-md"
                                                         : "border-gray-200 text-gray-600 hover:border-green-400 hover:bg-green-50"
                                                 }`}
                                             >
-                                                🍽 Yes, Include Food <span className="font-normal opacity-80">(+₹{property.foodPricePerMonth?.toLocaleString()}/mo)</span>
+                                                <span className="flex items-center gap-1">🍽 Yes, Include Food</span>
+                                                <span className="text-[10px] font-normal opacity-80">(+₹{property.foodPricePerMonth?.toLocaleString()}/mo)</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setFoodSelected(false)}
-                                                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                                                className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center min-h-[56px] text-center ${
                                                     foodSelected === false
                                                         ? "bg-slate-700 text-white border-slate-700 shadow-md"
                                                         : "border-gray-200 text-gray-600 hover:border-slate-400 hover:bg-slate-50"
                                                 }`}
                                             >
-                                                🚫 No Thanks
+                                                <span>🚫 No Thanks</span>
+                                                <span className="text-[10px] font-normal opacity-0 select-none cursor-default" aria-hidden="true">(placeholder)</span>
                                             </button>
                                         </div>
                                         {foodSelected !== null && (
