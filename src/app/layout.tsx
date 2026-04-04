@@ -44,12 +44,20 @@ export default async function RootLayout({
     try {
       const dbUser = await prisma.user.findUnique({
         where: { id: activeUserId! },
-        select: { name: true, email: true, role: true }
+        select: { name: true, role: true, roles: true }
       });
       if (dbUser) {
         activeRole = dbUser.role;
-        // Merge fresh DB data over stale JWT values
-        freshSession = { ...session, name: dbUser.name, role: dbUser.role } as any;
+        // IMPORTANT: Only take `name` and `roles[]` from DB.
+        // DO NOT override session.role with dbUser.role.
+        // session.role = the active JWT role the user has switched to (e.g. 'USER' after switch)
+        // dbUser.role  = the immutable signup role (e.g. 'OWNER') — overriding would break the Navbar switcher
+        freshSession = {
+          ...session,
+          name: dbUser.name,
+          roles: dbUser.roles,
+          // session.role is kept as-is (from JWT — the active context role)
+        } as any;
       }
     } catch (e) {
       // Fallback to JWT session on DB error (e.g., build time)
