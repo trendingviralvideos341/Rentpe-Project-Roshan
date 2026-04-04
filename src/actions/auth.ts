@@ -543,14 +543,28 @@ export async function checkSessionIntegrity() {
 
         const user = await prisma.user.findUnique({
             where: { id: session.userId as string },
-            select: { role: true, email: true }
+            select: { role: true, roles: true, email: true }
         });
 
         if (!user) return { status: 'unauthenticated' };
 
-        // If session role and DB role don't match — another tab re-logged in
         const sessionRole = session.role as string;
-        if (sessionRole !== user.role) {
+
+        // FIX: For dual-role users, the JWT role just needs to be in their
+        // allowed roles[] array — not necessarily equal to user.role.
+        //
+        // user.role = the immutable authoritative role set at signup (e.g. 'OWNER')
+        // user.roles = all roles the user holds (e.g. ['OWNER', 'USER'])
+        // session.role = the active context role after a switch (e.g. 'USER')
+        //
+        // Old check: sessionRole !== user.role  ← always mismatch for dual-role after switch ❌
+        // New check: sessionRole in roles[]      ← correct validation for multi-role system ✅
+        //
+        // A REAL mismatch (e.g. another tab logged in as different account) is still caught
+        // because an unknown role would not be in the user's roles[] array.
+        const isValidRole = user.roles.includes(sessionRole) || sessionRole === user.role;
+
+        if (!isValidRole) {
             return {
                 status: 'mismatch',
                 currentRole: user.role,
@@ -558,7 +572,7 @@ export async function checkSessionIntegrity() {
             };
         }
 
-        return { status: 'ok', role: user.role };
+        return { status: 'ok', role: sessionRole };
     } catch {
         return { status: 'error' };
     }
