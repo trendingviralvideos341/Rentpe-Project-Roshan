@@ -95,9 +95,9 @@ const Navbar = ({ session }: { session: any }) => {
                 </div>
             )}
             <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-                <div className="container mx-auto flex h-16 items-center justify-between px-4">
+                <div className="max-w-[1600px] mx-auto flex h-16 items-center justify-between px-4 gap-4">
                     {/* Brand Logo */}
-                    <Link href="/" className="flex items-center space-x-2">
+                    <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
                         <div className="bg-primary/10 p-2 rounded-full">
                             <Home className="h-6 w-6 text-primary" />
                         </div>
@@ -107,29 +107,29 @@ const Navbar = ({ session }: { session: any }) => {
                     </Link>
 
                     {/* Desktop Navigation — context-aware based on active role */}
-                    <div className="hidden md:flex items-center space-x-3">
+                    <div className="hidden lg:flex items-center gap-1.5 flex-1 justify-center max-w-4xl mx-auto">
                         {isOwner ? (
                             // OWNER MODE — property management nav
                             <>
                                 <Link
                                     href="/dashboard/owner/properties"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <LayoutDashboard className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <LayoutDashboard className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     My Properties
                                 </Link>
                                 <Link
                                     href="/list-property"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <PlusCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <PlusCircle className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Add Property
                                 </Link>
                                 <Link
                                     href="/dashboard/owner/staff"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <Users className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <Users className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Management & Staff
                                 </Link>
                             </>
@@ -138,37 +138,37 @@ const Navbar = ({ session }: { session: any }) => {
                             <>
                                 <Link
                                     href="/dashboard/admin/property-approval"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <CheckSquare className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <CheckSquare className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Property Approvals
                                 </Link>
                                 <Link
                                     href="/dashboard/admin/tenants"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <Users className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <Users className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Active Tenants
                                 </Link>
                                 <Link
                                     href="/dashboard/admin/staff"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <UserCog className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <UserCog className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Internal Platform Staff
                                 </Link>
                                 <Link
                                     href="/dashboard/admin/tickets"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <MessageSquare className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <MessageSquare className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Resolution Center
                                 </Link>
                                 <Link
                                     href="/dashboard/admin/audit-log"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
-                                    <ShieldCheck className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <ShieldCheck className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Security Audit Log
                                 </Link>
                             </>
@@ -180,23 +180,23 @@ const Navbar = ({ session }: { session: any }) => {
                             <>
                                 <Link
                                     href="/search"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group"
                                 >
-                                    <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <Search className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     Find PG
                                 </Link>
                                 <Link
                                     href="/list-property"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
                                 >
-                                    <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <Building className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     List Your PG
                                 </Link>
                                 <Link
                                     href="/about"
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
                                 >
-                                    <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    <Info className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     About Us
                                 </Link>
                             </>
@@ -226,20 +226,20 @@ const Navbar = ({ session }: { session: any }) => {
                                         </div>
                                     </button>
                                 )}
-                                <span className="text-sm font-medium text-muted-foreground hidden sm:inline-block">
+                                <span className="text-[11px] font-medium text-muted-foreground hidden lg:inline-block whitespace-nowrap">
                                     Welcome, <strong>{session?.name || session?.user?.name || userRole}</strong>
                                 </span>
                                 <NotificationBell />
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
                                     <Link 
                                         href={dashboardHref + "?tab=profile"}
-                                        className="px-4 py-2 text-sm font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity shadow-sm"
+                                        className="px-3 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
                                     >
                                         My Profile
                                     </Link>
                                     <Link 
                                         href={dashboardHref}
-                                        className="px-4 py-2 text-sm font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors"
+                                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap"
                                     >
                                         Dashboard
                                     </Link>
