@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info, LayoutDashboard, PlusCircle } from 'lucide-react';
+import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info, LayoutDashboard, PlusCircle, Users } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { UserRole } from '@/types/auth';
@@ -122,11 +122,11 @@ const Navbar = ({ session }: { session: any }) => {
                                     Add Property
                                 </Link>
                                 <Link
-                                    href="/about"
+                                    href="/dashboard/owner/staff"
                                     className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
                                 >
-                                    <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                    About Us
+                                    <Users className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Management & Staff
                                 </Link>
                             </>
                         ) : (
@@ -243,6 +243,12 @@ const Navbar = ({ session }: { session: any }) => {
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
                                         <PlusCircle className="h-4 w-4" />
                                         Add Property
+                                    </div>
+                                </Link>
+                                <Link href="/dashboard/owner/staff" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                        <Users className="h-4 w-4" />
+                                        Management & Staff
                                     </div>
                                 </Link>
                             </>
