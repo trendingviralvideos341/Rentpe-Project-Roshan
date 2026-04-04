@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info, LayoutDashboard, PlusCircle, Users } from 'lucide-react';
+import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info, LayoutDashboard, PlusCircle, Users, CheckSquare, ShieldCheck, ClipboardList, MessageSquare, UserCog } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { UserRole } from '@/types/auth';
@@ -32,6 +32,10 @@ const Navbar = ({ session }: { session: any }) => {
 
     const isOwner = session?.role === "OWNER";
     const isAdmin = session?.role === "ADMIN";
+    const isStaff = session?.role === "STAFF";
+    const isSuperAdmin = isAdmin && !!session?.isSuperAdmin;
+    const isAdminTeam = isAdmin && !session?.isSuperAdmin;
+    const isOwnerStaff = isStaff;
     const isLoggedIn = !!session;
     const userRole = isOwner ? "Owner" : isAdmin ? "Admin" : session ? "Student" : null;
     const hasMultipleRoles = hasOwnerAccess && (rolesList.includes('USER') || rolesList.includes('STUDENT'));
@@ -104,8 +108,8 @@ const Navbar = ({ session }: { session: any }) => {
 
                     {/* Desktop Navigation — context-aware based on active role */}
                     <div className="hidden md:flex items-center space-x-3">
-                        {isOwner || isAdmin ? (
-                            // OWNER / ADMIN MODE — business-context nav
+                        {isOwner ? (
+                            // OWNER MODE — property management nav
                             <>
                                 <Link
                                     href="/dashboard/owner/properties"
@@ -129,6 +133,48 @@ const Navbar = ({ session }: { session: any }) => {
                                     Management & Staff
                                 </Link>
                             </>
+                        ) : isSuperAdmin ? (
+                            // SUPER ADMIN MODE — platform control quick-links
+                            <>
+                                <Link
+                                    href="/dashboard/admin/property-approval"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all shadow-sm group"
+                                >
+                                    <CheckSquare className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Property Approvals
+                                </Link>
+                                <Link
+                                    href="/dashboard/admin/tenants"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                >
+                                    <Users className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Active Tenants
+                                </Link>
+                                <Link
+                                    href="/dashboard/admin/staff"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group"
+                                >
+                                    <UserCog className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Internal Platform Staff
+                                </Link>
+                                <Link
+                                    href="/dashboard/admin/tickets"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                >
+                                    <MessageSquare className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Resolution Center
+                                </Link>
+                                <Link
+                                    href="/dashboard/admin/audit-log"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm group"
+                                >
+                                    <ShieldCheck className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Security Audit Log
+                                </Link>
+                            </>
+                        ) : (isAdminTeam || isOwnerStaff) ? (
+                            // ADMIN TEAM or OWNER TEAM (Staff) — no quick-links shown
+                            null
                         ) : (
                             // STUDENT / GUEST MODE — discovery nav
                             <>
@@ -230,8 +276,8 @@ const Navbar = ({ session }: { session: any }) => {
                 {/* Mobile Menu */}
                 {isOpen && (
                     <div className="md:hidden border-t bg-background p-4 space-y-3 animate-in slide-in-from-top-2">
-                        {isOwner || isAdmin ? (
-                            // OWNER / ADMIN MODE — business-context mobile nav
+                        {isOwner ? (
+                            // OWNER MODE — property management mobile nav
                             <>
                                 <Link href="/dashboard/owner/properties" className="block" onClick={() => setIsOpen(false)}>
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-violet-50 text-violet-700 border border-violet-200 shadow-sm">
@@ -252,6 +298,43 @@ const Navbar = ({ session }: { session: any }) => {
                                     </div>
                                 </Link>
                             </>
+                        ) : isSuperAdmin ? (
+                            // SUPER ADMIN MODE — platform control mobile quick-links
+                            <>
+                                <Link href="/dashboard/admin/property-approval" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-violet-50 text-violet-700 border border-violet-200 shadow-sm">
+                                        <CheckSquare className="h-4 w-4" />
+                                        Property Approvals
+                                    </div>
+                                </Link>
+                                <Link href="/dashboard/admin/tenants" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                        <Users className="h-4 w-4" />
+                                        Active Tenants
+                                    </div>
+                                </Link>
+                                <Link href="/dashboard/admin/staff" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
+                                        <UserCog className="h-4 w-4" />
+                                        Internal Platform Staff
+                                    </div>
+                                </Link>
+                                <Link href="/dashboard/admin/tickets" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                                        <MessageSquare className="h-4 w-4" />
+                                        Resolution Center
+                                    </div>
+                                </Link>
+                                <Link href="/dashboard/admin/audit-log" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
+                                        <ShieldCheck className="h-4 w-4" />
+                                        Security Audit Log
+                                    </div>
+                                </Link>
+                            </>
+                        ) : (isAdminTeam || isOwnerStaff) ? (
+                            // ADMIN TEAM or OWNER TEAM (Staff) — no quick-links shown
+                            null
                         ) : (
                             // STUDENT / GUEST MODE — discovery mobile nav
                             <>

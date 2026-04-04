@@ -44,7 +44,7 @@ export default async function RootLayout({
     try {
       const dbUser = await prisma.user.findUnique({
         where: { id: activeUserId! },
-        select: { name: true, role: true, roles: true }
+        select: { name: true, role: true, roles: true, adminRole: true }
       });
       if (dbUser) {
         activeRole = dbUser.role;
@@ -56,6 +56,8 @@ export default async function RootLayout({
           ...session,
           name: dbUser.name,
           roles: dbUser.roles,
+          // Enrich with isSuperAdmin so Navbar top nav differentiates admin vs admin team
+          isSuperAdmin: (session as any).isSuperAdmin ?? (dbUser.adminRole === 'SUPER_ADMIN'),
           // session.role is kept as-is (from JWT — the active context role)
         } as any;
       }
