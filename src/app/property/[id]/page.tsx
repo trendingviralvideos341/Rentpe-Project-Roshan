@@ -13,6 +13,7 @@ import { validateEmail, validatePhone, validateName } from "@/lib/validators";
 import { formatDistanceToNow } from "date-fns";
 import { getCurrentUser } from "@/actions/auth";
 import { ImageCarousel } from "@/components/ImageCarousel";
+import { toast } from "sonner";
 
 const OCCUPATION_TYPES = ["Student", "Working Professional", "Other"];
 
@@ -137,7 +138,7 @@ export default function PropertyDetailPage() {
             const occupancyFull = selectEl?.value || "Triple Sharing - ₹12,000";
             const occupancy = occupancyFull.split(" - ")[0];
             const baseAmount = Number(occupancyFull.split(" - ")[1]?.replace(/[^0-9.]/g, '') || "0");
-            
+
             await createBooking({
                 propertyName: property.name,
                 propertyId: property.id,
@@ -154,12 +155,28 @@ export default function PropertyDetailPage() {
                 occupationDetail: formData.occupationDetail,
             } as any);
 
+            toast.success("Booking request sent! 🎉", {
+                description: "The owner will confirm within 24 hours."
+            });
             router.push("/booking/requested");
         } catch (e: any) {
-            if (e.message.includes("logged in")) {
+            const msg: string = e?.message || '';
+            if (msg.includes("logged in")) {
                 router.push("/login?redirect=" + encodeURIComponent(window.location.pathname));
+            } else if (msg.toLowerCase().includes("cannot book your own property")) {
+                toast.error("This is your property!", {
+                    description: "Owners cannot book their own listed PG."
+                });
+            } else if (msg.toLowerCase().includes("already have an active booking")) {
+                toast.warning("Already booked!", {
+                    description: "You have an active booking for this room already."
+                });
+            } else if (msg.toLowerCase().includes("not currently available")) {
+                toast.error("Property unavailable", {
+                    description: "This property is not accepting bookings right now."
+                });
             } else {
-                alert("Booking failed. Please try again.");
+                toast.error(msg || "Booking failed. Please try again.");
             }
         } finally {
             setBookingLoading(false);

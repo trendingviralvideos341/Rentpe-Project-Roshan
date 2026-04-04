@@ -7,6 +7,7 @@ import { Search, MapPin, Star, Building, SlidersHorizontal, ChevronDown } from "
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { searchProperties } from "@/actions/search";
+import { getCurrentUser } from "@/actions/auth";
 import { ImageCarousel } from "@/components/ImageCarousel";
 
 export default function SearchPage() {
@@ -14,6 +15,11 @@ export default function SearchPage() {
     const [properties, setProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
+    useEffect(() => {
+        getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
+    }, []);
 
     // Filter State
     const [filters, setFilters] = useState({
@@ -179,6 +185,13 @@ export default function SearchPage() {
                                         <div className="absolute top-2 right-2 z-[30] bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-bold flex items-center shadow-sm">
                                             <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" /> {prop.rating || "New"}
                                         </div>
+
+                                        {/* Your Property badge — owner sees their own listing with a label */}
+                                        {currentUser?.id && prop.ownerId === currentUser.id && (
+                                            <div className="absolute top-2 left-2 z-[30] bg-amber-500 text-white text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest shadow-md">
+                                                🏠 Your Property
+                                            </div>
+                                        )}
 
                                         {/* Full badge — industry standard: show property, not hide it */}
                                         {prop.isFull && (
