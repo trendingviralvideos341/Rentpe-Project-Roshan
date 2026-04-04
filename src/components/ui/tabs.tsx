@@ -30,7 +30,7 @@ const tabsListVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-muted divide-x divide-slate-300/60",
+        default: "bg-muted isolate",
         line: "gap-1 bg-transparent",
       },
     },
@@ -64,26 +64,34 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        // Base styles
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 px-2 py-1 text-sm font-medium whitespace-nowrap",
-        "rounded-none border border-transparent transition-all duration-300",
-        "first:rounded-l-md last:rounded-r-md",
+        // Base styles for a unified bar Look
+        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold whitespace-nowrap",
+        "transition-all duration-300 rounded-none border-0",
+        
+        // Vertical Separators (Lines between tabs)
+        "after:absolute after:right-0 after:top-1/4 after:h-1/2 after:w-[1.5px] after:bg-slate-300/80 after:content-[''] last:after:hidden",
+        
+        // Border Radius for the ends
+        "first:rounded-l-lg last:rounded-r-lg",
+        
         // Default text
-        "text-foreground/60 dark:text-muted-foreground",
-        // Hover: solid red
-        "hover:bg-red-600 hover:text-white hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-lg hover:z-10",
-        // Active/clicked: solid blue
-        "data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:z-10",
-        // Focus
+        "text-slate-600 dark:text-muted-foreground",
+        
+        // 🔴 Hover State: Solid Red + White Text + Shadow + Lift
+        "hover:bg-red-600 hover:text-white hover:z-20 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.02] hover:after:opacity-0",
+        
+        // 🔵 Active State: Solid Blue + White Text + Shadow
+        "data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:z-10 data-[state=active]:after:opacity-0",
+        
+        // Focus styles
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
+        
         // Disabled
         "disabled:pointer-events-none disabled:opacity-50",
-        // SVG icons
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        // Vertical orientation
-        "group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start",
-        // Line variant overrides
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
+        
+        // Clean up when in'line' variant
+        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent group-data-[variant=line]/tabs-list:after:hidden",
+        
         className
       )}
       {...props}

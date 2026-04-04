@@ -600,47 +600,44 @@ export default function AdminPropertyApprovalPage() {
             </div>
 
             {/* Scrollable Tabs filter */}
-            <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
-                {[
-                    { id: 'PENDING_VERIFICATION', label: 'Approve Applications', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', bgActive: 'bg-blue-600 text-white' },
-                    { id: 'CORRECTED', label: 'Corrected Resubmissions', icon: RefreshCcw, color: 'text-indigo-600', bg: 'bg-indigo-100', bgActive: 'bg-indigo-600 text-white' },
-                    { id: 'VERIFYING_DOCUMENTS', label: 'Verifying Documents', icon: Eye, color: 'text-purple-600', bg: 'bg-purple-100', bgActive: 'bg-purple-600 text-white' },
-                    { id: 'NEEDS_CORRECTION', label: 'Needs Correction', icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-100', bgActive: 'bg-amber-600 text-white' },
-                    { id: 'VERIFIED_SUCCESSFULLY', label: 'Verified Successfully', icon: CheckCircle, color: 'text-amber-600', bg: 'bg-amber-100', bgActive: 'bg-amber-600 text-white' },
-                    { id: 'APPROVED_PENDING_PAYMENT', label: 'Pending Payment', icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-100', bgActive: 'bg-amber-600 text-white' },
-                    { id: 'APPROVED_PAYMENT_VERIFIED', label: 'Payment Verified', icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-100', bgActive: 'bg-emerald-600 text-white' },
-                    { id: 'APPROVED', label: 'Live Properties', icon: Building2, color: 'text-green-600', bg: 'bg-green-100', bgActive: 'bg-green-600 text-white' },
-                    { id: 'SUSPENDED', label: 'Temporary Suspended', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-100', bgActive: 'bg-red-600 text-white' },
-                    { id: 'REJECTED', label: 'Banned', icon: XCircle, color: 'text-red-900', bg: 'bg-red-200', bgActive: 'bg-red-900 text-white' },
-                ].map((tab) => {
-                    const isActive = filterStatus === tab.id;
-                    const Icon = tab.icon;
-                    const count = statusCounts[tab.id] || 0;
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setFilterStatus(tab.id)}
-                            className={`flex items-center gap-3 px-6 py-2.5 rounded-[18px] whitespace-nowrap transition-all duration-300 border-2 font-black uppercase text-[10px] tracking-widest ${
-                                isActive 
-                                    ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-200 -translate-y-0.5" 
-                                    : "bg-white/80 backdrop-blur-sm text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white hover:text-slate-900"
-                            }`}
-                        >
-                            <Icon className={`h-4 w-4 ${isActive ? 'text-indigo-400' : tab.color}`} />
-                            {tab.label}
-                            {count > 0 && (
-                                <span className={`ml-1 flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[9px] font-black rounded-full border shadow-sm ${
-                                    tab.id === 'APPROVED' 
-                                        ? 'bg-emerald-500 text-white border-emerald-600' 
-                                        : 'bg-red-500 text-white border-red-600'
-                                }`}>
-                                    {count}
-                                </span>
-                            )}
-                        </button>
-                    )
-                })}
-            </div>
+            <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
+                <TabsList className="flex gap-0 overflow-x-auto pb-0 h-auto bg-slate-100/80 p-1.5 rounded-2xl border shadow-inner custom-scrollbar min-w-full">
+                    {[
+                        { id: 'PENDING_VERIFICATION', label: 'Approve Applications', icon: FileText, color: 'text-blue-600' },
+                        { id: 'CORRECTED', label: 'Corrected Resubmissions', icon: RefreshCcw, color: 'text-indigo-600' },
+                        { id: 'VERIFYING_DOCUMENTS', label: 'Verifying Documents', icon: Eye, color: 'text-purple-600' },
+                        { id: 'NEEDS_CORRECTION', label: 'Needs Correction', icon: AlertCircle, color: 'text-amber-600' },
+                        { id: 'VERIFIED_SUCCESSFULLY', label: 'Verified Successfully', icon: CheckCircle, color: 'text-amber-600' },
+                        { id: 'APPROVED_PENDING_PAYMENT', label: 'Pending Payment', icon: CreditCard, color: 'text-amber-600' },
+                        { id: 'APPROVED_PAYMENT_VERIFIED', label: 'Payment Verified', icon: CreditCard, color: 'text-emerald-600' },
+                        { id: 'APPROVED', label: 'Live Properties', icon: Building2, color: 'text-green-600' },
+                        { id: 'SUSPENDED', label: 'Temporary Suspended', icon: AlertCircle, color: 'text-red-600' },
+                        { id: 'REJECTED', label: 'Banned', icon: XCircle, color: 'text-red-900' },
+                    ].map((tab) => {
+                        const Icon = tab.icon;
+                        const count = statusCounts[tab.id] || 0;
+                        return (
+                            <TabsTrigger
+                                key={tab.id}
+                                value={tab.id}
+                                className="flex items-center gap-3 px-6 py-2.5 whitespace-nowrap font-black uppercase text-[10px] tracking-widest min-w-fit"
+                            >
+                                <Icon className={`h-4 w-4 ${filterStatus === tab.id ? 'text-white' : tab.color}`} />
+                                {tab.label}
+                                {count > 0 && (
+                                    <span className={`ml-1 flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[9px] font-black rounded-full border shadow-sm ${
+                                        tab.id === 'APPROVED' 
+                                            ? 'bg-emerald-500 text-white border-emerald-600' 
+                                            : 'bg-red-500 text-white border-red-600'
+                                    }`}>
+                                        {count}
+                                    </span>
+                                )}
+                            </TabsTrigger>
+                        )
+                    })}
+                </TabsList>
+            </Tabs>
 
             {/* List */}
             {loading ? (

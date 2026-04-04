@@ -388,13 +388,13 @@ export default function StudentDashboardPage() {
 
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
                 <TabsList className="flex flex-wrap md:flex-nowrap w-full mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner h-auto">
-                    <TabsTrigger value="bookings" className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap">
+                    <TabsTrigger value="bookings" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
                         <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> My Bookings
                     </TabsTrigger>
-                    <TabsTrigger value="payments" className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap">
+                    <TabsTrigger value="payments" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
                         <CreditCard className="h-4 w-4 mr-2 hidden sm:block" /> Payments
                     </TabsTrigger>
-                    <TabsTrigger value="profile" className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap">
+                    <TabsTrigger value="profile" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
                         <User className="h-4 w-4 mr-2 hidden sm:block" /> My Profile
                     </TabsTrigger>
                 </TabsList>

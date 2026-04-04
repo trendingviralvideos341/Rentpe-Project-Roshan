@@ -118,25 +118,25 @@ export default function OwnerDashboard() {
                 <TabsList className="flex flex-wrap h-auto w-full max-w-2xl mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
                     <TabsTrigger
                         value="overview"
-                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <TrendingUp className="h-4 w-4 mr-2" /> Overview
                     </TabsTrigger>
                     <TabsTrigger
                         value="inventory"
-                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Bed className="h-4 w-4 mr-2" /> Bed Management
                     </TabsTrigger>
                     <TabsTrigger
                         value="ops"
-                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Activity className="h-4 w-4 mr-2" /> Operations
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
-                        className="flex-1 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 hover:text-indigo-700 hover:bg-white/50 data-[state=active]:shadow-md transition-all font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <User className="h-4 w-4 mr-2" /> Profile
                     </TabsTrigger>
