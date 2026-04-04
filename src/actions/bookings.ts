@@ -34,6 +34,50 @@ export async function createBooking(data: {
     const userId = session.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
+    // ─── SECURITY GUARD 1: Owner cannot book their own property ───────────────
+    if (data.propertyId) {
+        const ownedProperty = await prisma.property.findUnique({
+            where: { id: data.propertyId },
+            select: { ownerId: true, name: true, status: true }
+        });
+
+        if (!ownedProperty) throw new Error("Property not found.");
+
+        if (ownedProperty.ownerId === userId) {
+            // Log this suspicious/accidental attempt
+            await logAuditEvent({
+                actorId: userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'User',
+                actionType: 'CREATE',
+                entityType: 'BOOKING',
+                entityId: data.propertyId,
+                description: `BLOCKED: Owner attempted to book their own property: ${ownedProperty.name}`,
+            });
+            throw new Error("You cannot book your own property.");
+        }
+
+        // ─── SECURITY GUARD 2: Property must be LIVE ────────────────────────
+        if (ownedProperty.status !== 'LIVE') {
+            throw new Error("This property is not currently available for booking.");
+        }
+
+        // ─── SECURITY GUARD 3: No duplicate active booking for same room ────
+        if (data.roomId) {
+            const existingBooking = await prisma.booking.findFirst({
+                where: {
+                    userId,
+                    roomId: data.roomId,
+                    status: { in: ['PENDING_APPROVAL', 'REQUESTED', 'APPROVED', 'APPROVED_PENDING_TOKEN', 'ROOM_RESERVED', 'KYC_PENDING', 'APPROVED_KYC_PENDING'] }
+                }
+            });
+            if (existingBooking) {
+                throw new Error("You already have an active booking for this room.");
+            }
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // ─── FRAUD GATE (must run BEFORE writing anything to DB) ──────────────────
     if (data.propertyId) {
         // Record this fingerprint for future tracking

@@ -47,6 +47,9 @@ export default function PropertyDetailPage() {
     const [legalAgreed, setLegalAgreed] = useState(false);
     const [legalError, setLegalError] = useState(false);
 
+    // Derived: is the logged-in user the owner of this property?
+    const isOwnProperty = !!(currentUser?.id && property?.ownerId && currentUser.id === property.ownerId);
+
     useEffect(() => {
         const fetchUser = async () => {
             const user = await getCurrentUser();
@@ -612,17 +615,36 @@ export default function PropertyDetailPage() {
                                 )}
                             </div>
 
-                            <Button
-                                className={`w-full text-lg h-12 font-bold shadow-lg transition-all ${
-                                    legalAgreed
-                                        ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-                                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                }`}
-                                onClick={!currentUser ? () => router.push("/login?redirect=" + encodeURIComponent(window.location.pathname)) : handleBooking}
-                                disabled={bookingLoading || property.rooms.length === 0}
-                            >
-                                {!currentUser ? "🔒 Sign in to Book" : bookingLoading ? "Processing..." : legalAgreed ? "🚀 Request Booking" : "☑️ Agree to Terms to Proceed"}
-                            </Button>
+                            {isOwnProperty ? (
+                                // GREYED OUT STATE — owner viewing their own property
+                                <div className="w-full space-y-2">
+                                    <Button
+                                        disabled
+                                        className="w-full text-lg h-12 font-bold bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                                    >
+                                        🏠 Request Booking
+                                    </Button>
+                                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                                        <span className="text-lg">⚠️</span>
+                                        <p className="text-xs font-bold text-amber-700 leading-tight">
+                                            This is your property. Owners cannot book their own listed PG.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                // ACTIVE STATE — student viewing someone else's property
+                                <Button
+                                    className={`w-full text-lg h-12 font-bold shadow-lg transition-all ${
+                                        legalAgreed
+                                            ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                    }`}
+                                    onClick={!currentUser ? () => router.push("/login?redirect=" + encodeURIComponent(window.location.pathname)) : handleBooking}
+                                    disabled={bookingLoading || property.rooms.length === 0}
+                                >
+                                    {!currentUser ? "🔒 Sign in to Book" : bookingLoading ? "Processing..." : legalAgreed ? "🚀 Request Booking" : "☑️ Agree to Terms to Proceed"}
+                                </Button>
+                            )}
                             <p className="text-xs text-center text-muted-foreground">Fastest booking experience. No hidden charges.</p>
                         </CardContent>
                     </Card>
