@@ -167,13 +167,13 @@ export default function AdminDashboard() {
                 <TabsList className="flex flex-wrap h-auto w-full max-w-3xl mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
                     <TabsTrigger
                         value="overview"
-                        className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-white hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] data-[state=active]:shadow-md transition-all duration-300 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-white hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] data-[state=active]:shadow-md transition-all duration-300 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Activity className="h-4 w-4 mr-2" /> Dashboard
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
-                        className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-white hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] data-[state=active]:shadow-md transition-all duration-300 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-600 hover:text-white hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] data-[state=active]:shadow-md transition-all duration-300 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <User className="h-4 w-4 mr-2" /> My Profile
                     </TabsTrigger>
@@ -185,7 +185,7 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger
                         value="security"
-                        className="flex-1 rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 hover:text-white hover:bg-slate-900 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] data-[state=active]:shadow-md transition-all duration-300 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 hover:text-white hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] data-[state=active]:shadow-md transition-all duration-300 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Shield className="h-4 w-4 mr-2" /> Security Log
                     </TabsTrigger>
