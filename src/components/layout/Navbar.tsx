@@ -95,7 +95,7 @@ const Navbar = ({ session }: { session: any }) => {
                 </div>
             )}
             <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-                <div className="max-w-[1600px] mx-auto flex h-16 items-center justify-between px-4 gap-4">
+                <div className="w-full flex h-16 items-center justify-between px-6 gap-4">
                     {/* Brand Logo */}
                     <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
                         <div className="bg-primary/10 p-2 rounded-full">
