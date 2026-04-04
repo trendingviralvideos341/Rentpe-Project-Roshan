@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info } from 'lucide-react';
+import { Menu, Home, ArrowLeftRight, Loader2, Eye, Building, Search, Info, LayoutDashboard, PlusCircle } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { UserRole } from '@/types/auth';
@@ -102,29 +102,59 @@ const Navbar = ({ session }: { session: any }) => {
                         </span>
                     </Link>
 
-                    {/* Desktop Navigation */}
+                    {/* Desktop Navigation — context-aware based on active role */}
                     <div className="hidden md:flex items-center space-x-3">
-                        <Link 
-                            href="/search"
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group"
-                        >
-                            <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                            Find PG
-                        </Link>
-                        <Link 
-                            href="/list-property"
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
-                        >
-                            <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                            List Your PG
-                        </Link>
-                        <Link 
-                            href="/about"
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
-                        >
-                            <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                            About Us
-                        </Link>
+                        {isOwner || isAdmin ? (
+                            // OWNER / ADMIN MODE — business-context nav
+                            <>
+                                <Link
+                                    href="/dashboard/owner/properties"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all shadow-sm group"
+                                >
+                                    <LayoutDashboard className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    My Properties
+                                </Link>
+                                <Link
+                                    href="/list-property"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                >
+                                    <PlusCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Add Property
+                                </Link>
+                                <Link
+                                    href="/about"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                >
+                                    <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    About Us
+                                </Link>
+                            </>
+                        ) : (
+                            // STUDENT / GUEST MODE — discovery nav
+                            <>
+                                <Link
+                                    href="/search"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm group"
+                                >
+                                    <Search className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    Find PG
+                                </Link>
+                                <Link
+                                    href="/list-property"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all shadow-sm group"
+                                >
+                                    <Building className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    List Your PG
+                                </Link>
+                                <Link
+                                    href="/about"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
+                                >
+                                    <Info className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                    About Us
+                                </Link>
+                            </>
+                        )}
                     </div>
 
                     {/* Auth Buttons */}
@@ -200,18 +230,39 @@ const Navbar = ({ session }: { session: any }) => {
                 {/* Mobile Menu */}
                 {isOpen && (
                     <div className="md:hidden border-t bg-background p-4 space-y-3 animate-in slide-in-from-top-2">
-                        <Link href="/search" className="block" onClick={() => setIsOpen(false)}>
-                            <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
-                                <Search className="h-4 w-4" />
-                                Find PG
-                            </div>
-                        </Link>
-                        <Link href="/list-property" className="block" onClick={() => setIsOpen(false)}>
-                            <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
-                                <Building className="h-4 w-4" />
-                                List Your PG
-                            </div>
-                        </Link>
+                        {isOwner || isAdmin ? (
+                            // OWNER / ADMIN MODE — business-context mobile nav
+                            <>
+                                <Link href="/dashboard/owner/properties" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-violet-50 text-violet-700 border border-violet-200 shadow-sm">
+                                        <LayoutDashboard className="h-4 w-4" />
+                                        My Properties
+                                    </div>
+                                </Link>
+                                <Link href="/list-property" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                                        <PlusCircle className="h-4 w-4" />
+                                        Add Property
+                                    </div>
+                                </Link>
+                            </>
+                        ) : (
+                            // STUDENT / GUEST MODE — discovery mobile nav
+                            <>
+                                <Link href="/search" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
+                                        <Search className="h-4 w-4" />
+                                        Find PG
+                                    </div>
+                                </Link>
+                                <Link href="/list-property" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                                        <Building className="h-4 w-4" />
+                                        List Your PG
+                                    </div>
+                                </Link>
+                            </>
+                        )}
                         <div className="pt-4 border-t flex flex-col space-y-2">
                             {isLoggedIn ? (
                                 <div className="flex flex-col space-y-2">
