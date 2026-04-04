@@ -33,8 +33,12 @@ export function RoleSwitcher({ roles, currentRole }: RoleSwitcherProps) {
                         ? '🏠 Switched to Owner Dashboard'
                         : '🎓 Switched to Student Dashboard'
                 );
-                // switchRole does a redirect server-side — router.refresh handles client sync
-                router.refresh();
+                // Force navigate to the correct dashboard — refresh() alone doesn't change the URL
+                if (targetRole === 'OWNER') {
+                    router.push('/dashboard/owner');
+                } else {
+                    router.push('/dashboard/student');
+                }
             } catch (err: any) {
                 toast.error(err.message || 'Failed to switch role. Try again.');
             }
