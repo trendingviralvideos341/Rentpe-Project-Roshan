@@ -218,11 +218,11 @@ export default function DashboardSidebar(props: SidebarProps) {
 
     const panelNames: Record<string, string> = {
         owner: "Owner Dashboard",
-        admin: isSuperAdmin ? "Super Admin Dashboard" : "Employee Portal Dashboard",
+        admin: isSuperAdmin ? "Super Admin Dashboard" : "Staff Portal Dashboard",
         student: "Tenant Dashboard",
-        staff: "Employee Portal Dashboard",
-        onboarder: "Employee Portal Dashboard",
-        verifier: "Employee Portal Dashboard",
+        staff: "Staff Portal Dashboard",
+        onboarder: "Staff Portal Dashboard",
+        verifier: "Staff Portal Dashboard",
     };
 
     const filterSectionLinks = (sections: SidebarSection[]) => {

@@ -10,7 +10,7 @@ const PREFIXES: Record<EntityType, string> = {
     BED: 'REN-BED',
     BOOKING: 'REN-BOOK',
     TENANT: 'APP-TEN',
-    OWNER_EMPLOYEE: 'OWN-EMP',
+    OWNER_EMPLOYEE: 'OWN-STAFF',
     ADMIN_EMPLOYEE: 'REN-EMP'
 };
 
@@ -127,12 +127,31 @@ export async function generateSequentialId(type: EntityType, count?: number): Pr
             lastId = null;
             break;
         case 'OWNER_EMPLOYEE':
+            // Current format: OWN-STAFF-XXXX
+            const lastOwnerStaff = await prisma.ownerEmployee.findFirst({ 
+                where: { displayId: { startsWith: 'OWN-STAFF-' } },
+                orderBy: { displayId: 'desc' }, 
+                select: { displayId: true } 
+            });
+            // Legacy Gen 1: OWN-EMP-XXXX
             const lastOwnerEmp = await prisma.ownerEmployee.findFirst({ 
                 where: { displayId: { startsWith: 'OWN-EMP-' } },
                 orderBy: { displayId: 'desc' }, 
                 select: { displayId: true } 
             });
-            lastId = lastOwnerEmp?.displayId || null;
+            // Legacy Gen 2 (from image): OWNER-EMP-XXXX
+            const lastOwnerEmpLong = await prisma.ownerEmployee.findFirst({
+                where: { displayId: { startsWith: 'OWNER-EMP-' } },
+                orderBy: { displayId: 'desc' },
+                select: { displayId: true }
+            });
+
+            const staffNum = Math.max(
+                extractNum(lastOwnerStaff?.displayId),
+                extractNum(lastOwnerEmp?.displayId),
+                extractNum(lastOwnerEmpLong?.displayId)
+            );
+            lastId = staffNum > 0 ? `OWN-STAFF-${staffNum.toString().padStart(4, '0')}` : null;
             break;
         case 'ADMIN_EMPLOYEE':
             const lastAdminEmp = await prisma.adminEmployee.findFirst({ 
