@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "./auth";
-import { generateMasterId } from "@/lib/ids";
+import { generateSequentialId } from "@/lib/ids";
 import { logAuditEvent } from "@/lib/audit";
 import crypto from "crypto";
 import { encryptPassword } from "@/lib/auth";
@@ -37,7 +37,7 @@ export async function createOwnerEmployee(data: {
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
-    const displayId = await generateMasterId('OWNER_STAFF');
+    const displayId = await generateSequentialId('STAFF');
     const invitationToken = crypto.randomBytes(32).toString('hex');
     const invitationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -207,7 +207,7 @@ export async function activateStaffAccount(token: string, passwordPlain: string)
     const employee = await validateStaffInvite(token);
 
     const hashedPassword = await encryptPassword(passwordPlain);
-    const displayId = await generateMasterId('USER');
+    const displayId = await generateSequentialId('USER');
 
     // Create the User record for the staff member
     const newStaffUser = await prisma.user.create({

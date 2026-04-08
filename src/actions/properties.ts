@@ -6,7 +6,7 @@ import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
-import { generateMasterId } from "@/lib/ids";
+import { generateSequentialId } from "@/lib/ids";
 
 async function getEffectiveOwnerId(session: any) {
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) throw new Error("Unauthorized");
@@ -209,9 +209,9 @@ export async function createProperty(data: FormData | any) {
     // â”€â”€ PHASE 3: PARALLEL ID GENERATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // All 3 ID-sequence DB reads now run simultaneously and atomically.
     const [displayId, roomIdsList, bedIdsList] = await Promise.all([
-        generateMasterId('PROPERTY'),
-        parsedRooms.length > 0 ? Promise.all(parsedRooms.map(() => generateMasterId('ROOM'))) : Promise.resolve([] as string[]),
-        totalBedsNeeded > 0 ? Promise.all(Array(totalBedsNeeded).fill(0).map(() => generateMasterId('BED'))) : Promise.resolve([] as string[]),
+        generateSequentialId('PROPERTY'),
+        parsedRooms.length > 0 ? Promise.all(parsedRooms.map(() => generateSequentialId('ROOM'))) : Promise.resolve([] as string[]),
+        totalBedsNeeded > 0 ? Promise.all(Array(totalBedsNeeded).fill(0).map(() => generateSequentialId('BED'))) : Promise.resolve([] as string[]),
     ]);
 
     // â”€â”€ PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -411,8 +411,8 @@ export async function addRoomToProperty(propertyId: string, roomData: any) {
     const property = await prisma.property.findUnique({ where: { id: propertyId, ownerId: effectiveOwnerId } });
     if (!property) throw new Error("Unauthorized or Property not found");
 
-    const roomDisplayId = await generateMasterId('ROOM');
-    const bedIdsList = await Promise.all(Array(roomData.availability).fill(0).map(() => generateMasterId('BED')));
+    const roomDisplayId = await generateSequentialId('ROOM');
+    const bedIdsList = await Promise.all(Array(roomData.availability).fill(0).map(() => generateSequentialId('BED')));
     
     return prisma.$transaction(async (tx) => {
         const room = await tx.room.create({
@@ -459,7 +459,7 @@ export async function editRoom(roomId: string, roomData: any) {
         // If availability increased, add more beds
         if (newAvailability > oldAvailability) {
             const bedsToAdd = newAvailability - oldAvailability;
-            const bedIdsList = await Promise.all(Array(bedsToAdd).fill(0).map(() => generateMasterId('BED')));
+            const bedIdsList = await Promise.all(Array(bedsToAdd).fill(0).map(() => generateSequentialId('BED')));
             
             for (let i = 0; i < bedsToAdd; i++) {
                 const bedDisplayId = bedIdsList[i];
