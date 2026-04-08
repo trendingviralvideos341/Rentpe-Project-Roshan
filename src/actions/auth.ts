@@ -781,13 +781,15 @@ export async function resetPassword(formData: FormData) {
 
         const hashedPassword = await encryptPassword(newPassword);
 
-        // Update password and clear token atomically
+        // Update password, clear token, and mark email as verified (since they used an email link)
         await prisma.user.update({
             where: { id: user.id },
             data: {
                 passwordHash: hashedPassword,
                 passwordResetToken: null,
                 passwordResetExpiry: null,
+                emailVerified: true,
+                emailVerificationToken: null,
             }
         });
 
@@ -806,5 +808,52 @@ export async function resetPassword(formData: FormData) {
     } catch (e) {
         console.error("Reset Password Error:", e);
         return { error: "Something went wrong. Please try again." };
+    }
+}
+
+/**
+ * Resend Verification Email action
+ * triggered manually by user from Login page if they see "email unverified" error
+ */
+export async function resendVerificationEmail(email: string) {
+    if (!email) return { error: "Email is required." };
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, name: true, email: true, emailVerified: true, emailVerificationToken: true }
+        });
+
+        if (!user) {
+            // Security: don't reveal if user exists
+            return { success: true, message: "If that email is registered, we've sent a new verification link." };
+        }
+
+        if (user.emailVerified) {
+            return { success: true, message: "Your email is already verified. You can log in." };
+        }
+
+        // Generate new token if missing
+        const token = user.emailVerificationToken || crypto.randomBytes(32).toString('hex');
+        
+        if (!user.emailVerificationToken) {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { emailVerificationToken: token }
+            });
+        }
+
+        const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`;
+        await sendEmail({
+            to: user.email,
+            subject: "Verify your RentPe account",
+            html: EmailVerificationTemplate(user.name || "Resident", verificationUrl)
+        });
+
+        return { success: true, message: "A fresh verification link has been sent to your inbox!" };
+
+    } catch (e) {
+        console.error("Resend Verification Error:", e);
+        return { error: "Failed to resend verification email." };
     }
 }

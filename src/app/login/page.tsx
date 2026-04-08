@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { login } from "@/actions/auth";
+import { login, resendVerificationEmail } from "@/actions/auth";
+import { toast } from "sonner";
 import { XCircle } from "lucide-react";
 
 export default function LoginPage() {
@@ -83,9 +84,29 @@ export default function LoginPage() {
                     <form onSubmit={handleLoginAction}>
                         <CardContent className="space-y-4">
                             {error && (
-                                <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2">
-                                    <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                                    {error}
+                                <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex flex-col gap-2">
+                                    <div className="flex items-start gap-2">
+                                        <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                        <span>{error}</span>
+                                    </div>
+                                    {error.toLowerCase().includes("verified") && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="h-auto p-0 text-xs text-red-700 font-bold hover:bg-transparent hover:underline self-start ml-6"
+                                            onClick={async () => {
+                                                const loadingToast = toast.loading("Sending fresh link...");
+                                                const result = await resendVerificationEmail(email);
+                                                if (result.success) {
+                                                    toast.success(result.message, { id: loadingToast });
+                                                } else {
+                                                    toast.error(result.error || "Failed to resend.", { id: loadingToast });
+                                                }
+                                            }}
+                                        >
+                                            Resend Verification Link →
+                                        </Button>
+                                    )}
                                 </div>
                             )}
 
