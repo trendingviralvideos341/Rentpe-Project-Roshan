@@ -1,3 +1,4 @@
+// RentPe Schema - Updated with Status Flow Phase 1
 generator client {
   provider = "prisma-client-js"
 }
