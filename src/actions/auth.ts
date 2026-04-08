@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import prisma from "@/lib/prisma";
 import { sendEmail } from '@/lib/email';
-import { WelcomeTemplate, EmailVerificationTemplate } from '@/lib/email-templates';
+import { WelcomeTemplate, EmailVerificationTemplate, PasswordResetTemplate } from '@/lib/email-templates';
 import { verify2FAToken } from "@/lib/2fa";
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -686,4 +686,125 @@ export async function getSecurityLogs() {
         orderBy: { createdAt: 'desc' },
         take: 50
     });
+}
+
+// ─── Forgot Password — Step 1: Request Reset ──────────────────────────────────
+export async function forgotPassword(formData: FormData) {
+    const email = (formData.get('email') as string)?.trim().toLowerCase();
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { error: "Please enter a valid email address." };
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, name: true, email: true, status: true }
+        });
+
+        // SECURITY: Always return the same message — prevents account enumeration
+        const genericMessage = "If this email is registered, you'll receive a reset link shortly.";
+
+        if (!user || user.status === 'BANNED' || user.status === 'DELETED') {
+            return { success: true, message: genericMessage };
+        }
+
+        // Generate cryptographically secure token (raw — sent via email)
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+        // Store SHA-256 hash — never the raw token in DB
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                passwordResetToken: hashedToken,
+                passwordResetExpiry: resetExpiry,
+            }
+        });
+
+        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`;
+
+        sendEmail({
+            to: email,
+            subject: 'Reset Your RentPe Password 🔐',
+            html: PasswordResetTemplate(user.name || 'User', resetUrl),
+        }).catch(err => console.error('Failed to send password reset email:', err));
+
+        logAuditEvent({
+            actorId: user.id,
+            actorRole: 'USER',
+            actorName: user.name || 'User',
+            actionType: 'UPDATE',
+            entityType: 'USER',
+            entityId: user.id,
+            description: `Password reset requested for: ${email}. Token expires: ${resetExpiry.toISOString()}`,
+        });
+
+        return { success: true, message: genericMessage };
+
+    } catch (e) {
+        console.error("Forgot Password Error:", e);
+        return { error: "Something went wrong. Please try again." };
+    }
+}
+
+// ─── Reset Password — Step 2: Set New Password ────────────────────────────────
+export async function resetPassword(formData: FormData) {
+    const token = (formData.get('token') as string)?.trim();
+    const newPassword = formData.get('newPassword') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (!token) return { error: "Invalid reset link." };
+    if (!newPassword || newPassword.length < 8) return { error: "Password must be at least 8 characters." };
+    if (!/[A-Z]/.test(newPassword)) return { error: "Password must contain at least one uppercase letter." };
+    if (!/[a-z]/.test(newPassword)) return { error: "Password must contain at least one lowercase letter." };
+    if (!/[0-9]/.test(newPassword)) return { error: "Password must contain at least one number." };
+    if (newPassword !== confirmPassword) return { error: "Passwords do not match." };
+
+    try {
+        // Hash the token to compare against the stored hash
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = await prisma.user.findFirst({
+            where: {
+                passwordResetToken: hashedToken,
+                passwordResetExpiry: { gt: new Date() },
+            },
+            select: { id: true, email: true, name: true, role: true }
+        });
+
+        if (!user) {
+            return { error: "This reset link is invalid or has expired. Please request a new one." };
+        }
+
+        const hashedPassword = await encryptPassword(newPassword);
+
+        // Update password and clear token atomically
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                passwordHash: hashedPassword,
+                passwordResetToken: null,
+                passwordResetExpiry: null,
+            }
+        });
+
+        logAuditEvent({
+            actorId: user.id,
+            actorRole: user.role,
+            actorName: user.name || 'User',
+            actionType: 'UPDATE',
+            entityType: 'USER',
+            entityId: user.id,
+            description: `Password successfully reset for: ${user.email}.`,
+        });
+
+        return { success: true, message: "Password reset successfully! You can now log in with your new password." };
+
+    } catch (e) {
+        console.error("Reset Password Error:", e);
+        return { error: "Something went wrong. Please try again." };
+    }
 }

@@ -13,6 +13,8 @@ model User {
   email                  String               @unique
   emailVerified          Boolean              @default(false)
   emailVerificationToken String?              @unique
+  passwordResetToken     String?              // SHA-256 hashed — never stored raw
+  passwordResetExpiry    DateTime?            // 30-minute expiry
   passwordHash           String
   role                   String               @default("USER") // Active/primary role (used for JWT + middleware routing)
   roles                  String[]             @default(["USER"]) // All roles the user holds
