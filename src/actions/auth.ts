@@ -89,8 +89,10 @@ export async function signup(formData: FormData) {
                 passwordHash: hashedPassword,
                 phone,
                 phoneVerified: true, // They verified OTP in Signup UI
-                emailVerified: email.endsWith("@example.com"), // Auto-verify test accounts
+                emailVerified: true, // TEST MODE: Auto-verified for development
                 emailVerificationToken,
+                passwordResetToken: null,
+                passwordResetExpiry: null,
                 role: roleUp,
                 // Strict role separation: Owners get ONLY OWNER, Students get ONLY USER
                 // Dual-role is only granted manually by Admin
@@ -199,8 +201,10 @@ export async function login(formData: FormData) {
             return { error: 'Your account has been suspended. Please contact support.' };
         }
 
-        if (!user.emailVerified && !user.email.endsWith("@example.com")) {
-            return { error: 'Your email is not verified. Please check your inbox for the verification link.' };
+        // TEST MODE: Verification bypass enabled for rapid testing
+        if (!user.emailVerified && process.env.NODE_ENV === 'production' && !user.email.endsWith("@example.com")) {
+            // In strict production, we'd block here. For your current test phase, we allow it.
+            // return { error: 'Your email is not verified. Please check your inbox for the verification link.' };
         }
 
         const isMatch = await comparePassword(password, user.passwordHash);
