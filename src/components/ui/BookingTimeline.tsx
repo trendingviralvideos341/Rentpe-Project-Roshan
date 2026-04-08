@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, AlertCircle, Clock, Calendar, Home, GraduationCap, ClipboardList } from "lucide-react";
+import { Check, AlertCircle, Clock, Calendar, Home, GraduationCap, ClipboardList, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,13 @@ const TIMELINE_STEPS = [
         icon: Check,
         description: 'Owner has reviewed and approved your application.',
         dateField: 'approvedAt',
+    },
+    {
+        key: 'KYC_DOCUMENTS',
+        label: 'KYC Verified',
+        icon: ShieldCheck,
+        description: 'Your ID and student verification has been completed.',
+        dateField: 'kycVerifiedAt',
     },
     {
         key: 'MOVE_IN_SCHEDULED',
@@ -56,10 +63,11 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         
         // Mapping for statuses not in the main timeline steps or legacy support
         if (status === 'APPLIED' || status === 'PENDING_APPROVAL' || status === 'REQUESTED') return 0;
-        if (status === 'APPROVED' || status === 'PAID' || status === 'APPROVED_PENDING_TOKEN' || status === 'ROOM_RESERVED' || status === 'KYC_PENDING' || status === 'AGREEMENT_PENDING') return 1;
-        if (status === 'MOVE_IN_SCHEDULED') return 2;
-        if (status === 'ACTIVE' || status === 'CHECKED_IN') return 3;
-        if (status === 'COMPLETED' || status === 'CHECKED_OUT') return 4;
+        if (status === 'APPROVED' || status === 'APPROVED_PENDING_TOKEN') return 1;
+        if (status === 'ROOM_RESERVED' || status === 'KYC_PENDING' || status === 'KYC_FAILED' || status === 'AGREEMENT_PENDING' || status === 'PAID' || status === 'CASH_PAID') return 2;
+        if (status === 'MOVE_IN_SCHEDULED') return 3;
+        if (status === 'ACTIVE' || status === 'CHECKED_IN') return 4;
+        if (status === 'COMPLETED' || status === 'CHECKED_OUT') return 5;
         return 0;
     };
 

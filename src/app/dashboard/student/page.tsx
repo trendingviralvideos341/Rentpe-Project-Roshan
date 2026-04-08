@@ -416,7 +416,7 @@ export default function StudentDashboardPage() {
                 b.status === 'APPROVED_PENDING_TOKEN' ||
                 b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED' ||
                 b.status === 'AGREEMENT_PENDING' ||
-                ((b.status === 'PAID' || b.status === 'CASH_PAID') && !b.agreementSigned)
+                ((b.status === 'PAID' || b.status === 'CASH_PAID' || b.status === 'MOVE_IN_SCHEDULED') && !b.agreementSigned)
             ) && (
                 <div className="space-y-3 mb-6">
                     {bookings.map((booking: any) => {
@@ -428,7 +428,7 @@ export default function StudentDashboardPage() {
                             return <AlertBanner key={`alert-kycfail-${booking.id}`} type="error" message={`KYC Failed for ${booking.propertyName}. ${booking.kycNotes ? `Reason: ${booking.kycNotes}` : ''} Please re-upload your documents.`} actionLabel="Re-upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
                         if (booking.status === 'AGREEMENT_PENDING')
                             return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
-                        if ((booking.status === 'PAID' || booking.status === 'CASH_PAID') && !booking.agreementSigned)
+                        if ((booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !booking.agreementSigned)
                             return <AlertBanner key={`alert-paidsign-${booking.id}`} type="info" message={`Sign Agreement: Payment confirmed for ${booking.propertyName}. Please sign to complete.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
                         return null;
                     })}
@@ -442,8 +442,8 @@ export default function StudentDashboardPage() {
                                 const isPaymentPending = booking.status === 'APPROVED_PAYMENT_PENDING' || booking.status === 'APPROVED';
                                 const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
                                 const isApproved = isTokenPending || isRoomReserved || isKycPending || isPaymentPending || isAgreementPending;
-                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED';
-                                const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID') && !isCheckedIn;
+                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED' || booking.status === 'ACTIVE';
+                                const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !isCheckedIn;
                                 const isCancelled = booking.status === 'CANCELLED' || booking.status === 'EXPIRED';
                                 const isCashPending = booking.paymentMethod === 'CASH' && isPaymentPending;
                                 const showDocs = isRoomReserved || isKycPending || isPaymentPending || isPaid || isCheckedIn;

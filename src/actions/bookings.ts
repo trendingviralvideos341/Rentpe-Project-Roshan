@@ -534,8 +534,8 @@ export async function checkInBooking(id: string) {
     });
 
     if (!booking) throw new Error("Booking not found");
-    if (booking.status !== 'PAID' && booking.status !== 'CASH_PAID') {
-        throw new Error("Booking must be paid before check-in.");
+    if (booking.status !== 'MOVE_IN_SCHEDULED' && booking.status !== 'PAID' && booking.status !== 'CASH_PAID') {
+        throw new Error("Booking must be paid and move-in scheduled before check-in.");
     }
 
     // 2. Check documents (Industry Standard: All mandatory docs MUST be verified)
