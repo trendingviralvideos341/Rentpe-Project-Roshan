@@ -34,7 +34,7 @@ model User {
   bannedReason           String?
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
-  displayId              String               @unique
+  displayId              String?              @unique
   deletedAt              DateTime?
   razorpayAccountId      String?
   commissionRate         Float?
@@ -108,7 +108,7 @@ model RoleUpgradeRequest {
 
 model Property {
   id                         String                       @id @default(uuid())
-  displayId                  String                       @unique
+  displayId                  String?                      @unique
   ownerId                    String
   name                       String
   address                    String
@@ -188,7 +188,7 @@ model Property {
 
 model Room {
   id            String    @id @default(uuid())
-  displayId     String    @unique
+  displayId     String?   @unique
   propertyId    String
   roomNumber    String
   type          String
@@ -209,7 +209,7 @@ model Room {
 
 model Bed {
   id                String    @id @default(uuid())
-  displayId         String    @unique
+  displayId         String?   @unique
   roomId            String
   bedNumber         String
   status            String    @default("AVAILABLE")
