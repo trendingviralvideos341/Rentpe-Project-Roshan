@@ -272,3 +272,54 @@ export async function getStudentPaymentHistory() {
         return [];
     }
 }
+
+/** Get full rent invoice ledger for the logged-in student */
+export async function getMyPaymentHistory() {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'USER') throw new Error("Unauthorized");
+
+    const userId = (session as any).userId;
+
+    const invoices = await prisma.rentInvoice.findMany({
+        where: { booking: { userId } },
+        include: {
+            booking: { select: { propertyName: true, roomAssigned: true } },
+            payments: { where: { status: 'VERIFIED' }, take: 1, orderBy: { date: 'desc' } }
+        },
+        orderBy: { dueDate: 'desc' }
+    });
+
+    const tenants = await prisma.tenant.findMany({
+        where: { booking: { userId } },
+        include: { property: { select: { name: true } } }
+    });
+
+    // Get security deposit via BillingProfile
+    const depositInfo = tenants.length > 0
+        ? await prisma.securityDeposit.findFirst({
+            where: { billingProfile: { tenantId: tenants[0].id } }
+          })
+        : null;
+
+    return { invoices, tenants, depositInfo };
+}
+
+/** Get a single invoice by ID — ownership verified */
+export async function getInvoiceById(invoiceId: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+
+    const invoice = await prisma.rentInvoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+            booking: { include: { property: true, room: true, user: true } },
+            payments: { orderBy: { date: 'desc' } }
+        }
+    });
+
+    if (!invoice) throw new Error("Invoice not found");
+    if ((session as any).role === 'USER' && invoice.booking?.userId !== userId) throw new Error("Unauthorized");
+
+    return invoice;
+}
