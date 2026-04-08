@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { generateSequentialId } from "@/lib/ids";
+import { generateMasterId } from "@/lib/ids";
 import { logAuditEvent } from "@/lib/audit";
 
 
@@ -165,7 +165,7 @@ export async function createBedsForRoom(roomId: string, count: number) {
     if (!room) throw new Error("Room not found");
 
     const existingBeds = await (prisma as any).bed.count({ where: { roomId } });
-    const bedIdsList = await generateSequentialId('BED', count);
+    const bedIdsList = await Promise.all(Array(count).fill(0).map(() => generateMasterId('BED')));
 
     for (let i = 0; i < count; i++) {
         const displayId = bedIdsList[i];

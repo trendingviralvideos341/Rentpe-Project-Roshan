@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
-import { generateSequentialId } from "@/lib/ids";
+import { generateMasterId } from "@/lib/ids";
 import bcrypt from "bcryptjs";
 
 /**
@@ -88,7 +88,7 @@ export async function createAdminEmployee(data: {
         }
 
         // 2. Generate ID
-        const displayId = await generateSequentialId('ADMIN_EMPLOYEE');
+        const displayId = await generateMasterId('ADMIN_STAFF');
 
         // Update User with the staff displayId for consistent logging
         await tx.user.update({

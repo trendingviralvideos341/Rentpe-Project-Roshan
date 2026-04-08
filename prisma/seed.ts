@@ -7,29 +7,17 @@ const prisma = new PrismaClient();
 async function main() {
     console.log("🌱 Seeding RentPe database...\n");
 
-    // ─── Clear existing data ─────────────────────────
-    await prisma.actionNote.deleteMany();
-    await prisma.auditLog.deleteMany();
-    await prisma.notification.deleteMany();
-    await prisma.rentRecord.deleteMany();
-    await prisma.payment.deleteMany();
-    await prisma.booking.deleteMany();
-    await prisma.tenant.deleteMany();
-    await prisma.foodMenu.deleteMany();
-    await prisma.ticket.deleteMany();
-    await prisma.teamMember.deleteMany();
-    await prisma.ownerStaff.deleteMany();
-    await prisma.room.deleteMany();
-    await prisma.property.deleteMany();
-    await prisma.user.deleteMany();
+    // ─── Step 1: Ensure Users Exist (Upsert) ────────────────
 
     // ─── Create Users ────────────────────────────────
     const adminPassword = await hash("RentPeAdmin@2026", 10);
     const ownerPassword = await hash("owner123", 10);
     const studentPassword = await hash("student123", 10);
 
-    const admin = await prisma.user.create({
-        data: {
+    const admin = await prisma.user.upsert({
+        where: { email: "admin@rentpe.in" },
+        update: {},
+        create: {
             email: "admin@rentpe.in",
             passwordHash: adminPassword,
             role: "ADMIN",
@@ -54,11 +42,13 @@ async function main() {
             }
         }
     });
-    console.log("✅ Admin created:", admin.email);
+    console.log("✅ Admin (upserted):", admin.email);
 
     const adminStaffPassword = await hash("RentPeStaff@2026", 10);
-    const adminStaff = await prisma.user.create({
-        data: {
+    const adminStaff = await prisma.user.upsert({
+        where: { email: "admin_staff@rentpe.in" },
+        update: {},
+        create: {
             email: "admin_staff@rentpe.in",
             passwordHash: adminStaffPassword,
             role: "ADMIN",
@@ -83,10 +73,12 @@ async function main() {
             }
         }
     });
-    console.log("✅ Admin Staff created:", adminStaff.email);
+    console.log("✅ Admin Staff (upserted):", adminStaff.email);
 
-    const owner = await prisma.user.create({
-        data: {
+    const owner = await prisma.user.upsert({
+        where: { email: "owner@rentpe.in" },
+        update: {},
+        create: {
             email: "owner@rentpe.in",
             passwordHash: ownerPassword,
             role: "OWNER",
@@ -95,118 +87,128 @@ async function main() {
             status: "VERIFIED"
         }
     });
-    console.log("✅ Owner created:", owner.email);
+    console.log("✅ Owner (upserted):", owner.email);
 
-    const student1 = await prisma.user.create({
-        data: {
-            email: "rahul@example.com",
-            passwordHash: studentPassword,
-            role: "USER",
-            name: "Rahul Sharma",
-            phone: "9876543210",
-            status: "ACTIVE"
-        }
-    });
-
-    const student2 = await prisma.user.create({
-        data: {
-            email: "priya@example.com",
-            passwordHash: studentPassword,
-            role: "USER",
-            name: "Priya Verma",
-            phone: "9988776655",
-            status: "ACTIVE"
-        }
-    });
-
-    const student3 = await prisma.user.create({
-        data: {
-            email: "sneha@example.com",
-            passwordHash: studentPassword,
-            role: "USER",
-            name: "Sneha Gupta",
-            phone: "9112233445",
-            status: "ACTIVE"
-        }
-    });
-    console.log("✅ 3 Students created");
+    const studentEmails = ["rahul@example.com", "priya@example.com", "sneha@example.com"];
+    for (const email of studentEmails) {
+        const name = email.split('@')[0];
+        await prisma.user.upsert({
+            where: { email },
+            update: {},
+            create: {
+                email,
+                passwordHash: studentPassword,
+                role: "USER",
+                name: name.charAt(0).toUpperCase() + name.slice(1),
+                phone: "9" + Math.floor(Math.random() * 900000000 + 100000000).toString(),
+                status: "ACTIVE"
+            }
+        });
+    }
+    const student1 = await prisma.user.findUnique({ where: { email: "rahul@example.com" } }) as any;
+    const student2 = await prisma.user.findUnique({ where: { email: "priya@example.com" } }) as any;
+    const student3 = await prisma.user.findUnique({ where: { email: "sneha@example.com" } }) as any;
+    console.log("✅ Students (upserted)");
 
     // ─── Create Property ─────────────────────────────
-    const property = await prisma.property.create({
-        data: {
-            ownerId: owner.id,
-            name: "Stanza Living Delhi - North Campus",
-            address: "Near Delhi University, North Campus, Kamla Nagar",
-            city: "Delhi",
-            description: "Premium co-living PG with modern amenities near DU North Campus. WiFi, meals, laundry, and 24/7 security included.",
-            amenities: JSON.stringify(["WiFi", "Meals", "Laundry", "AC", "Power Backup", "Security", "Parking", "CCTV", "Housekeeping"]),
-            images: JSON.stringify(["/images/pg1.jpg", "/images/pg2.jpg"]),
-            status: "LIVE"
-        }
+    let property = await prisma.property.findFirst({
+        where: { name: "Stanza Living Delhi - North Campus" }
     });
-    console.log("✅ Property created:", property.name);
+    
+    if (!property) {
+        property = await prisma.property.create({
+            data: {
+                ownerId: owner.id,
+                name: "Stanza Living Delhi - North Campus",
+                address: "Near Delhi University, North Campus, Kamla Nagar",
+                city: "Delhi",
+                description: "Premium co-living PG with modern amenities near DU North Campus. WiFi, meals, laundry, and 24/7 security included.",
+                amenities: JSON.stringify(["WiFi", "Meals", "Laundry", "AC", "Power Backup", "Security", "Parking", "CCTV", "Housekeeping"]),
+                images: JSON.stringify(["/images/pg1.jpg", "/images/pg2.jpg"]),
+                status: "LIVE"
+            }
+        });
+        console.log("✅ Property created:", property.name);
+    } else {
+        console.log("ℹ️ Property already exists:", property.name);
+    }
 
     // ─── Create Rooms ────────────────────────────────
-    const room1 = await prisma.room.create({ data: { propertyId: property.id, roomNumber: "101", type: "Single", price: 18000, availability: 1 } });
-    const room2 = await prisma.room.create({ data: { propertyId: property.id, roomNumber: "204", type: "Double", price: 15000, availability: 2 } });
-    const room3 = await prisma.room.create({ data: { propertyId: property.id, roomNumber: "305", type: "Triple", price: 12000, availability: 3 } });
-    const room4 = await prisma.room.create({ data: { propertyId: property.id, roomNumber: "102", type: "Single", price: 18000, availability: 1 } });
-    const room5 = await prisma.room.create({ data: { propertyId: property.id, roomNumber: "206", type: "Double", price: 15000, availability: 0 } });
-    console.log("✅ 5 Rooms created");
+    const existingRooms = await prisma.room.findFirst({ where: { propertyId: property.id } });
+    if (!existingRooms) {
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "101", type: "Single", price: 18000, availability: 1, displayId: "ROOM-001" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "204", type: "Double", price: 15000, availability: 2, displayId: "ROOM-002" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "305", type: "Triple", price: 12000, availability: 3, displayId: "ROOM-003" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "102", type: "Single", price: 18000, availability: 1, displayId: "ROOM-004" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "206", type: "Double", price: 15000, availability: 0, displayId: "ROOM-005" } });
+        console.log("✅ 5 Rooms created");
+    } else {
+        console.log("ℹ️ Rooms already exist");
+    }
+    
+    // Refresh room IDs for tenants
+    const room1 = await prisma.room.findFirst({ where: { propertyId: property.id, roomNumber: "101" } }) as any;
+    const room2 = await prisma.room.findFirst({ where: { propertyId: property.id, roomNumber: "204" } }) as any;
+    const room3 = await prisma.room.findFirst({ where: { propertyId: property.id, roomNumber: "305" } }) as any;
 
-    // ─── Create Tenants ──────────────────────────────
-    const tenant1 = await prisma.tenant.create({
-        data: {
-            displayId: "TNT-001", name: "Priya Verma", phone: "9876543210", email: "priya@example.com",
-            propertyId: property.id, roomId: room2.id, roomNumber: "204", roomType: "Double",
-            rent: 15000, startDate: "01 Jan 2024", status: "ACTIVE", studentId: student2.id
-        }
-    });
-    const tenant2 = await prisma.tenant.create({
-        data: {
-            displayId: "TNT-002", name: "Amit Rathore", phone: "9123456789", email: "amit.r@example.com",
-            propertyId: property.id, roomId: room3.id, roomNumber: "305", roomType: "Triple",
-            rent: 12000, startDate: "15 Jan 2024", status: "ACTIVE", studentId: student1.id // Reusing student1 for demo
-        }
-    });
-    const tenant3 = await prisma.tenant.create({
-        data: {
-            displayId: "TNT-003", name: "Sneha Gupta", phone: "9988776655", email: "sneha@example.com",
-            propertyId: property.id, roomId: room1.id, roomNumber: "101", roomType: "Single",
-            rent: 18000, startDate: "01 Feb 2024", status: "ACTIVE", studentId: student3.id
-        }
-    });
-    console.log("✅ 3 Tenants created");
+    const existingBookings = await prisma.booking.findFirst({ where: { propertyName: property.name } });
+    if (!existingBookings) {
+        // ─── Create Tenants ──────────────────────────────
+        const tenant1 = await prisma.tenant.create({
+            data: {
+                displayId: "TNT-001", name: "Priya Verma", phone: "9876543210", email: "priya@example.com",
+                propertyId: property.id, roomId: room2.id, roomNumber: "204", roomType: "Double",
+                rent: 15000, startDate: "01 Jan 2024", status: "ACTIVE", studentId: student2.id
+            }
+        });
+        const tenant2 = await prisma.tenant.create({
+            data: {
+                displayId: "TNT-002", name: "Amit Rathore", phone: "9123456789", email: "amit.r@example.com",
+                propertyId: property.id, roomId: room3.id, roomNumber: "305", roomType: "Triple",
+                rent: 12000, startDate: "15 Jan 2024", status: "ACTIVE", studentId: student1.id
+            }
+        });
+        const tenant3 = await prisma.tenant.create({
+            data: {
+                displayId: "TNT-003", name: "Sneha Gupta", phone: "9988776655", email: "sneha@example.com",
+                propertyId: property.id, roomId: room1.id, roomNumber: "101", roomType: "Single",
+                rent: 18000, startDate: "01 Feb 2024", status: "ACTIVE", studentId: student3.id
+            }
+        });
+        console.log("✅ 3 Tenants created");
 
-    // ─── Create Rent Records ─────────────────────────
-    await prisma.rentRecord.createMany({
-        data: [
-            { tenantId: tenant1.id, month: "Jan 2024", amount: 15000, paid: true, paidOn: "02 Jan 2024" },
-            { tenantId: tenant1.id, month: "Feb 2024", amount: 15000, paid: true, paidOn: "01 Feb 2024" },
-            { tenantId: tenant2.id, month: "Jan 2024", amount: 12000, paid: true, paidOn: "16 Jan 2024" },
-            { tenantId: tenant2.id, month: "Feb 2024", amount: 12000, paid: false },
-            { tenantId: tenant3.id, month: "Feb 2024", amount: 18000, paid: false },
-        ]
-    });
-    console.log("✅ Rent records created");
+        // ─── Create Rent Records ─────────────────────────
+        await prisma.rentRecord.createMany({
+            data: [
+                { tenantId: tenant1.id, month: "Jan 2024", amount: 15000, paid: true, paidOn: "02 Jan 2024" },
+                { tenantId: tenant1.id, month: "Feb 2024", amount: 15000, paid: true, paidOn: "01 Feb 2024" },
+                { tenantId: tenant2.id, month: "Jan 2024", amount: 12000, paid: true, paidOn: "16 Jan 2024" },
+                { tenantId: tenant2.id, month: "Feb 2024", amount: 12000, paid: false },
+                { tenantId: tenant3.id, month: "Feb 2024", amount: 18000, paid: false },
+            ]
+        });
+        console.log("✅ Rent records created");
 
-    // ─── Create Bookings ─────────────────────────────
-    await prisma.booking.create({
-        data: {
-            displayId: "REQ-10001001", userId: student1.id, propertyName: property.name,
-            occupancy: "Double Occupancy (₹15,000/month)", guestName: "Rahul Sharma",
-            moveInDate: "2024-03-01", status: "PENDING_APPROVAL", paymentStatus: "UNPAID", amount: 15000
-        }
-    });
-    await prisma.booking.create({
-        data: {
-            displayId: "REQ-10001002", userId: student2.id, roomId: room2.id,
-            propertyName: property.name, occupancy: "Double Occupancy (₹15,000/month)",
-            guestName: "Priya Verma", moveInDate: "2024-01-01",
-            status: "PAID", paymentStatus: "PAID", amount: 15000, roomAssigned: "204 (Double)"
-        }
-    });
-    console.log("✅ Bookings created");
+        // ─── Create Bookings ─────────────────────────────
+        await prisma.booking.create({
+            data: {
+                displayId: "REQ-10001001", userId: student1.id, propertyName: property.name,
+                occupancy: "Double Occupancy (₹15,000/month)", guestName: "Rahul Sharma",
+                moveInDate: "2024-03-01", status: "PENDING_APPROVAL", paymentStatus: "UNPAID", amount: 15000
+            }
+        });
+        await prisma.booking.create({
+            data: {
+                displayId: "REQ-10001002", userId: student2.id, roomId: room2.id,
+                propertyName: property.name, occupancy: "Double Occupancy (₹15,000/month)",
+                guestName: "Priya Verma", moveInDate: "2024-01-01",
+                status: "PAID", paymentStatus: "PAID", amount: 15000, roomAssigned: "204 (Double)"
+            }
+        });
+        console.log("✅ Bookings created");
+    } else {
+        console.log("ℹ️ Tenants and Bookings already exist");
+    }
 
     // ─── Food Menu ───────────────────────────────────
     const meals = [
@@ -218,48 +220,63 @@ async function main() {
         { day: "Saturday", breakfast: "Chole Bhature, Lassi", lunch: "Biryani, Raita, Salad", dinner: "Palak Paneer, Rice, Roti" },
         { day: "Sunday", breakfast: "Puri Sabzi, Chai", lunch: "Special Thali", dinner: "Butter Chicken/Paneer, Naan, Rice" },
     ];
-    for (const m of meals) {
-        await prisma.foodMenu.create({ data: { propertyId: property.id, dayOfWeek: m.day, mealType: "Breakfast", items: m.breakfast } });
-        await prisma.foodMenu.create({ data: { propertyId: property.id, dayOfWeek: m.day, mealType: "Lunch", items: m.lunch } });
-        await prisma.foodMenu.create({ data: { propertyId: property.id, dayOfWeek: m.day, mealType: "Dinner", items: m.dinner } });
+    const existingFood = await prisma.foodMenu.findFirst({ where: { propertyId: property.id } });
+    if (!existingFood) {
+        for (const m of meals) {
+            await prisma.foodMenu.create({ data: { propertyId: property.id, dayOfWeek: m.day, mealType: "Breakfast", items: m.breakfast } });
+            await prisma.foodMenu.create({ data: { propertyId: property.id, dayOfWeek: m.day, mealType: "Lunch", items: m.lunch } });
+            await prisma.foodMenu.create({ data: { propertyId: property.id, dayOfWeek: m.day, mealType: "Dinner", items: m.dinner } });
+        }
+        console.log("✅ Weekly food menu created");
+    } else {
+        console.log("ℹ️ Food menu already exists");
     }
-    console.log("✅ Weekly food menu created");
 
     // ─── Team Members ────────────────────────────────
-    await prisma.teamMember.create({
-        data: {
-            displayId: "ADM-T001", name: "Neha Kapoor", email: "neha@rentpe.in", phone: "9001020304",
-            role: "Support Lead", permissions: JSON.stringify(["login_issues", "payment_failed", "support_tickets", "booking_disputes"]),
-            status: "ACTIVE"
-        }
-    });
-    await prisma.teamMember.create({
-        data: {
-            displayId: "ADM-T002", name: "Rajesh Pandey", email: "rajesh@rentpe.in", phone: "9405060708",
-            role: "Finance Ops", permissions: JSON.stringify(["payment_failed", "transaction_view", "reports"]),
-            status: "ACTIVE"
-        }
-    });
-    console.log("✅ Admin team members created");
+    const existingTeam = await prisma.teamMember.findFirst({ where: { email: "neha@rentpe.in" } });
+    if (!existingTeam) {
+        await prisma.teamMember.create({
+            data: {
+                displayId: "ADM-T001", name: "Neha Kapoor", email: "neha@rentpe.in", phone: "9001020304",
+                role: "Support Lead", permissions: JSON.stringify(["login_issues", "payment_failed", "support_tickets", "booking_disputes"]),
+                status: "ACTIVE"
+            }
+        });
+        await prisma.teamMember.create({
+            data: {
+                displayId: "ADM-T002", name: "Rajesh Pandey", email: "rajesh@rentpe.in", phone: "9405060708",
+                role: "Finance Ops", permissions: JSON.stringify(["payment_failed", "transaction_view", "reports"]),
+                status: "ACTIVE"
+            }
+        });
+        console.log("✅ Admin team members created");
+    } else {
+        console.log("ℹ️ Admin team members already exist");
+    }
 
     // ─── Owner Staff ─────────────────────────────────
-    await prisma.ownerStaff.create({
-        data: {
-            displayId: "STF-001", ownerId: owner.id, name: "Ravi Kumar",
-            email: "ravi@pg.com", phone: "9112131415", designation: "Property Manager",
-            permissions: JSON.stringify(["view_bookings", "approve_bookings", "manage_tenants", "mark_rent", "vacate_tenant", "edit_rooms"]),
-            status: "ACTIVE"
-        }
-    });
-    await prisma.ownerStaff.create({
-        data: {
-            displayId: "STF-002", ownerId: owner.id, name: "Anita Devi",
-            email: "anita@pg.com", phone: "9223344556", designation: "Accountant",
-            permissions: JSON.stringify(["view_payments", "mark_rent", "view_bookings"]),
-            status: "ACTIVE"
-        }
-    });
-    console.log("✅ Owner staff members created");
+    const existingStaff = await prisma.ownerStaff.findFirst({ where: { email: "ravi@pg.com" } });
+    if (!existingStaff) {
+        await prisma.ownerStaff.create({
+            data: {
+                displayId: "STF-001", ownerId: owner.id, name: "Ravi Kumar",
+                email: "ravi@pg.com", phone: "9112131415", designation: "Property Manager",
+                permissions: JSON.stringify(["view_bookings", "approve_bookings", "manage_tenants", "mark_rent", "vacate_tenant", "edit_rooms"]),
+                status: "ACTIVE"
+            }
+        });
+        await prisma.ownerStaff.create({
+            data: {
+                displayId: "STF-002", ownerId: owner.id, name: "Anita Devi",
+                email: "anita@pg.com", phone: "9223344556", designation: "Accountant",
+                permissions: JSON.stringify(["view_payments", "mark_rent", "view_bookings"]),
+                status: "ACTIVE"
+            }
+        });
+        console.log("✅ Owner staff members created");
+    } else {
+        console.log("ℹ️ Owner staff members already exist");
+    }
 
     console.log("\n🎉 Seeding complete! Demo accounts:");
     console.log("   Admin:   admin@rentpe.in   / admin123");

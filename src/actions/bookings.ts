@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { NotificationService } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
-import { generateSequentialId } from "@/lib/ids";
+import { generateMasterId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
 
 export async function createBooking(data: {
@@ -117,7 +117,7 @@ export async function createBooking(data: {
         throw new Error("Move-in date cannot be in the past.");
     }
 
-    const displayId = await generateSequentialId('BOOKING');
+    const displayId = await generateMasterId('BOOKING');
     const booking = await prisma.booking.create({
         data: {
             displayId,

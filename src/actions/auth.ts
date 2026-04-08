@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
-import { generateSequentialId } from "@/lib/ids";
+import { generateMasterId } from "@/lib/ids";
 import { NotificationService } from "@/lib/notifications";
 import { Session, UserRole } from '@/types/auth';
 import crypto from 'crypto';
@@ -79,7 +79,7 @@ export async function signup(formData: FormData) {
         const isOwner = roleUp === "OWNER";
         const isStudent = roleUp === "USER";
 
-        const displayId = await generateSequentialId(role === 'OWNER' ? 'OWNER' : 'USER');
+        const displayId = await generateMasterId(role === 'OWNER' ? 'OWNER' : 'USER');
         const emailVerificationToken = crypto.randomBytes(32).toString('hex');
 
         const user = await prisma.user.create({

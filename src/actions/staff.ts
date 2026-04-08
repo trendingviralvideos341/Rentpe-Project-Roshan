@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import bcrypt from "bcryptjs";
-import { generateSequentialId } from "@/lib/ids";
+import { generateMasterId } from "@/lib/ids";
 
 export async function getOwnerStaff() {
     const session = await getSession();
@@ -66,7 +66,7 @@ export async function addOwnerStaff(data: {
     const inviteToken = crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
 
-    const displayId = await generateSequentialId('OWNER_EMPLOYEE');
+    const displayId = await generateMasterId('OWNER_STAFF');
 
     const result = await prisma.$transaction(async (tx) => {
         // 1. Create User

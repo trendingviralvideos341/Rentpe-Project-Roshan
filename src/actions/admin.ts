@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
-import { generateSequentialId } from "@/lib/ids";
+import { generateMasterId } from "@/lib/ids";
 
 export async function getAdminStats() {
     try {
@@ -510,9 +510,8 @@ export async function assignRole(targetUserId: string, newRole: "ONBOARDER" | "V
 
     let displayId = target.displayId;
     // Generate new display ID only if they didn't already have one for this role type
-    if (!displayId || !displayId.startsWith(prefixMap[newRole])) {
-        const count = await prisma.user.count({ where: { role: newRole } });
-        displayId = `${prefixMap[newRole]}-${String(count + 1).padStart(6, '0')}`;
+    if (!displayId || !displayId.startsWith(prefixMap[newRole] || 'ADM')) {
+        displayId = await generateMasterId(newRole as any);
     }
 
     const updated = await prisma.user.update({
@@ -1230,7 +1229,7 @@ export async function adminUpdateRoom(roomId: string, data: any) {
         // If availability increased, add more beds
         if (newAvailability > oldAvailability) {
             const bedsToAdd = newAvailability - oldAvailability;
-            const bedIdsList = await generateSequentialId('BED', bedsToAdd);
+            const bedIdsList = await Promise.all(Array(bedsToAdd).fill(0).map(() => generateMasterId('BED')));
             
             for (let i = 0; i < bedsToAdd; i++) {
                 const bedDisplayId = bedIdsList[i];
@@ -1294,7 +1293,7 @@ export async function adminAddRoom(propertyId: string, data: any) {
         });
 
         // Generate beds
-        const bedIdsList = await generateSequentialId('BED', availability);
+        const bedIdsList = await Promise.all(Array(availability).fill(0).map(() => generateMasterId('BED')));
         for (let i = 0; i < availability; i++) {
             await tx.bed.create({
                 data: {
