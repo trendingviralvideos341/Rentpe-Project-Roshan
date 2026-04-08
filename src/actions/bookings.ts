@@ -9,6 +9,21 @@ import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
 
+export async function getBookingById(id: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: { property: true, room: true, documents: true }
+    });
+    if (!booking) return null;
+    // Students can only view their own bookings
+    if (session.role === 'USER' && (booking as any).userId !== (session as any).userId) {
+        throw new Error("Unauthorized");
+    }
+    return booking;
+}
+
 export async function createBooking(data: {
     roomId?: string,
     propertyName: string,

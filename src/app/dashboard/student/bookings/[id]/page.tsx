@@ -23,7 +23,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
     if (!booking) return notFound();
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-20 font-inter">
+        <div className="min-h-screen bg-slate-50/50 pb-20">
             {/* Header / Navigation */}
             <div className="bg-white/70 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30">
                 <div className="container mx-auto px-4 py-4 max-w-5xl flex items-center justify-between">
@@ -50,8 +50,8 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                             <ShieldCheck className="w-5 h-5 text-indigo-200" />
                             <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-100">Live Journey Tracking</span>
                         </div>
-                        <CardTitle className="text-3xl md:text-4xl font-black tracking-tight font-outfit">
-                            Tracking your booking at <span className="text-white decoration-indigo-400 underline-offset-8 decoration-4 underline">{booking.propertyName}</span>
+                        <CardTitle className="text-2xl md:text-4xl font-black tracking-tight">
+                            Booking at <span className="underline decoration-indigo-400 underline-offset-8 decoration-4">{booking.propertyName}</span>
                         </CardTitle>
                     </CardHeader>
                     
@@ -65,9 +65,9 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Property & Stay Details */}
                     <div className="md:col-span-2 space-y-6">
-                        <Card className="border-slate-200/60 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden glass-card">
+                        <Card className="border-slate-200/60 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden">
                             <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-                                <CardTitle className="text-lg font-black font-outfit flex items-center gap-2">
+                                <CardTitle className="text-lg font-black flex items-center gap-2">
                                     <Building2 className="w-5 h-5 text-indigo-600" /> Property Details
                                 </CardTitle>
                             </CardHeader>
@@ -77,11 +77,11 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Address</span>
                                         <p className="text-sm font-bold text-slate-700 flex items-start gap-2">
                                             <MapPin className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-                                            {booking.property?.address}, {booking.property?.city}
+                                            {(booking as any).property?.address}, {(booking as any).property?.city}
                                         </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Accomodation</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Accommodation</span>
                                         <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
                                             <BedDouble className="w-4 h-4 text-indigo-500" />
                                             {booking.occupancy} • Room {booking.roomAssigned || "Pending Assignment"}
@@ -97,12 +97,10 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                                         </p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Onboarding Status</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-black uppercase rounded-full border border-green-200">
-                                                {booking.status}
-                                            </span>
-                                        </div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</span>
+                                        <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-black uppercase rounded-full border border-green-200 w-fit">
+                                            {booking.status}
+                                        </span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -111,13 +109,13 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                         {/* Guest Information */}
                         <Card className="border-slate-200/60 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden">
                             <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-                                <CardTitle className="text-lg font-black font-outfit flex items-center gap-2">
+                                <CardTitle className="text-lg font-black flex items-center gap-2">
                                     <User className="w-5 h-5 text-indigo-600" /> Guest Details
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-slate-200 shadow-sm font-black text-indigo-600 group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-black text-indigo-600 text-lg">
                                         {booking.guestName?.charAt(0)}
                                     </div>
                                     <div>
@@ -125,7 +123,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                                         <p className="text-sm font-black text-slate-800">{booking.guestName}</p>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-3 justify-center">
                                     <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
                                         <Mail className="w-4 h-4 text-slate-400" /> {booking.guestEmail || "No email provided"}
                                     </div>
@@ -141,7 +139,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                     <div className="space-y-6">
                         <Card className="bg-slate-900 text-white rounded-3xl overflow-hidden border-none shadow-2xl">
                             <CardHeader>
-                                <CardTitle className="text-lg font-black font-outfit">Reservation Fees</CardTitle>
+                                <CardTitle className="text-lg font-black">Reservation Fees</CardTitle>
                                 <CardDescription className="text-slate-400 text-xs font-bold leading-relaxed">
                                     Summary of your commitment for this stay.
                                 </CardDescription>
@@ -156,7 +154,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                                     <span className="font-black text-emerald-400">₹{booking.tokenAmount || 1000}</span>
                                 </div>
                                 
-                                <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                                <div className="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
                                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Next Action</p>
                                     {booking.status === 'APPLIED' ? (
                                         <p className="text-xs font-bold text-slate-300">Awaiting owner approval. You will be notified once they review your request.</p>
@@ -176,7 +174,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                             </CardContent>
                         </Card>
 
-                        {/* Assistance Card */}
+                        {/* Help Card */}
                         <div className="p-6 rounded-3xl bg-indigo-50 border border-indigo-100 space-y-4">
                             <h3 className="text-sm font-black text-indigo-900 uppercase tracking-widest">Need Help?</h3>
                             <p className="text-xs text-indigo-700 font-medium leading-relaxed">
