@@ -7,6 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { generateSequentialId } from "@/lib/ids";
+import { stripImmutableFields } from "@/lib/sanitize";
 
 async function getEffectiveOwnerId(session: any) {
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) throw new Error("Unauthorized");
@@ -329,10 +330,12 @@ export async function updateProperty(propertyId: string, data: any) {
     const needsReapproval = data.images || data.amenities || data.name;
     const newStatus = (existing.status === 'APPROVED' && needsReapproval) ? 'PENDING_VERIFICATION' : existing.status;
 
+    const safeData = stripImmutableFields(data);
+
     return prisma.$transaction(async (tx) => {
         const updated = await tx.property.update({
             where: { id: propertyId },
-            data: { ...data, status: newStatus }
+            data: { ...safeData, status: newStatus }
         });
 
         await tx.auditLog.create({
@@ -445,11 +448,13 @@ export async function editRoom(roomId: string, roomData: any) {
     const oldAvailability = room.availability;
     const newAvailability = parseInt(roomData.availability);
 
+    const safeRoomData = stripImmutableFields(roomData);
+
     return prisma.$transaction(async (tx) => {
         const updated = await tx.room.update({
             where: { id: roomId },
             data: {
-                ...roomData,
+                ...safeRoomData,
                 price: parseFloat(roomData.price),
                 availability: newAvailability,
                 totalBeds: newAvailability

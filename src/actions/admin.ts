@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
+import { stripImmutableFields } from "@/lib/sanitize";
 
 export async function getAdminStats() {
     try {
@@ -1214,12 +1215,13 @@ export async function adminUpdateRoom(roomId: string, data: any) {
 
     const oldAvailability = oldRoom.availability;
     const newAvailability = parseInt(data.availability);
+    const safeData = stripImmutableFields(data);
 
     const result = await prisma.$transaction(async (tx) => {
         const updated = await tx.room.update({
             where: { id: roomId },
             data: {
-                ...data,
+                ...safeData,
                 price: parseFloat(data.price),
                 availability: newAvailability,
                 totalBeds: newAvailability
