@@ -1,7 +1,24 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 
+// Routes where the footer should NOT appear (any dashboard, admin, or staff portal)
+const DASHBOARD_PREFIXES = [
+    '/dashboard',
+    '/admin',
+    '/staff',
+    '/auth',
+];
+
 const Footer = () => {
+    const pathname = usePathname();
+
+    // Hide footer on all dashboard/admin/staff/auth pages
+    const isDashboardRoute = DASHBOARD_PREFIXES.some(prefix => pathname?.startsWith(prefix));
+    if (isDashboardRoute) return null;
+
     return (
         <footer className="bg-muted/30 border-t mt-auto">
             <div className="container mx-auto py-12 px-4">
