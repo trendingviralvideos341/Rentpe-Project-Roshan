@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { rateLimits } from '@/lib/ratelimit';
 
 if (!process.env.JWT_SECRET) {
     throw new Error("CRITICAL: JWT_SECRET environment variable is not set! This is required to secure user sessions.");
@@ -13,65 +14,51 @@ const JWT_SECRET = new TextEncoder().encode(
 const protectedRoutes = ['/dashboard'];
 const publicRoutes = ['/login', '/signup', '/'];
 
-// --- Basic Rate Limiter (In-Memory for Dev/Single-Server) ---
-// --- Granular Rate Limiting (In-Memory) ---
-const IP_REQUESTS = new Map<string, { count: number; lastReset: number }>();
-
-const RATE_LIMITS = {
-    DEFAULT: { count: 60, window: 60 * 1000 },
-    LOGIN: { count: 10, window: 60 * 1000 },  // 10 attempts per minute
-    SIGNUP: { count: 5, window: 60 * 1000 },   // 5 attempts per minute (stricter)
-};
-
-function checkRateLimit(ip: string, action: keyof typeof RATE_LIMITS = 'DEFAULT'): boolean {
-    const now = Date.now();
-    const key = `${ip}:${action}`;
-    const limit = RATE_LIMITS[action];
-    
-    const stats = IP_REQUESTS.get(key) || { count: 0, lastReset: now };
-
-    if (now - stats.lastReset > limit.window) {
-        stats.count = 1;
-        stats.lastReset = now;
-    } else {
-        stats.count++;
-    }
-
-    IP_REQUESTS.set(key, stats);
-    return stats.count > limit.count;
-}
-
 export default async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
-
-    // 0. API Rate Limiting (Security Phase 2)
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
-    
-    let rateLimited = false;
-    if (path === '/login') {
-        rateLimited = checkRateLimit(ip, 'LOGIN');
-    } else if (path === '/signup') {
-        rateLimited = checkRateLimit(ip, 'SIGNUP');
-    } else if (path.startsWith('/api')) {
-        rateLimited = checkRateLimit(ip, 'DEFAULT');
-    }
-
-    if (rateLimited) {
-        return new NextResponse('Too many requests. Please try again in a minute.', { status: 429 });
-    }
     const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
     const isPublicRoute = publicRoutes.some(route => path === route);
 
     const token = req.cookies.get('rentpe_session')?.value;
 
     // 1. Decrypt session
-    let session = null;
+    let session: any = null;
     if (token) {
         try {
             const { payload } = await jwtVerify(token, JWT_SECRET);
             session = payload;
         } catch (e) {
             // Token expired or invalid
+        }
+    }
+
+    // 2. Upstash Redis Rate Limiting (production-grade, distributed)
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
+
+    let limiter: (typeof rateLimits)[keyof typeof rateLimits] | null = null;
+    if (path.startsWith('/auth/') || path.startsWith('/api/auth/') || path === '/login' || path === '/signup') {
+        limiter = rateLimits.auth;
+    } else if (path.startsWith('/api/payments/')) {
+        limiter = rateLimits.payment;
+    } else if (path.includes('/properties/') || path.includes('/bookings/')) {
+        limiter = rateLimits.lookup;
+    } else if (path.startsWith('/api/')) {
+        limiter = rateLimits.api;
+    }
+
+    if (limiter) {
+        try {
+            const { success, reset } = await limiter.limit(`${ip}-${session?.userId ?? 'anon'}`);
+            if (!success) {
+                const retryAfter = Math.ceil((reset - Date.now()) / 1000);
+                return new NextResponse(
+                    JSON.stringify({ error: "Too many requests.", retryAfter }),
+                    { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': retryAfter.toString() } }
+                );
+            }
+        } catch {
+            // If Redis is unavailable, fail open (don't block users)
+            console.warn('Rate limit check failed — Redis may be unavailable');
         }
     }
 

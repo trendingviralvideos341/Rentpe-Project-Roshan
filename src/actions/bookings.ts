@@ -554,18 +554,42 @@ export async function checkInBooking(id: string) {
 
         // === UNIFIED IDENTITY: One Passport for Life ===
         // Inherit the student's REN-USER-XXXX display ID.
-        // We append a suffix (-02, -03) for subsequent stays to maintain DB uniqueness.
+        // Tenancy is created atomically with Serializable isolation —
+        // tenancyNumber is the DB-level guard against race conditions.
         const studentUser = await prisma.user.findUnique({
             where: { id: booking.userId },
-            select: { displayId: true }
+            select: { id: true, displayId: true }
         });
-        
-        const stayCount = await prisma.tenant.count({
-            where: { studentId: booking.userId }
+
+        const user = studentUser!;
+
+        // ─── Atomic Tenancy Creation ───────────────────────────────────────
+        const tenancy = await prisma.$transaction(async (tx) => {
+            // Count inside transaction — atomic, no race condition
+            const tenancyCount = await tx.tenancy.count({
+                where: { userId: user.id }
+            });
+
+            const tenancyNumber = tenancyCount + 1;
+
+            const displayId = tenancyNumber === 1
+                ? (user.displayId ?? `REN-USER-${user.id.slice(0, 8).toUpperCase()}`)
+                : `${user.displayId ?? `REN-USER-${user.id.slice(0, 8).toUpperCase()}`}-T${tenancyNumber}`;
+
+            return await tx.tenancy.create({
+                data: {
+                    userId: user.id,
+                    propertyId: room.propertyId,
+                    tenancyNumber,   // @@unique([userId, tenancyNumber]) is the final DB guard
+                    displayId,
+                }
+            });
+        }, {
+            isolationLevel: 'Serializable',
         });
-        
-        const baseId = studentUser?.displayId || `REN-USER-${booking.userId.slice(0, 8).toUpperCase()}`;
-        const tenantDisplayId = stayCount > 0 ? `${baseId}-${(stayCount + 1).toString().padStart(2, '0')}` : baseId;
+
+        // Derive tenantDisplayId from the created Tenancy record
+        const tenantDisplayId = tenancy.displayId;
 
         const tenant = await prisma.tenant.create({
             data: {
