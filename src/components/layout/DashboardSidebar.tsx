@@ -11,6 +11,7 @@ import { getPendingOwnerActionCount } from "@/actions/properties";
 import { getPendingDocumentsCount } from "@/actions/documents";
 import { getPendingUpgradeCount } from "@/actions/roleUpgrade";
 import { LogoutButton } from "@/components/layout/LogoutButton";
+import { getStudentFoodStatus } from "@/actions/food";
 
 interface SidebarLink {
     href: string;
@@ -45,6 +46,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [adminAlerts, setAdminAlerts] = useState({ bookings: 0, verifications: 0 });
     const [deactivationCount, setDeactivationCount] = useState(0);
     const [roleUpgradeCount, setRoleUpgradeCount] = useState(0);
+    const [foodStatus, setFoodStatus] = useState<{ label: string; href?: string; hasActiveBooking: boolean } | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
@@ -80,6 +82,8 @@ export default function DashboardSidebar(props: SidebarProps) {
             const checkStudent = async () => {
                 const count = await getStudentPendingActionsCount();
                 setStudentAlertCount(count);
+                const food = await getStudentFoodStatus();
+                setFoodStatus(food);
             };
             checkStudent();
             const interval = setInterval(checkStudent, 5000);
@@ -184,16 +188,29 @@ export default function DashboardSidebar(props: SidebarProps) {
         }
     ];
 
+    const studentLinks: SidebarLink[] = [
+        { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
+        { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
+        { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
+    ];
+
+    if (foodStatus) {
+        studentLinks.push({
+            href: foodStatus.href || "#",
+            label: foodStatus.label,
+            icon: Utensils,
+        });
+    }
+
+    studentLinks.push(
+        { href: "/search", label: "Find PG", icon: Building },
+        { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
+    );
+
     const studentSections: SidebarSection[] = [
         {
             title: "Menu",
-            links: [
-                { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
-                { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
-                { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
-                { href: "/search", label: "Find PG", icon: Building },
-                { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
-            ]
+            links: studentLinks
         }
     ];
 
@@ -279,8 +296,21 @@ export default function DashboardSidebar(props: SidebarProps) {
                                 const isActive = pathname === linkPath && (
                                     linkTab ? currentTab === linkTab : currentTab === 'overview'
                                 );
-
                                 const badge = link.badge;
+                                const isGreyedOut = (link.label === 'Food' || link.label === 'No food option available') && link.href === "#";
+
+                                if (isGreyedOut) {
+                                    return (
+                                        <div
+                                            key={link.label}
+                                            className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground/40 cursor-not-allowed"
+                                        >
+                                            <Icon className="h-5 w-5" />
+                                            <span className="text-sm">{link.label}</span>
+                                        </div>
+                                    );
+                                }
+
                                 return (
                                     <Link
                                         key={link.href}

@@ -423,3 +423,78 @@ export async function getFoodPreferenceHistory(bookingId: string) {
         take: 20,
     });
 }
+
+// ─────────────────────────────────────────────
+// ACTION: getStudentFoodStatus (for sidebar)
+// ─────────────────────────────────────────────
+
+/**
+ * Fetches the food status for the logged-in student.
+ * Used for dynamic sidebar labeling and linking.
+ */
+export async function getStudentFoodStatus(): Promise<{
+    available: boolean;
+    opted: boolean;
+    label: string;
+    href?: string;
+    hasActiveBooking: boolean;
+} | null> {
+    const session = await getSession();
+    // Use USER as per UserRole type
+    if (!session || ((session.role as string) !== 'USER' && (session.role as string) !== 'STUDENT')) return null;
+
+    const userId = (session as any).userId;
+
+    try {
+        // Find the latest "primary" booking (Active, Checked In, or Paid/Approved)
+        const booking = await (prisma as any).booking.findFirst({
+            where: {
+                userId,
+                status: {
+                    in: ['CHECKED_IN', 'ACTIVE', 'PAID', 'APPROVED', 'ROOM_RESERVED', 'KYC_PENDING', 'APPROVED_KYC_PENDING', 'AGREEMENT_PENDING']
+                }
+            },
+            include: {
+                property: {
+                    select: {
+                        foodType: true,
+                        name: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (!booking) {
+            return {
+                available: false,
+                opted: false,
+                label: 'Food',
+                hasActiveBooking: false
+            };
+        }
+
+        const foodAvailable = booking.property?.foodType !== 'NOT_AVAILABLE';
+        const foodOpted = booking.foodSelected === true;
+
+        let label = 'Food Menu';
+        if (!foodAvailable) {
+            label = 'No food option available';
+        } else if (!foodOpted) {
+            label = 'Food - Not Opted';
+        }
+
+        return {
+            available: foodAvailable,
+            opted: foodOpted,
+            label,
+            href: foodAvailable ? '/dashboard/student/food-menu' : undefined,
+            hasActiveBooking: true
+        };
+
+    } catch (err) {
+        console.error('[getStudentFoodStatus]', err);
+        return null;
+    }
+}
+
