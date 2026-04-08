@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, AlertCircle, Clock, Calendar, Home, GraduationCap, ClipboardList, ShieldCheck } from "lucide-react";
+import { Check, AlertCircle, Clock, Calendar, Home, GraduationCap, ClipboardList, ShieldCheck, PackageOpen } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +45,13 @@ const TIMELINE_STEPS = [
         dateField: 'activeAt',
     },
     {
+        key: 'VACATING',
+        label: 'Vacating',
+        icon: PackageOpen,
+        description: 'Move-out process initiated. Please complete the checkout.',
+        dateField: 'vacatingAt',
+    },
+    {
         key: 'COMPLETED',
         label: 'Stay Completed',
         icon: GraduationCap,
@@ -67,7 +74,8 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         if (status === 'ROOM_RESERVED' || status === 'KYC_PENDING' || status === 'KYC_FAILED' || status === 'AGREEMENT_PENDING' || status === 'PAID' || status === 'CASH_PAID') return 2;
         if (status === 'MOVE_IN_SCHEDULED') return 3;
         if (status === 'ACTIVE' || status === 'CHECKED_IN') return 4;
-        if (status === 'COMPLETED' || status === 'CHECKED_OUT') return 5;
+        if (status === 'VACATING') return 5;
+        if (status === 'COMPLETED' || status === 'CHECKED_OUT') return 6;
         return 0;
     };
 
@@ -85,7 +93,7 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
 
                 {/* Timeline Steps */}
                 {TIMELINE_STEPS.map((step, index) => {
-                    const isCompleted = index < activeIndex || (currentStatus === 'COMPLETED' && index === 4);
+                    const isCompleted = index < activeIndex || (currentStatus === 'COMPLETED' && index === TIMELINE_STEPS.length - 1);
                     const isCurrent = index === activeIndex && !isRejected;
                     const isUpcoming = index > activeIndex;
                     const Icon = step.icon;
