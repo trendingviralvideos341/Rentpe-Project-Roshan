@@ -9,203 +9,207 @@ datasource db {
 }
 
 model User {
-  id                    String            @id @default(uuid())
-  email                 String            @unique
-  emailVerified         Boolean           @default(false)
-  emailVerificationToken String?          @unique
-  passwordHash          String
-  role                  String            @default("USER")   // Active/primary role (used for JWT + middleware routing)
-  roles                 String[]          @default(["USER"]) // All roles the user holds
-  primaryRole           String            @default("USER")   // User's last selected dashboard context
-  adminRole             String?
-  isStudent             Boolean           @default(false)
-  isOwner               Boolean           @default(false)
-  isAdmin               Boolean           @default(false)
-  isOnboarder           Boolean           @default(false)
-  isVerifier            Boolean           @default(false)
-  name                  String?
-  phone                 String?
-  phoneVerified         Boolean           @default(false)
-  city                  String?
-  status                String            @default("PENDING_VERIFICATION")
-  loyaltyPoints         Int               @default(0)
-  lastLoginAt           DateTime?         @default(now())
-  lastLoginIp           String?
-  bannedReason          String?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  displayId             String?           @unique
-  deletedAt             DateTime?
-  razorpayAccountId     String?
-  commissionRate        Float?
-  resetToken            String?
-  resetTokenExpiry      DateTime?
-  businessName          String?
-  profilePhoto          String?
-  dateOfBirth           String?
-  gender                String?
-  emergencyContact      String?
-  currentAddress        String?
-  college               String?
-  occupationType        String?
-  occupationDetail      String?
-  bio                   String?
-  notifPrefs            String            @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
-  deactivationRequested Boolean           @default(false)
-  deactivationReason    String?
-  parentOwnerId         String?
-  staffPermissions      String?
-  twoFactorSecret       String?
-  twoFactorEnabled      Boolean           @default(false)
-  applicationId         String?           @unique
-  termsAccepted         Boolean           @default(false)
-  termsAcceptedAt       DateTime?
-  termsVersion          String?           // e.g. "v1.0-2026-03" — bump to force re-acceptance
-  actionNotes           ActionNote[]      @relation("TargetUser")
-  auditLogs             AuditLog[]        @relation("PerformedBy")
-  bookings              Booking[]
-  fraudAlerts           FraudAlert[]
-  fraudFlags            FraudFlag[]
-  fingerprints          UserFingerprint[]
-  linkedAsA             LinkedAccount[]   @relation("UserA")
-  linkedAsB             LinkedAccount[]   @relation("UserB")
-  loginLogs             LoginLog[]
-  receivedMessages      Message[]         @relation("ReceivedMessages")
-  sentMessages          Message[]         @relation("SentMessages")
-  notifications         Notification[]
-  ownerOnboardings      OwnerOnboarding[] @relation("OnboardedBy")
-  properties            Property[]
-  savedProperties       SavedProperty[]
-  tickets               Ticket[]
-  parentOwner           User?             @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
-  staffMembers          User[]            @relation("OwnerToStaff")
-  sessions              UserSession[]
-  adminProfile          AdminEmployee?    @relation("UserAsAdminEmployee")
-  drafts                Draft[]
-  ownerEmployees        OwnerEmployee[]   @relation("OwnerEmployees")
-  employeeProfile       OwnerEmployee?    @relation("UserAsEmployee")
-  uploadSessions        UploadSession[]
-  foodPreferences       FoodPreference[]
-  roleUpgradeRequests   RoleUpgradeRequest[]
+  id                     String               @id @default(uuid())
+  email                  String               @unique
+  emailVerified          Boolean              @default(false)
+  emailVerificationToken String?              @unique
+  passwordHash           String
+  role                   String               @default("USER") // Active/primary role (used for JWT + middleware routing)
+  roles                  String[]             @default(["USER"]) // All roles the user holds
+  primaryRole            String               @default("USER") // User's last selected dashboard context
+  adminRole              String?
+  isStudent              Boolean              @default(false)
+  isOwner                Boolean              @default(false)
+  isAdmin                Boolean              @default(false)
+  isOnboarder            Boolean              @default(false)
+  isVerifier             Boolean              @default(false)
+  name                   String?
+  phone                  String?
+  phoneVerified          Boolean              @default(false)
+  city                   String?
+  status                 String               @default("PENDING_VERIFICATION")
+  loyaltyPoints          Int                  @default(0)
+  lastLoginAt            DateTime?            @default(now())
+  lastLoginIp            String?
+  bannedReason           String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  displayId              String               @unique
+  deletedAt              DateTime?
+  razorpayAccountId      String?
+  commissionRate         Float?
+  resetToken             String?
+  resetTokenExpiry       DateTime?
+  businessName           String?
+  profilePhoto           String?
+  dateOfBirth            String?
+  gender                 String?
+  emergencyContact       String?
+  currentAddress         String?
+  college                String?
+  occupationType         String?
+  occupationDetail       String?
+  bio                    String?
+  notifPrefs             String               @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
+  deactivationRequested  Boolean              @default(false)
+  deactivationReason     String?
+  parentOwnerId          String?
+  staffPermissions       String?
+  twoFactorSecret        String?
+  twoFactorEnabled       Boolean              @default(false)
+  applicationId          String?              @unique
+  termsAccepted          Boolean              @default(false)
+  termsAcceptedAt        DateTime?
+  termsVersion           String? // e.g. "v1.0-2026-03" — bump to force re-acceptance
+  actionNotes            ActionNote[]         @relation("TargetUser")
+  auditLogs              AuditLog[]           @relation("PerformedBy")
+  bookings               Booking[]
+  fraudAlerts            FraudAlert[]
+  fraudFlags             FraudFlag[]
+  fingerprints           UserFingerprint[]
+  linkedAsA              LinkedAccount[]      @relation("UserA")
+  linkedAsB              LinkedAccount[]      @relation("UserB")
+  loginLogs              LoginLog[]
+  receivedMessages       Message[]            @relation("ReceivedMessages")
+  sentMessages           Message[]            @relation("SentMessages")
+  notifications          Notification[]
+  ownerOnboardings       OwnerOnboarding[]    @relation("OnboardedBy")
+  properties             Property[]
+  savedProperties        SavedProperty[]
+  tickets                Ticket[]
+  parentOwner            User?                @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
+  staffMembers           User[]               @relation("OwnerToStaff")
+  sessions               UserSession[]
+  adminProfile           AdminEmployee?       @relation("UserAsAdminEmployee")
+  drafts                 Draft[]
+  ownerEmployees         OwnerEmployee[]      @relation("OwnerEmployees")
+  employeeProfile        OwnerEmployee?       @relation("UserAsEmployee")
+  uploadSessions         UploadSession[]
+  foodPreferences        FoodPreference[]
+  roleUpgradeRequests    RoleUpgradeRequest[]
+  tenancies              Tenancy[]
 }
 
 model RoleUpgradeRequest {
-  id            String   @id @default(uuid())
-  userId        String
-  requestedRole String   @default("OWNER")
-  status        String   @default("PENDING")  // PENDING | APPROVED | REJECTED
-  reason        String?  // Why the user wants to become an owner
-  propertyType  String?  // PG | HOSTEL | FLAT | OTHER
-  estimatedRooms Int?    // How many rooms they plan to list
-  adminNote     String?  // Admin's rejection/approval note
-  reviewedBy    String?  // Admin userId who reviewed
-  reviewedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id])
+  id             String    @id @default(uuid())
+  userId         String
+  requestedRole  String    @default("OWNER")
+  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reason         String? // Why the user wants to become an owner
+  propertyType   String? // PG | HOSTEL | FLAT | OTHER
+  estimatedRooms Int? // How many rooms they plan to list
+  adminNote      String? // Admin's rejection/approval note
+  reviewedBy     String? // Admin userId who reviewed
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id])
 }
 
 model Property {
-  id                      String                       @id @default(uuid())
-  displayId               String?                      @unique
-  ownerId                 String
-  name                    String
-  address                 String
-  city                    String
-  description             String?
-  amenities               String
-  images                  String
-  status                  String                       @default("PENDING_VERIFICATION")
-  adminNotes              String?
-  pgPhotoUrl              String?
-  aadhaarProof            String?
-  panProof                String?
-  pgLicenceUrl            String?
-  buildingPhotos          String?
-  commonAreaPhotos        String?
-  parkingPhotos           String?
-  roomsAndBathroomPhotos  String?
-  livePhotoUrl            String?
-  exteriorPhotos          String?
-  interiorPhotos          String?
-  roomsPhotos             String?
-  hallPhotos              String?
-  lobbyPhotos             String?
-  washroomPhotos          String?
-  amenitiesPhotos         String?
-  verifiedDocs            String                       @default("[]")
-  averageRating           Float                        @default(0)
-  reviewCount             Int                          @default(0)
-  propertyType            String                       @default("PG")
-  genderType              String                       @default("COED")
-  latitude                Float?
-  longitude               Float?
-  cancellationPolicy      String?
-  noticePeriod            Int?
-  refundPolicy            String?
-  bankAccountNo           String?
-  bankIfsc                String?
-  bankName                String?
-  videoUrl                String?
-  isVerified              Boolean                      @default(false)
-  createdAt               DateTime                     @default(now())
-  updatedAt               DateTime                     @updatedAt
-  ownerName               String?
-  businessName            String?
-  pgLicence               String?
-  licenseNumber           String?
-  reraId                  String?
-  termsAccepted           Boolean                      @default(false)
-  termsAcceptedAt         DateTime?
-  feeTermsAccepted        Boolean                      @default(false)
-  feeTermsAcceptedAt      DateTime?
-  onboardingPaidAt        DateTime?
-  onboardingPaymentMethod String?
-  applicationId           String?                      @unique
+  id                         String                       @id @default(uuid())
+  displayId                  String                       @unique
+  ownerId                    String
+  name                       String
+  address                    String
+  city                       String
+  description                String?
+  amenities                  String
+  images                     String
+  status                     String                       @default("PENDING_VERIFICATION")
+  adminNotes                 String?
+  pgPhotoUrl                 String?
+  aadhaarProof               String?
+  panProof                   String?
+  pgLicenceUrl               String?
+  buildingPhotos             String?
+  commonAreaPhotos           String?
+  parkingPhotos              String?
+  roomsAndBathroomPhotos     String?
+  livePhotoUrl               String?
+  exteriorPhotos             String?
+  interiorPhotos             String?
+  roomsPhotos                String?
+  hallPhotos                 String?
+  lobbyPhotos                String?
+  washroomPhotos             String?
+  amenitiesPhotos            String?
+  verifiedDocs               String                       @default("[]")
+  averageRating              Float                        @default(0)
+  reviewCount                Int                          @default(0)
+  propertyType               String                       @default("PG")
+  genderType                 String                       @default("COED")
+  latitude                   Float?
+  longitude                  Float?
+  cancellationPolicy         String?
+  noticePeriod               Int?
+  refundPolicy               String?
+  bankAccountNo              String?
+  bankIfsc                   String?
+  bankName                   String?
+  videoUrl                   String?
+  isVerified                 Boolean                      @default(false)
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  ownerName                  String?
+  businessName               String?
+  pgLicence                  String?
+  licenseNumber              String?
+  reraId                     String?
+  termsAccepted              Boolean                      @default(false)
+  termsAcceptedAt            DateTime?
+  feeTermsAccepted           Boolean                      @default(false)
+  feeTermsAcceptedAt         DateTime?
+  onboardingPaidAt           DateTime?
+  onboardingPaymentMethod    String?
+  applicationId              String?                      @unique
   // ── Food & Mess Service (Section 1 — Food Models) ──
-  foodType                String                       @default("NOT_AVAILABLE") // INCLUDED | OPTIONAL | NOT_AVAILABLE
-  foodPricePerMonth       Float?                       // Only required when foodType = OPTIONAL
+  foodType                   String                       @default("NOT_AVAILABLE") // INCLUDED | OPTIONAL | NOT_AVAILABLE
+  foodPricePerMonth          Float? // Only required when foodType = OPTIONAL
   // ── Deactivation / Property Exit Flow ──────────────────────────────────────
-  deactivationRequestedAt    DateTime?                 // set when owner requests deactivation
-  deactivationReason         String?                   // owner's reason for leaving
-  deactivationRejectedAt     DateTime?                 // set when admin rejects request
-  deactivationRejectedBy     String?                   // admin userId who rejected
-  deactivationRejectedReason String?                   // reason given by admin for rejection
-  bookings                Booking[]
-  foodMenu                FoodMenu[]
-  foodPreferences         FoodPreference[]
-  owner                   User                         @relation(fields: [ownerId], references: [id])
-  reviews                 Review[]
-  rooms                   Room[]
-  savedBy                 SavedProperty[]
-  tenants                 Tenant[]
-  tickets                 Ticket[]
-  employeeAssignments     EmployeePropertyAssignment[]
+  deactivationRequestedAt    DateTime? // set when owner requests deactivation
+  deactivationReason         String? // owner's reason for leaving
+  deactivationRejectedAt     DateTime? // set when admin rejects request
+  deactivationRejectedBy     String? // admin userId who rejected
+  deactivationRejectedReason String? // reason given by admin for rejection
+  bookings                   Booking[]
+  foodMenu                   FoodMenu[]
+  foodPreferences            FoodPreference[]
+  owner                      User                         @relation(fields: [ownerId], references: [id])
+  reviews                    Review[]
+  rooms                      Room[]
+  savedBy                    SavedProperty[]
+  tenants                    Tenant[]
+  tickets                    Ticket[]
+  deletedAt                  DateTime?
+  employeeAssignments        EmployeePropertyAssignment[]
+  tenancies                  Tenancy[]
 }
 
 model Room {
-  id             String    @id @default(uuid())
-  displayId      String?   @unique
-  propertyId     String
-  roomNumber     String
-  type           String
-  price          Float
-  availability   Int
-  totalBeds      Int       @default(1)
-  status         String    @default("AVAILABLE")
-  photoUrl       String?
-  depositMonths  Int       @default(1)  // 1 or 2 — per MTA 2021: max 2 months for residential
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  beds           Bed[]
-  bookings       Booking[]
-  property       Property  @relation(fields: [propertyId], references: [id])
-  tenants        Tenant[]
+  id            String    @id @default(uuid())
+  displayId     String    @unique
+  propertyId    String
+  roomNumber    String
+  type          String
+  price         Float
+  availability  Int
+  totalBeds     Int       @default(1)
+  status        String    @default("AVAILABLE")
+  photoUrl      String?
+  depositMonths Int       @default(1) // 1 or 2 — per MTA 2021: max 2 months for residential
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+  updatedAt     DateTime  @updatedAt
+  beds          Bed[]
+  bookings      Booking[]
+  property      Property  @relation(fields: [propertyId], references: [id])
+  tenants       Tenant[]
 }
 
 model Bed {
   id                String    @id @default(uuid())
-  displayId         String?   @unique
+  displayId         String    @unique
   roomId            String
   bedNumber         String
   status            String    @default("AVAILABLE")
@@ -218,75 +222,76 @@ model Bed {
   maintenanceSince  DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
   room              Room      @relation(fields: [roomId], references: [id])
   tenant            Tenant?
 }
 
 model Booking {
-  id                   String           @id @default(uuid())
-  displayId            String           @unique
-  userId               String
-  propertyId           String?
-  roomId               String?
-  propertyName         String
-  occupancy            String
-  guestName            String
-  guestEmail           String?
-  guestPhone           String?
-  guestAddress         String?
-  onboardingDate       String?
-  moveInDate           String
-  stayDuration         Int?
-  occupants            Int?             @default(1)
-  message              String?
-  status               String           @default("PENDING_APPROVAL")
-  paymentStatus        String           @default("UNPAID")
-  paymentMethod        String?
-  paidAt               DateTime?
-  amount               Float
-  roomAssigned         String?
-  fraudRiskScore       Int              @default(0)  // Cached risk score for fast admin queries
-  isFraudBlocked       Boolean          @default(false) // Set to true when booking blocked by fraud engine
-  agreementSigned      Boolean          @default(false)
-  agreementSignedAt    DateTime?
-  tenantId             String?          @unique
-  tokenAmount          Float?           @default(1000)
-  tokenPaidAt          DateTime?
-  tokenPaymentId       String?
-  reservationExpiresAt DateTime?
-  kycVerifiedAt        DateTime?
-  kycRejectedAt        DateTime?
-  kycNotes             String?
-  rejectionReason      String?
-  cancelReason         String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  deletedAt            DateTime?
-  guestCity            String?
-  guestCountry         String?          @default("India")
-  guestPincode         String?
-  occupationDetail     String?
-  occupationType       String?
-  pendingAmount                Float?
-  depositAmount                Float?     // = room.price × room.depositMonths (MTA 2021 cap: max 2 months)
-  depositMonths                Int?       // 1 or 2
-  platformFeeAmount            Float?     // platform fee charged at time of booking
-  propertyAgreementAccepted    Boolean    @default(false)
-  propertyAgreementAcceptedAt  DateTime?
+  id                          String           @id @default(uuid())
+  displayId                   String           @unique
+  userId                      String
+  propertyId                  String?
+  roomId                      String?
+  propertyName                String
+  occupancy                   String
+  guestName                   String
+  guestEmail                  String?
+  guestPhone                  String?
+  guestAddress                String?
+  onboardingDate              String?
+  moveInDate                  String
+  stayDuration                Int?
+  occupants                   Int?             @default(1)
+  message                     String?
+  status                      String           @default("PENDING_APPROVAL")
+  paymentStatus               String           @default("UNPAID")
+  paymentMethod               String?
+  paidAt                      DateTime?
+  amount                      Float
+  roomAssigned                String?
+  fraudRiskScore              Int              @default(0) // Cached risk score for fast admin queries
+  isFraudBlocked              Boolean          @default(false) // Set to true when booking blocked by fraud engine
+  agreementSigned             Boolean          @default(false)
+  agreementSignedAt           DateTime?
+  tenantId                    String?          @unique
+  tokenAmount                 Float?           @default(1000)
+  tokenPaidAt                 DateTime?
+  tokenPaymentId              String?
+  reservationExpiresAt        DateTime?
+  kycVerifiedAt               DateTime?
+  kycRejectedAt               DateTime?
+  kycNotes                    String?
+  rejectionReason             String?
+  cancelReason                String?
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+  deletedAt                   DateTime?
+  guestCity                   String?
+  guestCountry                String?          @default("India")
+  guestPincode                String?
+  occupationDetail            String?
+  occupationType              String?
+  pendingAmount               Float?
+  depositAmount               Float? // = room.price × room.depositMonths (MTA 2021 cap: max 2 months)
+  depositMonths               Int? // 1 or 2
+  platformFeeAmount           Float? // platform fee charged at time of booking
+  propertyAgreementAccepted   Boolean          @default(false)
+  propertyAgreementAcceptedAt DateTime?
   // ── Food & Mess Service (Sections 5, 8, 9) ──
-  foodSelected                 Boolean    @default(false)  // tenant's current food opt-in
-  foodPriceApplied             Float      @default(0)      // price locked at time of owner approval
-  property             Property?        @relation(fields: [propertyId], references: [id])
-  room                 Room?            @relation(fields: [roomId], references: [id])
-  user                 User             @relation(fields: [userId], references: [id])
-  payments             Payment[]
-  platformFee          PlatformFee?
-  tenant               Tenant?
-  documents            TenantDocument[]
-  foodPreferences      FoodPreference[]
-  creditNotes          CreditNote[]
-  invoices             RentInvoice[]    @relation("BookingInvoices")
-  fraudFlags           FraudFlag[]
+  foodSelected                Boolean          @default(false) // tenant's current food opt-in
+  foodPriceApplied            Float            @default(0) // price locked at time of owner approval
+  property                    Property?        @relation(fields: [propertyId], references: [id])
+  room                        Room?            @relation(fields: [roomId], references: [id])
+  user                        User             @relation(fields: [userId], references: [id])
+  payments                    Payment[]
+  platformFee                 PlatformFee?
+  tenant                      Tenant?
+  documents                   TenantDocument[]
+  foodPreferences             FoodPreference[]
+  creditNotes                 CreditNote[]
+  invoices                    RentInvoice[]    @relation("BookingInvoices")
+  fraudFlags                  FraudFlag[]
 }
 
 model Waitlist {
@@ -355,7 +360,7 @@ model BillingProfile {
   monthlyRent      Float
   securityDeposit  Float
   billingDay       Int              @default(1)
-  billingAnchorDay Int              @default(1)  // day-of-month from checkInDate; edge: >28 uses last day of month
+  billingAnchorDay Int              @default(1) // day-of-month from checkInDate; edge: >28 uses last day of month
   status           String           @default("ACTIVE")
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -371,28 +376,28 @@ model RentInvoice {
   tenantId         String
   propertyId       String
   month            String
-  billingMonth     String?                      // ISO YYYY-MM; used for dedup
+  billingMonth     String? // ISO YYYY-MM; used for dedup
   bookingId        String?
   booking          Booking?       @relation("BookingInvoices", fields: [bookingId], references: [id])
   amount           Float
-  rentAmount       Float          @default(0)   // rent portion
-  foodAmount       Float          @default(0)   // food charge this cycle
+  rentAmount       Float          @default(0) // rent portion
+  foodAmount       Float          @default(0) // food charge this cycle
   foodProrated     Boolean        @default(false) // true = first-activation partial month
-  foodNotes        String?                      // admin override notes
-  lockedAt         DateTime?                    // set on create; immutability marker
-  creditApplied    Float          @default(0)   // total credits deducted this cycle
+  foodNotes        String? // admin override notes
+  lockedAt         DateTime? // set on create; immutability marker
+  creditApplied    Float          @default(0) // total credits deducted this cycle
   dueDate          DateTime
   status           String         @default("PENDING")
   paidAmount       Float          @default(0)
-  paidRentAmount   Float          @default(0)   // partial payment: rent portion paid
-  paidFoodAmount   Float          @default(0)   // partial payment: food portion paid
+  paidRentAmount   Float          @default(0) // partial payment: rent portion paid
+  paidFoodAmount   Float          @default(0) // partial payment: food portion paid
   paidAt           DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   payments         Payment[]      @relation("InvoicePayments")
   billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
 
-  @@unique([tenantId, billingMonth])            // prevent duplicate invoices per billing cycle
+  @@unique([tenantId, billingMonth]) // prevent duplicate invoices per billing cycle
 }
 
 model SecurityDeposit {
@@ -524,25 +529,25 @@ model FoodPreference {
   bookingId         String
   propertyId        String
   userId            String
-  foodSelected      Boolean               // true = opted in, false = opted out
-  changedBy         String                // USER | OWNER | ADMIN
-  changedById       String                // ID of the person who made the change
-  effectiveFrom     DateTime              // Beginning of next billing cycle (UTC)
-  notes             String?               // optional reason/admin notes
+  foodSelected      Boolean // true = opted in, false = opted out
+  changedBy         String // USER | OWNER | ADMIN
+  changedById       String // ID of the person who made the change
+  effectiveFrom     DateTime // Beginning of next billing cycle (UTC)
+  notes             String? // optional reason/admin notes
   // ── Token / Confirmation Flow (owner-request, spec §4) ──
   status            String    @default("CONFIRMED") // PENDING_USER | CONFIRMED | REJECTED
-  confirmationToken String?   @unique               // short-lived UUID token sent to student
-  tokenExpiry       DateTime?                       // 48h from creation
-  tokenUsed         Boolean   @default(false)       // once used (accept/reject) → true
-  confirmedAt       DateTime?                       // set when student confirms
+  confirmationToken String?   @unique // short-lived UUID token sent to student
+  tokenExpiry       DateTime? // 48h from creation
+  tokenUsed         Boolean   @default(false) // once used (accept/reject) → true
+  confirmedAt       DateTime? // set when student confirms
   createdAt         DateTime  @default(now())
   booking           Booking   @relation(fields: [bookingId], references: [id])
   property          Property  @relation(fields: [propertyId], references: [id])
   user              User      @relation(fields: [userId], references: [id])
 
+  @@unique([bookingId, effectiveFrom]) // prevent duplicate/overlapping records
   @@index([bookingId])
   @@index([userId])
-  @@unique([bookingId, effectiveFrom])              // prevent duplicate/overlapping records
   @@map("food_preferences")
 }
 
@@ -675,30 +680,30 @@ model PlatformSettings {
 }
 
 model PlatformFee {
-  id             String   @id @default(uuid())
-  bookingId      String   @unique
+  id             String    @id @default(uuid())
+  bookingId      String    @unique
   grossAmount    Float
   customerFee    Float
   totalCharged   Float
   ownerNet       Float
   ownerFee       Float
   platformEarned Float
-  status         String   @default("ACTIVE")
+  status         String    @default("ACTIVE")
   deletedAt      DateTime?
-  createdAt      DateTime @default(now())
-  booking        Booking  @relation(fields: [bookingId], references: [id])
+  createdAt      DateTime  @default(now())
+  booking        Booking   @relation(fields: [bookingId], references: [id])
 }
 
 model FeeExemption {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   userId         String?
   propertyName   String?
-  exemptCustomer Boolean  @default(false)
-  exemptOwner    Boolean  @default(false)
+  exemptCustomer Boolean   @default(false)
+  exemptOwner    Boolean   @default(false)
   reason         String
-  status         String   @default("ACTIVE")
+  status         String    @default("ACTIVE")
   deletedAt      DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 }
 
 model OwnerOnboarding {
@@ -911,15 +916,15 @@ model AdminPermission {
 }
 
 model SavedProperty {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   userId     String
   propertyId String
   note       String?
-  status     String   @default("ACTIVE")
+  status     String    @default("ACTIVE")
   deletedAt  DateTime?
-  createdAt  DateTime @default(now())
-  property   Property @relation(fields: [propertyId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime  @default(now())
+  property   Property  @relation(fields: [propertyId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, propertyId])
 }
@@ -974,27 +979,27 @@ model RefundRecord {
 }
 
 model OwnerEmployee {
-  id          String                       @id @default(uuid())
-  displayId   String                       @unique
-  ownerId     String
-  name        String
-  email       String                       @unique
-  phone       String
-  role        String                       @default("Staff")
-  status      String                       @default("ACTIVE")
-  pincode     String?
-  city        String?
-  state       String?
-  postOffice  String?
-  address     String?
-  invitationToken String?   @unique
+  id                String                       @id @default(uuid())
+  displayId         String                       @unique
+  ownerId           String
+  name              String
+  email             String                       @unique
+  phone             String
+  role              String                       @default("Staff")
+  status            String                       @default("ACTIVE")
+  pincode           String?
+  city              String?
+  state             String?
+  postOffice        String?
+  address           String?
+  invitationToken   String?                      @unique
   invitationExpires DateTime?
-  createdAt   DateTime                     @default(now())
-  updatedAt   DateTime                     @updatedAt
-  userId      String?                      @unique
-  assignments EmployeePropertyAssignment[]
-  owner       User                         @relation("OwnerEmployees", fields: [ownerId], references: [id])
-  user        User?                        @relation("UserAsEmployee", fields: [userId], references: [id])
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  userId            String?                      @unique
+  assignments       EmployeePropertyAssignment[]
+  owner             User                         @relation("OwnerEmployees", fields: [ownerId], references: [id])
+  user              User?                        @relation("UserAsEmployee", fields: [userId], references: [id])
 
   @@map("owner_employees")
 }
@@ -1004,7 +1009,7 @@ model EmployeePropertyAssignment {
   employeeId String
   propertyId String
   assignedBy String
-  status     String   @default("ACTIVE")
+  status     String        @default("ACTIVE")
   deletedAt  DateTime?
   assignedAt DateTime      @default(now())
   employee   OwnerEmployee @relation(fields: [employeeId], references: [id])
@@ -1069,39 +1074,39 @@ model UploadSession {
 // ── Credit Note Ledger (Food Billing — All 5 Specs) ──
 // Applied FIFO (ORDER BY createdAt ASC). No hard deletes — status only.
 model CreditNote {
-  id             String    @id @default(uuid())
-  displayId      String    @unique
+  id             String   @id @default(uuid())
+  displayId      String   @unique
   bookingId      String
   tenantId       String?
-  invoiceId      String?                          // linked invoice if applicable
-  amount         Float                            // positive = credit to tenant
-  carryForward   Float     @default(0)            // remainder from excess credits
+  invoiceId      String? // linked invoice if applicable
+  amount         Float // positive = credit to tenant
+  carryForward   Float    @default(0) // remainder from excess credits
   reason         String
-  type           String    // FOOD_NOT_PROVIDED | REFUND | ADMIN_OVERRIDE | CARRY_FORWARD
+  type           String // FOOD_NOT_PROVIDED | REFUND | ADMIN_OVERRIDE | CARRY_FORWARD
   createdById    String
   createdByRole  String
-  appliedToMonth String?                          // ISO YYYY-MM
-  status         String    @default("PENDING")    // PENDING | APPLIED | CANCELLED
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  booking        Booking   @relation(fields: [bookingId], references: [id])
+  appliedToMonth String? // ISO YYYY-MM
+  status         String   @default("PENDING") // PENDING | APPLIED | CANCELLED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  booking        Booking  @relation(fields: [bookingId], references: [id])
 
-  @@index([bookingId, status, createdAt])         // mandatory fix: FIFO performance
+  @@index([bookingId, status, createdAt]) // mandatory fix: FIFO performance
   @@map("credit_notes")
 }
 
 model FraudFlag {
-  id          String   @id @default(uuid())
-  userId      String
-  bookingId   String?
-  reason      String
-  riskScore   Int      @default(0)
-  status      String   @default("OPEN") // OPEN | REVIEWED | RESOLVED
-  metadata    Json?    // For storing evidence like { "linkedUserId": "..." }
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
-  booking     Booking? @relation(fields: [bookingId], references: [id])
+  id        String   @id @default(uuid())
+  userId    String
+  bookingId String?
+  reason    String
+  riskScore Int      @default(0)
+  status    String   @default("OPEN") // OPEN | REVIEWED | RESOLVED
+  metadata  Json? // For storing evidence like { "linkedUserId": "..." }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  booking   Booking? @relation(fields: [bookingId], references: [id])
 
   @@index([userId])
   @@index([bookingId])
@@ -1127,8 +1132,8 @@ model LinkedAccount {
   userAId         String
   userBId         String
   // Each row represents one confirmed signal linking A to B
-  linkType        String   // DEVICE | PHONE | EMAIL | IP | PAYMENT
-  reason          String   // Human-readable explanation
+  linkType        String // DEVICE | PHONE | EMAIL | IP | PAYMENT
+  reason          String // Human-readable explanation
   confidenceScore Int      @default(0) // 0-100 per-signal confidence
   createdAt       DateTime @default(now())
   userA           User     @relation("UserA", fields: [userAId], references: [id])
@@ -1140,3 +1145,28 @@ model LinkedAccount {
   @@map("linked_accounts")
 }
 
+model IdCounter {
+  id        String   @id @default(cuid())
+  type      String
+  fyKey     String   @default("GLOBAL")
+  sequence  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, fyKey])
+}
+
+model Tenancy {
+  id            String    @id @default(cuid())
+  userId        String
+  propertyId    String
+  tenancyNumber Int
+  displayId     String    @unique
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, tenancyNumber])
+}
