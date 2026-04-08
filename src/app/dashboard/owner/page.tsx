@@ -388,6 +388,49 @@ export default function OwnerDashboard() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* ── Security & Password ── */}
+                            <div className="mt-8 pt-8 border-t border-slate-100">
+                                <div className="p-8 bg-white border-2 border-slate-100 rounded-[32px] shadow-sm">
+                                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                        <div className="flex items-start gap-4">
+                                            <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                                                <Lock className="h-6 w-6 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-lg font-black text-slate-800">Security & Account Access</h4>
+                                                <p className="text-sm text-slate-500 font-medium">Protect your business account and manage staff access keys.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2 w-full md:w-auto">
+                                            <Button
+                                                variant="outline"
+                                                className="w-full md:w-auto border-2 border-blue-100 text-blue-700 font-black h-12 px-8 rounded-2xl hover:bg-blue-50 transition-all uppercase tracking-tight text-[11px]"
+                                                onClick={async () => {
+                                                    const confirmReset = window.confirm("We will send a secure password reset link to your registered business email. Proceed?");
+                                                    if (!confirmReset) return;
+                                                    const { forgotPassword } = await import("@/actions/auth");
+                                                    const { toast } = await import("sonner");
+                                                    const formData = new FormData();
+                                                    formData.append('email', stats.user?.email || "");
+                                                    const toastId = toast.loading("Sending secure reset link...");
+                                                    const result = await forgotPassword(formData);
+                                                    if (result.success) {
+                                                        toast.success("Reset link sent! Please check your email.", { id: toastId });
+                                                    } else {
+                                                        toast.error(result.error || "Failed to send reset link.", { id: toastId });
+                                                    }
+                                                }}
+                                            >
+                                                Change Password →
+                                            </Button>
+                                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">
+                                                Secure token sent via email
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
 

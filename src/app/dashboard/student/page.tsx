@@ -8,7 +8,7 @@ import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -1020,6 +1020,47 @@ export default function StudentDashboardPage() {
                                     </p>
                                 </div>
                                 <Badge className="bg-emerald-50 text-emerald-700 border-none px-3 font-black text-[9px] uppercase tracking-widest">Active</Badge>
+                            </div>
+
+                            {/* ── Security & Password ── */}
+                            <div className="p-8 bg-white border-2 border-slate-100 rounded-[32px] shadow-sm">
+                                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0">
+                                            <Lock className="h-6 w-6 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-lg font-black text-slate-800">Security & Privacy</h4>
+                                            <p className="text-sm text-slate-500 font-medium">Manage your account protection and password settings.</p>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        variant="outline"
+                                        className="w-full md:w-auto border-2 border-indigo-100 text-indigo-700 font-black h-12 px-8 rounded-2xl hover:bg-indigo-50 transition-all uppercase tracking-tight text-[11px]"
+                                        onClick={async () => {
+                                            const confirmReset = window.confirm("We will send a secure password reset link to your registered email. Proceed?");
+                                            if (!confirmReset) return;
+                                            
+                                            const { forgotPassword } = await import("@/actions/auth");
+                                            const formData = new FormData();
+                                            formData.append('email', profile?.email || "");
+                                            
+                                            const toastId = toast.loading("Sending secure reset link...");
+                                            const result = await forgotPassword(formData);
+                                            
+                                            if (result.success) {
+                                                toast.success("Reset link sent! Please check your email.", { id: toastId });
+                                            } else {
+                                                toast.error(result.error || "Failed to send reset link.", { id: toastId });
+                                            }
+                                        }}
+                                    >
+                                        Change Password →
+                                    </Button>
+                                </div>
+                                <div className="mt-6 flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest pl-2">
+                                    <Shield className="h-3 w-3" /> Two-Factor Authentication (Coming Soon)
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
