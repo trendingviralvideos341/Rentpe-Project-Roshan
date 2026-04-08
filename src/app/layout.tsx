@@ -1,25 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import SessionGuard from "@/components/layout/SessionGuard";
-import SessionSync from "@/components/layout/SessionSync";
-import { Toaster } from 'sonner';
-import { getSession } from "@/lib/auth";
-import { CSPostHogProvider } from "@/components/providers/posthog-provider";
-import NotificationSync from "@/components/layout/NotificationSync";
-import prisma from "@/lib/prisma";
-import { Activity } from "lucide-react";
+import { Inter, Outfit } from "next/font/google";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const outfit = Outfit({
   subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -80,7 +71,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        className={`${inter.variable} ${outfit.variable} font-inter antialiased min-h-screen flex flex-col`}
       >
         <CSPostHogProvider>
           {maintenanceMode ? (

@@ -128,7 +128,8 @@ export async function createBooking(data: {
             guestName,
             moveInDate: data.moveInDate,
             amount: data.amount,
-            status: 'REQUESTED',
+            status: 'APPLIED',
+            appliedAt: new Date(),
             paymentStatus: 'UNPAID',
             guestEmail,
             guestPhone,
@@ -297,6 +298,7 @@ export async function approveBooking(id: string, data: {
         where: { id },
         data: {
             status: 'APPROVED',
+            approvedAt: new Date(),
             roomId: data.roomId,
             amount: data.amount,
             occupancy: data.occupancy,
@@ -397,7 +399,11 @@ export async function rejectBooking(id: string, reason?: string) {
 
     const booking = await prisma.booking.update({
         where: { id },
-        data: { status: 'REJECTED' }
+        data: { 
+            status: 'REJECTED',
+            rejectedAt: new Date(),
+            rejectionReason: reason || 'Rejected by owner'
+        }
     });
 
     // Return bed if room was assigned
@@ -456,9 +462,17 @@ export async function updateBookingStatus(id: string, status: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
+    const data: any = { status };
+    if (status === 'APPLIED') data.appliedAt = new Date();
+    if (status === 'APPROVED') data.approvedAt = new Date();
+    if (status === 'MOVE_IN_SCHEDULED') data.moveInScheduled = new Date();
+    if (status === 'ACTIVE') data.activeAt = new Date();
+    if (status === 'COMPLETED') data.completedAt = new Date();
+    if (status === 'REJECTED') data.rejectedAt = new Date();
+
     const booking = await prisma.booking.update({
         where: { id },
-        data: { status }
+        data
     });
 
     revalidatePath('/dashboard/owner/bookings');
@@ -470,11 +484,12 @@ export async function markBookingPaid(id: string, method: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    // 1. Mark booking as PAID
+    // 1. Mark booking as MOVE_IN_SCHEDULED (Legacy: PAID)
     const booking = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'PAID',
+            status: 'MOVE_IN_SCHEDULED',
+            moveInScheduled: new Date(),
             paymentStatus: 'PAID',
             paymentMethod: method,
             paidAt: new Date(),
@@ -488,8 +503,8 @@ export async function markBookingPaid(id: string, method: string) {
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
-        description: `Payment received via ${method}`,
-        newValue: { status: 'PAID', paymentMethod: method }
+        description: `Payment received via ${method}. Status moved to MOVE_IN_SCHEDULED.`,
+        newValue: { status: 'MOVE_IN_SCHEDULED', paymentMethod: method }
     });
 
     revalidatePath('/dashboard/owner/bookings');
@@ -538,7 +553,8 @@ export async function checkInBooking(id: string) {
     const updatedBooking = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'CHECKED_IN',
+            status: 'ACTIVE',
+            activeAt: new Date(),
             onboardingDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         }
     });
@@ -744,7 +760,12 @@ export async function cancelBooking(id: string, reason?: string) {
 
     const updated = await prisma.booking.update({
         where: { id },
-        data: { status: 'CANCELLED', cancelReason: reason || 'Cancelled by user' }
+        data: { 
+            status: 'REJECTED', 
+            rejectedAt: new Date(),
+            rejectionReason: reason || 'Cancelled by user',
+            cancelReason: reason || 'Cancelled by user' 
+        }
     });
 
     if (booking.roomId) {

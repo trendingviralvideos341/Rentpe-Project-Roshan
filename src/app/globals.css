@@ -2,6 +2,9 @@
 @plugin "tailwindcss-animate";
 
 @theme {
+  --font-inter: var(--font-inter);
+  --font-outfit: var(--font-outfit);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

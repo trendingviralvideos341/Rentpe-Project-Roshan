@@ -244,7 +244,15 @@ model Booking {
   stayDuration                Int?
   occupants                   Int?             @default(1)
   message                     String?
-  status                      String           @default("PENDING_APPROVAL")
+  status                      String           @default("APPLIED")
+  appliedAt                   DateTime?
+  approvedAt                  DateTime?
+  moveInScheduled             DateTime?
+  moveInAt                    DateTime?
+  activeAt                    DateTime?
+  vacatingAt                  DateTime?
+  completedAt                 DateTime?
+  rejectedAt                  DateTime?
   paymentStatus               String           @default("UNPAID")
   paymentMethod               String?
   paidAt                      DateTime?

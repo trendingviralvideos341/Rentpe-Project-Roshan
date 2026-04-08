@@ -15,7 +15,7 @@ import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { generateInvoicePDF } from "@/utils/invoiceGenerator";
-import { BookingStepper } from "@/components/booking/BookingStepper";
+import { BookingTimeline } from "@/components/ui/BookingTimeline";
 import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
 import { PropertyAgreementModal } from "@/components/booking/PropertyAgreementModal";
 import { BookingFeeBreakdown } from "@/components/booking/BookingFeeBreakdown";
@@ -648,7 +648,7 @@ export default function StudentDashboardPage() {
                                             {!isCancelled && booking.status !== "REJECTED" && (
                                                 <div className="py-4 border-y border-slate-100 my-4 bg-slate-50/50 rounded-xl px-4">
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Booking Progress</p>
-                                                    <BookingStepper status={booking.status} reservationExpiresAt={booking.reservationExpiresAt} />
+                                                    <BookingTimeline booking={booking} />
                                                 </div>
                                             )}
 
