@@ -36,8 +36,11 @@ export default async function middleware(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
 
     let limiter: (typeof rateLimits)[keyof typeof rateLimits] | null = null;
-    if (path.startsWith('/auth/') || path.startsWith('/api/auth/') || path === '/login' || path === '/signup') {
-        limiter = rateLimits.auth;
+    const isAuthPath = path.startsWith('/auth/') || path.startsWith('/api/auth/') || path === '/login' || path === '/signup';
+    if (isAuthPath) {
+        // Strict auth limit (5/min) should only apply to form submissions/actions (POST)
+        // Page views (GET) use the more generous API limit to avoid prefetching lockouts
+        limiter = req.method === 'GET' ? rateLimits.api : rateLimits.auth;
     } else if (path.startsWith('/api/payments/')) {
         limiter = rateLimits.payment;
     } else if (path.includes('/properties/') || path.includes('/bookings/')) {
