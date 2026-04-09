@@ -39,7 +39,12 @@ export async function getTenants() {
         where: whereClause,
         include: {
             property: { select: { name: true } },
-            rentRecords: { orderBy: { createdAt: 'desc' } }
+            rentRecords: { orderBy: { createdAt: 'desc' } },
+            booking: {
+                include: {
+                    moveInChecklist: true
+                }
+            }
         },
         orderBy: { name: 'asc' }
     });
@@ -642,3 +647,12 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
 
 // Aliases for compatibility
 export const initiateMoveOut = confirmMoveOut;
+
+export async function getMoveInChecklist(bookingId: string) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
+
+    return await prisma.moveInChecklist.findUnique({
+        where: { bookingId }
+    });
+}

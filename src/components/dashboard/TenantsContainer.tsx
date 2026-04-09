@@ -4,7 +4,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle, ClipboardCheck } from "lucide-react";
 import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord, initiateMoveOut } from "@/actions/tenants";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -27,6 +27,7 @@ export function TenantsContainer() {
     const [showMoveOut, setShowMoveOut] = useState<Record<string, boolean>>({});
     const [moveOutDeductions, setMoveOutDeductions] = useState<Record<string, string>>({});
     const [moveOutNote, setMoveOutNote] = useState<Record<string, string>>({});
+    const [viewingChecklist, setViewingChecklist] = useState<any>(null);
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
 
@@ -331,83 +332,72 @@ export function TenantsContainer() {
                                                     )}
                                                 </td>
 
-                                                {/* Actions */}
-                                                <td className="p-4">
-                                                    {!isBlocked ? (
-                                                        <div className="space-y-1">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-7 text-[10px] w-full border-blue-400 text-blue-700 hover:bg-blue-50"
-                                                                onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}
-                                                            >
-                                                                🚪 Move Out & Settlement
-                                                            </Button>
-                                                            <Input
-                                                                className="h-7 text-xs w-40"
-                                                                placeholder="Block reason (required)..."
-                                                                value={blockNotes[t.id] || ""}
-                                                                onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                            />
-                                                            <Button
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                className="h-7 text-[10px] w-full"
-                                                                disabled={!blockNotes[t.id]?.trim()}
-                                                                onClick={() => handleBlock(t.id)}
-                                                            >
-                                                                🚫 Block Tenant
-                                                            </Button>
-                                                            <div className="pt-2 border-t mt-2">
+                                                {/* Actions column */}
+                                                <td className="p-4 text-center">
+                                                    <div className="flex flex-col gap-1 items-center">
+                                                        {!isBlocked ? (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-7 text-[10px] w-full border-blue-400 text-blue-700 hover:bg-blue-50"
+                                                                    onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}
+                                                                >
+                                                                    🚪 Move Out & Settlement
+                                                                </Button>
+                                                                <Input
+                                                                    className="h-7 text-xs w-full"
+                                                                    placeholder="Block reason..."
+                                                                    value={blockNotes[t.id] || ""}
+                                                                    onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))}
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="destructive"
+                                                                    className="h-7 text-[10px] w-full"
+                                                                    disabled={!blockNotes[t.id]?.trim()}
+                                                                    onClick={() => handleBlock(t.id)}
+                                                                >
+                                                                    🚫 Block Tenant
+                                                                </Button>
                                                                 {showGenerateRent[t.id] ? (
-                                                                    <div className="space-y-1">
-                                                                        <Input
-                                                                            type="month"
-                                                                            className="h-7 text-xs bg-white"
-                                                                            value={generateMonth[t.id] || ""}
-                                                                            onChange={e => {
-                                                                                const d = new Date(e.target.value);
-                                                                                const m = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-                                                                                setGenerateMonth(p => ({ ...p, [t.id]: m }));
-                                                                            }}
-                                                                        />
-                                                                        <div className="flex gap-1 justify-between">
-                                                                            <Button size="sm" className="h-6 text-[10px] bg-blue-600 hover:bg-blue-700 w-full" onClick={() => handleGenerateRent(t.id)}>Generate</Button>
+                                                                    <div className="space-y-1 w-full pt-1 border-t mt-1">
+                                                                        <Input type="month" className="h-7 text-xs" value={generateMonth[t.id] || ""} onChange={e => setGenerateMonth(p => ({ ...p, [t.id]: e.target.value }))} />
+                                                                        <div className="flex gap-1">
+                                                                            <Button size="sm" className="h-6 text-[10px] flex-1" onClick={() => handleGenerateRent(t.id)}>Generate</Button>
                                                                             <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: false }))}>✕</Button>
                                                                         </div>
                                                                     </div>
                                                                 ) : (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        className="h-7 text-[10px] w-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                                                        onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: true }))}
-                                                                    >
-                                                                        <PlusCircle className="mr-1 h-3 w-3" /> Generate Next Rent
+                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] w-full bg-blue-50 border-blue-200" onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: true }))}>
+                                                                        <PlusCircle className="mr-1 h-3 w-3" /> Rent
                                                                     </Button>
                                                                 )}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-1">
-                                                            <div className="text-[10px] text-red-600 font-medium">Blocked: {t.vacatedOn}</div>
-                                                            <Input
-                                                                className="h-7 text-xs w-40"
-                                                                placeholder="Unblock reason (required)..."
-                                                                value={unblockNotes[t.id] || ""}
-                                                                onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                            />
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Input
+                                                                    className="h-7 text-xs w-full"
+                                                                    placeholder="Unblock reason..."
+                                                                    value={unblockNotes[t.id] || ""}
+                                                                    onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))}
+                                                                />
+                                                                <Button size="sm" variant="outline" className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50" onClick={() => handleUnblock(t.id)}>
+                                                                    ✅ Unblock
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                        {t.booking?.moveInChecklist && (
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
-                                                                className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50"
-                                                                disabled={!unblockNotes[t.id]?.trim()}
-                                                                onClick={() => handleUnblock(t.id)}
+                                                                className="h-7 text-[10px] w-full mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                                                onClick={() => setViewingChecklist(t)}
                                                             >
-                                                                ✅ Unblock Tenant
-                             </Button>
-                                                        </div>
-                                                    )}
+                                                                <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Checklist
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
 
@@ -430,90 +420,89 @@ export function TenantsContainer() {
                                         </Fragment>
                                     );
                                 })}
-                                {filteredTenants.length === 0 && (
-                                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No tenants found.</td></tr>
-                                )}
                             </tbody>
                         </table>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Move Out Dialog */}
+            {/* Move Out Dialogs */}
             {filteredTenants.map(t => (
                 <Dialog key={`moveout-${t.id}`} open={!!showMoveOut[t.id]} onOpenChange={(open) => setShowMoveOut(p => ({ ...p, [t.id]: open }))}>
                     <DialogContent className="max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
-                                <span className="p-2 bg-blue-100 text-blue-700 rounded-lg"><Clock className="h-5 w-5" /></span>
-                                Final Tenancy Settlement
+                                <Clock className="h-5 w-5 text-blue-600" />
+                                Settlement
                             </DialogTitle>
                             <DialogDescription>
-                                Processing move-out for <strong>{t.name}</strong> from <strong>{t.property?.name}</strong>.
+                                Process move-out for {t.name}.
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="space-y-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-red-50 rounded-lg border border-red-100">
-                                    <p className="text-[10px] font-bold text-red-600 uppercase">Unpaid Rent</p>
-                                    <p className="text-xl font-black text-red-900">₹{t.rentRecords.filter((r: any) => !r.paid).reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0).toLocaleString('en-IN')}</p>
-                                </div>
-                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                    <p className="text-[10px] font-bold text-blue-600 uppercase">Est. Security Deposit</p>
-                                    <p className="text-xl font-black text-blue-900">₹{parseFloat(t.rent).toLocaleString('en-IN')}</p>
-                                </div>
+                        <div className="space-y-4 py-4 text-sm">
+                            <div className="p-3 bg-red-50 rounded-lg border border-red-100 font-bold">
+                                Unpaid Rent: ₹{t.rentRecords.filter((r: any) => !r.paid).reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0).toLocaleString()}
                             </div>
-
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold">Damage Deductions (₹)</label>
-                                <Input
-                                    type="number"
-                                    placeholder="Enter damage amount..."
-                                    value={moveOutDeductions[t.id] || ""}
-                                    onChange={e => setMoveOutDeductions(p => ({ ...p, [t.id]: e.target.value }))}
-                                />
-                                <p className="text-[10px] text-muted-foreground italic">Repairs, painting, or missing items costs.</p>
+                                <label className="font-semibold block">Damage Deductions (₹)</label>
+                                <Input type="number" value={moveOutDeductions[t.id] || "0"} onChange={e => setMoveOutDeductions(p => ({ ...p, [t.id]: e.target.value }))} />
                             </div>
-
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold">Settlement Summary / Notes</label>
-                                <textarea
-                                    className="w-full min-h-[100px] border rounded-md p-2 text-sm bg-muted/20"
-                                    placeholder="Briefly explain the final settlement details..."
-                                    value={moveOutNote[t.id] || ""}
-                                    onChange={e => setMoveOutNote(p => ({ ...p, [t.id]: e.target.value }))}
-                                />
-                            </div>
-
-                            <div className="p-4 bg-slate-900 text-white rounded-xl shadow-inner">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs text-slate-400">Final Refund Amount:</span>
-                                    <span className="text-lg font-black text-emerald-400">
-                                        ₹{(parseFloat(t.rent) - t.rentRecords.filter((r: any) => !r.paid).reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0) - parseFloat(moveOutDeductions[t.id] || "0")).toLocaleString('en-IN')}
-                                    </span>
-                                </div>
+                                <label className="font-semibold block">Notes</label>
+                                <textarea className="w-full border p-2 rounded h-20 bg-muted/20" value={moveOutNote[t.id] || ""} onChange={e => setMoveOutNote(p => ({ ...p, [t.id]: e.target.value }))} />
                             </div>
                         </div>
 
-                        <DialogFooter className="gap-2 sm:gap-2">
-                            <button 
-                                onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: false }))}
-                                className="px-6 py-2 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
-                            >
-                                CANCEL
-                            </button>
-                            <Button
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                                disabled={!moveOutNote[t.id]?.trim()}
-                                onClick={() => handleMoveOut(t.id)}
-                            >
-                                Confirm Move-Out & Settlement
-                            </Button>
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: false }))}>Cancel</Button>
+                            <Button className="bg-blue-600" onClick={() => handleMoveOut(t.id)}>Finalize</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             ))}
+
+            {/* View Checklist Dialog */}
+            <Dialog open={!!viewingChecklist} onOpenChange={(open) => !open && setViewingChecklist(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ClipboardCheck className="h-5 w-5 text-emerald-600" />
+                            Move-in Checklist
+                        </DialogTitle>
+                        <DialogDescription>
+                            Reviewing checklist for <strong>{viewingChecklist?.name}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
+                        {(() => {
+                            if (!viewingChecklist?.booking?.moveInChecklist) return null;
+                            let items = [];
+                            try {
+                                items = typeof viewingChecklist.booking.moveInChecklist.items === 'string' 
+                                    ? JSON.parse(viewingChecklist.booking.moveInChecklist.items) 
+                                    : viewingChecklist.booking.moveInChecklist.items;
+                            } catch (e) { console.error(e); }
+
+                            if (!items || items.length === 0) return <p className="text-center text-muted-foreground py-8">No items recorded.</p>;
+
+                            return items.map((item: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between p-3 rounded-lg border bg-slate-50 text-sm">
+                                    <span className="font-medium">{item.task}</span>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.status === 'COMPLETED' ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
+                                        {item.status}
+                                    </span>
+                                </div>
+                            ));
+                        })()}
+                    </div>
+
+                    <DialogFooter>
+                        <Button onClick={() => setViewingChecklist(null)} className="w-full">Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
