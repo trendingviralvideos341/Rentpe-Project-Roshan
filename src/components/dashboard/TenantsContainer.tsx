@@ -60,17 +60,23 @@ export function TenantsContainer() {
         } catch { toast.error("Failed to mark rent as paid."); }
     };
 
-    const handleMarkUnpaid = async (recordId: string, tenantId: string) => {
+    const handleMarkUnpaid = (recordId: string, tenantId: string) => {
         const note = payNotes[tenantId]?.trim();
         if (!note) { toast.error("Please enter a note before reversing payment."); return; }
-        if (!confirm("Reverse this payment? This will mark the rent as UNPAID.")) return;
-        try {
-            await markRentAsUnpaid(recordId, note);
-            setPayNotes(p => ({ ...p, [tenantId]: "" }));
-            setShowPayNote(p => ({ ...p, [tenantId]: false }));
-            toast.success("Rent reversed to Unpaid.");
-            await fetchTenants();
-        } catch { toast.error("Failed to mark rent as unpaid."); }
+        toast("Reverse this payment to UNPAID?", {
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    try {
+                        await markRentAsUnpaid(recordId, note);
+                        setPayNotes(p => ({ ...p, [tenantId]: "" }));
+                        setShowPayNote(p => ({ ...p, [tenantId]: false }));
+                        toast.success("Rent reversed to Unpaid.");
+                        await fetchTenants();
+                    } catch { toast.error("Failed to mark rent as unpaid."); }
+                }
+            }
+        });
     };
 
     const handleBlock = async (tenantId: string) => {
@@ -219,7 +225,82 @@ export function TenantsContainer() {
                 </CardContent>
             </Card>
 
-            {/* Tenant Table */}
+            {/* ── Mobile Cards ── */}
+            <div className="md:hidden space-y-3">
+                {filteredTenants.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-12">No tenants found.</p>
+                ) : filteredTenants.map(t => {
+                    const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
+                    const isPaid = latestRent?.paid ?? false;
+                    const isBlocked = t.status === "Blocked";
+                    const isCheckedOut = t.status === "Checked Out";
+                    return (
+                        <div key={t.id} className={`bg-white border rounded-2xl p-4 shadow-sm space-y-3 ${
+                            isBlocked ? "border-l-4 border-l-red-400" : isPaid ? "border-l-4 border-l-green-400" : "border-l-4 border-l-amber-400"}`}>
+                            <div className="flex justify-between items-start gap-2">
+                                <div>
+                                    <p className={`font-black text-sm ${isBlocked ? "text-red-500" : isCheckedOut ? "text-slate-500 italic" : ""}`}>{t.name}</p>
+                                    <p className="text-[10px] font-mono text-purple-600">{t.displayId}</p>
+                                    <p className="text-[10px] text-indigo-600 font-bold">{t.property?.name}</p>
+                                </div>
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-black ${
+                                    isBlocked ? "bg-red-100 text-red-700" :
+                                    isCheckedOut ? "bg-slate-100 text-slate-600" :
+                                    isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                    {isBlocked ? "🚫 Blocked" : isCheckedOut ? "🏠 Out" : isPaid ? "✅ Paid" : "❌ Unpaid"}
+                                </span>
+                            </div>
+                            <div className="text-xs text-slate-600 space-y-1">
+                                <p>🛏 {t.roomNumber} ({t.roomType})</p>
+                                <p>💰 ₹{t.rentAmount}/month</p>
+                                <p>📅 Move-in: {t.moveInDate}</p>
+                            </div>
+                            {!isBlocked && !isCheckedOut && (
+                                <div className="flex gap-2 flex-wrap">
+                                    {latestRent && !showPayNote[t.id] && (
+                                        <Button size="sm" variant="outline" className="text-xs flex-1"
+                                            onClick={() => setShowPayNote(p => ({ ...p, [t.id]: true }))}>
+                                            {isPaid ? "↩ Mark Unpaid" : "✓ Mark Paid"}
+                                        </Button>
+                                    )}
+                                    <Button size="sm" variant="outline" className="text-xs border-blue-300 text-blue-700"
+                                        onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}>
+                                        🚶 Move Out
+                                    </Button>
+                                </div>
+                            )}
+                            {showPayNote[t.id] && latestRent && (
+                                <div className="space-y-2 pt-2 border-t">
+                                    <input className="w-full border rounded-lg p-2 text-xs" placeholder="Note (mandatory)..."
+                                        value={payNotes[t.id] || ""}
+                                        onChange={e => setPayNotes(p => ({ ...p, [t.id]: e.target.value }))} />
+                                    <div className="flex gap-2">
+                                        {!isPaid && (
+                                            <Button size="sm" className="bg-green-600 flex-1 text-xs" onClick={() => handleMarkPaid(latestRent.id, t.id)}>Confirm Paid</Button>
+                                        )}
+                                        {isPaid && (
+                                            <Button size="sm" variant="outline" className="border-red-300 text-red-600 flex-1 text-xs" onClick={() => handleMarkUnpaid(latestRent.id, t.id)}>Confirm Reverse</Button>
+                                        )}
+                                        <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowPayNote(p => ({ ...p, [t.id]: false }))}>✕</Button>
+                                    </div>
+                                </div>
+                            )}
+                            {isBlocked && (
+                                <div className="space-y-2 pt-2 border-t">
+                                    <input className="w-full border rounded-lg p-2 text-xs" placeholder="Unblock reason..."
+                                        value={unblockNotes[t.id] || ""}
+                                        onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
+                                    <Button size="sm" variant="outline" className="w-full text-xs border-green-300 text-green-700"
+                                        onClick={() => handleUnblock(t.id)}>✅ Unblock</Button>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* ── Desktop Table ── */}
+            <div className="hidden md:block">
             <Card>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
@@ -227,12 +308,12 @@ export function TenantsContainer() {
                             <thead className="bg-muted border-b">
                                 <tr>
                                     <th className="p-4 text-left font-medium">Tenant ID</th>
-                                    <th className="p-4 text-left font-medium">Name & PG</th>
+                                    <th className="p-4 text-left font-medium">Name &amp; PG</th>
                                     <th className="p-4 text-left font-medium">Room</th>
                                     <th className="p-4 text-left font-medium">Start Date</th>
                                     <th className="p-4 text-left font-medium">Monthly Rent</th>
                                     <th className="p-4 text-left font-medium">{currentMonth} Status</th>
-                                    <th className="p-4 text-left font-medium">Status & History</th>
+                                    <th className="p-4 text-left font-medium">Status &amp; History</th>
                                     <th className="p-4 text-left font-medium">Actions</th>
                                 </tr>
                             </thead>
@@ -270,25 +351,17 @@ export function TenantsContainer() {
                                                             </span>
                                                             {latestRent && (
                                                                 <div>
-                                                                    {/* Payment note input */}
                                                                     {showPayNote[t.id] && (
                                                                         <div className="mt-1 space-y-1">
-                                                                            <Input
-                                                                                className="h-7 text-xs"
-                                                                                placeholder="Mandatory note..."
+                                                                            <Input className="h-7 text-xs" placeholder="Mandatory note..."
                                                                                 value={payNotes[t.id] || ""}
-                                                                                onChange={e => setPayNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                                            />
+                                                                                onChange={e => setPayNotes(p => ({ ...p, [t.id]: e.target.value }))} />
                                                                             <div className="flex gap-1">
                                                                                 {!isPaid && (
-                                                                                    <Button size="sm" className="h-6 text-[10px] bg-green-600 hover:bg-green-700" onClick={() => handleMarkPaid(latestRent.id, t.id)}>
-                                                                                        ✓ Mark Paid
-                                                                                    </Button>
+                                                                                    <Button size="sm" className="h-6 text-[10px] bg-green-600 hover:bg-green-700" onClick={() => handleMarkPaid(latestRent.id, t.id)}>✓ Mark Paid</Button>
                                                                                 )}
                                                                                 {isPaid && (
-                                                                                    <Button size="sm" variant="outline" className="h-6 text-[10px] border-red-300 text-red-600" onClick={() => handleMarkUnpaid(latestRent.id, t.id)}>
-                                                                                        ↩ Unpaid
-                                                                                    </Button>
+                                                                                    <Button size="sm" variant="outline" className="h-6 text-[10px] border-red-300 text-red-600" onClick={() => handleMarkUnpaid(latestRent.id, t.id)}>↩ Unpaid</Button>
                                                                                 )}
                                                                                 <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowPayNote(p => ({ ...p, [t.id]: false }))}>✕</Button>
                                                                             </div>
@@ -320,7 +393,12 @@ export function TenantsContainer() {
                                                     {historyExpanded && t.actionNotes?.length > 0 && (
                                                         <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
                                                             {t.actionNotes.map((note: any, i: number) => (
-                                                                <div key={i} className={`text-[9px] p-1.5 rounded border ${note.action === 'MOVED_OUT' ? "bg-slate-50 border-slate-200 text-slate-700" : note.action === 'BLOCKED' ? "bg-red-50 border-red-200 text-red-700" : note.action === 'UNBLOCKED' ? "bg-green-50 border-green-200 text-green-700" : note.action === 'PAYMENT_MARKED_PAID' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                                                                <div key={i} className={`text-[9px] p-1.5 rounded border ${
+                                                                    note.action === 'MOVED_OUT' ? "bg-slate-50 border-slate-200 text-slate-700" :
+                                                                    note.action === 'BLOCKED' ? "bg-red-50 border-red-200 text-red-700" :
+                                                                    note.action === 'UNBLOCKED' ? "bg-green-50 border-green-200 text-green-700" :
+                                                                    note.action === 'PAYMENT_MARKED_PAID' ? "bg-blue-50 border-blue-200 text-blue-700" :
+                                                                    "bg-gray-50 border-gray-200 text-gray-700"}`}>
                                                                     <div className="font-bold uppercase">
                                                                         {note.action === 'MOVED_OUT' ? "🏠 Moved Out" : note.action === 'BLOCKED' ? "🚫 Blocked" : note.action === 'UNBLOCKED' ? "✅ Unblocked" : note.action === 'PAYMENT_MARKED_PAID' ? "💰 Paid" : note.action === 'PAYMENT_MARKED_UNPAID' ? "↩ Unpaid" : note.action}
                                                                     </div>
@@ -337,63 +415,51 @@ export function TenantsContainer() {
                                                     <div className="flex flex-col gap-1 items-center">
                                                         {!isBlocked ? (
                                                             <>
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
+                                                                <Button size="sm" variant="outline"
                                                                     className="h-7 text-[10px] w-full border-blue-400 text-blue-700 hover:bg-blue-50"
-                                                                    onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}
-                                                                >
-                                                                    🚪 Move Out & Settlement
+                                                                    onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}>
+                                                                    🚶 Move Out &amp; Settlement
                                                                 </Button>
-                                                                <Input
-                                                                    className="h-7 text-xs w-full"
-                                                                    placeholder="Block reason..."
+                                                                <Input className="h-7 text-xs w-full" placeholder="Block reason..."
                                                                     value={blockNotes[t.id] || ""}
-                                                                    onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                                />
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="destructive"
-                                                                    className="h-7 text-[10px] w-full"
+                                                                    onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
+                                                                <Button size="sm" variant="destructive" className="h-7 text-[10px] w-full"
                                                                     disabled={!blockNotes[t.id]?.trim()}
-                                                                    onClick={() => handleBlock(t.id)}
-                                                                >
+                                                                    onClick={() => handleBlock(t.id)}>
                                                                     🚫 Block Tenant
                                                                 </Button>
                                                                 {showGenerateRent[t.id] ? (
                                                                     <div className="space-y-1 w-full pt-1 border-t mt-1">
-                                                                        <Input type="month" className="h-7 text-xs" value={generateMonth[t.id] || ""} onChange={e => setGenerateMonth(p => ({ ...p, [t.id]: e.target.value }))} />
+                                                                        <Input type="month" className="h-7 text-xs"
+                                                                            value={generateMonth[t.id] || ""}
+                                                                            onChange={e => setGenerateMonth(p => ({ ...p, [t.id]: e.target.value }))} />
                                                                         <div className="flex gap-1">
                                                                             <Button size="sm" className="h-6 text-[10px] flex-1" onClick={() => handleGenerateRent(t.id)}>Generate</Button>
                                                                             <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: false }))}>✕</Button>
                                                                         </div>
                                                                     </div>
                                                                 ) : (
-                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] w-full bg-blue-50 border-blue-200" onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: true }))}>
+                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] w-full bg-blue-50 border-blue-200"
+                                                                        onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: true }))}>
                                                                         <PlusCircle className="mr-1 h-3 w-3" /> Rent
                                                                     </Button>
                                                                 )}
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Input
-                                                                    className="h-7 text-xs w-full"
-                                                                    placeholder="Unblock reason..."
+                                                                <Input className="h-7 text-xs w-full" placeholder="Unblock reason..."
                                                                     value={unblockNotes[t.id] || ""}
-                                                                    onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                                />
-                                                                <Button size="sm" variant="outline" className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50" onClick={() => handleUnblock(t.id)}>
+                                                                    onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
+                                                                <Button size="sm" variant="outline" className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50"
+                                                                    onClick={() => handleUnblock(t.id)}>
                                                                     ✅ Unblock
                                                                 </Button>
                                                             </>
                                                         )}
                                                         {t.booking?.moveInChecklist && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
+                                                            <Button size="sm" variant="outline"
                                                                 className="h-7 text-[10px] w-full mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                                                                onClick={() => setViewingChecklist(t)}
-                                                            >
+                                                                onClick={() => setViewingChecklist(t)}>
                                                                 <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Checklist
                                                             </Button>
                                                         )}
@@ -425,6 +491,7 @@ export function TenantsContainer() {
                     </div>
                 </CardContent>
             </Card>
+            </div>
 
             {/* Move Out Dialogs */}
             {filteredTenants.map(t => (
