@@ -25,9 +25,12 @@ interface SuperAdminKPIsProps {
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversionAnalytics }: SuperAdminKPIsProps) {
+    const safe = (val: any, fallback: any = 0) => val ?? fallback;
+    const safeDiv = (a: any, b: any) => b ? Math.round((safe(a) / safe(b, 1)) * 100) : 0;
+
     if (!snapshot) return null;
 
-    const healthStatus = snapshot.revenue?.platformEarned > 0 ? "EXCELLENT" : "STABLE";
+    const healthStatus = safe(snapshot.revenue?.platformEarned) > 0 ? "EXCELLENT" : "STABLE";
 
     return (
         <div className="space-y-8 pb-12">
@@ -42,7 +45,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="text-4xl font-black tracking-tight">₹{snapshot.revenue?.platformEarned?.toLocaleString('en-IN')}</div>
+                        <div className="text-4xl font-black tracking-tight">₹{safe(snapshot.revenue?.platformEarned).toLocaleString('en-IN')}</div>
                         <div className="flex items-center gap-1.5 mt-3">
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
                                 <ArrowUpRight className="h-3 w-3" /> 18.5%
@@ -61,12 +64,12 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="text-4xl font-black tracking-tight">{snapshot.tenants?.active?.toLocaleString()}</div>
+                        <div className="text-4xl font-black tracking-tight">{safe(snapshot.tenants?.active).toLocaleString()}</div>
                         <div className="flex items-center gap-1.5 mt-3">
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
                                 <Activity className="h-3 w-3 text-emerald-200" /> STABLE
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-100/60 uppercase tracking-tighter">Live across {snapshot.properties?.live} PG Properties</span>
+                            <span className="text-[10px] font-bold text-emerald-100/60 uppercase tracking-tighter">Live across {safe(snapshot.properties?.live)} PG Properties</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -80,10 +83,10 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="text-4xl font-black tracking-tight">{snapshot.bookings?.conversionRate}%</div>
+                        <div className="text-4xl font-black tracking-tight">{safe(snapshot.bookings?.conversionRate)}%</div>
                         <div className="flex items-center gap-1.5 mt-3">
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-700/50 backdrop-blur-md rounded-full text-[10px] font-black text-slate-300 border border-slate-700">
-                                <CheckCircle2 className="h-3 w-3 text-slate-400" /> {snapshot.bookings?.confirmed}
+                                <CheckCircle2 className="h-3 w-3 text-slate-400" /> {safe(snapshot.bookings?.confirmed)}
                             </div>
                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Total confirmed bookings</span>
                         </div>
@@ -95,7 +98,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-amber-100">Pending Disputes</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-black">{snapshot.disputes?.open}</div>
+                        <div className="text-3xl font-black">{safe(snapshot.disputes?.open)}</div>
                         <div className="flex items-center gap-1 text-[10px] font-bold text-amber-100 mt-2 text-right justify-end w-full">
                             <Shield className="h-3 w-3" /> REQUIRES MODERATION
                         </div>
@@ -119,7 +122,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent className="p-6">
                         <div className="h-[300px] w-full mt-4">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={revenueTrends?.monthly}>
+                                <AreaChart data={revenueTrends?.monthly ?? []}>
                                     <defs>
                                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
@@ -158,11 +161,11 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                 <PieChart>
                                     <Pie
                                         data={[
-                                            { name: 'Occupied', value: snapshot.inventory?.occupied },
-                                            { name: 'Available', value: snapshot.inventory?.available },
-                                            { name: 'Reserved', value: snapshot.inventory?.reserved },
-                                            { name: 'Maintenance', value: snapshot.inventory?.maintenance },
-                                        ]}
+                                            { name: 'Occupied', value: safe(snapshot.inventory?.occupied) },
+                                            { name: 'Available', value: safe(snapshot.inventory?.available) },
+                                            { name: 'Reserved', value: safe(snapshot.inventory?.reserved) },
+                                            { name: 'Maintenance', value: safe(snapshot.inventory?.maintenance) },
+                                        ].filter(d => d.value > 0)}
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={60}
@@ -183,7 +186,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                             <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-dotted">
                                 <span className="text-[10px] font-black uppercase text-slate-400">Occupancy Rate</span>
                                 <span className="text-sm font-black text-indigo-600">
-                                    {Math.round((snapshot.inventory?.occupied / snapshot.inventory?.beds) * 100)}%
+                                    {safeDiv(snapshot.inventory?.occupied, snapshot.inventory?.beds)}%
                                 </span>
                             </div>
                         </div>
@@ -203,7 +206,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-2xl font-black text-slate-800">{snapshot.fraud?.open}</div>
+                                <div className="text-2xl font-black text-slate-800">{safe(snapshot.fraud?.open)}</div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Open Fraud Alerts</p>
                             </div>
                             <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-indigo-600 hover:bg-indigo-50">Audit Details</Button>
@@ -221,7 +224,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-2xl font-black text-slate-800">{snapshot.properties?.live}</div>
+                                <div className="text-2xl font-black text-slate-800">{safe(snapshot.properties?.live)}</div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Live Listings</p>
                             </div>
                             <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-emerald-600 hover:bg-emerald-50">View Registry</Button>
@@ -239,7 +242,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-2xl font-black text-slate-800">{snapshot.users?.total?.toLocaleString()}</div>
+                                <div className="text-2xl font-black text-slate-800">{safe(snapshot.users?.total).toLocaleString()}</div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Registered Base</p>
                             </div>
                             <div className="text-right">

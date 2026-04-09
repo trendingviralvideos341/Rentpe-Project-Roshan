@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminStats } from "@/actions/admin";
@@ -130,7 +131,7 @@ export default function AdminDashboard() {
             await fetchFlaggedReviews(); // Refresh
         } catch (error) {
             console.error("Failed to update status:", error);
-            alert("Failed to moderate review.");
+            toast.error("Failed to moderate review.");
         }
     };
 
