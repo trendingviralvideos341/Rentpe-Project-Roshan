@@ -29,12 +29,26 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    REQUESTED:             { label: '🔴 New Request',        cls: 'bg-red-100 text-red-700 border-red-300' },
-    APPROVED:              { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
-    CHECKIN_CONFIRMED:     { label: '🏡 Checked In',          cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    CHECKED_OUT:           { label: '🏠 Checked Out',         cls: 'bg-slate-100 text-slate-500 border-slate-300' },
-    REJECTED:              { label: '❌ Rejected',            cls: 'bg-gray-100 text-gray-600 border-gray-300' },
-    CANCELLED:             { label: '🚫 Cancelled',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
+    REQUESTED:                { label: '🔴 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
+    APPLIED:                  { label: '🔴 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
+    PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
+    APPROVED_PENDING_TOKEN:   { label: '💜 Token Pending',     cls: 'bg-purple-100 text-purple-700 border-purple-300' },
+    KYC_PENDING:              { label: '📝 KYC Pending',       cls: 'bg-blue-100 text-blue-700 border-blue-300' },
+    APPROVED_KYC_PENDING:     { label: '📝 KYC Pending',       cls: 'bg-blue-100 text-blue-700 border-blue-300' },
+    KYC_FAILED:               { label: '❌ KYC Failed',         cls: 'bg-red-100 text-red-800 border-red-300' },
+    APPROVED_PAYMENT_PENDING: { label: '💳 Payment Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    APPROVED:                 { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',    cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    PAID:                     { label: '✅ Paid',               cls: 'bg-green-100 text-green-700 border-green-300' },
+    CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
+    MOVE_IN_SCHEDULED:        { label: '📅 Move-in Set',       cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    ACTIVE:                   { label: '🏠 Active Tenant',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    CHECKIN_CONFIRMED:        { label: '🏡 Checked In',        cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    BOOKING_CONFIRMED:        { label: '🏡 Confirmed',         cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    CHECKED_OUT:              { label: '🏠 Checked Out',       cls: 'bg-slate-100 text-slate-500 border-slate-300' },
+    REJECTED:                 { label: '❌ Rejected',           cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+    CANCELLED:                { label: '🚫 Cancelled',         cls: 'bg-slate-100 text-slate-600 border-slate-300' },
+    EXPIRED:                  { label: '⏰ Expired',            cls: 'bg-gray-100 text-gray-500 border-gray-200' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -185,18 +199,26 @@ function BookingDetail({ booking, rooms, onRefresh, defaultTab = "onboarding" }:
                                                         <button
                                                             type="button"
                                                             disabled={foodChanging}
-                                                            onClick={async () => {
-                                                                if (!confirm(`Change food preference to ${!foodEnabled ? 'ENABLED' : 'DISABLED'}? This applies from the next billing cycle.`)) return;
-                                                                setFoodChanging(true);
-                                                                const result = await changeFoodPreference(booking.id, !foodEnabled, 'Changed by owner');
-                                                                if (result.success) {
-                                                                    setFoodEnabled(!foodEnabled);
-                                                                    toast.success(`Food ${!foodEnabled ? 'enabled' : 'disabled'}. Effective from ${result.effectiveFrom}`);
-                                                                    onRefresh();
-                                                                } else {
-                                                                    toast.error(result.error || 'Failed to change food preference.');
-                                                                }
-                                                                setFoodChanging(false);
+                                                            onClick={() => {
+                                                                const newVal = !foodEnabled;
+                                                                toast(`${newVal ? 'Enable' : 'Disable'} food service for this tenant?`, {
+                                                                    description: "Applies from the next billing cycle.",
+                                                                    action: {
+                                                                        label: "Confirm",
+                                                                        onClick: async () => {
+                                                                            setFoodChanging(true);
+                                                                            const result = await changeFoodPreference(booking.id, newVal, 'Changed by owner');
+                                                                            if (result.success) {
+                                                                                setFoodEnabled(newVal);
+                                                                                toast.success(`Food ${newVal ? 'enabled' : 'disabled'}. Effective from ${result.effectiveFrom}`);
+                                                                                onRefresh();
+                                                                            } else {
+                                                                                toast.error(result.error || 'Failed to change food preference.');
+                                                                            }
+                                                                            setFoodChanging(false);
+                                                                        }
+                                                                    }
+                                                                });
                                                             }}
                                                             className="text-[10px] px-3 py-1.5 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 disabled:opacity-50"
                                                         >
@@ -360,6 +382,8 @@ export function BookingsContainer() {
     const [propertyFilter, setPropertyFilter] = useState("ALL");
     const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
     const [paymentFilter, setPaymentFilter] = useState("ALL");
+    const [rejectModal, setRejectModal] = useState<{ id: string } | null>(null);
+    const [rejectReason, setRejectReason] = useState("");
     const router = useRouter();
 
     const fetchData = async () => {
@@ -377,43 +401,68 @@ export function BookingsContainer() {
 
     useEffect(() => { fetchData(); }, []);
 
-    const handleCheckIn = async (bookingId: string) => {
-        if (!confirm("Confirm Check-in: Has the student formally moved in? \n\nThis will activate their tenancy and start the billing cycle.")) return;
-        try {
-            await checkInBooking(bookingId);
-            toast.success("Student Checked-in successfully. Tenancy is now ACTIVE.");
-            fetchData();
-        } catch (e: any) {
-            toast.error(e.message || "Check-in failed.");
-        }
+    const handleCheckIn = (bookingId: string) => {
+        toast("Confirm Check-in?", {
+            description: "This activates tenancy and starts the billing cycle.",
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    try {
+                        await checkInBooking(bookingId);
+                        toast.success("Student Checked-in. Tenancy is now ACTIVE.");
+                        fetchData();
+                    } catch (e: any) { toast.error(e.message || "Check-in failed."); }
+                }
+            }
+        });
     };
 
-    const handleApprove = async (booking: any) => {
-        if (!confirm(`Approve booking for ${booking.guestName} at ${booking.propertyName}?`)) return;
-        try {
-            await approveBooking(booking.id, {});
-            toast.success("Booking Approved successfully.");
-            fetchData();
-        } catch { toast.error("Approval failed. Please try again."); }
+    const handleApprove = (booking: any) => {
+        toast(`Approve booking for ${booking.guestName}?`, {
+            description: `Property: ${booking.propertyName}`,
+            action: {
+                label: "Approve",
+                onClick: async () => {
+                    try {
+                        await approveBooking(booking.id, {});
+                        toast.success("Booking Approved.");
+                        fetchData();
+                    } catch { toast.error("Approval failed."); }
+                }
+            }
+        });
     };
 
-    const handleReject = async (bookingId: string) => {
-        const reason = prompt("Reason for rejecting this booking (required):");
-        if (!reason) return;
+    const handleReject = (bookingId: string) => {
+        setRejectReason("");
+        setRejectModal({ id: bookingId });
+    };
+
+    const confirmReject = async () => {
+        if (!rejectReason.trim()) { toast.error("Enter a rejection reason."); return; }
         try {
-            await rejectBookingAction(bookingId, reason);
+            await rejectBookingAction(rejectModal!.id, rejectReason);
             toast.success("Booking Rejected.");
+            setRejectModal(null);
+            setRejectReason("");
             fetchData();
         } catch { toast.error("Rejection failed."); }
     };
 
-    const handleMarkCashPaid = async (bookingId: string) => {
-        if (!confirm("Confirm: Mark this booking as PAID via Cash? This will also create the Tenant record.")) return;
-        try {
-            await markBookingPaid(bookingId, "CASH");
-            toast.success("Booking marked as Paid and Tenant created.");
-            fetchData();
-        } catch { toast.error("Failed to mark as paid."); }
+    const handleMarkCashPaid = (bookingId: string) => {
+        toast("Mark booking as Cash Paid?", {
+            description: "This confirms the reservation.",
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    try {
+                        await markBookingPaid(bookingId, "CASH");
+                        toast.success("Booking marked as Paid.");
+                        fetchData();
+                    } catch { toast.error("Failed to mark as paid."); }
+                }
+            }
+        });
     };
 
     const filteredBookings = bookings.filter(b => {
@@ -439,11 +488,11 @@ export function BookingsContainer() {
         if (roomTypeFilter !== "ALL" && b.occupancy !== roomTypeFilter) return false;
         if (paymentFilter !== "ALL" && (b.paymentMethod || "Online") !== paymentFilter) return false;
 
-        if (activeTab === "PENDING") return b.status === "REQUESTED";
-        if (activeTab === "APPROVED") return b.status === "APPROVED";
-        if (activeTab === "PAID") return b.status === "CHECKIN_CONFIRMED" || b.status === "CHECKED_OUT";
-        if (activeTab === "REJECTED") return b.status === "REJECTED";
-        if (activeTab === "CANCELLED") return b.status === "CANCELLED";
+        if (activeTab === "PENDING") return ["REQUESTED", "APPLIED", "PENDING_APPROVAL"].includes(b.status);
+        if (activeTab === "APPROVED") return ["APPROVED", "APPROVED_PENDING_TOKEN", "KYC_PENDING", "APPROVED_KYC_PENDING", "APPROVED_PAYMENT_PENDING", "AGREEMENT_PENDING"].includes(b.status);
+        if (activeTab === "PAID") return ["PAID", "CASH_PAID", "MOVE_IN_SCHEDULED", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED", "ACTIVE", "CHECKED_OUT"].includes(b.status);
+        if (activeTab === "REJECTED") return b.status === "REJECTED" || b.status === "KYC_FAILED";
+        if (activeTab === "CANCELLED") return b.status === "CANCELLED" || b.status === "EXPIRED";
         return true;
     });
 
@@ -553,82 +602,146 @@ export function BookingsContainer() {
                 </div>
             </div>
 
-            <Card className="rounded-2xl shadow-sm border-slate-200 overflow-hidden">
-                <CardContent className="p-0 text-sm md:text-base">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider text-left">
-                                    <th className="p-4 ">Booking ID</th>
-                                    <th className="p-4 ">Guest Name</th>
-                                    <th className="p-4 ">PG Requested</th>
-                                    <th className="p-4 ">Room</th>
-                                    <th className="p-4 ">Requested On</th>
-                                    <th className="p-4 ">Status</th>
-                                    <th className="p-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredBookings.map((booking) => (
-                                    <React.Fragment key={booking.id}>
-                                        <tr className="border-b hover:bg-muted/5">
-                                            <td className="p-4 font-medium">{booking.displayId}</td>
-                                            <td className="p-4">
-                                                <div className="font-medium">{booking.guestName}</div>
-                                                <div className="text-[10px] text-muted-foreground">{booking.guestEmail}</div>
-                                                <div className="text-[10px] text-muted-foreground">{booking.guestPhone}</div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="font-medium text-purple-700">{booking.propertyName || "—"}</div>
-                                                <div className="text-[10px] text-muted-foreground">{booking.occupancy}</div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col">
-                                                    <span>{booking.roomAssigned || "Not Allocated"}</span>
-                                                    {booking.onboardingDate && <span className="text-[10px] text-blue-600">📅 {booking.onboardingDate}</span>}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-muted-foreground text-xs italic">
-                                                {new Date(booking.createdAt).toLocaleString()}
-                                            </td>
-                                            <td className="p-4">
-                                                <StatusBadge status={booking.status} />
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    {booking.status === "REQUESTED" && (
-                                                        <>
-                                                            <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                                                            <Button size="sm" variant="destructive" className="h-8 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
-                                                        </>
-                                                    )}
-                                                    {booking.status === "APPROVED" && (
-                                                        <Button size="sm" className="h-8 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>
-                                                            🚀 Confirm Check-in
-                                                        </Button>
-                                                    )}
-                                                    <Button
-                                                        variant="outline" size="sm" className="h-8 w-8 p-0"
-                                                        onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
-                                                    >
-                                                        {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {expandedBooking === booking.id && (
-                                            <BookingDetail booking={booking} rooms={rooms} onRefresh={fetchData} />
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                                {filteredBookings.length === 0 && (
-                                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No bookings found.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+            {/* ── Mobile Cards ── */}
+            <div className="md:hidden space-y-3">
+                {filteredBookings.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-12">No bookings found.</p>
+                ) : filteredBookings.map(booking => (
+                    <div key={booking.id} className={`bg-white border rounded-2xl p-4 shadow-sm space-y-3 ${
+                        ["REQUESTED", "APPLIED"].includes(booking.status) ? "border-l-4 border-l-red-400" : ""}`)}
+                        >
+                        <div className="flex justify-between items-start gap-2">
+                            <div>
+                                <p className="font-black text-sm">{booking.guestName}</p>
+                                <p className="text-[10px] font-mono text-slate-400">{booking.displayId}</p>
+                            </div>
+                            <StatusBadge status={booking.status} />
+                        </div>
+                        <div className="text-xs text-slate-600 space-y-1">
+                            <p>🏠 <span className="font-bold">{booking.propertyName}</span></p>
+                            <p>🛏 {booking.occupancy} · {booking.roomAssigned || "Not Allocated"}</p>
+                            <p>📅 {new Date(booking.createdAt).toLocaleDateString('en-IN')}</p>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                            {(booking.status === "REQUESTED" || booking.status === "APPLIED") && (
+                                <>
+                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs flex-1" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                    <Button size="sm" variant="destructive" className="text-xs flex-1" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
+                                </>
+                            )}
+                            {booking.status === "APPROVED" && (
+                                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs flex-1" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
+                            )}
+                            {(booking.status === "PAID" || booking.status === "CASH_PAID" || booking.status === "MOVE_IN_SCHEDULED") && (
+                                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs flex-1" onClick={() => handleCheckIn(booking.id)}>🚀 Check-in</Button>
+                            )}
+                            <Button variant="outline" size="sm" className="text-xs"
+                                onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
+                                {expandedBooking === booking.id ? "▲ Hide" : "▼ Details"}
+                            </Button>
+                        </div>
                     </div>
-                </CardContent>
-            </Card>
+                ))}
+            </div>
+
+            {/* ── Desktop Table ── */}
+            <div className="hidden md:block">
+                <Card className="rounded-2xl shadow-sm border-slate-200 overflow-hidden">
+                    <CardContent className="p-0 text-sm md:text-base">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider text-left">
+                                        <th className="p-4">Booking ID</th>
+                                        <th className="p-4">Guest Name</th>
+                                        <th className="p-4">PG Requested</th>
+                                        <th className="p-4">Room</th>
+                                        <th className="p-4">Requested On</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredBookings.map((booking) => (
+                                        <React.Fragment key={booking.id}>
+                                            <tr className="border-b hover:bg-muted/5">
+                                                <td className="p-4 font-medium">{booking.displayId}</td>
+                                                <td className="p-4">
+                                                    <div className="font-medium">{booking.guestName}</div>
+                                                    <div className="text-[10px] text-muted-foreground">{booking.guestEmail}</div>
+                                                    <div className="text-[10px] text-muted-foreground">{booking.guestPhone}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-medium text-purple-700">{booking.propertyName || "—"}</div>
+                                                    <div className="text-[10px] text-muted-foreground">{booking.occupancy}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="flex flex-col">
+                                                        <span>{booking.roomAssigned || "Not Allocated"}</span>
+                                                        {booking.onboardingDate && <span className="text-[10px] text-blue-600">📅 {booking.onboardingDate}</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-muted-foreground text-xs italic">
+                                                    {new Date(booking.createdAt).toLocaleString()}
+                                                </td>
+                                                <td className="p-4">
+                                                    <StatusBadge status={booking.status} />
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        {(booking.status === "REQUESTED" || booking.status === "APPLIED") && (
+                                                            <>
+                                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                                                <Button size="sm" variant="destructive" className="h-8 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
+                                                            </>
+                                                        )}
+                                                        {booking.status === "APPROVED" && (
+                                                            <Button size="sm" className="h-8 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
+                                                        )}
+                                                        {(booking.status === "PAID" || booking.status === "CASH_PAID" || booking.status === "MOVE_IN_SCHEDULED") && (
+                                                            <Button size="sm" className="h-8 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>🚀 Check-in</Button>
+                                                        )}
+                                                        <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+                                                            onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
+                                                            {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {expandedBooking === booking.id && (
+                                                <BookingDetail booking={booking} rooms={rooms} onRefresh={fetchData} />
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                    {filteredBookings.length === 0 && (
+                                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No bookings found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* ── Reject Modal ── */}
+            {rejectModal && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+                        <h3 className="font-black text-lg">Reject Booking</h3>
+                        <p className="text-sm text-muted-foreground">The student will be notified with this reason.</p>
+                        <textarea
+                            className="w-full border rounded-xl p-3 text-sm resize-none h-24 focus:outline-none focus:ring-2 focus:ring-red-300"
+                            placeholder="Reason for rejection..."
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                        />
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => { setRejectModal(null); setRejectReason(""); }}>Cancel</Button>
+                            <Button variant="destructive" className="flex-1" onClick={confirmReject}>Confirm Reject</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
