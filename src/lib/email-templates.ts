@@ -1,4 +1,4 @@
-﻿/**
+/**
  * HTML Email Templates for RentPe Notifications
  * Using simple, responsive inline styles for maximum compatibility.
  */
@@ -185,6 +185,30 @@ export const KycVerifiedTemplate = (name: string) => LifecycleTemplate({
   actionUrl: "/dashboard/student",
   isSuccess: true,
 });
+
+// 11. KYC_REJECTED (Owner)
+export const KycRejectedTemplate = (name: string, docType: string, propertyName: string, reason: string) => BaseLayout(`
+  <div class="status-badge" style="background: #fef2f2; color: #ef4444;">ACTION REQUIRED</div>
+  <h2 style="margin-top: 0; color: #1e293b;">Document Rejected</h2>
+  <p>Hi ${name},</p>
+  <p>Your <strong>${docType}</strong> document submitted for <strong>&quot;${propertyName}&quot;</strong> has been reviewed and <strong>rejected</strong> by the RentPe Verification Team.</p>
+
+  <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 4px;">
+    <p style="margin: 0; font-weight: bold; color: #991b1b;">Reason for Rejection:</p>
+    <p style="margin: 8px 0 0 0; font-size: 14px; color: #7f1d1d;">${reason}</p>
+  </div>
+
+  <p style="font-size: 14px; color: #64748b;">Please re-upload the correct document. Ensure it is:</p>
+  <ul style="font-size: 14px; color: #475569; padding-left: 20px; line-height: 2;">
+    <li>Clear and fully visible (not blurry or cropped)</li>
+    <li>A valid, government-issued document</li>
+    <li>In JPG, PNG, or PDF format and under 5MB</li>
+  </ul>
+
+  <a href="https://rentpe.in/dashboard/owner" class="button">Re-upload Document &rarr;</a>
+
+  <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">If you believe this is an error, contact us at <a href="mailto:support@rentpe.in" style="color: #6366f1;">support@rentpe.in</a></p>
+`);
 
 // OWNER NOTIFICATION TEMPLATE
 export const OwnerNotificationTemplate = (ownerName: string, eventTitle: string, message: string, actionUrl: string, actionLabel: string) => BaseLayout(`

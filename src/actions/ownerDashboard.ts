@@ -397,9 +397,18 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
     const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true, name: true } }));
     const propIdList = propertyIds.map(p => p.id);
 
+    const owner = await prisma.user.findUnique({
+        where: { id: ownerId },
+        select: { name: true, businessName: true, displayId: true }
+    });
+
     const bookings = await (prisma.booking as any).findMany({
         where: { propertyId: { in: propIdList }, createdAt: { gte: from, lte: to } },
-        select: { id: true, displayId: true, propertyName: true, roomType: true, amount: true, status: true, createdAt: true, cancelReason: true }
+        select: { 
+            id: true, displayId: true, propertyName: true, roomType: true, 
+            amount: true, status: true, createdAt: true, cancelReason: true,
+            user: { select: { name: true } }
+        }
     });
 
     const bookingIds = bookings.map((b: any) => b.id);
@@ -411,13 +420,23 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
         const gross = isRevenue ? (b.amount || 0) : 0;
         const refundAmount = refund?.status === 'PROCESSED' ? refund.amount : 0;
         return {
-            bookingId: b.displayId, property: b.propertyName, roomType: b.roomType,
-            amount: b.amount, status: b.status, date: b.createdAt,
-            revenueContribution: gross, refundAmount, netRevenue: gross - refundAmount
+            bookingId: b.displayId, 
+            tenantName: b.user?.name || 'N/A',
+            property: b.propertyName, 
+            roomType: b.roomType,
+            amount: b.amount, 
+            status: b.status, 
+            date: b.createdAt,
+            revenueContribution: gross, 
+            refundAmount, 
+            netRevenue: gross - refundAmount
         };
     });
 
     const summary = {
+        ownerName: owner?.name || 'Owner',
+        businessName: owner?.businessName || 'RentPe Property Partner',
+        ownerId: owner?.displayId,
         totalBookings: bookings.length,
         confirmedBookings: bookings.filter((b: any) => ['BOOKING_CONFIRMED','CHECKED_IN','PAID','CASH_PAID'].includes(b.status)).length,
         cancelledBookings: bookings.filter((b: any) => b.status === 'CANCELLED').length,

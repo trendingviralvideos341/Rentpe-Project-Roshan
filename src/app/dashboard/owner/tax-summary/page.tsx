@@ -45,35 +45,79 @@ export default function TaxSummaryPage() {
             const autoTable = (await import('jspdf-autotable')).default;
 
             const doc = new jsPDF();
-            doc.setFontSize(18);
-            doc.setTextColor(79, 70, 229);
-            doc.text('RentPe — Tax Summary Report', 14, 20);
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Financial Year: ${selectedFY.label}`, 14, 30);
-            doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 37);
-
-            // Summary box
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
             const s = report.summary;
-            doc.text(`Total Gross Revenue: ₹${s.totalGross.toLocaleString('en-IN')}`, 14, 50);
-            doc.text(`Total Refunds: ₹${s.totalRefunds.toLocaleString('en-IN')}`, 14, 57);
-            doc.text(`Net Revenue: ₹${s.totalNet.toLocaleString('en-IN')}`, 14, 64);
-            doc.text(`Total Bookings: ${s.totalBookings}  |  Confirmed: ${s.confirmedBookings}  |  Cancelled: ${s.cancelledBookings}`, 14, 71);
 
-            // Table
+            // Header Section
+            doc.setFontSize(22);
+            doc.setTextColor(79, 70, 229);
+            doc.text('RentPe', 14, 20);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 116, 139);
+            doc.text('PropTech for the Modern India', 14, 25);
+
+            doc.setDrawColor(226, 232, 240);
+            doc.line(14, 30, 196, 30);
+
+            // Report Title & Info
+            doc.setFontSize(16);
+            doc.setTextColor(30, 41, 59);
+            doc.text('Tax Summary & Financial Statement', 14, 42);
+            
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text(`Financial Year: ${selectedFY.label}`, 14, 48);
+            doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 53);
+
+            // Owner Details Box
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(14, 60, 182, 25, 3, 3, 'F');
+            doc.setFontSize(10);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('helvetica', 'bold');
+            doc.text(s.businessName || s.ownerName, 20, 70);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(`Owner: ${s.ownerName}`, 20, 75);
+            doc.text(`Partner ID: ${s.ownerId}`, 20, 80);
+
+            // Key Metrics
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Financial Summary', 14, 100);
+            
             autoTable(doc, {
-                startY: 82,
-                head: [['Booking ID', 'Property', 'Room Type', 'Amount', 'Status', 'Date', 'Net Revenue']],
+                startY: 105,
+                head: [['Key Metric', 'Value']],
+                body: [
+                    ['Total Gross Revenue', `Rs. ${s.totalGross.toLocaleString('en-IN')}`],
+                    ['Total Refunds Processed', `Rs. ${s.totalRefunds.toLocaleString('en-IN')}`],
+                    ['Net Realized Revenue', `Rs. ${s.totalNet.toLocaleString('en-IN')}`],
+                    ['Booking Volume (Success/Total)', `${s.confirmedBookings} / ${s.totalBookings}`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [241, 245, 249], textColor: [71, 85, 105], fontStyle: 'bold' },
+                styles: { fontSize: 10, cellPadding: 4 },
+                columnStyles: { 1: { halign: 'right', fontStyle: 'bold', textColor: [79, 70, 229] } }
+            });
+
+            // Transactions Table
+            const finalY = (doc as any).lastAutoTable.finalY + 15;
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Transaction Ledger', 14, finalY);
+
+            autoTable(doc, {
+                startY: finalY + 5,
+                head: [['ID', 'Tenant', 'Property', 'Type', 'Status', 'Date', 'Net Revenue']],
                 body: report.report.map((r: any) => [
                     r.bookingId,
+                    r.tenantName,
                     r.property,
                     r.roomType,
-                    `₹${r.amount?.toLocaleString('en-IN')}`,
                     r.status,
                     new Date(r.date).toLocaleDateString('en-IN'),
-                    `₹${r.netRevenue?.toLocaleString('en-IN')}`,
+                    `Rs.${r.netRevenue?.toLocaleString('en-IN')}`,
                 ]),
                 styles: { fontSize: 8, cellPadding: 3 },
                 headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
@@ -81,8 +125,9 @@ export default function TaxSummaryPage() {
             });
 
             doc.save(`RentPe-TaxSummary-${selectedFY.label.replace(' ', '-')}.pdf`);
-            toast.success('PDF downloaded successfully!');
+            toast.success('Professional tax report downloaded!');
         } catch (e: any) {
+            console.error(e);
             toast.error('Failed to generate PDF');
         } finally {
             setExporting(null);
@@ -93,9 +138,9 @@ export default function TaxSummaryPage() {
         if (!report) return;
         setExporting('csv');
         try {
-            const headers = ['Booking ID', 'Property', 'Room Type', 'Amount', 'Status', 'Date', 'Refund Amount', 'Net Revenue'];
+            const headers = ['Booking ID', 'Tenant Name', 'Property', 'Room Type', 'Gross Amount', 'Status', 'Date', 'Refund Amount', 'Net Revenue'];
             const rows = report.report.map((r: any) => [
-                r.bookingId, r.property, r.roomType, r.amount, r.status,
+                r.bookingId, r.tenantName, r.property, r.roomType, r.amount, r.status,
                 new Date(r.date).toLocaleDateString('en-IN'), r.refundAmount, r.netRevenue
             ]);
             const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -103,10 +148,10 @@ export default function TaxSummaryPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `RentPe-TaxSummary-${selectedFY.label.replace(' ', '-')}.csv`;
+            a.download = `RentPe-TaxLedger-${selectedFY.label.replace(' ', '-')}.csv`;
             a.click();
             URL.revokeObjectURL(url);
-            toast.success('CSV copied to downloads!');
+            toast.success('CSV ledger exported!');
         } catch (e) {
             toast.error('Failed to export CSV');
         } finally {
@@ -220,7 +265,7 @@ export default function TaxSummaryPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50/50">
-                                        {['Booking ID', 'Property', 'Amount', 'Status', 'Date', 'Net Revenue'].map(h => (
+                                        {['Booking ID', 'Tenant', 'Property', 'Amount', 'Status', 'Date', 'Net Revenue'].map(h => (
                                             <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                                         ))}
                                     </tr>
@@ -229,6 +274,7 @@ export default function TaxSummaryPage() {
                                     {report.report.slice(0, 20).map((r: any, i: number) => (
                                         <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="px-4 py-3 text-xs font-bold text-indigo-600 font-mono">{r.bookingId}</td>
+                                            <td className="px-4 py-3 text-xs font-bold text-slate-700">{r.tenantName}</td>
                                             <td className="px-4 py-3 text-xs text-slate-600">{r.property}</td>
                                             <td className="px-4 py-3 text-xs font-black text-slate-800">₹{Number(r.amount || 0).toLocaleString('en-IN')}</td>
                                             <td className="px-4 py-3">

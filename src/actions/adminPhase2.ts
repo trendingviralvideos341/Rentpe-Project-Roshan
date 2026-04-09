@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -7,6 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
 import { getSLAStatus } from "@/lib/sla";
+import { KycRejectedTemplate } from "@/lib/email-templates";
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // KYC VERIFICATION QUEUE
@@ -151,8 +152,13 @@ export async function rejectDocument(propertyId: string, docType: string, reason
     if (property.owner?.email) {
         sendEmail({
             to: property.owner.email,
-            subject: `Action Required: Document Rejected â€” ${property.name}`,
-            html: `<h2>Document Rejected</h2><p>Hi ${property.owner.name || 'there'},</p><p>Your <strong>${docType.replace('_', ' ')}</strong> document for "<strong>${property.name}</strong>" has been rejected.</p><div style="background:#fef2f2;padding:15px;border-left:4px solid #ef4444;margin:20px 0"><strong>Reason:</strong><br/>${reason}</div><p>Please re-upload the correct document in your owner dashboard.</p>`
+            subject: `Action Required: Document Rejected — ${property.name}`,
+            html: KycRejectedTemplate(
+                property.owner.name || 'Owner',
+                docType.replace('_', ' '),
+                property.name,
+                reason
+            )
         }).catch(err => console.error('Failed to email doc rejection:', err));
     }
 
