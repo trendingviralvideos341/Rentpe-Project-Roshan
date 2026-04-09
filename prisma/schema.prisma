@@ -184,6 +184,8 @@ model Property {
   tickets                    Ticket[]
   employeeAssignments        EmployeePropertyAssignment[]
   foodPreferences            FoodPreference[]
+  vacatingNotices            VacatingNotice[]
+  maintenanceRequests        MaintenanceRequest[]
 }
 
 model Room {
@@ -201,10 +203,12 @@ model Room {
   createdAt     DateTime  @default(now())
   deletedAt     DateTime?
   updatedAt     DateTime  @updatedAt
-  beds          Bed[]
-  bookings      Booking[]
-  property      Property  @relation(fields: [propertyId], references: [id])
-  tenants       Tenant[]
+  beds              Bed[]
+  bookings          Booking[]
+  property          Property  @relation(fields: [propertyId], references: [id])
+  tenants           Tenant[]
+  currentRoomReqs   RoomChangeRequest[] @relation("CurrentRoom")
+  requestedRoomReqs RoomChangeRequest[] @relation("RequestedRoom")
 }
 
 model Bed {
@@ -299,6 +303,10 @@ model Booking {
   creditNotes                 CreditNote[]
   foodPreferences             FoodPreference[]
   fraudFlags                  FraudFlag[]
+  moveInChecklist             MoveInChecklist?
+  vacatingNotices             VacatingNotice[]
+  roomChangeRequests          RoomChangeRequest[]
+  maintenanceRequests         MaintenanceRequest[]
 }
 
 model Waitlist {
@@ -403,6 +411,7 @@ model RentInvoice {
   payments         Payment[]      @relation("InvoicePayments")
   billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
   booking          Booking?       @relation("BookingInvoices", fields: [bookingId], references: [id])
+  reminders        RentReminder[]
 
   @@unique([tenantId, billingMonth])
 }
@@ -522,12 +531,15 @@ model Payment {
 }
 
 model FoodMenu {
-  id         String   @id @default(uuid())
-  propertyId String
-  dayOfWeek  String
-  mealType   String
-  items      String
-  property   Property @relation(fields: [propertyId], references: [id])
+  id          String   @id @default(uuid())
+  propertyId  String
+  dayOfWeek   String
+  mealType    String
+  items       String
+  weeklyMenu  String   @default("{}") // JSON: { monday: { breakfast: "", lunch: "", dinner: "" }, ... }
+  updatedBy   String?
+  menuVersion Int      @default(0)
+  property    Property @relation(fields: [propertyId], references: [id])
 }
 
 model FoodPreference {
@@ -1171,3 +1183,114 @@ model Tenancy {
 
   @@unique([userId, tenancyNumber])
 }
+
+// ─────────────────────────────────────────────────────────
+// PHASE 1 TENANT FEATURES
+// ─────────────────────────────────────────────────────────
+
+model MoveInChecklist {
+  id          String    @id @default(cuid())
+  bookingId   String    @unique
+  userId      String
+  items       String    @default("[]") // JSON array of checklist items
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+
+  @@map("move_in_checklists")
+}
+
+model VacatingNotice {
+  id             String    @id @default(cuid())
+  displayId      String    @unique
+  bookingId      String
+  tenancyId      String?
+  userId         String
+  propertyId     String
+  ownerId        String
+  plannedMoveOut DateTime
+  reason         String
+  status         String    @default("SUBMITTED") // SUBMITTED, ACKNOWLEDGED, APPROVED, DISPUTED, WITHDRAWN
+  ownerNote      String?
+  submittedAt    DateTime  @default(now())
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  booking        Booking   @relation(fields: [bookingId], references: [id])
+  property       Property  @relation(fields: [propertyId], references: [id])
+
+  @@index([userId])
+  @@index([propertyId])
+  @@map("vacating_notices")
+}
+
+model RoomChangeRequest {
+  id              String    @id @default(cuid())
+  displayId       String    @unique
+  bookingId       String
+  userId          String
+  currentRoomId   String
+  requestedRoomId String?   // null = any available room
+  reason          String
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  ownerNote       String?
+  preferredDate   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  booking         Booking   @relation(fields: [bookingId], references: [id])
+  currentRoom     Room      @relation("CurrentRoom", fields: [currentRoomId], references: [id])
+  requestedRoom   Room?     @relation("RequestedRoom", fields: [requestedRoomId], references: [id])
+
+  @@index([userId])
+  @@index([bookingId])
+  @@map("room_change_requests")
+}
+
+model MaintenanceRequest {
+  id          String    @id @default(cuid())
+  displayId   String    @unique
+  bookingId   String
+  userId      String
+  propertyId  String
+  category    String    // ELECTRICAL, PLUMBING, FURNITURE, CLEANLINESS, WIFI, SECURITY, OTHER
+  title       String
+  description String
+  photos      String    @default("[]") // JSON array of Cloudinary URLs
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String    @default("OPEN") // OPEN, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, CLOSED
+  ownerNote   String?
+  resolvedAt  DateTime?
+  slaDeadline DateTime? // Computed from priority on creation
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+  property    Property  @relation(fields: [propertyId], references: [id])
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("maintenance_requests")
+}
+
+model RentReminder {
+  id        String   @id @default(cuid())
+  invoiceId String
+  userId    String
+  type      String   // 7_DAYS_BEFORE, 3_DAYS_BEFORE, DUE_TODAY, OVERDUE_1_DAY, OVERDUE_3_DAYS, OVERDUE_7_DAYS
+  sentAt    DateTime @default(now())
+  channel   String   // EMAIL, NOTIFICATION
+
+  invoice   RentInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId, type])
+  @@map("rent_reminders")
+}
+

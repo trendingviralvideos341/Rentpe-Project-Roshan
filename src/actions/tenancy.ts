@@ -1,0 +1,189 @@
+'use server';
+
+import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { logAuditEvent } from "@/lib/audit";
+import { NotificationService } from "@/lib/notifications";
+import { generateMasterId } from "@/lib/ids";
+
+// ─── VACATING NOTICE ACTIONS ─────────────────────────────
+
+export async function fileVacatingNotice(data: {
+    bookingId: string;
+    plannedMoveOut: string; // ISO date string
+    reason: string;
+}) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+
+    const booking = await prisma.booking.findUnique({
+        where: { id: data.bookingId },
+        include: { property: true }
+    });
+
+    if (!booking || booking.userId !== userId) throw new Error("Unauthorized - not your booking");
+    if (!['ACTIVE', 'MOVE_IN_SCHEDULED'].includes(booking.status)) {
+        throw new Error("Notice can only be filed for an active booking.");
+    }
+
+    // Enforce 30-day minimum notice period
+    const moveOut = new Date(data.plannedMoveOut);
+    const today = new Date();
+    const daysDiff = Math.ceil((moveOut.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff < 30) throw new Error("Minimum 30-day notice period required.");
+
+    // Check for existing active notice
+    const existingNotice = await prisma.vacatingNotice.findFirst({
+        where: { bookingId: data.bookingId, deletedAt: null, status: { not: 'WITHDRAWN' } }
+    });
+    if (existingNotice) throw new Error("An active notice already exists for this booking.");
+
+    const displayId = await generateMasterId('NOTICE');
+    const notice = await prisma.vacatingNotice.create({
+        data: {
+            displayId,
+            bookingId: data.bookingId,
+            userId,
+            propertyId: booking.propertyId!,
+            ownerId: booking.property!.ownerId,
+            plannedMoveOut: moveOut,
+            reason: data.reason,
+            status: 'SUBMITTED',
+        }
+    });
+
+    // Notify owner
+    await prisma.notification.create({
+        data: {
+            userId: booking.property!.ownerId,
+            type: 'VACATING_NOTICE',
+            category: 'NOTICE',
+            message: `📋 ${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.`,
+            isPersistent: true,
+            metadata: JSON.stringify({ noticeId: notice.id, bookingId: data.bookingId }),
+        }
+    });
+
+    logAuditEvent({
+        actorId: userId,
+        actorRole: 'USER',
+        actorName: booking.guestName,
+        actionType: 'CREATE',
+        entityType: 'VACATING_NOTICE',
+        entityId: notice.id,
+        description: `Vacating notice filed. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}`,
+        newValue: { reason: data.reason, plannedMoveOut: data.plannedMoveOut }
+    });
+
+    revalidatePath('/dashboard/student/notice');
+    return notice;
+}
+
+export async function withdrawVacatingNotice(noticeId: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+
+    const notice = await prisma.vacatingNotice.findUnique({ where: { id: noticeId } });
+    if (!notice || notice.userId !== userId) throw new Error("Unauthorized");
+    if (notice.status !== 'SUBMITTED') throw new Error("Only SUBMITTED notices can be withdrawn.");
+
+    // Cannot withdraw within 7 days of planned move-out
+    const daysToMoveOut = Math.ceil((notice.plannedMoveOut.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysToMoveOut <= 7) throw new Error("Cannot withdraw notice within 7 days of planned move-out.");
+
+    const updated = await prisma.vacatingNotice.update({
+        where: { id: noticeId },
+        data: { status: 'WITHDRAWN', deletedAt: new Date() }
+    });
+
+    logAuditEvent({
+        actorId: userId,
+        actorRole: 'USER',
+        actorName: 'Tenant',
+        actionType: 'UPDATE',
+        entityType: 'VACATING_NOTICE',
+        entityId: noticeId,
+        description: 'Vacating notice withdrawn by tenant.',
+    });
+
+    revalidatePath('/dashboard/student/notice');
+    return updated;
+}
+
+export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const actorId = (session as any).userId;
+
+    const notice = await prisma.vacatingNotice.findUnique({
+        where: { id: noticeId },
+        include: { booking: true }
+    });
+    if (!notice) throw new Error("Notice not found");
+
+    // Only the property owner or authorized staff can acknowledge
+    const user = await prisma.user.findUnique({ where: { id: actorId } });
+    const isOwner = notice.ownerId === actorId || user?.parentOwnerId === notice.ownerId;
+    const isAdmin = ['ADMIN', 'STAFF'].includes((session as any).role);
+    if (!isOwner && !isAdmin) throw new Error("Unauthorized");
+
+    const updated = await prisma.vacatingNotice.update({
+        where: { id: noticeId },
+        data: {
+            status: 'ACKNOWLEDGED',
+            ownerNote: ownerNote || null,
+            acknowledgedAt: new Date(),
+        }
+    });
+
+    // Notify student
+    await prisma.notification.create({
+        data: {
+            userId: notice.userId,
+            type: 'VACATING_NOTICE_ACKNOWLEDGED',
+            category: 'NOTICE',
+            message: `✅ Your vacating notice (${notice.displayId}) has been acknowledged by the owner.${ownerNote ? ` Note: ${ownerNote}` : ''}`,
+            isPersistent: true,
+        }
+    });
+
+    logAuditEvent({
+        actorId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: user?.name || 'Owner',
+        actionType: 'UPDATE',
+        entityType: 'VACATING_NOTICE',
+        entityId: noticeId,
+        description: `Vacating notice acknowledged. Note: ${ownerNote || 'None'}`,
+    });
+
+    revalidatePath('/dashboard/owner/notices');
+    return updated;
+}
+
+export async function getMyVacatingNotice(bookingId: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+    return await prisma.vacatingNotice.findFirst({
+        where: { bookingId, userId, deletedAt: null }
+    });
+}
+
+export async function getOwnerVacatingNotices() {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { employeeProfile: true } });
+    const ownerId = user?.parentOwnerId || userId;
+
+    return await prisma.vacatingNotice.findMany({
+        where: { ownerId, deletedAt: null },
+        include: { booking: { select: { guestName: true, propertyName: true, displayId: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+}

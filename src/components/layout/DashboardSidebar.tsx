@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
@@ -121,12 +121,20 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/maintenance", label: "Maintenance Requests", icon: Wrench, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/room-changes", label: "Room Change Requests", icon: RefreshCw, reqPerm: ["manage_tenants"] },
             ]
         },
         {
             title: "Finance",
             links: [
                 { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard, reqPerm: ["view_payments", "mark_rent"] },
+                { href: "/dashboard/owner/rent-collection", label: "Rent Collection", icon: IndianRupee, reqPerm: ["view_payments", "mark_rent"] },
+                { href: "/dashboard/owner/deposits", label: "Security Deposits", icon: Shield, reqPerm: ["view_payments"] },
+                { href: "/dashboard/owner/invoices/generate", label: "Generate Invoices", icon: Receipt, reqPerm: ["view_payments", "mark_rent"] },
+                { href: "/dashboard/owner/analytics", label: "Analytics", icon: BarChart3, reqPerm: ["view_payments"] },
+                { href: "/dashboard/owner/tax-summary", label: "Tax Export", icon: Download, reqPerm: ["view_payments"] },
                 { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings, reqPerm: ["view_payments"] },
             ]
         },
@@ -134,8 +142,11 @@ export default function DashboardSidebar(props: SidebarProps) {
             title: "Team & Help",
             links: [
                 { href: "/dashboard/owner/staff", label: "Management & Staff Team", icon: UserPlus, reqPerm: ["manage_staff"] },
+                { href: "/dashboard/owner/tenant-log", label: "Tenant Log", icon: ClipboardList, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/availability", label: "Room Calendar", icon: CalendarDays, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/broadcast", label: "WhatsApp Broadcast", icon: MessageCircle, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["support"] },
-                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList, reqPerm: ["view_activity"] },
+                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: Receipt, reqPerm: ["view_activity"] },
             ]
         }
     ];
@@ -193,6 +204,9 @@ export default function DashboardSidebar(props: SidebarProps) {
         { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
         { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
         { href: "/dashboard/student/payments", label: "Payment History", icon: CreditCard },
+        { href: "/dashboard/student/maintenance", label: "Maintenance", icon: Wrench },
+        { href: "/dashboard/student/notice", label: "Vacating Notice", icon: Bell },
+        { href: "/dashboard/student/room-change", label: "Room Change", icon: RefreshCw },
     ];
 
     if (foodStatus) {
