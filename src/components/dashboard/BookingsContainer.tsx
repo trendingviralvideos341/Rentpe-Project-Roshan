@@ -607,9 +607,7 @@ export function BookingsContainer() {
                 {filteredBookings.length === 0 ? (
                     <p className="text-center text-muted-foreground py-12">No bookings found.</p>
                 ) : filteredBookings.map(booking => (
-                    <div key={booking.id} className={`bg-white border rounded-2xl p-4 shadow-sm space-y-3 ${
-                        ["REQUESTED", "APPLIED"].includes(booking.status) ? "border-l-4 border-l-red-400" : ""}`)}
-                        >
+                    <div key={booking.id} className={`bg-white border rounded-2xl p-4 shadow-sm space-y-3 ${["REQUESTED", "APPLIED"].includes(booking.status) ? "border-l-4 border-l-red-400" : ""}`}>
                         <div className="flex justify-between items-start gap-2">
                             <div>
                                 <p className="font-black text-sm">{booking.guestName}</p>
