@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays, MapPin, AlertTriangle, Send } from "lucide-react";
 import { cn } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
@@ -172,26 +172,45 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Operations",
             links: [
-                { href: "/dashboard/admin/property-approval", label: "Property Approvals", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/kyc", label: "KYC Verification Queue", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/properties", label: "Property Approval Queue", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/property-approval", label: "Property Detail Review", icon: Building, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/deactivation-requests", label: "Deactivation Requests", icon: PowerOff, badge: deactivationCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
                 { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "operations"] },
-                { href: "/dashboard/admin/doc-verification", label: "KYC Verifications", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/doc-verification", label: "Doc KYC (Owner)", icon: FileCheck, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "operations"] },
+                { href: "/dashboard/admin/cities", label: "City / Area Management", icon: MapPin, reqPerm: ["super_admin", "operations"] },
+            ]
+        },
+        {
+            title: "Resolution",
+            links: [
+                { href: "/dashboard/admin/disputes", label: "Dispute Resolution", icon: AlertTriangle, reqPerm: ["super_admin", "tickets"] },
+                { href: "/dashboard/admin/refunds", label: "Refund Management", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
+                { href: "/dashboard/admin/tickets", label: "Support Tickets (SLA)", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
+                { href: "/dashboard/admin/notifications/send", label: "Bulk Notifications", icon: Send, reqPerm: ["super_admin"] },
             ]
         },
         {
             title: "Finance",
             links: [
+                { href: "/dashboard/admin/payouts", label: "Owner Payouts", icon: IndianRupee, reqPerm: ["super_admin", "payments"] },
+                { href: "/dashboard/admin/settings/commission", label: "Commission Config", icon: Percent, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
-                { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Percent, reqPerm: ["super_admin", "payments"] },
+                { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Receipt, reqPerm: ["super_admin", "payments"] },
+            ]
+        },
+        {
+            title: "Analytics",
+            links: [
+                { href: "/dashboard/admin/analytics", label: "Platform Analytics", icon: BarChart3, reqPerm: ["super_admin"] },
             ]
         },
         {
             title: "System & Settings",
             links: [
                 { href: "/dashboard/admin/fraud", label: "🛡️ Fraud Management", icon: Shield, reqPerm: ["super_admin", "audit"] },
-                { href: "/dashboard/admin/tickets", label: "Resolution Center", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
                 { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "audit"] },
                 { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
                 { href: "/dashboard/admin/settings", label: "Platform Settings", icon: Settings, reqPerm: ["super_admin"] },

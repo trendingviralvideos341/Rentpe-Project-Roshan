@@ -69,6 +69,7 @@ export default function SignupPage() {
     const [otp, setOtp] = useState("");
     const [otpError, setOtpError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [resendCooldown, setResendCooldown] = useState(0); // seconds remaining;
 
     const { checks, passed } = getStrength(password);
 
@@ -99,11 +100,29 @@ export default function SignupPage() {
 
         setLoading(true);
         try {
-            // Simulate sending OTP
             if (!otpStep) {
-                setTimeout(() => {
-                    setOtpStep(true);
+                // Step 1 — Send OTP to email
+                const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
+                const res = await fetch('/api/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name: fullName }),
+                });
+                const data = await res.json();
+                if (!res.ok || data.error) {
+                    setError(data.error || 'Failed to send OTP. Please try again.');
                     setLoading(false);
+                    return;
+                }
+                setOtpStep(true);
+                setLoading(false);
+                // Start resend cooldown (60s)
+                setResendCooldown(60);
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) { clearInterval(timer); return 0; }
+                        return prev - 1;
+                    });
                 }, 1000);
                 return;
             }
@@ -193,12 +212,20 @@ export default function SignupPage() {
                             <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 space-y-3 animate-in fade-in zoom-in duration-300">
                                 <h3 className="text-sm font-bold text-violet-900 border-b border-violet-100 pb-2 flex items-center gap-2">
                                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-white text-[10px]">OTP</span>
-                                    Verify your mobile number
+                                    Verify your email address
                                 </h3>
-                                <p className="text-xs text-violet-700">A verification code has been sent to <strong>+91 {phone}</strong></p>
+                                <p className="text-xs text-violet-700">A 6-digit verification code has been sent to <strong>{email}</strong></p>
+
+                                {/* 🚧 Dev/Testing hint — remove when going live */}
+                                {process.env.NODE_ENV !== 'production' && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 font-medium">
+                                        🚧 Testing mode — use OTP: <span className="font-black tracking-widest">123456</span>
+                                    </div>
+                                )}
+
                                 <div className="space-y-1">
-                                    <Input 
-                                        placeholder="Enter 6-digit OTP" 
+                                    <Input
+                                        placeholder="Enter 6-digit OTP"
                                         className={`text-center text-lg tracking-[0.5em] font-black ${otpError ? "border-red-400" : "border-violet-300 focus:ring-violet-400"}`}
                                         value={otp}
                                         maxLength={6}
@@ -210,7 +237,35 @@ export default function SignupPage() {
                                     />
                                     {otpError && <p className="text-[10px] text-red-500 text-center font-semibold">{otpError}</p>}
                                 </div>
-                                <p className="text-[10px] text-muted-foreground text-center">Didn&apos;t receive code? <button type="button" className="text-violet-600 font-bold hover:underline">Resend</button></p>
+                                <p className="text-[10px] text-muted-foreground text-center">
+                                    Didn&apos;t receive the code?{" "}
+                                    {resendCooldown > 0 ? (
+                                        <span className="text-violet-400">Resend in {resendCooldown}s</span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="text-violet-600 font-bold hover:underline"
+                                            onClick={async () => {
+                                                const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
+                                                const res = await fetch('/api/auth/send-otp', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ email, name: fullName }),
+                                                });
+                                                const data = await res.json();
+                                                if (data.error) { setOtpError(data.error); return; }
+                                                setOtpError(null);
+                                                setResendCooldown(60);
+                                                const timer = setInterval(() => {
+                                                    setResendCooldown(prev => {
+                                                        if (prev <= 1) { clearInterval(timer); return 0; }
+                                                        return prev - 1;
+                                                    });
+                                                }, 1000);
+                                            }}
+                                        >Resend OTP</button>
+                                    )}
+                                </p>
                             </div>
                         )}
 

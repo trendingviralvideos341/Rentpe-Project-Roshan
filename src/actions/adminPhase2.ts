@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
+import { getSLAStatus } from "@/lib/sla";
 
 // ─────────────────────────────────────────────────────────
 // KYC VERIFICATION QUEUE
@@ -833,30 +834,9 @@ export async function getAdminAnalytics(days: number = 30) {
     };
 }
 
-// ─────────────────────────────────────────────────────────
-// SLA HELPER FOR TICKETS
-// ─────────────────────────────────────────────────────────
+// getSLAStatus imported from @/lib/sla
 
-export function getSLAStatus(ticket: { priority: string; createdAt: Date | string; status: string }): 'ON_TIME' | 'WARNING' | 'BREACHED' {
-    if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') return 'ON_TIME';
 
-    const slaHours: Record<string, number> = {
-        URGENT: 4,
-        HIGH: 24,
-        MEDIUM: 72,
-        LOW: 168, // 7 days
-    };
-
-    const hours = slaHours[ticket.priority] || 72;
-    const slaDeadline = new Date(new Date(ticket.createdAt).getTime() + hours * 60 * 60 * 1000);
-    const now = new Date();
-    const msRemaining = slaDeadline.getTime() - now.getTime();
-    const totalMs = hours * 60 * 60 * 1000;
-
-    if (msRemaining < 0) return 'BREACHED';
-    if (msRemaining < totalMs * 0.2) return 'WARNING'; // Last 20% of window
-    return 'ON_TIME';
-}
 
 export async function getAdminTicketsWithSLA(status?: string, priority?: string) {
     const session = await getSession();

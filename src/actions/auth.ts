@@ -13,6 +13,7 @@ import { generateSequentialId } from "@/lib/ids";
 import { NotificationService } from "@/lib/notifications";
 import { Session, UserRole } from '@/types/auth';
 import crypto from 'crypto';
+import { verifyOTP } from '@/lib/otp';
 
 const SignupSchema = z.object({
     name: z.string().min(3),
@@ -58,9 +59,10 @@ export async function signup(formData: FormData) {
     }
     const { name, email, password, phone, role, otp, marketingAgreed, dataSharingAgreed } = validated.data;
 
-    // OTTP Verification (Mock logic - in production sync with SMS provider)
-    if (otp !== "123456") {
-        return { error: "Invalid OTP. For testing, please use 123456." };
+    // OTP Verification — Email-based (free). Mock mode = ON by default (EMAIL_OTP_ENABLED=true to go live)
+    const otpResult = await verifyOTP(email, otp);
+    if (!otpResult.success) {
+        return { error: otpResult.error || "Invalid OTP. Please try again." };
     }
 
     try {
