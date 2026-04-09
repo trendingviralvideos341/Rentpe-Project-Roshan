@@ -101,7 +101,7 @@ export default function OwnerDashboard() {
     );
 
     return (
-        <div className="space-y-8 pb-8">
+        <div className="space-y-6 pb-8 px-4 md:px-0">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">Owner Dashboard</h1>
@@ -120,25 +120,25 @@ export default function OwnerDashboard() {
                         value="overview"
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <TrendingUp className="h-4 w-4 mr-2" /> Overview
+                        <TrendingUp className="h-4 w-4 mr-2 hidden sm:inline-block" /> Overview
                     </TabsTrigger>
                     <TabsTrigger
                         value="inventory"
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <Bed className="h-4 w-4 mr-2" /> Bed Management
+                        <Bed className="h-4 w-4 mr-2 hidden sm:inline-block" /> Bed Management
                     </TabsTrigger>
                     <TabsTrigger
                         value="ops"
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <Activity className="h-4 w-4 mr-2" /> Operations
+                        <Activity className="h-4 w-4 mr-2 hidden sm:inline-block" /> Operations
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
-                        <User className="h-4 w-4 mr-2" /> Profile
+                        <User className="h-4 w-4 mr-2 hidden sm:inline-block" /> Profile
                     </TabsTrigger>
                 </TabsList>
 
@@ -151,7 +151,7 @@ export default function OwnerDashboard() {
                                 <IndianRupee className="h-4 w-4 text-emerald-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString('en-IN')}</div>
+                                <div className="text-2xl font-bold">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
                                 <p className="text-xs text-muted-foreground mt-1 flex items-center text-emerald-600">
                                     <TrendingUp className="h-3 w-3 mr-1" /> +12% from last month
                                 </p>
@@ -188,7 +188,7 @@ export default function OwnerDashboard() {
                             <CardContent>
                                 <div className="h-[250px] w-full mt-4">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={stats.revenueHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                        <AreaChart data={stats.revenueHistory ?? []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
@@ -218,7 +218,7 @@ export default function OwnerDashboard() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
-                                                data={stats.occupancyStats}
+                                                data={stats.occupancyStats ?? []}
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={60}
@@ -226,7 +226,7 @@ export default function OwnerDashboard() {
                                                 paddingAngle={5}
                                                 dataKey="value"
                                             >
-                                                {stats.occupancyStats.map((entry: any, index: number) => (
+                                                {(stats.occupancyStats ?? []).map((entry: any, index: number) => (
                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                 ))}
                                             </Pie>
@@ -245,11 +245,11 @@ export default function OwnerDashboard() {
                             <CardTitle>Recent Activity Log</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {stats.recentActivity.length === 0 ? (
+                            {(stats.recentActivity ?? []).length === 0 ? (
                                 <p className="text-muted-foreground text-center py-4">No recent activity found.</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {stats.recentActivity.map((log: any) => (
+                                    {(stats.recentActivity ?? []).map((log: any) => (
                                         <div key={log.id} className="flex items-start gap-4 p-4 rounded-lg border bg-muted/5 hover:bg-muted/10 transition-colors z-10">
                                             <div className="p-2 bg-primary/10 rounded-full mt-0.5 shrink-0">
                                                 <Clock className="h-4 w-4 text-primary" />
@@ -406,20 +406,27 @@ export default function OwnerDashboard() {
                                             <Button
                                                 variant="outline"
                                                 className="w-full md:w-auto border-2 border-blue-100 text-blue-700 font-black h-12 px-8 rounded-2xl hover:bg-blue-50 transition-all uppercase tracking-tight text-[11px]"
-                                                onClick={async () => {
-                                                    const confirmReset = window.confirm("We will send a secure password reset link to your registered business email. Proceed?");
-                                                    if (!confirmReset) return;
-                                                    const { forgotPassword } = await import("@/actions/auth");
-                                                    const { toast } = await import("sonner");
-                                                    const formData = new FormData();
-                                                    formData.append('email', stats.user?.email || "");
-                                                    const toastId = toast.loading("Sending secure reset link...");
-                                                    const result = await forgotPassword(formData);
-                                                    if (result.success) {
-                                                        toast.success("Reset link sent! Please check your email.", { id: toastId });
-                                                    } else {
-                                                        toast.error(result.error || "Failed to send reset link.", { id: toastId });
-                                                    }
+                                                onClick={() => {
+                                                    import("sonner").then(({ toast }) => {
+                                                        toast("Send password reset link?", {
+                                                            description: "A secure link will be sent to your registered business email.",
+                                                            action: {
+                                                                label: "Send Link",
+                                                                onClick: async () => {
+                                                                    const { forgotPassword } = await import("@/actions/auth");
+                                                                    const formData = new FormData();
+                                                                    formData.append('email', stats.user?.email || "");
+                                                                    const toastId = toast.loading("Sending secure reset link...");
+                                                                    const result = await forgotPassword(formData);
+                                                                    if (result.success) {
+                                                                        toast.success("Reset link sent! Check your email.", { id: toastId });
+                                                                    } else {
+                                                                        toast.error(result.error || "Failed to send reset link.", { id: toastId });
+                                                                    }
+                                                                }
+                                                            }
+                                                        });
+                                                    });
                                                 }}
                                             >
                                                 Change Password →
