@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
@@ -130,15 +131,12 @@ export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: st
     const isAdmin = ['ADMIN', 'STAFF'].includes((session as any).role);
     if (!isOwner && !isAdmin) throw new Error("Unauthorized");
 
-    const updateData: any = {
+    const updateData: Prisma.VacatingNoticeUpdateInput = {
         status: 'ACKNOWLEDGED',
         ownerNote: ownerNote || null,
         acknowledgedAt: new Date(),
+        ...(approvedMoveOutDate ? { plannedMoveOut: new Date(approvedMoveOutDate) } : {}),
     };
-
-    if (approvedMoveOutDate) {
-        updateData.plannedMoveOut = new Date(approvedMoveOutDate);
-    }
 
     const updated = await prisma.vacatingNotice.update({
         where: { id: noticeId },

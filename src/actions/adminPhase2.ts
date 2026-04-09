@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -8,9 +8,9 @@ import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
 import { getSLAStatus } from "@/lib/sla";
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // KYC VERIFICATION QUEUE
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getKYCQueue(filter?: string) {
     const session = await getSession();
@@ -29,7 +29,7 @@ export async function getKYCQueue(filter?: string) {
         orderBy: { createdAt: 'desc' }
     });
 
-    // Build queue items — one per doc per property
+    // Build queue items â€” one per doc per property
     const queue: any[] = [];
 
     for (const prop of properties) {
@@ -101,7 +101,7 @@ export async function verifyDocument(propertyId: string, docType: string) {
     await createNotification(
         property.ownerId,
         'KYC_VERIFIED',
-        `✅ Your ${docType.replace('_', ' ')} document for "${property.name}" has been verified by admin.`
+        `âœ… Your ${docType.replace('_', ' ')} document for "${property.name}" has been verified by admin.`
     );
 
     await logAuditEvent({
@@ -145,13 +145,13 @@ export async function rejectDocument(propertyId: string, docType: string, reason
     await createNotification(
         property.ownerId,
         'KYC_REJECTED',
-        `❌ Your ${docType.replace('_', ' ')} document for "${property.name}" was rejected. Reason: ${reason}. Please re-upload.`
+        `âŒ Your ${docType.replace('_', ' ')} document for "${property.name}" was rejected. Reason: ${reason}. Please re-upload.`
     );
 
     if (property.owner?.email) {
         sendEmail({
             to: property.owner.email,
-            subject: `Action Required: Document Rejected — ${property.name}`,
+            subject: `Action Required: Document Rejected â€” ${property.name}`,
             html: `<h2>Document Rejected</h2><p>Hi ${property.owner.name || 'there'},</p><p>Your <strong>${docType.replace('_', ' ')}</strong> document for "<strong>${property.name}</strong>" has been rejected.</p><div style="background:#fef2f2;padding:15px;border-left:4px solid #ef4444;margin:20px 0"><strong>Reason:</strong><br/>${reason}</div><p>Please re-upload the correct document in your owner dashboard.</p>`
         }).catch(err => console.error('Failed to email doc rejection:', err));
     }
@@ -170,15 +170,15 @@ export async function rejectDocument(propertyId: string, docType: string, reason
     return { success: true };
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // REFUND MANAGEMENT
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getRefundRequests(status?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const refunds = await (prisma as any).refundRecord.findMany({
+    const refunds = await prisma.refundRecord.findMany({
         where: status && status !== 'ALL' ? { status } : {},
         orderBy: { createdAt: 'desc' },
         take: 200
@@ -215,7 +215,7 @@ export async function approveRefund(refundId: string, note?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const refund = await (prisma as any).refundRecord.update({
+    const refund = await prisma.refundRecord.update({
         where: { id: refundId },
         data: {
             status: 'PROCESSED',
@@ -237,7 +237,7 @@ export async function approveRefund(refundId: string, note?: string) {
         await createNotification(
             booking.user.id,
             'PAYMENT',
-            `✅ Your refund of ₹${refund.amount} has been approved and will be processed within 5-7 business days.`
+            `âœ… Your refund of â‚¹${refund.amount} has been approved and will be processed within 5-7 business days.`
         );
     }
 
@@ -248,7 +248,7 @@ export async function approveRefund(refundId: string, note?: string) {
         actionType: 'APPROVE',
         entityType: 'REFUND',
         entityId: refundId,
-        description: `Refund of ₹${refund.amount} approved. Note: ${note || 'N/A'}`,
+        description: `Refund of â‚¹${refund.amount} approved. Note: ${note || 'N/A'}`,
     });
 
     revalidatePath('/dashboard/admin/refunds');
@@ -259,7 +259,7 @@ export async function rejectRefund(refundId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const refund = await (prisma as any).refundRecord.update({
+    const refund = await prisma.refundRecord.update({
         where: { id: refundId },
         data: {
             status: 'REJECTED',
@@ -280,7 +280,7 @@ export async function rejectRefund(refundId: string, reason: string) {
         await createNotification(
             booking.user.id,
             'PAYMENT',
-            `❌ Your refund request of ₹${refund.amount} has been rejected. Reason: ${reason}`
+            `âŒ Your refund request of â‚¹${refund.amount} has been rejected. Reason: ${reason}`
         );
     }
 
@@ -291,22 +291,22 @@ export async function rejectRefund(refundId: string, reason: string) {
         actionType: 'REJECT',
         entityType: 'REFUND',
         entityId: refundId,
-        description: `Refund of ₹${refund.amount} rejected. Reason: ${reason}`,
+        description: `Refund of â‚¹${refund.amount} rejected. Reason: ${reason}`,
     });
 
     revalidatePath('/dashboard/admin/refunds');
     return { success: true };
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // CITY / AREA MANAGEMENT
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getServiceCities() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const cities = await (prisma as any).serviceCity.findMany({
+    const cities = await prisma.serviceCity.findMany({
         orderBy: [{ priority: 'desc' }, { name: 'asc' }]
     });
 
@@ -333,7 +333,7 @@ export async function addServiceCity(data: {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const city = await (prisma as any).serviceCity.create({
+    const city = await prisma.serviceCity.create({
         data: {
             name: data.name,
             slug: data.slug.toLowerCase().replace(/\s+/g, '-'),
@@ -372,7 +372,7 @@ export async function updateServiceCity(id: string, data: {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const updated = await (prisma as any).serviceCity.update({
+    const updated = await prisma.serviceCity.update({
         where: { id },
         data: {
             ...data,
@@ -388,7 +388,7 @@ export async function toggleCityStatus(id: string, isActive: boolean) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const updated = await (prisma as any).serviceCity.update({
+    const updated = await prisma.serviceCity.update({
         where: { id },
         data: { isActive }
     });
@@ -408,15 +408,15 @@ export async function toggleCityStatus(id: string, isActive: boolean) {
     return updated;
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // COMMISSION CONFIGURATION
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getCommissionConfigs() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return (prisma as any).commissionConfig.findMany({
+    return prisma.commissionConfig.findMany({
         orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }]
     });
 }
@@ -432,12 +432,12 @@ export async function updateCommissionConfig(data: {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     // Deactivate old config for this property type
-    await (prisma as any).commissionConfig.updateMany({
+    await prisma.commissionConfig.updateMany({
         where: { propertyType: data.propertyType, isActive: true },
         data: { isActive: false }
     });
 
-    const config = await (prisma as any).commissionConfig.create({
+    const config = await prisma.commissionConfig.create({
         data: {
             propertyType: data.propertyType,
             feePercent: data.feePercent,
@@ -456,16 +456,16 @@ export async function updateCommissionConfig(data: {
         actionType: 'UPDATE',
         entityType: 'ADMIN',
         entityId: config.id,
-        description: `Commission config updated: ${data.propertyType} → ${data.feePercent}%${data.flatFee ? ` / ₹${data.flatFee} flat` : ''}`,
+        description: `Commission config updated: ${data.propertyType} â†’ ${data.feePercent}%${data.flatFee ? ` / â‚¹${data.flatFee} flat` : ''}`,
     });
 
     revalidatePath('/dashboard/admin/settings/commission');
     return config;
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // BULK NOTIFICATION SENDER
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getNotificationRecipientCount(
     audience: 'ALL' | 'STUDENTS' | 'OWNERS' | 'CITY',
@@ -552,15 +552,15 @@ export async function sendBulkNotification(
     return { success: true, recipientCount: sent };
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // DISPUTE MESSAGES
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getDisputeById(id: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const dispute = await (prisma as any).dispute.findUnique({
+    const dispute = await prisma.dispute.findUnique({
         where: { id },
         include: {
             messages: { orderBy: { createdAt: 'asc' } },
@@ -587,7 +587,7 @@ export async function getDisputesForAdmin(status?: string, priority?: string) {
     if (status && status !== 'ALL') where.status = status;
     if (priority && priority !== 'ALL') where.priority = priority;
 
-    const disputes = await (prisma as any).dispute.findMany({
+    const disputes = await prisma.dispute.findMany({
         where,
         include: {
             messages: { select: { id: true } }
@@ -616,7 +616,7 @@ export async function sendDisputeMessage(disputeId: string, message: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const msg = await (prisma as any).disputeMessage.create({
+    const msg = await prisma.disputeMessage.create({
         data: {
             disputeId,
             senderId: (session as any).userId,
@@ -633,7 +633,7 @@ export async function updateDisputePriority(disputeId: string, priority: string)
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const dispute = await (prisma as any).dispute.update({
+    const dispute = await prisma.dispute.update({
         where: { id: disputeId },
         data: { priority }
     });
@@ -643,9 +643,9 @@ export async function updateDisputePriority(disputeId: string, priority: string)
     return dispute;
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PAYOUT MANAGEMENT (extends existing payouts.ts)
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getOwnerPayouts(period?: string, status?: string) {
     const session = await getSession();
@@ -703,7 +703,7 @@ export async function processOwnerPayout(payoutId: string) {
         await createNotification(
             owner.id,
             'PAYMENT',
-            `💰 Your payout of ₹${payout.netAmount} for ${payout.period} has been processed!`
+            `ðŸ’° Your payout of â‚¹${payout.netAmount} for ${payout.period} has been processed!`
         );
     }
 
@@ -714,7 +714,7 @@ export async function processOwnerPayout(payoutId: string) {
         actionType: 'APPROVE',
         entityType: 'PAYOUT',
         entityId: payoutId,
-        description: `Payout ${payout.displayId} processed. Net: ₹${payout.netAmount} for period ${payout.period}`,
+        description: `Payout ${payout.displayId} processed. Net: â‚¹${payout.netAmount} for period ${payout.period}`,
     });
 
     revalidatePath('/dashboard/admin/payouts');
@@ -736,9 +736,9 @@ export async function processBulkPayouts(payoutIds: string[]) {
     return { succeeded, failed, total: payoutIds.length };
 }
 
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // ADMIN ANALYTICS
-// ─────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getAdminAnalytics(days: number = 30) {
     const session = await getSession();
@@ -766,12 +766,12 @@ export async function getAdminAnalytics(days: number = 30) {
             select: { createdAt: true, status: true, city: true }
         }),
         prisma.ticket.count({ where: { status: 'RESOLVED', updatedAt: { gte: cutoff } } }),
-        (prisma as any).dispute.count({ where: { createdAt: { gte: cutoff } } }),
+        prisma.dispute.count({ where: { createdAt: { gte: cutoff } } }),
         prisma.user.count({ where: { deletedAt: null } }),
         prisma.property.count(),
         prisma.property.count({ where: { status: 'APPROVED' } }),
         prisma.ticket.count({ where: { status: 'OPEN' } }),
-        (prisma as any).dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
+        prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
     ]);
 
     // Build daily chart data
@@ -874,3 +874,4 @@ export async function getAdminTicketsWithSLA(status?: string, priority?: string)
         stats: { overdue, warning, open, closedToday }
     };
 }
+

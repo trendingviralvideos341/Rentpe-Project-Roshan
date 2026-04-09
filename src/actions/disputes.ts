@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -23,7 +23,7 @@ export async function raiseDispute(data: {
     if (!session) throw new Error("Unauthorized");
     if (!data.subject?.trim() || !data.description?.trim()) throw new Error("Subject and description are required");
 
-    const dispute = await (prisma as any).dispute.create({
+    const dispute = await prisma.dispute.create({
         data: {
             displayId: `DIS-${Math.floor(Math.random() * 900000) + 100000}`,
             bookingId: data.bookingId,
@@ -42,7 +42,7 @@ export async function raiseDispute(data: {
     // Notify admin team
     const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true, email: true } });
     for (const admin of admins) {
-        await createNotification(admin.id, 'TICKET', `New ${data.type} dispute raised: "${data.subject}" — Priority: ${data.priority || 'MEDIUM'}`);
+        await createNotification(admin.id, 'TICKET', `New ${data.type} dispute raised: "${data.subject}" â€” Priority: ${data.priority || 'MEDIUM'}`);
         
         if (admin.email) {
             sendEmail({
@@ -76,7 +76,7 @@ export async function reviewDispute(disputeId: string, adminNotes?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const dispute = await (prisma as any).dispute.update({
+    const dispute = await prisma.dispute.update({
         where: { id: disputeId },
         data: { status: 'UNDER_REVIEW', adminNotes }
     });
@@ -95,7 +95,7 @@ export async function resolveDispute(disputeId: string, resolution: string) {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
     if (!resolution?.trim()) throw new Error("Resolution is required");
 
-    const dispute = await (prisma as any).dispute.update({
+    const dispute = await prisma.dispute.update({
         where: { id: disputeId },
         data: {
             status: 'RESOLVED',
@@ -111,7 +111,7 @@ export async function resolveDispute(disputeId: string, resolution: string) {
     if (user?.email) {
         sendEmail({
             to: user.email,
-            subject: `Dispute Resolved: ${dispute.subject} ✅`,
+            subject: `Dispute Resolved: ${dispute.subject} âœ…`,
             html: `<h2>Good news!</h2><p>Hi ${user.name || 'there'},</p><p>Your dispute "<strong>${dispute.subject}</strong>" has been resolved by our support team.</p><div style="background: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0;"><strong>Resolution:</strong><br/>${resolution}</div><p>Thank you for your patience.</p>`
         }).catch(err => console.error('Failed to email dispute resolution:', err));
     }
@@ -137,7 +137,7 @@ export async function closeDispute(disputeId: string, notes?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const dispute = await (prisma as any).dispute.update({
+    const dispute = await prisma.dispute.update({
         where: { id: disputeId },
         data: { status: 'CLOSED', adminNotes: notes, resolvedAt: new Date(), resolvedById: (session as any).userId }
     });
@@ -158,7 +158,7 @@ export async function getAllDisputes(filters?: { status?: string; type?: string;
     if (filters?.type) where.type = filters.type;
     if (filters?.priority) where.priority = filters.priority;
 
-    return (prisma as any).dispute.findMany({ where, orderBy: { createdAt: 'desc' } });
+    return prisma.dispute.findMany({ where, orderBy: { createdAt: 'desc' } });
 }
 
 
@@ -169,24 +169,24 @@ export async function getMyDisputes() {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    return (prisma as any).dispute.findMany({
+    return prisma.dispute.findMany({
         where: { raisedById: (session as any).userId },
         orderBy: { createdAt: 'desc' }
     });
 }
 
-// ─────────────────────────────────────────────
-// FOOD BILLING ADMIN OVERRIDE (All 5 Specs §6)
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// FOOD BILLING ADMIN OVERRIDE (All 5 Specs Â§6)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type FoodOverrideAction = 'CREDIT' | 'REFUND' | 'DISABLE_FOOD';
 
 /**
  * Admin-only: override food billing for a booking.
  *
- * CREDIT      — Create CreditNote (PENDING) applied at next invoice generation
- * REFUND      — Create CreditNote (REFUND) + mark latest invoice foodNotes
- * DISABLE_FOOD — Force food off: FoodPreference CONFIRMED false + booking cache update
+ * CREDIT      â€” Create CreditNote (PENDING) applied at next invoice generation
+ * REFUND      â€” Create CreditNote (REFUND) + mark latest invoice foodNotes
+ * DISABLE_FOOD â€” Force food off: FoodPreference CONFIRMED false + booking cache update
  *
  * Rules:
  *  - Admin only
@@ -201,9 +201,9 @@ export async function overrideFoodBilling(
     notes?: string
 ): Promise<{ success: boolean; error?: string }> {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') return { success: false, error: 'Unauthorized — Admin only.' };
+    if (!session || session.role !== 'ADMIN') return { success: false, error: 'Unauthorized â€” Admin only.' };
 
-    // ── Input Validation ──
+    // â”€â”€ Input Validation â”€â”€
     if (!bookingId?.trim()) return { success: false, error: 'bookingId is required.' };
     if (!notes?.trim()) return { success: false, error: 'Notes are mandatory for admin overrides.' };
     if (amount !== undefined && (typeof amount !== 'number' || amount <= 0 || !isFinite(amount))) {
@@ -222,11 +222,11 @@ export async function overrideFoodBilling(
     const prevState = { foodSelected: booking.foodSelected, action };
 
     try {
-        // ── CREDIT: create a pending credit note for next invoice ──
+        // â”€â”€ CREDIT: create a pending credit note for next invoice â”€â”€
         if (action === 'CREDIT') {
             if (!amount || amount <= 0) return { success: false, error: 'Credit amount must be greater than 0.' };
 
-            await (prisma as any).creditNote.create({
+            await prisma.creditNote.create({
                 data: {
                     displayId: `CN-${Date.now()}`,
                     bookingId,
@@ -244,7 +244,7 @@ export async function overrideFoodBilling(
             logAuditEvent({
                 actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
                 actionType: 'CREATE', entityType: 'BOOKING', entityId: bookingId,
-                description: `Admin issued credit note of ₹${amount}. Reason: ${notes}`,
+                description: `Admin issued credit note of â‚¹${amount}. Reason: ${notes}`,
                 previousValue: prevState,
                 newValue: { creditNoteAmount: amount, type: 'ADMIN_OVERRIDE' },
             });
@@ -253,17 +253,17 @@ export async function overrideFoodBilling(
             return { success: true };
         }
 
-        // ── REFUND: credit note + mark invoice foodNotes ──
+        // â”€â”€ REFUND: credit note + mark invoice foodNotes â”€â”€
         if (action === 'REFUND') {
             if (!amount || amount <= 0) return { success: false, error: 'Refund amount must be greater than 0.' };
 
             // Find latest invoice for this booking (correct: keyed by bookingId, not tenantId)
-            const latestInvoice = await (prisma as any).rentInvoice.findFirst({
+            const latestInvoice = await prisma.rentInvoice.findFirst({
                 where: { bookingId },
                 orderBy: { createdAt: 'desc' }
             });
 
-            await (prisma as any).creditNote.create({
+            await prisma.creditNote.create({
                 data: {
                     displayId: `CN-REF-${Date.now()}`,
                     bookingId,
@@ -280,18 +280,18 @@ export async function overrideFoodBilling(
                 }
             });
 
-            // Mark invoice with refund note (no amount modification — invoice is immutable)
+            // Mark invoice with refund note (no amount modification â€” invoice is immutable)
             if (latestInvoice) {
-                await (prisma as any).rentInvoice.update({
+                await prisma.rentInvoice.update({
                     where: { id: latestInvoice.id },
-                    data: { foodNotes: `Refund issued: ₹${amount}. ${notes}` } as any
+                    data: { foodNotes: `Refund issued: â‚¹${amount}. ${notes}` } as any
                 });
             }
 
             logAuditEvent({
                 actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
                 actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
-                description: `Admin issued food refund of ₹${amount}. Invoice: ${latestInvoice?.displayId || 'N/A'}. Reason: ${notes}`,
+                description: `Admin issued food refund of â‚¹${amount}. Invoice: ${latestInvoice?.displayId || 'N/A'}. Reason: ${notes}`,
                 previousValue: prevState,
                 newValue: { refundAmount: amount, invoiceId: latestInvoice?.id },
             });
@@ -300,17 +300,17 @@ export async function overrideFoodBilling(
             return { success: true };
         }
 
-        // ── DISABLE_FOOD: force food off — bypasses student confirmation ──
+        // â”€â”€ DISABLE_FOOD: force food off â€” bypasses student confirmation â”€â”€
         if (action === 'DISABLE_FOOD') {
             const { nextBillingCycleStart, toUTC } = await import('@/utils/foodBillingUtils');
-            const billingProfile = await (prisma as any).billingProfile.findFirst({
+            const billingProfile = await prisma.billingProfile.findFirst({
                 where: { tenantId: booking.tenantId },
                 select: { billingAnchorDay: true }
             });
             const anchorDay = billingProfile?.billingAnchorDay || 1;
             const effectiveFrom = toUTC(nextBillingCycleStart(anchorDay, new Date()));
 
-            await (prisma as any).foodPreference.create({
+            await prisma.foodPreference.create({
                 data: {
                     bookingId,
                     propertyId: (await (prisma as any).booking.findUnique({
@@ -352,3 +352,4 @@ export async function overrideFoodBilling(
         return { success: false, error: err.message || 'Unexpected error.' };
     }
 }
+
