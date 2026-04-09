@@ -67,18 +67,25 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
     const handleToggle = async () => {
         const newVal = !foodEnabled;
         const label = newVal ? 'enable' : 'disable';
-        if (!confirm(`Are you sure you want to ${label} the food service?\nThis change will take effect from the 1st of next month.`)) return;
-
-        setChanging(true);
-        const result = await changeFoodPreference(booking.id, newVal);
-        if (result.success) {
-            setFoodEnabled(newVal);
-            setLastChanged(result.effectiveFrom || '');
-            await onRefresh();
-        } else {
-            alert(result.error || 'Failed to change food preference. Please try again.');
-        }
-        setChanging(false);
+        toast(`${label === 'enable' ? '🍽 Enable' : '🚫 Disable'} food service?`, {
+            description: 'Change takes effect from the 1st of next month.',
+            action: {
+                label: 'Confirm',
+                onClick: async () => {
+                    setChanging(true);
+                    const result = await changeFoodPreference(booking.id, newVal);
+                    if (result.success) {
+                        setFoodEnabled(newVal);
+                        setLastChanged(result.effectiveFrom || '');
+                        toast.success(`Food service ${label}d successfully!`);
+                        await onRefresh();
+                    } else {
+                        toast.error(result.error || 'Failed to change food preference.');
+                    }
+                    setChanging(false);
+                },
+            },
+        });
     };
 
     return (
@@ -333,16 +340,24 @@ export default function StudentDashboardPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleCancel = async (bookingId: string) => {
-        if (!confirm("Are you sure you want to cancel this booking request? This action cannot be undone.")) return;
-        setCancellingId(bookingId);
-        try {
-            await cancelBooking(bookingId);
-            await fetchData();
-        } catch (e: any) {
-            alert(e.message || "Failed to cancel booking.");
-        } finally {
-            setCancellingId(null);
-        }
+        toast("Cancel this booking request?", {
+            description: "This action cannot be undone.",
+            action: {
+                label: "Yes, Cancel",
+                onClick: async () => {
+                    setCancellingId(bookingId);
+                    try {
+                        await cancelBooking(bookingId);
+                        toast.success("Booking cancelled successfully.");
+                        await fetchData();
+                    } catch (e: any) {
+                        toast.error(e.message || "Failed to cancel booking.");
+                    } finally {
+                        setCancellingId(null);
+                    }
+                },
+            },
+        });
     };
 
 
@@ -360,7 +375,7 @@ export default function StudentDashboardPage() {
             });
         } catch (e: any) {
             console.error("PDF GEN ERROR:", e);
-            alert("Failed to generate PDF. Please try again.");
+            toast.error("Failed to generate PDF. Please try again.");
         }
     };
 
@@ -514,78 +529,7 @@ export default function StudentDashboardPage() {
                                                 )}
                                             </div>
 
-                                            {/* ── Professional Flow Checklist ── */}
-                                            {!isCancelled && booking.status !== "REJECTED" && !isCheckedIn && (
-                                                <div className="bg-slate-50 border rounded-xl p-4 shadow-inner">
-                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Onboarding Checklist</p>
-                                                    <div className="space-y-3">
-                                                        <div className="flex items-start gap-3">
-                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${booking.status !== "PENDING_APPROVAL" ? "bg-green-500 text-white" : "bg-blue-500 text-white animate-pulse"}`}>
-                                                                {booking.status !== "PENDING_APPROVAL" ? "✓" : "1"}
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className={`font-bold ${booking.status !== "PENDING_APPROVAL" ? "text-green-700" : "text-blue-700"}`}>Booking Approval</p>
-                                                                <p className="text-[11px] text-muted-foreground">Owner reviews your request and room availability.</p>
-                                                            </div>
-                                                        </div>
 
-                                                        <div className="flex items-start gap-3">
-                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${isPaymentPending || isPaid || isCheckedIn ? "bg-green-500 text-white" : isKycPending ? "bg-blue-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}>
-                                                                {isPaymentPending || isPaid || isCheckedIn ? "✓" : "2"}
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className={`font-bold ${isPaymentPending || isPaid || isCheckedIn ? "text-green-700" : isKycPending ? "text-blue-700" : "text-slate-400"}`}>KYC Documentation</p>
-                                                                <p className="text-[11px] text-muted-foreground">Upload your ID proof and Student/Work verification docs.</p>
-                                                                {isKycPending && (
-                                                                    <Button size="sm" variant="outline" onClick={() => setExpandedDocs(booking.id)} className="mt-2 h-7 text-[10px] border-blue-300 text-blue-600 hover:bg-blue-50">
-                                                                        📎 Upload Documents Now
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-start gap-3">
-                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${isPaid || isCheckedIn ? "bg-green-500 text-white" : isPaymentPending ? "bg-blue-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}>
-                                                                {isPaid || isCheckedIn ? "✓" : "3"}
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className={`font-bold ${isPaid || isCheckedIn ? "text-green-700" : isPaymentPending ? "text-blue-700" : "text-slate-400"}`}>Payment & Reservation</p>
-                                                                <p className="text-[11px] text-muted-foreground">Secure your room by paying the reservation amount.</p>
-                                                                {isPaymentPending && (
-                                                                    <Button size="sm" className="mt-2 h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md" asChild>
-                                                                        <Link href={`/secure/payment?id=${booking.id}`}>💳 Complete Payment</Link>
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-start gap-3">
-                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${booking.agreementSigned || isCheckedIn ? "bg-green-500 text-white" : isPaid && !booking.agreementSigned ? "bg-blue-500 text-white animate-pulse" : "bg-slate-200 text-slate-400"}`}>
-                                                                {booking.agreementSigned || isCheckedIn ? "✓" : "4"}
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className={`font-bold ${booking.agreementSigned || isCheckedIn ? "text-green-700" : isPaid && !booking.agreementSigned ? "text-blue-700" : "text-slate-400"}`}>Rental Agreement</p>
-                                                                <p className="text-[11px] text-muted-foreground">Review and sign your digital occupancy agreement.</p>
-                                                                {isPaid && !booking.agreementSigned && (
-                                                                    <Button size="sm" variant="outline" className="mt-2 h-7 text-[10px] border-blue-400 text-blue-700 hover:bg-blue-50 font-bold" onClick={() => setSigningBooking(booking)}>
-                                                                        ✍️ Sign Agreement
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-start gap-3">
-                                                            <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${isCheckedIn ? "bg-green-500 text-white" : isPaid && booking.agreementSigned ? "bg-amber-500 text-white animate-bounce" : "bg-slate-200 text-slate-400"}`}>
-                                                                {isCheckedIn ? "✓" : "5"}
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className={`font-bold ${isCheckedIn ? "text-green-700" : isPaid && booking.agreementSigned ? "text-amber-700" : "text-slate-400"}`}>Physical Check-in</p>
-                                                                <p className="text-[11px] text-muted-foreground">Arrive at the PG on your move-in date to collect keys.</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
 
                                             {/* ── Dynamic Fee Breakdown (Phase 4) ── */}
                                             {isApproved && booking.room && (
@@ -1037,22 +981,25 @@ export default function StudentDashboardPage() {
                                     <Button 
                                         variant="outline"
                                         className="w-full md:w-auto border-2 border-indigo-100 text-indigo-700 font-black h-12 px-8 rounded-2xl hover:bg-indigo-50 transition-all uppercase tracking-tight text-[11px]"
-                                        onClick={async () => {
-                                            const confirmReset = window.confirm("We will send a secure password reset link to your registered email. Proceed?");
-                                            if (!confirmReset) return;
-                                            
-                                            const { forgotPassword } = await import("@/actions/auth");
-                                            const formData = new FormData();
-                                            formData.append('email', profile?.email || "");
-                                            
-                                            const toastId = toast.loading("Sending secure reset link...");
-                                            const result = await forgotPassword(formData);
-                                            
-                                            if (result.success) {
-                                                toast.success("Reset link sent! Please check your email.", { id: toastId });
-                                            } else {
-                                                toast.error(result.error || "Failed to send reset link.", { id: toastId });
-                                            }
+                                        onClick={() => {
+                                            toast("Send password reset link?", {
+                                                description: "A secure link will be sent to your registered email.",
+                                                action: {
+                                                    label: "Send Link",
+                                                    onClick: async () => {
+                                                        const { forgotPassword } = await import("@/actions/auth");
+                                                        const formData = new FormData();
+                                                        formData.append('email', profile?.email || "");
+                                                        const toastId = toast.loading("Sending secure reset link...");
+                                                        const result = await forgotPassword(formData);
+                                                        if (result.success) {
+                                                            toast.success("Reset link sent! Check your email.", { id: toastId });
+                                                        } else {
+                                                            toast.error(result.error || "Failed to send reset link.", { id: toastId });
+                                                        }
+                                                    },
+                                                },
+                                            });
                                         }}
                                     >
                                         Change Password →

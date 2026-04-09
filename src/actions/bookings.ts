@@ -743,7 +743,7 @@ export async function getPendingBookingsCount() {
         return await prisma.booking.count({
             where: {
                 propertyId: { in: propertyIds },
-                status: 'PENDING_APPROVAL'
+                status: { in: ['APPLIED', 'PENDING_APPROVAL'] }
             }
         });
     } catch (e) {

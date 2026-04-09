@@ -10,6 +10,7 @@ import { impersonateUser } from "@/actions/admin-auth";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // ── Points Modal ──────────────────────────────────────
 function PointsModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (points: number, reason: string) => void; onCancel: () => void }) {
@@ -143,9 +144,10 @@ export default function AdminUsersPage() {
         try {
             const newStatus = blockTarget.status === "BANNED" ? "ACTIVE" : "BANNED";
             await updateUserStatus(blockTarget.id, newStatus, reason);
+            toast.success(newStatus === "BANNED" ? "User blocked successfully." : "User account restored.");
             fetchUsers();
         } catch {
-            alert("Failed to update user status");
+            toast.error("Failed to update user status.");
         } finally {
             setProcessing(false);
             setBlockTarget(null);
@@ -157,9 +159,10 @@ export default function AdminUsersPage() {
         setProcessing(true);
         try {
             await updateUserPoints(pointsTarget.id, points, reason);
+            toast.success("Loyalty points updated successfully.");
             fetchUsers();
         } catch {
-            alert("Failed to update points");
+            toast.error("Failed to update points.");
         } finally {
             setProcessing(false);
             setPointsTarget(null);
@@ -167,16 +170,23 @@ export default function AdminUsersPage() {
     }
 
     async function handleImpersonate(userId: string) {
-        if (!confirm("Are you sure you want to login as this user?")) return;
-        setProcessing(true);
-        try {
-            const url = await impersonateUser(userId);
-            window.location.href = url;
-        } catch (e: any) {
-            alert(e.message || "Failed to impersonate");
-        } finally {
-            setProcessing(false);
-        }
+        toast("Login as this user?", {
+            description: "You will be impersonating this account.",
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    setProcessing(true);
+                    try {
+                        const url = await impersonateUser(userId);
+                        window.location.href = url;
+                    } catch (e: any) {
+                        toast.error(e.message || "Failed to impersonate user.");
+                    } finally {
+                        setProcessing(false);
+                    }
+                },
+            },
+        });
     }
 
     const counts = {

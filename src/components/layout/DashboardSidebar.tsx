@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays, MapPin, AlertTriangle, Send } from "lucide-react";
-import { cn } from "@/components/ui/button";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays, MapPin, AlertTriangle, Send, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
 import { getPendingPropertiesCount, getDeactivationRequestCount } from "@/actions/admin";
@@ -16,7 +16,7 @@ import { getStudentFoodStatus } from "@/actions/food";
 interface SidebarLink {
     href: string;
     label: string;
-    icon: any;
+    icon: LucideIcon;
     badge?: number;
     reqPerm?: string[];
 }
@@ -60,7 +60,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setPendingDocCount(docCount);
             };
             checkOwner();
-            const interval = setInterval(checkOwner, 5000);
+            const interval = setInterval(checkOwner, 30000);
             return () => clearInterval(interval);
         }
         if (role === "admin") {
@@ -75,7 +75,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setRoleUpgradeCount(upgradeCount);
             };
             checkAdmin();
-            const interval = setInterval(checkAdmin, 5000);
+            const interval = setInterval(checkAdmin, 30000);
             return () => clearInterval(interval);
         }
         if (role === "student") {
@@ -86,7 +86,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setFoodStatus(food);
             };
             checkStudent();
-            const interval = setInterval(checkStudent, 5000);
+            const interval = setInterval(checkStudent, 30000);
             return () => clearInterval(interval);
         }
     }, [role]);
@@ -248,17 +248,33 @@ export default function DashboardSidebar(props: SidebarProps) {
         }
     ];
 
-    // Staff sections are a subset of owner sections, filtered by their assigned permissions
-    const staffSections: SidebarSection[] = ownerSections.map(section => ({
-        ...section,
-        links: section.links
-            .filter(link => !link.href.endsWith('/owner/staff')) // Staff shouldn't see staff management
-            .filter(link => !link.href.includes('/settings/payment')) // Staff shouldn't see financial settings
-            .map(link => ({
-                ...link,
-                href: link.href.replace('/owner/', '/staff/') // Redirect to staff-scoped routes if they exist
-            }))
-    }));
+    // Staff sections: only routes that actually make sense for staff (no analytics, tax, deposits, settings)
+    const STAFF_ALLOWED_ROUTES = [
+        "/dashboard/owner/bookings",
+        "/dashboard/owner/onboarding",
+        "/dashboard/owner/verifications",
+        "/dashboard/owner/tenants",
+        "/dashboard/owner/maintenance",
+        "/dashboard/owner/notices",
+        "/dashboard/owner/room-changes",
+        "/dashboard/owner/payments",
+        "/dashboard/owner/rent-collection",
+        "/dashboard/owner/properties",
+        "/dashboard/owner/food-menu",
+        "/dashboard/owner/availability",
+        "/dashboard/owner/broadcast",
+        "/dashboard/owner/tickets",
+        "/dashboard/owner/tenant-log",
+    ];
+
+    const staffSections: SidebarSection[] = ownerSections
+        .map(section => ({
+            ...section,
+            links: section.links.filter(link =>
+                STAFF_ALLOWED_ROUTES.includes(link.href.split('?')[0])
+            )
+        }))
+        .filter(section => section.links.length > 0);
 
     const perms = props.permissions || [];
     const isSuperAdmin =
