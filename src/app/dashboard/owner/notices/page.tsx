@@ -21,6 +21,7 @@ export default function OwnerNoticesPage() {
     const [note, setNote] = useState('');
     const [view, setView] = useState<'list' | 'calendar'>('list');
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [revisedMoveOutDate, setRevisedMoveOutDate] = useState('');
     const [isPending, startTransition] = useTransition();
 
     useEffect(() => {
@@ -34,11 +35,12 @@ export default function OwnerNoticesPage() {
         if (!selected) return;
         startTransition(async () => {
             try {
-                await acknowledgeVacatingNotice(selected.id, note);
-                setNotices(prev => prev.map(n => n.id === selected.id ? { ...n, status: 'ACKNOWLEDGED', ownerNote: note } : n));
+                const updated = await acknowledgeVacatingNotice(selected.id, note, revisedMoveOutDate || undefined);
+                setNotices(prev => prev.map(n => n.id === selected.id ? { ...n, ...updated } : n));
                 setSelected(null);
                 setNote('');
-                toast.success('Notice acknowledged.');
+                setRevisedMoveOutDate('');
+                toast.success('Notice acknowledged with approved date.');
             } catch (e: any) {
                 toast.error(e.message || 'Action failed.');
             }
@@ -187,7 +189,11 @@ export default function OwnerNoticesPage() {
                                                     </div>
                                                     {notice.status === 'SUBMITTED' && (
                                                         <button
-                                                            onClick={() => { setSelected(notice); setNote(''); }}
+                                                            onClick={() => { 
+                                                                setSelected(notice); 
+                                                                setNote(''); 
+                                                                setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
+                                                            }}
                                                             className="px-4 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-all whitespace-nowrap"
                                                         >
                                                             Acknowledge →
@@ -246,7 +252,12 @@ export default function OwnerNoticesPage() {
                                                 return (
                                                     <div 
                                                         key={n.id} 
-                                                        onClick={() => setSelected(n)}
+                                                        onClick={() => {
+                                                            setSelected(n);
+                                                            if (n.status === 'SUBMITTED') {
+                                                                setRevisedMoveOutDate(format(new Date(n.plannedMoveOut), 'yyyy-MM-dd'));
+                                                            }
+                                                        }}
                                                         className={`text-[9px] font-black p-1.5 rounded-lg border flex flex-col cursor-pointer transition-all hover:scale-[1.02] shadow-sm ${sc.cls}`}
                                                     >
                                                         <span className="truncate">{n.booking?.guestName}</span>
@@ -287,11 +298,23 @@ export default function OwnerNoticesPage() {
                             </div>
                             {selected.status === 'SUBMITTED' ? (
                                 <>
-                                    <div>
-                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Your Response (optional)</label>
-                                        <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
-                                            placeholder="Add a note for the tenant..."
-                                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Approved Move-out Date</label>
+                                            <input 
+                                                type="date" 
+                                                value={revisedMoveOutDate} 
+                                                onChange={e => setRevisedMoveOutDate(e.target.value)}
+                                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                            />
+                                            <p className="text-[10px] text-slate-400 mt-1 italic">Default is tenant's request: {format(new Date(selected.plannedMoveOut), 'd MMM yyyy')}</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Your Response (optional)</label>
+                                            <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
+                                                placeholder="Add a note for the tenant..."
+                                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+                                        </div>
                                     </div>
                                     <button onClick={handleAcknowledge} disabled={isPending}
                                         className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 transition-all shadow-lg shadow-indigo-200">

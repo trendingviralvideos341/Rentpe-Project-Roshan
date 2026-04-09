@@ -113,7 +113,7 @@ export async function withdrawVacatingNotice(noticeId: string) {
     return updated;
 }
 
-export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: string) {
+export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: string, approvedMoveOutDate?: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
     const actorId = (session as any).userId;
@@ -130,13 +130,19 @@ export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: st
     const isAdmin = ['ADMIN', 'STAFF'].includes((session as any).role);
     if (!isOwner && !isAdmin) throw new Error("Unauthorized");
 
+    const updateData: any = {
+        status: 'ACKNOWLEDGED',
+        ownerNote: ownerNote || null,
+        acknowledgedAt: new Date(),
+    };
+
+    if (approvedMoveOutDate) {
+        updateData.plannedMoveOut = new Date(approvedMoveOutDate);
+    }
+
     const updated = await prisma.vacatingNotice.update({
         where: { id: noticeId },
-        data: {
-            status: 'ACKNOWLEDGED',
-            ownerNote: ownerNote || null,
-            acknowledgedAt: new Date(),
-        }
+        data: updateData
     });
 
     // Notify student

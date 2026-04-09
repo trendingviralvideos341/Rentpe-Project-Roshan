@@ -840,10 +840,13 @@ model Dispute {
   displayId    String    @unique
   tenantId     String?
   bookingId    String?
+  propertyId   String?
   raisedById   String
+  againstUser  String?
   raisedByRole String    @default("USER")
   type         String
   subject      String
+  title        String?
   description  String
   evidenceData String?
   evidenceName String?
@@ -856,6 +859,7 @@ model Dispute {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   tenant       Tenant?   @relation(fields: [tenantId], references: [id])
+  messages     DisputeMessage[]
 }
 
 model BookingEvent {
@@ -1292,5 +1296,54 @@ model RentReminder {
 
   @@index([invoiceId, type])
   @@map("rent_reminders")
+}
+
+// ─────────────────────────────────────────────────────────
+// ADMIN PHASE 2 MODELS
+// ─────────────────────────────────────────────────────────
+
+model DisputeMessage {
+  id          String   @id @default(cuid())
+  disputeId   String
+  senderId    String
+  senderRole  String   // "USER", "OWNER", "ADMIN"
+  message     String
+  attachments String   @default("[]")
+  createdAt   DateTime @default(now())
+
+  dispute     Dispute  @relation(fields: [disputeId], references: [id])
+
+  @@index([disputeId])
+  @@map("dispute_messages")
+}
+
+model ServiceCity {
+  id          String   @id @default(cuid())
+  name        String   @unique  // "Delhi", "Bangalore"
+  slug        String   @unique  // "delhi", "bangalore"
+  state       String
+  isActive    Boolean  @default(true)
+  pinCodes    String   @default("[]") // JSON array of pin codes
+  priority    Int      @default(0)    // Higher = appears first in search
+  metaTitle   String?               // For SEO
+  metaDesc    String?               // For SEO
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("service_cities")
+}
+
+model CommissionConfig {
+  id           String   @id @default(cuid())
+  propertyType String   // "PG", "HOSTEL", "FLAT", "DEFAULT"
+  feePercent   Float    @default(5.0)
+  flatFee      Float?   // Optional flat fee instead of %
+  effectiveFrom DateTime @default(now())
+  createdBy    String
+  isActive     Boolean  @default(true)
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  @@map("commission_configs")
 }
 
