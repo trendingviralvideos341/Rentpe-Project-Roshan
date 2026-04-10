@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, Clock, Info } from "lucide-react";
+import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, Clock, Info, History, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { getTenantsByCategory, confirmMoveIn, confirmMoveOut, approveMoveOutRequest } from "@/actions/tenants";
+import { getTenantMovementLog } from "@/actions/ownerRentCollection";
 import { toast } from "sonner";
 
 interface TenantLifecycleManagerProps {
@@ -17,6 +18,7 @@ const CATEGORIES = [
     { id: 'ACTIVE',   label: 'In-House',   icon: User,           bg: 'bg-indigo-50', text: 'text-indigo-700' },
     { id: 'MOVE_OUT', label: 'Move-Out',   icon: ArrowRightLeft, bg: 'bg-amber-50',  text: 'text-amber-700' },
     { id: 'PAST',     label: 'Past Stays', icon: Clock,          bg: 'bg-slate-50',  text: 'text-slate-600' },
+    { id: 'LOG',      label: 'History',    icon: History,        bg: 'bg-purple-50', text: 'text-purple-700' },
 ] as const;
 
 export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps) {
@@ -130,7 +132,9 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
 
                 <CardContent className="p-0">
                     <div className="min-h-[400px]">
-                        {loading ? (
+                        {activeCategory === 'LOG' ? (
+                            <TenantLogInline ownerId={ownerId} />
+                        ) : loading ? (
                             <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
                                 Loading stays...
                             </div>
@@ -276,5 +280,103 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                 </div>
             )}
         </Card>
+    );
+}
+
+// ── Inline History sub-component ────────────────────────────────────────────
+function getMonthOptions() {
+    const months = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+            value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+            label: d.toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+        });
+    }
+    return months;
+}
+
+export function TenantLogInline({ ownerId }: { ownerId: string }) {
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState('');
+    const [selectedProperty, setSelectedProperty] = useState('');
+    const [eventFilter, setEventFilter] = useState<'ALL' | 'MOVE_IN' | 'MOVE_OUT'>('ALL');
+    const months = getMonthOptions();
+
+    const reload = (property?: string, month?: string) => {
+        setLoading(true);
+        getTenantMovementLog(property || undefined, month || undefined).then(result => {
+            setData(result);
+            setLoading(false);
+        });
+    };
+
+    useEffect(() => { reload(selectedProperty, selectedMonth); }, [selectedProperty, selectedMonth]);
+
+    if (loading) return <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>;
+
+    const { summary, properties } = data || { summary: { moveIns: 0, moveOuts: 0, netChange: 0 }, properties: [] };
+    const filteredEvents = (data?.events || []).filter((e: any) => eventFilter === 'ALL' || e.type === eventFilter);
+
+    return (
+        <div className="p-4 space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-3">
+                {[
+                    { label: 'Move-Ins', val: summary.moveIns, icon: ArrowUp, color: 'text-emerald-500' },
+                    { label: 'Move-Outs', val: summary.moveOuts, icon: ArrowDown, color: 'text-red-500' },
+                    { label: 'Net Change', val: summary.netChange >= 0 ? `+${summary.netChange}` : summary.netChange, icon: summary.netChange >= 0 ? ArrowUp : ArrowDown, color: summary.netChange >= 0 ? 'text-emerald-500' : 'text-red-500' },
+                ].map(card => (
+                    <div key={card.label} className="bg-slate-50 rounded-2xl p-3 text-center border border-slate-100">
+                        <card.icon className={`w-4 h-4 ${card.color} mx-auto mb-1`} />
+                        <p className="text-xl font-black text-slate-900">{card.val}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{card.label}</p>
+                    </div>
+                ))}
+            </div>
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-2">
+                <select value={selectedProperty} onChange={e => setSelectedProperty(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none">
+                    <option value="">All Properties</option>
+                    {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none">
+                    <option value="">All Time</option>
+                    {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl">
+                    {(['ALL', 'MOVE_IN', 'MOVE_OUT'] as const).map(f => (
+                        <button key={f} onClick={() => setEventFilter(f)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${eventFilter === f ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
+                            {f.replace('_', '-')}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            {/* Timeline */}
+            {filteredEvents.length === 0 ? (
+                <div className="py-12 text-center text-slate-400">
+                    <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="font-bold">No movement events found</p>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {filteredEvents.map((event: any) => (
+                        <div key={event.id} className={`flex items-center gap-3 p-3 rounded-xl border ${event.type === 'MOVE_IN' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                            <span className="text-lg">{event.type === 'MOVE_IN' ? '🟢' : '🔴'}</span>
+                            <div className="flex-1">
+                                <p className="font-black text-slate-900 text-sm">{event.tenantName}</p>
+                                <p className="text-xs text-slate-500">Room {event.roomNumber} · {event.propertyName}</p>
+                            </div>
+                            <p className="text-xs font-bold text-slate-600">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }

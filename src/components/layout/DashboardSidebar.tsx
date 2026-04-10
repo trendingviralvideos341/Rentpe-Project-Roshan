@@ -117,8 +117,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Tenant Operations",
             links: [
-                { href: "/dashboard/owner/bookings", label: "Customer Bookings", icon: Users, badge: pendingCount, reqPerm: ["view_bookings", "approve_bookings"] },
-                { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/bookings", label: "Bookings & Onboarding", icon: ClipboardCheck, badge: pendingCount, reqPerm: ["view_bookings", "approve_bookings"] },
                 { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, reqPerm: ["manage_tenants"] },
@@ -141,7 +140,7 @@ export default function DashboardSidebar(props: SidebarProps) {
             title: "Team & Help",
             links: [
                 { href: "/dashboard/owner/staff", label: "Management & Staff Team", icon: UserPlus, reqPerm: ["manage_staff"] },
-                { href: "/dashboard/owner/tenant-log", label: "Tenant Log", icon: ClipboardList, reqPerm: ["manage_tenants"] },
+
                 { href: "/dashboard/owner/availability", label: "Room Calendar", icon: CalendarDays, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/broadcast", label: "WhatsApp Broadcast", icon: MessageCircle, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["support"] },
