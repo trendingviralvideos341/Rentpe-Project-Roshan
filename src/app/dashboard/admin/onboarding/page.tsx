@@ -160,7 +160,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
 
         if (Object.keys(errs).length > 0) {
             setFieldErrors(errs);
-            alert("Please fix the errors highlighted in red.");
+            toast.error("Please fix the errors highlighted in red.");
             return;
         }
         setFieldErrors({});
@@ -205,25 +205,33 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
             setHasPending(false);
             setPendingAmount("");
             onRefresh();
-        } catch { alert("Save failed."); }
+        } catch { toast.error("Save failed. Please try again."); }
         finally { setSaving(false); }
     };
 
     const handleCashPaid = async () => {
-        if (!confirm("Mark this booking as PAID via Cash and create Tenant record?")) return;
-        try { await markBookingPaid(booking.id, "CASH"); onRefresh(); } catch { alert("Failed."); }
+        toast("Mark as Cash Paid?", {
+            description: "This will mark the booking as PAID via Cash and create a Tenant record.",
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    try { await markBookingPaid(booking.id, "CASH"); onRefresh(); }
+                    catch { toast.error("Failed to mark as paid."); }
+                }
+            }
+        });
     };
 
     const handleVerify = async (docId: string) => {
-        try { await verifyDocument(docId, "VERIFIED"); fetchDocs(); } catch { alert("Failed."); }
+        try { await verifyDocument(docId, "VERIFIED"); fetchDocs(); } catch { toast.error("Verification failed."); }
     };
 
     const handleReject = async (docId: string) => {
-        if (!rejectNote.trim()) { alert("Enter rejection reason."); return; }
+        if (!rejectNote.trim()) { toast.error("Enter rejection reason."); return; }
         try {
             await verifyDocument(docId, "REJECTED", rejectNote);
             setRejectTarget(null); setRejectNote(""); fetchDocs();
-        } catch { alert("Failed."); }
+        } catch { toast.error("Rejection failed. Please try again."); }
     };
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

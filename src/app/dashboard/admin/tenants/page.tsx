@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant } from "@/actions/tenants";
+import { toast } from "sonner";
 
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<any[]>([]);
@@ -42,45 +43,52 @@ export default function TenantsPage() {
 
     const handleMarkPaid = async (recordId: string, tenantId: string) => {
         const note = payNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a note before marking as paid."); return; }
+        if (!note) { toast.error("Please enter a note before marking as paid."); return; }
         try {
             await markRentAsPaid(recordId, note);
             setPayNotes(p => ({ ...p, [tenantId]: "" }));
             setShowPayNote(p => ({ ...p, [tenantId]: false }));
             await fetchTenants();
-        } catch { alert("Failed to mark rent as paid."); }
+        } catch { toast.error("Failed to mark rent as paid."); }
     };
 
     const handleMarkUnpaid = async (recordId: string, tenantId: string) => {
         const note = payNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a note before reversing payment."); return; }
-        if (!confirm("Reverse this payment? This will mark the rent as UNPAID.")) return;
-        try {
-            await markRentAsUnpaid(recordId, note);
-            setPayNotes(p => ({ ...p, [tenantId]: "" }));
-            setShowPayNote(p => ({ ...p, [tenantId]: false }));
-            await fetchTenants();
-        } catch { alert("Failed to mark rent as unpaid."); }
+        if (!note) { toast.error("Please enter a note before reversing payment."); return; }
+        toast("Reverse this payment?", {
+            description: "This will mark the rent as UNPAID.",
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    try {
+                        await markRentAsUnpaid(recordId, note);
+                        setPayNotes(p => ({ ...p, [tenantId]: "" }));
+                        setShowPayNote(p => ({ ...p, [tenantId]: false }));
+                        await fetchTenants();
+                    } catch { toast.error("Failed to mark rent as unpaid."); }
+                }
+            }
+        });
     };
 
     const handleBlock = async (tenantId: string) => {
         const note = blockNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a reason before blocking this tenant."); return; }
+        if (!note) { toast.error("Please enter a reason before blocking this tenant."); return; }
         try {
             await blockTenant(tenantId, note);
             setBlockNotes(p => { const n = { ...p }; delete n[tenantId]; return n; });
             await fetchTenants();
-        } catch { alert("Failed to block tenant."); }
+        } catch { toast.error("Failed to block tenant."); }
     };
 
     const handleUnblock = async (tenantId: string) => {
         const note = unblockNotes[tenantId]?.trim();
-        if (!note) { alert("Please enter a reason before unblocking this tenant."); return; }
+        if (!note) { toast.error("Please enter a reason before unblocking this tenant."); return; }
         try {
             await unblockTenant(tenantId, note);
             setUnblockNotes(p => { const n = { ...p }; delete n[tenantId]; return n; });
             await fetchTenants();
-        } catch { alert("Failed to unblock tenant."); }
+        } catch { toast.error("Failed to unblock tenant."); }
     };
 
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
@@ -181,7 +189,6 @@ export default function TenantsPage() {
                 </CardContent>
             </Card>
 
-            {/* Tenant Table */}
             <Card>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
@@ -220,8 +227,6 @@ export default function TenantsPage() {
                                                 <td className="p-4 text-sm">{t.roomNumber} <span className="text-xs text-muted-foreground">({t.roomType})</span></td>
                                                 <td className="p-4 text-sm">{t.moveInDate}</td>
                                                 <td className="p-4 font-bold">₹{t.rentAmount}</td>
-
-                                                {/* Payment Status */}
                                                 <td className="p-4">
                                                     {isBlocked ? (
                                                         <span className="text-xs text-red-500 font-bold">🚫 Blocked</span>
@@ -236,15 +241,11 @@ export default function TenantsPage() {
                                                             </span>
                                                             {latestRent && (
                                                                 <div>
-                                                                    {/* Payment note input */}
                                                                     {showPayNote[t.id] && (
                                                                         <div className="mt-1 space-y-1">
-                                                                            <Input
-                                                                                className="h-7 text-xs"
-                                                                                placeholder="Mandatory note..."
+                                                                            <Input className="h-7 text-xs" placeholder="Mandatory note..."
                                                                                 value={payNotes[t.id] || ""}
-                                                                                onChange={e => setPayNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                                            />
+                                                                                onChange={e => setPayNotes(p => ({ ...p, [t.id]: e.target.value }))} />
                                                                             <div className="flex gap-1">
                                                                                 {!isPaid && (
                                                                                     <Button size="sm" className="h-6 text-[10px] bg-green-600 hover:bg-green-700" onClick={() => handleMarkPaid(latestRent.id, t.id)}>
@@ -270,16 +271,9 @@ export default function TenantsPage() {
                                                         </div>
                                                     )}
                                                 </td>
-
-                                                {/* Status & History */}
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                                            isBlocked ? "bg-red-100 text-red-800" : 
-                                                            isCheckedOut ? "bg-slate-100 text-slate-800" : 
-                                                            isUpcoming ? "bg-blue-100 text-blue-800" : 
-                                                            "bg-green-100 text-green-800"
-                                                        }`}>
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isBlocked ? "bg-red-100 text-red-800" : isCheckedOut ? "bg-slate-100 text-slate-800" : isUpcoming ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
                                                             {isBlocked ? "🚫 Blocked" : isCheckedOut ? "Checked Out" : isUpcoming ? "Upcoming" : "✅ Active"}
                                                         </span>
                                                         {t.actionNotes?.length > 0 && (
@@ -302,51 +296,31 @@ export default function TenantsPage() {
                                                         </div>
                                                     )}
                                                 </td>
-
-                                                {/* Actions */}
                                                 <td className="p-4">
                                                     {!isBlocked ? (
                                                         <div className="space-y-1">
-                                                            <Input
-                                                                className="h-7 text-xs w-40"
-                                                                placeholder="Block reason (required)..."
+                                                            <Input className="h-7 text-xs w-40" placeholder="Block reason (required)..."
                                                                 value={blockNotes[t.id] || ""}
-                                                                onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                            />
-                                                            <Button
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                className="h-7 text-[10px] w-full"
-                                                                disabled={!blockNotes[t.id]?.trim()}
-                                                                onClick={() => handleBlock(t.id)}
-                                                            >
+                                                                onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
+                                                            <Button size="sm" variant="destructive" className="h-7 text-[10px] w-full"
+                                                                disabled={!blockNotes[t.id]?.trim()} onClick={() => handleBlock(t.id)}>
                                                                 🚫 Block Tenant
                                                             </Button>
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-1">
                                                             <div className="text-[10px] text-red-600 font-medium">Blocked: {t.vacatedOn}</div>
-                                                            <Input
-                                                                className="h-7 text-xs w-40"
-                                                                placeholder="Unblock reason (required)..."
+                                                            <Input className="h-7 text-xs w-40" placeholder="Unblock reason (required)..."
                                                                 value={unblockNotes[t.id] || ""}
-                                                                onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))}
-                                                            />
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50"
-                                                                disabled={!unblockNotes[t.id]?.trim()}
-                                                                onClick={() => handleUnblock(t.id)}
-                                                            >
+                                                                onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
+                                                            <Button size="sm" variant="outline" className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50"
+                                                                disabled={!unblockNotes[t.id]?.trim()} onClick={() => handleUnblock(t.id)}>
                                                                 ✅ Unblock Tenant
                                                             </Button>
                                                         </div>
                                                     )}
                                                 </td>
                                             </tr>
-
-                                            {/* Rent History Expandable */}
                                             {expandedTenant === t.id && (
                                                 <tr className="bg-blue-50/30">
                                                     <td colSpan={8} className="p-4">

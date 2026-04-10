@@ -173,7 +173,6 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/admin/properties", label: "Property Approval Queue", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/deactivation-requests", label: "Deactivation Requests", icon: PowerOff, badge: deactivationCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
-                { href: "/dashboard/admin/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["super_admin", "operations"] },
                 { href: "/dashboard/admin/doc-verification", label: "Doc KYC (Owner)", icon: FileCheck, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "operations"] },
                 { href: "/dashboard/admin/cities", label: "City / Area Management", icon: MapPin, reqPerm: ["super_admin", "operations"] },
@@ -195,11 +194,6 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/admin/settings/commission", label: "Commission Config", icon: Percent, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Receipt, reqPerm: ["super_admin", "payments"] },
-            ]
-        },
-        {
-            title: "Analytics",
-            links: [
                 { href: "/dashboard/admin/analytics", label: "Platform Analytics", icon: BarChart3, reqPerm: ["super_admin"] },
             ]
         },

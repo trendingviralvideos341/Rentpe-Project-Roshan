@@ -8,6 +8,7 @@ import { UserPlus, ShieldOff, ShieldCheck, RefreshCcw, Pencil, X, Check, AlertTr
 import { getTeamMembers, addTeamMember, updateTeamMemberStatus, updateTeamMemberPermissions } from "@/actions/team";
 import { getActiveEmployees } from "@/actions/employee";
 import { validateEmail, validatePhone, validateName, normalizePhone } from "@/lib/validators";
+import { toast } from "sonner";
 
 const rolePermissions = [
     { id: "onboarder", label: "🏃 Onboarder", desc: "Can onboard property owners" },
@@ -201,7 +202,7 @@ export default function AdminTeamPage() {
             const newStatus = blockTarget.status === "REVOKED" ? "ACTIVE" : "REVOKED";
             await updateTeamMemberStatus(blockTarget.id, newStatus, reason);
             fetchTeam();
-        } catch (e: any) { alert(e.message); }
+        } catch (e: any) { toast.error(e.message || "Failed to update status."); }
         finally { setProcessing(false); setBlockTarget(null); }
     }
 
@@ -211,7 +212,7 @@ export default function AdminTeamPage() {
     async function saveEdit(memberId: string) {
         setSaving(true);
         try { await updateTeamMemberPermissions(memberId, editPermissions, editRole); cancelEdit(); fetchTeam(); }
-        catch (e: any) { alert("Failed to save: " + e.message); }
+        catch (e: any) { toast.error("Failed to save: " + e.message); }
         finally { setSaving(false); }
     }
 
