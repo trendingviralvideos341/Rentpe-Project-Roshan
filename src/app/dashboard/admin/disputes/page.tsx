@@ -1,2 +1,5 @@
 import { redirect } from "next/navigation";
-export default function DisputesRedirect() { redirect("/dashboard/admin/resolutions?tab=disputes"); }
+// Disputes are now handled via Support Tickets (category=DISPUTE)
+export default function DisputesRedirect() {
+    redirect("/dashboard/admin/tickets");
+}

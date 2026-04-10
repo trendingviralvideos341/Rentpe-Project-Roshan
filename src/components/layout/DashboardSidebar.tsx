@@ -176,10 +176,10 @@ export default function DashboardSidebar(props: SidebarProps) {
             ]
         },
         {
-            title: "Resolution",
+            title: "Support & Resolution",
             links: [
-                { href: "/dashboard/admin/resolutions", label: "Disputes & Refunds", icon: AlertTriangle, reqPerm: ["super_admin", "tickets"] },
-                { href: "/dashboard/admin/tickets", label: "Support Tickets (SLA)", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
+                { href: "/dashboard/admin/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
+                { href: "/dashboard/admin/refunds", label: "Refund Management", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/notifications/send", label: "Bulk Notifications", icon: Send, reqPerm: ["super_admin"] },
             ]
         },
