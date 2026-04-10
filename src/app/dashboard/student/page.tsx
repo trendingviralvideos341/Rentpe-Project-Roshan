@@ -121,179 +121,8 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
     );
 }
 
+
 // ── End of Utility Components ──
-
-function DocumentSection({ booking }: { booking: any }) {
-    const [docs, setDocs] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [uploadType, setUploadType] = useState("ID_PROOF");
-    const [previewDoc, setPreviewDoc] = useState<any>(null);
-    const [uploading, setUploading] = useState(false);
-    const fileRef = useRef<HTMLInputElement>(null);
-
-    const fetchDocs = useCallback(async () => {
-        setLoading(true);
-        try {
-            const d = await getTenantDocuments(booking.id);
-            setDocs(d);
-        } catch { } finally { setLoading(false); }
-    }, [booking.id]);
-
-    useEffect(() => { fetchDocs(); }, [fetchDocs]);
-
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > MAX_FILE_SIZE) { 
-            toast.error("File size exceeds 5MB limit. Please upload a smaller file."); 
-            return; 
-        }
-
-        const toastId = toast.loading(`Uploading ${TYPE_LABELS[uploadType]}...`);
-        setUploading(true);
-        try {
-            await uploadTenantDocument({ bookingId: booking.id, type: uploadType, fileData: file, fileName: file.name });
-            toast.success("Document uploaded successfully!", { id: toastId });
-            await fetchDocs();
-        } catch (error: any) {
-            console.error("Upload Error:", error);
-            toast.error(`Upload failed: ${error.message || 'Server error'}`, { id: toastId });
-        } finally {
-            setUploading(false);
-            e.target.value = "";
-        }
-    };
-
-    const rejectedDocs = docs.filter(d => d.status === "REJECTED");
-    const pendingDocs = docs.filter(d => d.status === "PENDING");
-    const verifiedDocs = docs.filter(d => d.status === "VERIFIED");
-
-    return (
-        <div className="mt-4 space-y-3">
-            {/* Rejected docs — need re-upload — shown in red */}
-            {rejectedDocs.length > 0 && (
-                <div className="bg-red-50 border-2 border-red-500 rounded-lg p-3">
-                    <div className="text-red-700 font-bold text-sm mb-2 animate-pulse">
-                        🔴 {rejectedDocs.length} Document{rejectedDocs.length > 1 ? "s" : ""} Rejected — Please Re-upload
-                    </div>
-                    <div className="space-y-2">
-                        {rejectedDocs.map(doc => (
-                            <div key={doc.id} className="bg-white border border-red-300 rounded p-2 flex justify-between items-start gap-2 flex-wrap">
-                                <div>
-                                    <div className="font-semibold text-sm">{TYPE_LABELS[doc.type] || doc.type}</div>
-                                    <div className="text-[11px] text-red-600 font-medium">Reason: {doc.rejectedNote || "Document declined"}</div>
-                                    <div className="text-[10px] text-muted-foreground">Uploaded: {new Date(doc.uploadedAt).toLocaleString()}</div>
-                                </div>
-                                <Button size="sm" variant="outline" className="h-7 text-[11px] border-red-400 text-red-600 hover:bg-red-50" onClick={() => setPreviewDoc(doc)}>
-                                    View
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Pending docs — waiting review */}
-            {pendingDocs.length > 0 && (
-                <div className="bg-amber-50 border border-amber-300 rounded-lg p-3">
-                    <div className="text-amber-800 font-bold text-sm mb-2">
-                        ⏳ {pendingDocs.length} Document{pendingDocs.length > 1 ? "s" : ""} Pending Review
-                    </div>
-                    <div className="space-y-1.5">
-                        {pendingDocs.map(doc => (
-                            <div key={doc.id} className="bg-white border border-amber-200 rounded p-2 flex justify-between items-center">
-                                <div>
-                                    <div className="font-semibold text-sm">{TYPE_LABELS[doc.type] || doc.type}</div>
-                                    <div className="text-[10px] text-muted-foreground">{doc.fileName} • {new Date(doc.uploadedAt).toLocaleString()}</div>
-                                </div>
-                                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded">PENDING</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Verified docs */}
-            {verifiedDocs.length > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="text-green-700 font-bold text-sm mb-2">✅ {verifiedDocs.length} Verified Document{verifiedDocs.length > 1 ? "s" : ""}</div>
-                    <div className="space-y-1.5">
-                        {verifiedDocs.map(doc => (
-                            <div key={doc.id} className="bg-white border border-green-200 rounded p-2 flex justify-between items-center">
-                                <div className="font-semibold text-sm">{TYPE_LABELS[doc.type] || doc.type}</div>
-                                <div className="flex items-center gap-2">
-                                    <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1"><CheckCircle className="h-3 w-3" />Verified</span>
-                                    <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setPreviewDoc(doc)}>View</Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {docs.length === 0 && !loading && (
-                <div className="text-center text-sm text-muted-foreground py-3 bg-white border rounded">
-                    No documents uploaded yet. Please upload required documents below.
-                </div>
-            )}
-
-            {/* Upload section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="text-xs font-bold text-blue-700 mb-2">📤 Upload Document (Max 5MB per file)</div>
-                <div className="flex gap-2 items-center flex-wrap">
-                    <select
-                        className="border rounded p-1.5 text-xs bg-white flex-1"
-                        value={uploadType}
-                        onChange={e => setUploadType(e.target.value)}
-                    >
-                        {DOC_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-                    </select>
-                    <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleUpload} />
-                    <Button
-                        size="sm"
-                        className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                        disabled={uploading}
-                        onClick={() => fileRef.current?.click()}
-                    >
-                        <UploadCloud className="h-3.5 w-3.5 mr-1" />
-                        {uploading ? "Syncing..." : "Upload"}
-                    </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1.5">Accepted: Images (JPG, PNG) and PDF • Max 5MB</p>
-            </div>
-
-            {/* Preview modal */}
-            {previewDoc && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
-                    <div className="bg-white rounded-xl p-6 w-full max-w-lg space-y-4" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-lg font-bold">{TYPE_LABELS[previewDoc.type] || previewDoc.type}</h2>
-                            <Button variant="ghost" size="sm" onClick={() => setPreviewDoc(null)}>✕</Button>
-                        </div>
-                        <div className={`text-xs font-bold px-2 py-1 rounded w-fit ${previewDoc.status === "VERIFIED" ? "bg-green-100 text-green-700" : previewDoc.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-                            {previewDoc.status} {previewDoc.rejectedNote ? `— ${previewDoc.rejectedNote}` : ""}
-                        </div>
-                        {previewDoc.fileData?.startsWith("data:image") ? (
-                            <img src={previewDoc.fileData} alt="Document" className="w-full rounded-lg border max-h-96 object-contain" />
-                        ) : previewDoc.fileData?.startsWith("data:application/pdf") ? (
-                            <div className="p-4 bg-muted rounded text-center text-sm">
-                                📄 PDF — <a href={previewDoc.fileData} download={previewDoc.fileName} className="text-blue-600 underline">Download</a>
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
-                        )}
-                        <button 
-                            className="w-full py-4 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest" 
-                            onClick={() => setPreviewDoc(null)}
-                        >
-                            CLOSE
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
 
 export default function StudentDashboardPage() {
     const [bookings, setBookings] = useState<any[]>([]);
@@ -503,26 +332,26 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             )}
 
-                                            {/* ── Status ── */}
+                                            {/* ── Status Badge ── */}
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-sm font-medium">Stage:</span>
-                                                {booking.status === "PENDING_APPROVAL" && (
+                                                {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && (
                                                     <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>
                                                 )}
                                                 {isKycPending && (
-                                                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">📝 Step 1: KYC Verification</span>
+                                                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">📝 KYC Verification</span>
                                                 )}
                                                 {isPaymentPending && (
-                                                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Step 2: Payment Pending</span>
+                                                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>
                                                 )}
                                                 {isPaid && !booking.agreementSigned && (
-                                                    <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Step 3: Sign Agreement</span>
+                                                    <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Sign Agreement</span>
                                                 )}
                                                 {isPaid && booking.agreementSigned && (
-                                                    <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Step 4: Ready for Move-in</span>
+                                                    <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>
                                                 )}
                                                 {isCheckedIn && (
-                                                    <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Home: Checked-in & Active</span>
+                                                    <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>
                                                 )}
                                                 {isCancelled && (
                                                     <span className="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded">🚫 Cancelled</span>

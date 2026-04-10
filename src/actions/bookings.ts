@@ -261,6 +261,7 @@ export async function getAdminBookings() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
     return await prisma.booking.findMany({
+        where: { deletedAt: null },
         include: { user: { select: { name: true, email: true } } },
         orderBy: { createdAt: 'desc' }
     });
@@ -881,7 +882,7 @@ export async function getAdminAlertCounts() {
     if (!session || session.role !== 'ADMIN') return { bookings: 0, verifications: 0 };
 
     const [pendingBookings, pendingDocs] = await Promise.all([
-        prisma.booking.count({ where: { status: 'PENDING_APPROVAL' } }),
+        prisma.booking.count({ where: { status: { in: ['APPLIED', 'PENDING_APPROVAL'] } } }),
         prisma.tenantDocument.count({ where: { status: 'PENDING' } })
     ]);
 
@@ -1087,7 +1088,7 @@ export async function getOwnerAnalytics() {
 
     const [activeTenants, pendingBookings, kycPending, totalBeds, occupiedBeds] = await Promise.all([
         prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
-        prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: 'PENDING_APPROVAL' } }),
+        prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['APPLIED', 'PENDING_APPROVAL'] } } }),
         prisma.booking.count({ where: { propertyId: { in: propertyIds }, status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
         prisma.room.aggregate({ _sum: { availability: true }, where: { propertyId: { in: propertyIds } } }),
         prisma.tenant.count({ where: { propertyId: { in: propertyIds }, status: 'ACTIVE' } }),
