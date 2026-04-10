@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, Clock, Info } from "lucide-react";
 import { getTenantsByCategory, confirmMoveIn, confirmMoveOut, approveMoveOutRequest } from "@/actions/tenants";
 import { toast } from "sonner";
@@ -15,10 +13,10 @@ interface TenantLifecycleManagerProps {
 }
 
 const CATEGORIES = [
-    { id: 'UPCOMING', label: 'Arrivals',   icon: Calendar,       color: 'text-blue-600' },
-    { id: 'ACTIVE',   label: 'In-House',   icon: User,           color: 'text-indigo-600' },
-    { id: 'MOVE_OUT', label: 'Move-Out',   icon: ArrowRightLeft, color: 'text-amber-600' },
-    { id: 'PAST',     label: 'Past Stays', icon: Clock,          color: 'text-slate-500' },
+    { id: 'UPCOMING', label: 'Arrivals',   icon: Calendar,       bg: 'bg-blue-50',   text: 'text-blue-700' },
+    { id: 'ACTIVE',   label: 'In-House',   icon: User,           bg: 'bg-indigo-50', text: 'text-indigo-700' },
+    { id: 'MOVE_OUT', label: 'Move-Out',   icon: ArrowRightLeft, bg: 'bg-amber-50',  text: 'text-amber-700' },
+    { id: 'PAST',     label: 'Past Stays', icon: Clock,          bg: 'bg-slate-50',  text: 'text-slate-600' },
 ] as const;
 
 export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps) {
@@ -48,7 +46,6 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
         fetchData();
     }, [fetchData]);
 
-    // Issue #4 — replace confirm() with a toast action
     const handleConfirmMoveIn = (id: string) => {
         toast("Confirm move-in for this tenant?", {
             description: "This marks the bed as OCCUPIED.",
@@ -70,7 +67,6 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
         });
     };
 
-    // Issue #3 — open modal instead of prompt()
     const handleFinalizeMoveOut = (id: string) => {
         setDeductions("0");
         setClosureNote("Final settlement cleared.");
@@ -110,21 +106,27 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                 </div>
             </CardHeader>
 
-            {/* Issue #2 — shortened labels + overflow-x-auto to prevent tab overflow on mobile */}
-            <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as any)} className="w-full">
-                <TabsList className="grid grid-cols-4 w-full bg-slate-100 rounded-xl p-1 h-auto gap-1">
-                    {CATEGORIES.map((cat) => (
-                        <TabsTrigger
-                            key={cat.id}
-                            value={cat.id}
-                            className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold uppercase tracking-tight transition-all data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-700 text-slate-500"
-                        >
-                            <cat.icon className={`h-3.5 w-3.5 shrink-0 ${cat.color}`} />
-                            <span className="hidden sm:inline">{cat.label}</span>
-                            <span className="sm:hidden">{cat.label.split(' ')[0]}</span>
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
+            <div className="w-full">
+                {/* Custom pill tab buttons — colored, fully labeled, no Tabs component */}
+                <div className="flex flex-wrap gap-2 px-4 py-3 border-b bg-white">
+                    {CATEGORIES.map((cat) => {
+                        const isActive = activeCategory === cat.id;
+                        return (
+                            <button
+                                key={cat.id}
+                                onClick={() => setActiveCategory(cat.id as any)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all border ${
+                                    isActive
+                                        ? `${cat.bg} ${cat.text} border-current shadow-sm scale-[1.02]`
+                                        : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-slate-600'
+                                }`}
+                            >
+                                <cat.icon className="h-3.5 w-3.5 shrink-0" />
+                                <span>{cat.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
 
                 <CardContent className="p-0">
                     <div className="min-h-[400px]">
@@ -224,9 +226,9 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                         )}
                     </div>
                 </CardContent>
-            </Tabs>
+            </div>
 
-            {/* Issue #3 — Move-out modal replacing prompt() dialogs */}
+            {/* Move-out modal */}
             {moveOutModal && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
                     <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
