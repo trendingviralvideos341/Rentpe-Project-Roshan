@@ -516,7 +516,7 @@ export default function StudentDashboardPage() {
                                                     )}
 
                                                     {/* Cancel for pending */}
-                                                    {booking.status === 'PENDING_APPROVAL' && (
+                                                    {(booking.status === 'PENDING_APPROVAL' || booking.status === 'APPLIED') && (
                                                         <button
                                                             onClick={() => handleCancel(booking.id)}
                                                             disabled={cancellingId === booking.id}

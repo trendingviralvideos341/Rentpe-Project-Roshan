@@ -110,8 +110,9 @@ export default function StudentTicketsPage() {
                             <label className="text-sm font-medium mb-2 block">What&apos;s your issue about?</label>
 
                             <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <Building className="h-3 w-3" /> <strong>Property Issues</strong> — goes to your PG Owner
+                                <Building className="h-3 w-3" /> <strong>Property Issues</strong> — routed to your PG Owner
                             </p>
+                            <p className="text-[10px] text-muted-foreground/70 mb-1.5 ml-4">Includes: Maintenance, Booking issues, Room/Facility problems</p>
                             <div className="flex flex-wrap gap-2 mb-3">
                                 {categories.owner.map(c => (
                                     <button
@@ -126,8 +127,9 @@ export default function StudentTicketsPage() {
                             </div>
 
                             <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <Shield className="h-3 w-3" /> <strong>Platform Issues</strong> — goes directly to RentPe Admin
+                                <Shield className="h-3 w-3" /> <strong>Platform Issues</strong> — routed to RentPe Admin
                             </p>
+                            <p className="text-[10px] text-muted-foreground/70 mb-1.5 ml-4">Includes: Billing, Refunds, KYC, Platform/App problems</p>
                             <div className="flex flex-wrap gap-2">
                                 {categories.admin.map(c => (
                                     <button

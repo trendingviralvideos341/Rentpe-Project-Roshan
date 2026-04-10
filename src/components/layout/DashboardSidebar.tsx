@@ -222,23 +222,12 @@ export default function DashboardSidebar(props: SidebarProps) {
         { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
         { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
         { href: "/dashboard/student/payments", label: "Payment History", icon: CreditCard },
-        { href: "/dashboard/student/maintenance", label: "Maintenance", icon: Wrench },
+        { href: "/dashboard/student/food-menu", label: "Food Menu", icon: Utensils },
         { href: "/dashboard/student/notice", label: "Vacating Notice", icon: Bell },
         { href: "/dashboard/student/room-change", label: "Room Change", icon: RefreshCw },
-    ];
-
-    if (foodStatus) {
-        studentLinks.push({
-            href: foodStatus.href || "#",
-            label: foodStatus.label,
-            icon: Utensils,
-        });
-    }
-
-    studentLinks.push(
         { href: "/search", label: "Find PG", icon: Building },
         { href: "/dashboard/student/tickets", label: "Support Tickets", icon: Ticket },
-    );
+    ];
 
     const studentSections: SidebarSection[] = [
         {
@@ -346,19 +335,6 @@ export default function DashboardSidebar(props: SidebarProps) {
                                     linkTab ? currentTab === linkTab : currentTab === 'overview'
                                 );
                                 const badge = link.badge;
-                                const isGreyedOut = (link.label === 'Food' || link.label === 'No food option available') && link.href === "#";
-
-                                if (isGreyedOut) {
-                                    return (
-                                        <div
-                                            key={link.label}
-                                            className="flex items-center space-x-3 px-3 py-2 rounded-lg text-muted-foreground/40 cursor-not-allowed"
-                                        >
-                                            <Icon className="h-5 w-5" />
-                                            <span className="text-sm">{link.label}</span>
-                                        </div>
-                                    );
-                                }
 
                                 return (
                                     <Link

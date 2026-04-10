@@ -21,9 +21,13 @@ export default async function StudentFoodMenuPage() {
     if (!session) return null;
     const userId = (session as any).userId;
 
-    // Get active booking
+    // Get active booking — include all meaningful statuses
     const booking = await prisma.booking.findFirst({
-        where: { userId, status: { in: ['ACTIVE', 'MOVE_IN_SCHEDULED'] }, deletedAt: null },
+        where: {
+            userId,
+            status: { in: ['ACTIVE', 'MOVE_IN_SCHEDULED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'APPROVED', 'APPROVED_PAYMENT_PENDING', 'AGREEMENT_PENDING', 'KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] },
+            deletedAt: null,
+        },
         include: { property: { include: { foodMenu: { take: 1 } } } }
     });
 
@@ -45,8 +49,8 @@ export default async function StudentFoodMenuPage() {
     const property = booking.property;
     const foodMenu = (property as any).foodMenu?.[0];
 
-    // Check if food is available
-    if (!property.foodType || property.foodType === 'NONE') {
+    // Check if food is available at this PG
+    if (!property.foodType || property.foodType === 'NONE' || property.foodType === 'NOT_AVAILABLE') {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
                 <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-20 relative overflow-hidden">
@@ -60,9 +64,16 @@ export default async function StudentFoodMenuPage() {
                 <div className="max-w-3xl mx-auto px-4 -mt-12 relative z-10">
                     <div className="bg-white rounded-3xl shadow-xl p-12 text-center border border-slate-100">
                         <span className="text-5xl mb-4 block">🍽️</span>
-                        <h2 className="text-xl font-black text-slate-700">No Food Service</h2>
-                        <p className="text-slate-400 text-sm mt-2">{property.name} does not provide food service.</p>
-                        <p className="text-slate-400 text-xs mt-4">If you believe this is incorrect, please raise a support ticket.</p>
+                        <h2 className="text-xl font-black text-slate-700">Not available at your current PG</h2>
+                        <p className="text-slate-400 text-sm mt-2">
+                            <span className="font-semibold text-slate-600">{property.name}</span> does not offer a food service.
+                        </p>
+                        <p className="text-slate-400 text-xs mt-4">
+                            If you believe this is incorrect, please raise a <Link href="/dashboard/student/tickets" className="text-indigo-600 font-bold hover:underline">support ticket</Link>.
+                        </p>
+                        <Link href="/dashboard/student" className="inline-block mt-6 px-6 py-3 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 transition-all">
+                            ← Back to Dashboard
+                        </Link>
                     </div>
                 </div>
             </div>

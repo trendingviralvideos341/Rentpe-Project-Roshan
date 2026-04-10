@@ -63,7 +63,7 @@ async function updateOrInsertMeal(propertyId: string, day: string, mealType: str
 }
 
 // --- Support Tickets ---
-import { OWNER_CATEGORIES, ADMIN_CATEGORIES, OWNER_TO_ADMIN_CATEGORIES, determineTargetTeam } from '@/lib/ticket-categories';
+import { OWNER_CATEGORIES, ADMIN_CATEGORIES, OWNER_TO_ADMIN_CATEGORIES, determineTargetTeam, getAssignedTo } from '@/lib/ticket-categories';
 
 
 // Student: get own tickets
@@ -91,6 +91,7 @@ export async function createStudentTicket(data: {
     const count = await prisma.ticket.count();
     const displayId = `TKT-${String(count + 1).padStart(4, '0')}`;
     const targetTeam = determineTargetTeam(data.category);
+    const assignedTo = getAssignedTo(data.category);
 
     const ticket = await (prisma.ticket as any).create({
         data: {
@@ -103,6 +104,7 @@ export async function createStudentTicket(data: {
             status: 'OPEN',
             replies: '[]',
             targetTeam,
+            assignedTo,
             raisedByRole: 'USER'
         }
     });
