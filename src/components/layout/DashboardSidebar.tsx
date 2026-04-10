@@ -127,10 +127,9 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Finance",
             links: [
-                { href: "/dashboard/owner/payments", label: "Rent Payments", icon: CreditCard, reqPerm: ["view_payments", "mark_rent"] },
-                { href: "/dashboard/owner/rent-collection", label: "Rent Collection", icon: IndianRupee, reqPerm: ["view_payments", "mark_rent"] },
+                { href: "/dashboard/owner/payments", label: "Rent & Payments", icon: IndianRupee, reqPerm: ["view_payments", "mark_rent"] },
                 { href: "/dashboard/owner/deposits", label: "Security Deposits", icon: Shield, reqPerm: ["view_payments"] },
-                { href: "/dashboard/owner/invoices/generate", label: "Generate Invoices", icon: Receipt, reqPerm: ["view_payments", "mark_rent"] },
+                { href: "/dashboard/owner/invoices/generate", label: "Bulk Invoice Generator", icon: Receipt, reqPerm: ["view_payments", "mark_rent"] },
                 { href: "/dashboard/owner/analytics", label: "Analytics", icon: BarChart3, reqPerm: ["view_payments"] },
                 { href: "/dashboard/owner/tax-summary", label: "Tax Export", icon: Download, reqPerm: ["view_payments"] },
                 { href: "/dashboard/owner/settings/payment", label: "Payment Settings", icon: Settings, reqPerm: ["view_payments"] },
@@ -144,7 +143,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/owner/availability", label: "Room Calendar", icon: CalendarDays, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/broadcast", label: "WhatsApp Broadcast", icon: MessageCircle, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["support"] },
-                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: Receipt, reqPerm: ["view_activity"] },
+                { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList, reqPerm: ["view_activity"] },
             ]
         }
     ];
