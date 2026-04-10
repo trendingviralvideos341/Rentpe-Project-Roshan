@@ -1,9 +1,4 @@
-import { OnboardingContainer } from "@/components/dashboard/OnboardingContainer";
-
-export default function OwnerOnboardingPage() {
-    return (
-        <div className="p-4 md:p-8">
-            <OnboardingContainer />
-        </div>
-    );
+import { redirect } from "next/navigation";
+export default function OnboardingRedirect() {
+    redirect("/dashboard/owner/bookings");
 }
