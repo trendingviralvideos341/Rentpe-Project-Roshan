@@ -82,7 +82,7 @@ export function InventoryGrid({ properties }: InventoryGridProps) {
                                         {isExpanded ? (
                                             <><EyeOff className="h-3.5 w-3.5" /> Hide Bed</>
                                         ) : (
-                                            <><Eye className="h-3.5 w-3.5" /> View Bed</>
+                                            <><Eye className="h-3.5 w-3.5" /> View Beds</>
                                         )}
                                     </Button>
                                     <Badge className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1 font-bold rounded-lg text-[10px] uppercase tracking-wider">

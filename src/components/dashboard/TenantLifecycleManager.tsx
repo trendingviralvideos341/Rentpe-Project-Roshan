@@ -6,19 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, XCircle, Clock, Trash2, Info, CreditCard } from "lucide-react";
+import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, Clock, Info } from "lucide-react";
 import { getTenantsByCategory, confirmMoveIn, confirmMoveOut, approveMoveOutRequest } from "@/actions/tenants";
 import { toast } from "sonner";
-import { LucideIcon } from "lucide-react";
 
 interface TenantLifecycleManagerProps {
     ownerId: string;
 }
 
 const CATEGORIES = [
-    { id: 'UPCOMING', label: 'Upcoming Arrivals', icon: Calendar, color: 'text-blue-600 bg-blue-50' },
-    { id: 'ACTIVE', label: 'In-House Tenants', icon: User, color: 'text-indigo-600 bg-indigo-50' },
-    { id: 'MOVE_OUT', label: 'Move-Out Requests', icon: ArrowRightLeft, color: 'text-amber-600 bg-amber-50' },
+    { id: 'UPCOMING', label: 'Arrivals', icon: Calendar, color: 'text-blue-600 bg-blue-50' },
+    { id: 'ACTIVE', label: 'In-House', icon: User, color: 'text-indigo-600 bg-indigo-50' },
+    { id: 'MOVE_OUT', label: 'Move-Out', icon: ArrowRightLeft, color: 'text-amber-600 bg-amber-50' },
     { id: 'PAST', label: 'Past Stays', icon: Clock, color: 'text-slate-600 bg-slate-50' },
 ] as const;
 
@@ -27,6 +26,11 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
+
+    // Move-out modal state
+    const [moveOutModal, setMoveOutModal] = useState<{ id: string } | null>(null);
+    const [deductions, setDeductions] = useState("0");
+    const [closureNote, setClosureNote] = useState("Final settlement cleared.");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -44,31 +48,42 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
         fetchData();
     }, [fetchData]);
 
-    const handleConfirmMoveIn = async (id: string) => {
-        if (!confirm("Confirm move-in for this tenant? This will mark the bed as OCCUPIED.")) return;
-        setProcessingId(id);
-        try {
-            await confirmMoveIn(id);
-            toast.success("Move-in confirmed!");
-            fetchData();
-        } catch (e: any) {
-            toast.error(e.message || "Action failed");
-        } finally {
-            setProcessingId(null);
-        }
+    // Issue #4 — replace confirm() with a toast action
+    const handleConfirmMoveIn = (id: string) => {
+        toast("Confirm move-in for this tenant?", {
+            description: "This marks the bed as OCCUPIED.",
+            action: {
+                label: "Confirm",
+                onClick: async () => {
+                    setProcessingId(id);
+                    try {
+                        await confirmMoveIn(id);
+                        toast.success("Move-in confirmed!");
+                        fetchData();
+                    } catch (e: any) {
+                        toast.error(e.message || "Action failed");
+                    } finally {
+                        setProcessingId(null);
+                    }
+                },
+            },
+        });
     };
 
-    const handleFinalizeMoveOut = async (id: string) => {
-        const deductions = prompt("Enter any deductions (e.g. damages, unpaid bills):", "0");
-        if (deductions === null) return;
-        
-        const note = prompt("Closure note (visible to tenant):", "Final settlement cleared.");
-        if (note === null) return;
+    // Issue #3 — open modal instead of prompt()
+    const handleFinalizeMoveOut = (id: string) => {
+        setDeductions("0");
+        setClosureNote("Final settlement cleared.");
+        setMoveOutModal({ id });
+    };
 
-        setProcessingId(id);
+    const confirmMoveOutAction = async () => {
+        if (!moveOutModal) return;
+        setProcessingId(moveOutModal.id);
         try {
-            await confirmMoveOut(id, parseFloat(deductions) || 0, note);
-            toast.success("Tenant successfully moved out. Bed is now AVAILABLE.");
+            await confirmMoveOut(moveOutModal.id, parseFloat(deductions) || 0, closureNote);
+            toast.success("Tenant moved out. Bed is now AVAILABLE.");
+            setMoveOutModal(null);
             fetchData();
         } catch (e: any) {
             toast.error(e.message || "Action failed");
@@ -91,13 +106,14 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                 </div>
             </CardHeader>
 
+            {/* Issue #2 — shortened labels + overflow-x-auto to prevent tab overflow on mobile */}
             <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as any)} className="w-full">
-                <TabsList className="flex w-full p-1 bg-slate-100 rounded-none h-auto">
+                <TabsList className="flex w-full p-1 bg-slate-100 rounded-none h-auto overflow-x-auto no-scrollbar">
                     {CATEGORIES.map((cat) => (
-                        <TabsTrigger 
-                            key={cat.id} 
+                        <TabsTrigger
+                            key={cat.id}
                             value={cat.id}
-                            className="flex-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 transition-all gap-2 font-bold text-xs uppercase tracking-tighter"
+                            className="flex-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 transition-all gap-2 font-bold text-xs uppercase tracking-tighter whitespace-nowrap"
                         >
                             <cat.icon className={`h-4 w-4 ${cat.color} rounded p-0.5`} />
                             {cat.label}
@@ -152,8 +168,8 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                                             <TableCell className="text-right px-6">
                                                 <div className="flex justify-end gap-2">
                                                     {activeCategory === 'UPCOMING' && (
-                                                        <Button 
-                                                            size="sm" 
+                                                        <Button
+                                                            size="sm"
                                                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-[11px] shadow-sm"
                                                             disabled={processingId === tenant.id}
                                                             onClick={() => handleConfirmMoveIn(tenant.id)}
@@ -163,9 +179,9 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                                                         </Button>
                                                     )}
                                                     {activeCategory === 'ACTIVE' && (
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
                                                             className="h-8 text-[11px] font-bold border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-colors"
                                                             disabled={processingId === tenant.id}
                                                             onClick={() => handleFinalizeMoveOut(tenant.id)}
@@ -175,8 +191,8 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                                                         </Button>
                                                     )}
                                                     {activeCategory === 'MOVE_OUT' && (
-                                                        <Button 
-                                                            size="sm" 
+                                                        <Button
+                                                            size="sm"
                                                             className="bg-amber-600 hover:bg-amber-700 text-white font-bold h-8 text-[11px] shadow-sm"
                                                             disabled={processingId === tenant.id}
                                                             onClick={() => handleFinalizeMoveOut(tenant.id)}
@@ -200,6 +216,54 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                     </div>
                 </CardContent>
             </Tabs>
+
+            {/* Issue #3 — Move-out modal replacing prompt() dialogs */}
+            {moveOutModal && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+                        <h3 className="font-black text-lg text-slate-900">Finalize Move-Out</h3>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                                    Damage / Deductions (₹)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={deductions}
+                                    onChange={e => setDeductions(e.target.value)}
+                                    className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                                    Closure note (visible to tenant)
+                                </label>
+                                <textarea
+                                    value={closureNote}
+                                    onChange={e => setClosureNote(e.target.value)}
+                                    className="w-full border rounded-xl p-3 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => setMoveOutModal(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="flex-1 bg-amber-600 hover:bg-amber-700"
+                                disabled={!!processingId}
+                                onClick={confirmMoveOutAction}
+                            >
+                                {processingId ? "Processing..." : "Finalize Settlement"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 }
