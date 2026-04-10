@@ -24,9 +24,58 @@ const outfit = Outfit({
   display: "swap",
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://rentpe.in";
+
 export const metadata: Metadata = {
-  title: "RentPe | Verified PGs & Hostels",
-  description: "Find your perfect student home away from home with RentPe. Verified listings, high-end amenities, and hassle-free booking.",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "RentPe | Verified PGs & Hostels for Students",
+    template: "%s | RentPe",
+  },
+  description:
+    "Find verified PGs, hostels, and shared rooms near your college. Hassle-free booking, digital agreements, KYC onboarding — India's smartest student housing platform.",
+  keywords: [
+    "PG near me", "student PG", "verified hostel", "PG booking India",
+    "student accommodation", "RentPe", "list property India",
+    "Kota PG", "Pune PG", "Delhi PG", "Mumbai PG", "Bangalore PG",
+  ],
+  authors: [{ name: "RentPe Technologies Pvt. Ltd.", url: BASE_URL }],
+  creator: "RentPe",
+  publisher: "RentPe Technologies Pvt. Ltd.",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: BASE_URL,
+    siteName: "RentPe",
+    title: "RentPe | Verified PGs & Hostels for Students",
+    description:
+      "Find verified PGs, hostels, and shared rooms near your college. Digital agreements, KYC onboarding — India's smartest student housing platform.",
+    images: [
+      {
+        url: `${BASE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "RentPe — Verified PGs & Hostels for Students",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RentPe | Verified PGs & Hostels for Students",
+    description:
+      "Find verified PGs & hostels near your college. Hassle-free booking, digital agreements, KYC — India's smartest student housing platform.",
+    images: [`${BASE_URL}/og-image.png`],
+    creator: "@rentpe_in",
+    site: "@rentpe_in",
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
 };
 
 export default async function RootLayout({

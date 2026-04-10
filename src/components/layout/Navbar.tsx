@@ -350,6 +350,12 @@ const Navbar = ({ session }: { session: any }) => {
                                         List Your PG
                                     </div>
                                 </Link>
+                                <Link href="/about" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                        <Info className="h-4 w-4" />
+                                        About Us
+                                    </div>
+                                </Link>
                             </>
                         )}
                         <div className="pt-4 border-t flex flex-col space-y-2">
@@ -360,7 +366,7 @@ const Navbar = ({ session }: { session: any }) => {
                                             onClick={() => handleSwitch(isOwner ? "USER" : "OWNER")}
                                             disabled={isPending}
                                             suppressHydrationWarning
-                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-amber-50 text-amber-700 border border-indigo-200 mb-2"
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-colors mb-2 disabled:opacity-60"
                                         >
                                             {isPending ? (
                                                 <Loader2 className="h-4 w-4 animate-spin" />
