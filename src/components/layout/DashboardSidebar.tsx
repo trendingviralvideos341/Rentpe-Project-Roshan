@@ -160,20 +160,17 @@ export default function DashboardSidebar(props: SidebarProps) {
             title: "User Hub",
             links: [
                 { href: "/dashboard/admin/users", label: "User Management", icon: Users, reqPerm: ["super_admin", "users"] },
-                { href: "/dashboard/admin/team", label: "Team Roles (RBAC)", icon: Shield, reqPerm: ["super_admin"] },
-                { href: "/dashboard/admin/employees", label: "Owner Staff Hub", icon: UserCheck, reqPerm: ["super_admin", "staff"] },
-                { href: "/dashboard/admin/staff", label: "Internal Platform Staff", icon: Shield, reqPerm: ["super_admin", "staff"] },
+                { href: "/dashboard/admin/internal-team", label: "Internal Team Hub", icon: UserCheck, reqPerm: ["super_admin", "staff"] },
                 { href: "/dashboard/admin/role-upgrades", label: "Role Upgrade Requests", icon: ArrowUpCircle, badge: roleUpgradeCount, reqPerm: ["super_admin", "users"] },
             ]
         },
         {
             title: "Operations",
             links: [
-                { href: "/dashboard/admin/kyc", label: "KYC Verification Queue", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties"] },
+                { href: "/dashboard/admin/verifications", label: "Verification Centre", icon: FileCheck, badge: adminAlerts.verifications, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/properties", label: "Property Approval Queue", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/deactivation-requests", label: "Deactivation Requests", icon: PowerOff, badge: deactivationCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
-                { href: "/dashboard/admin/doc-verification", label: "Doc KYC (Owner)", icon: FileCheck, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "operations"] },
                 { href: "/dashboard/admin/cities", label: "City / Area Management", icon: MapPin, reqPerm: ["super_admin", "operations"] },
             ]
@@ -181,8 +178,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Resolution",
             links: [
-                { href: "/dashboard/admin/disputes", label: "Dispute Resolution", icon: AlertTriangle, reqPerm: ["super_admin", "tickets"] },
-                { href: "/dashboard/admin/refunds", label: "Refund Management", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
+                { href: "/dashboard/admin/resolutions", label: "Disputes & Refunds", icon: AlertTriangle, reqPerm: ["super_admin", "tickets"] },
                 { href: "/dashboard/admin/tickets", label: "Support Tickets (SLA)", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
                 { href: "/dashboard/admin/notifications/send", label: "Bulk Notifications", icon: Send, reqPerm: ["super_admin"] },
             ]
