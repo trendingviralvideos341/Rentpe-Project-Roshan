@@ -121,7 +121,6 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/owner/onboarding", label: "Customer Onboarding", icon: ClipboardCheck, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
-                { href: "/dashboard/owner/maintenance", label: "Maintenance Requests", icon: Wrench, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/room-changes", label: "Room Change Requests", icon: RefreshCw, reqPerm: ["manage_tenants"] },
             ]
@@ -242,7 +241,6 @@ export default function DashboardSidebar(props: SidebarProps) {
         "/dashboard/owner/onboarding",
         "/dashboard/owner/verifications",
         "/dashboard/owner/tenants",
-        "/dashboard/owner/maintenance",
         "/dashboard/owner/notices",
         "/dashboard/owner/room-changes",
         "/dashboard/owner/payments",
