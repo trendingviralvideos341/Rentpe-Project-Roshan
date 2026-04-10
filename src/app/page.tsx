@@ -88,10 +88,10 @@ export default function Home() {
 
                         <div className="pt-4 flex justify-center space-x-4 text-sm text-muted-foreground">
                             <span>Popular:</span>
-                            <Link href="/search?q=delhi" className="hover:text-primary underline">Delhi</Link>
-                            <Link href="/search?q=bangalore" className="hover:text-primary underline">Bangalore</Link>
-                            <Link href="/search?q=kota" className="hover:text-primary underline">Kota</Link>
-                            <Link href="/search?q=pune" className="hover:text-primary underline">Pune</Link>
+                            <Link href="/search?q=Delhi" className="hover:text-primary underline">Delhi</Link>
+                            <Link href="/search?q=Bangalore" className="hover:text-primary underline">Bangalore</Link>
+                            <Link href="/search?q=Kota" className="hover:text-primary underline">Kota</Link>
+                            <Link href="/search?q=Pune" className="hover:text-primary underline">Pune</Link>
                         </div>
                     </div>
                 </div>
