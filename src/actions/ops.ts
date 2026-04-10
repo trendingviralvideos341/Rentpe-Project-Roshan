@@ -266,6 +266,7 @@ export async function escalateTicketToAdmin(id: string) {
     return ticket;
 }
 
+
 export async function replyToTicket(id: string, message: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
@@ -273,12 +274,28 @@ export async function replyToTicket(id: string, message: string) {
     const ticket = await prisma.ticket.findUnique({ where: { id } });
     if (!ticket) throw new Error("Ticket not found");
 
+    const userId = (session as any).userId;
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+
+    // Append to legacy JSON replies (for backward compat)
     const replies = JSON.parse((ticket as any).replies || "[]");
     replies.push({
         sender: session.role,
-        senderId: (session as any).userId,
+        senderId: userId,
+        senderName: user?.name || session.role,
         message,
         timestamp: new Date().toISOString()
+    });
+
+    // Also create a TicketMessage record
+    await prisma.ticketMessage.create({
+        data: {
+            ticketId: id,
+            senderId: userId,
+            senderRole: session.role,
+            senderName: user?.name || session.role,
+            message,
+        }
     });
 
     const updated = await prisma.ticket.update({
@@ -286,10 +303,101 @@ export async function replyToTicket(id: string, message: string) {
         data: { replies: JSON.stringify(replies) }
     });
 
+    // Notify the ticket owner if someone else is replying
+    if (ticket.userId !== userId) {
+        await prisma.notification.create({
+            data: {
+                userId: ticket.userId,
+                type: 'TICKET_REPLY',
+                category: 'SUPPORT',
+                message: `💬 New reply on your ticket ${ticket.displayId}: "${message.slice(0, 80)}${message.length > 80 ? '...' : ''}"`,
+                isPersistent: false,
+            }
+        });
+    }
+
     revalidatePath('/dashboard/owner/tickets');
     revalidatePath('/dashboard/student/tickets');
     revalidatePath('/dashboard/admin/tickets');
     return updated;
 }
 
+// Add a threaded message to a ticket (new system)
+export async function addTicketMessage(ticketId: string, message: string) {
+    return replyToTicket(ticketId, message);
+}
 
+// Update ticket status with optional note
+export async function updateTicketStatus(
+    id: string,
+    status: 'OPEN' | 'ACKNOWLEDGED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ESCALATED',
+    note?: string
+) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'ADMIN', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new Error("Ticket not found");
+
+    const dataToUpdate: any = {
+        status,
+        ...(note && session.role === 'OWNER' ? { ownerNote: note } : {}),
+        ...(note && session.role === 'ADMIN' ? { adminNote: note } : {}),
+        ...(status === 'RESOLVED' ? { resolvedAt: new Date() } : {}),
+    };
+
+    const updated = await prisma.ticket.update({ where: { id }, data: dataToUpdate });
+
+    const statusMessages: Record<string, string> = {
+        ACKNOWLEDGED: `👀 Your support ticket ${ticket.displayId} has been acknowledged.`,
+        IN_PROGRESS: `🔧 Work has started on your ticket ${ticket.displayId}.`,
+        RESOLVED: `✅ Your ticket ${ticket.displayId} has been resolved.${note ? ` Resolution: ${note}` : ''}`,
+        CLOSED: `🔒 Your ticket ${ticket.displayId} has been closed.`,
+        ESCALATED: `⬆️ Your ticket ${ticket.displayId} has been escalated.`,
+    };
+
+    if (statusMessages[status]) {
+        await prisma.notification.create({
+            data: {
+                userId: ticket.userId,
+                type: 'TICKET_STATUS',
+                category: 'SUPPORT',
+                message: statusMessages[status],
+                isPersistent: status === 'RESOLVED',
+            }
+        });
+    }
+
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: session.role,
+        actorName: (session as any).name || session.role,
+        actionType: 'UPDATE',
+        entityType: 'TICKET',
+        entityId: id,
+        description: `Ticket ${ticket.displayId} status updated to ${status}. Note: ${note || 'None'}`,
+    });
+
+    revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/admin/tickets');
+    revalidatePath('/dashboard/student/tickets');
+    return updated;
+}
+
+// Get ticket with full message thread
+export async function getTicketThread(ticketId: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+            messages: { orderBy: { createdAt: 'asc' } },
+            property: { select: { name: true } },
+            user: { select: { name: true, email: true } },
+        }
+    });
+
+    if (!ticket) throw new Error("Ticket not found");
+    return ticket;
+}

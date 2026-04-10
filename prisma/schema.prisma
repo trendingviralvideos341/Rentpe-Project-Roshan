@@ -77,6 +77,7 @@ model User {
   savedProperties        SavedProperty[]
   tenancies              Tenancy[]
   tickets                Ticket[]
+  ticketMessages         TicketMessage[]      @relation("TicketMessageSender")
   parentOwner            User?                @relation("OwnerToStaff", fields: [parentOwnerId], references: [id])
   staffMembers           User[]               @relation("OwnerToStaff")
   sessions               UserSession[]
@@ -569,23 +570,43 @@ model FoodPreference {
 }
 
 model Ticket {
-  id           String    @id @default(uuid())
-  displayId    String    @unique
+  id           String          @id @default(uuid())
+  displayId    String          @unique
   userId       String
   propertyId   String?
+  bookingId    String?
   category     String
-  status       String    @default("OPEN")
-  priority     String    @default("MEDIUM")
+  title        String          @default("")
+  status       String          @default("OPEN")
+  priority     String          @default("MEDIUM")
   assignedTo   String?
-  targetTeam   String    @default("ADMIN")
-  raisedByRole String    @default("USER")
+  targetTeam   String          @default("ADMIN")
+  raisedByRole String          @default("USER")
   description  String
   replies      String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  property     Property? @relation(fields: [propertyId], references: [id])
-  user         User      @relation(fields: [userId], references: [id])
+  photos       String          @default("[]")
+  ownerNote    String?
+  adminNote    String?
+  resolvedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  property     Property?       @relation(fields: [propertyId], references: [id])
+  user         User            @relation(fields: [userId], references: [id])
+  messages     TicketMessage[]
 }
+
+model TicketMessage {
+  id         String   @id @default(uuid())
+  ticketId   String
+  senderId   String
+  senderRole String
+  senderName String
+  message    String
+  createdAt  DateTime @default(now())
+  ticket     Ticket   @relation(fields: [ticketId], references: [id])
+  sender     User     @relation("TicketMessageSender", fields: [senderId], references: [id])
+}
+
 
 model Notification {
   id             String   @id @default(uuid())

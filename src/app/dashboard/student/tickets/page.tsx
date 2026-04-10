@@ -1,299 +1,477 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { getStudentTickets, createStudentTicket, replyToTicket } from "@/actions/ops";
-import { OWNER_CATEGORIES, ADMIN_CATEGORIES } from "@/lib/ticket-categories";
-import { CheckCircle, Clock, AlertCircle, Plus, Send, Building, Shield, ImagePlus, X } from "lucide-react";
+import {
+    ChevronDown, ChevronRight,
+    Plus, Send, X, Building, AlertCircle,
+    ImagePlus, Loader2, MessageCircle, ArrowLeft, Shield
+} from "lucide-react";
+
+
+// ─── Category definitions with subcategories and routing ─────────────────────
+const STUDENT_CATEGORIES = [
+    {
+        key: "Maintenance",
+        label: "Maintenance",
+        emoji: "🔧",
+        routesTo: "OWNER",
+        routeLabel: "→ PG Owner",
+        color: "orange",
+        description: "Room/property repair issues",
+        subcategories: ["Electrical", "Plumbing", "Furniture", "Cleanliness", "WiFi / Internet", "Water / Electricity", "Security", "Noise", "Other Maintenance"],
+    },
+    {
+        key: "Booking Issue",
+        label: "Booking Issue",
+        emoji: "📅",
+        routesTo: "OWNER",
+        routeLabel: "→ PG Owner",
+        color: "orange",
+        description: "Room assignment, check-in, date issues",
+        subcategories: ["Wrong Room Assigned", "Check-in Date Issue", "Booking Not Updated", "Room Not Ready", "Other Booking Issue"],
+    },
+    {
+        key: "Room Issue",
+        label: "Room / Facility",
+        emoji: "🏠",
+        routesTo: "OWNER",
+        routeLabel: "→ PG Owner",
+        color: "orange",
+        description: "Room condition, amenities, common areas",
+        subcategories: ["Bed / Mattress", "Bathroom", "Locker / Storage", "Common Area", "Parking", "Other Room Issue"],
+    },
+    {
+        key: "Billing",
+        label: "Billing",
+        emoji: "💳",
+        routesTo: "ADMIN",
+        routeLabel: "→ RentPe Admin",
+        color: "blue",
+        description: "Invoice, payment, overcharge issues",
+        subcategories: ["Incorrect Invoice", "Overcharged", "Missing Payment Record", "Receipt Issue", "Other Billing Issue"],
+    },
+    {
+        key: "Refund Request",
+        label: "Refund Request",
+        emoji: "💸",
+        routesTo: "ADMIN",
+        routeLabel: "→ RentPe Admin",
+        color: "blue",
+        description: "Request for money back",
+        subcategories: ["Deposit Refund", "Cancellation Refund", "Overcharge Refund", "Token Refund", "Other Refund"],
+    },
+    {
+        key: "KYC",
+        label: "KYC Issue",
+        emoji: "🪪",
+        routesTo: "ADMIN",
+        routeLabel: "→ RentPe Admin",
+        color: "blue",
+        description: "Document verification issue",
+        subcategories: ["Document Rejected", "Verification Pending", "Wrong Status", "Re-upload Issue", "Other KYC Issue"],
+    },
+    {
+        key: "Platform Issue",
+        label: "Platform / App",
+        emoji: "📱",
+        routesTo: "ADMIN",
+        routeLabel: "→ RentPe Admin",
+        color: "blue",
+        description: "App bugs, login, account problems",
+        subcategories: ["Can't Login", "App Crashing", "Feature Not Working", "Data Incorrect", "Other Platform Issue"],
+    },
+    {
+        key: "Other",
+        label: "Other",
+        emoji: "📦",
+        routesTo: "ADMIN",
+        routeLabel: "→ RentPe Admin",
+        color: "blue",
+        description: "Anything else",
+        subcategories: [],
+    },
+];
+
+const SLA_HOURS: Record<string, { hours: number; label: string; color: string }> = {
+    URGENT: { hours: 4, label: "4 hrs SLA", color: "text-red-600 bg-red-50 border-red-200" },
+    HIGH: { hours: 24, label: "24 hrs SLA", color: "text-orange-600 bg-orange-50 border-orange-200" },
+    MEDIUM: { hours: 72, label: "72 hrs SLA", color: "text-amber-600 bg-amber-50 border-amber-200" },
+    LOW: { hours: 168, label: "7 days SLA", color: "text-slate-600 bg-slate-50 border-slate-200" },
+};
+
+const STATUS_STYLES: Record<string, string> = {
+    OPEN: "bg-green-100 text-green-800",
+    ACKNOWLEDGED: "bg-blue-100 text-blue-800",
+    IN_PROGRESS: "bg-yellow-100 text-yellow-800",
+    RESOLVED: "bg-emerald-100 text-emerald-800",
+    CLOSED: "bg-slate-100 text-slate-600",
+    ESCALATED: "bg-purple-100 text-purple-800",
+};
 
 export default function StudentTicketsPage() {
+    const [tab, setTab] = useState<"my" | "raise">("my");
     const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showCreate, setShowCreate] = useState(false);
-    const [category, setCategory] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState<string>("");
+    const [selectedSubcategory, setSelectedSubcategory] = useState<string>("");
+    const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [priority, setPriority] = useState("MEDIUM");
     const [creating, setCreating] = useState(false);
     const [replyText, setReplyText] = useState<Record<string, string>>({});
-    const [uploadedImages, setUploadedImages] = useState<{file: File, preview: string}[]>([]);
+    const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
+    const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
     const imgInputRef = useRef<HTMLInputElement>(null);
+    const [isPending, startTransition] = useTransition();
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        const remaining = 3 - uploadedImages.length;
-        const toProcess = files.slice(0, remaining);
-        
-        const newImages = toProcess.map(file => ({
-            file,
-            preview: URL.createObjectURL(file)
-        }));
-        
-        setUploadedImages(prev => [...prev, ...newImages]);
-        e.target.value = '';
-    };
-
-    const removeImage = (idx: number) => {
-        const removed = uploadedImages[idx];
-        if (removed.preview.startsWith('blob:')) {
-            URL.revokeObjectURL(removed.preview);
-        }
-        setUploadedImages(prev => prev.filter((_, i) => i !== idx));
-    };
-
-    const categories = { owner: OWNER_CATEGORIES, admin: ADMIN_CATEGORIES };
-    const allCategories = [...categories.owner, ...categories.admin];
+    const activeCat = STUDENT_CATEGORIES.find((c) => c.key === selectedCategory);
 
     const fetchTickets = async () => {
         setLoading(true);
-        try { setTickets(await getStudentTickets()); } catch (e) { console.error(e); }
+        try { setTickets(await getStudentTickets()); } catch { }
         finally { setLoading(false); }
     };
 
     useEffect(() => { fetchTickets(); }, []);
 
-    const handleCreate = async () => {
-        if (!description.trim() || !category) return;
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []).slice(0, 3 - uploadedImages.length);
+        setUploadedImages((prev) => [...prev, ...files.map((f) => ({ file: f, preview: URL.createObjectURL(f) }))]);
+        e.target.value = "";
+    };
+
+    const handleCreate = () => {
+        if (!description.trim() || !selectedCategory || !title.trim()) return;
         setCreating(true);
-        try {
-            const descWithImages = uploadedImages.length > 0
-                ? `${description.trim()}\n\n[ATTACHMENTS: ${uploadedImages.length} screenshot(s) attached]`
-                : description.trim();
-            await createStudentTicket({ category, description: descWithImages });
-            setDescription(""); setCategory(""); setShowCreate(false); 
-            // Cleanup previews
-            uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
-            setUploadedImages([]);
-            fetchTickets();
-        } catch (e) { alert("Failed to create ticket."); }
-        finally { setCreating(false); }
+        startTransition(async () => {
+            try {
+                const fullDescription = selectedSubcategory
+                    ? `[${selectedSubcategory}] ${description.trim()}`
+                    : description.trim();
+                await createStudentTicket({ category: selectedCategory, description: fullDescription, priority });
+                setTitle(""); setDescription(""); setSelectedCategory(""); setSelectedSubcategory("");
+                setPriority("MEDIUM");
+                uploadedImages.forEach((img) => URL.revokeObjectURL(img.preview));
+                setUploadedImages([]);
+                setTab("my");
+                fetchTickets();
+            } catch { alert("Failed to create ticket."); }
+            finally { setCreating(false); }
+        });
     };
 
     const handleReply = async (id: string) => {
-        const message = replyText[id]?.trim();
-        if (!message) return;
+        const msg = replyText[id]?.trim();
+        if (!msg) return;
         try {
-            await replyToTicket(id, message);
-            setReplyText(prev => ({ ...prev, [id]: "" }));
+            await replyToTicket(id, msg);
+            setReplyText((prev) => ({ ...prev, [id]: "" }));
             fetchTickets();
-        } catch (e) { alert("Failed to send reply."); }
+        } catch { alert("Failed to send reply."); }
     };
 
-    const getRoutingLabel = (cat: string) => {
-        if (categories.owner.includes(cat)) return { label: "→ Owner", icon: Building, color: "text-orange-600 bg-orange-100" };
-        return { label: "→ RentPe Admin", icon: Shield, color: "text-blue-600 bg-blue-100" };
+    const getSLAStatus = (ticket: any) => {
+        if (ticket.status === "RESOLVED" || ticket.status === "CLOSED") return null;
+        const sla = SLA_HOURS[ticket.priority];
+        if (!sla) return null;
+        const deadlineMs = new Date(ticket.createdAt).getTime() + sla.hours * 3600000;
+        const remainingHours = (deadlineMs - Date.now()) / 3600000;
+        if (remainingHours < 0) return { label: "BREACHED", color: "text-red-700 bg-red-100 border-red-300" };
+        if (remainingHours < sla.hours * 0.3) return { label: "WARNING", color: "text-orange-700 bg-orange-100 border-orange-300" };
+        return { label: "ON TIME", color: "text-green-700 bg-green-100 border-green-300" };
     };
 
-    if (loading) return <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>;
+    const openCount = tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS" || t.status === "ACKNOWLEDGED").length;
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold">Support Tickets</h1>
-                    <p className="text-muted-foreground">Raise issues and track your requests.</p>
+                    <p className="text-muted-foreground text-sm mt-0.5">
+                        Raise issues — automatically routed to the right team.
+                        {openCount > 0 && <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">{openCount} open</span>}
+                    </p>
                 </div>
-                <Button onClick={() => setShowCreate(!showCreate)}>
-                    <Plus className="h-4 w-4 mr-2" /> New Ticket
-                </Button>
+                <button
+                    onClick={() => setTab(tab === "raise" ? "my" : "raise")}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm"
+                >
+                    {tab === "raise" ? <><ArrowLeft className="h-4 w-4" /> My Tickets</> : <><Plus className="h-4 w-4" /> New Ticket</>}
+                </button>
             </div>
 
-            {/* Create Ticket Form */}
-            {showCreate && (
-                <Card className="border-primary/30 bg-primary/5">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Raise a New Ticket</CardTitle>
-                        <CardDescription>Select a category — your ticket will be automatically routed to the right team.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium mb-2 block">What&apos;s your issue about?</label>
+            {/* Tabs */}
+            <div className="flex gap-1 bg-muted rounded-xl p-1 w-fit">
+                {[{ key: "my", label: `My Tickets (${tickets.length})` }, { key: "raise", label: "＋ Raise Ticket" }].map((t) => (
+                    <button key={t.key} onClick={() => setTab(t.key as any)}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t.key ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
 
-                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <Building className="h-3 w-3" /> <strong>Property Issues</strong> — routed to your PG Owner
-                            </p>
-                            <p className="text-[10px] text-muted-foreground/70 mb-1.5 ml-4">Includes: Maintenance, Booking issues, Room/Facility problems</p>
-                            <div className="flex flex-wrap gap-2 mb-3">
-                                {categories.owner.map(c => (
-                                    <button
-                                        key={c}
-                                        onClick={() => setCategory(c)}
-                                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${category === c ? 'bg-orange-600 text-white border-orange-600' : 'hover:bg-orange-50 border-orange-200 text-orange-700'
-                                            }`}
-                                    >
-                                        {c}
-                                    </button>
-                                ))}
+            {/* ── TAB: My Tickets ─────────────────────────────────── */}
+            {tab === "my" && (
+                <div className="space-y-4">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                    ) : tickets.length === 0 ? (
+                        <div className="py-16 text-center border-2 border-dashed rounded-2xl text-muted-foreground">
+                            <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                            <p className="font-semibold">No tickets yet</p>
+                            <p className="text-sm mt-1">Click <strong>New Ticket</strong> to raise your first issue.</p>
+                        </div>
+                    ) : tickets.map((ticket) => {
+                        const cat = STUDENT_CATEGORIES.find((c) => c.key === ticket.category);
+                        const replies = JSON.parse(ticket.replies || "[]");
+                        const sla = getSLAStatus(ticket);
+                        const isExpanded = expandedTicket === ticket.id;
+
+                        return (
+                            <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card transition-all ${ticket.status === "RESOLVED" || ticket.status === "CLOSED" ? "opacity-60" : ""}`}>
+                                <div className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedTicket(isExpanded ? null : ticket.id)}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <span className="text-2xl mt-0.5">{cat?.emoji || "📋"}</span>
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-sm">{ticket.category}</span>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
+                                                        {ticket.status.replace("_", " ")}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${cat?.color === "orange" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                                                        {cat?.routeLabel || ""}
+                                                    </span>
+                                                    {sla && <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sla.color}`}>{sla.label}</span>}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    <span className="font-mono">{ticket.displayId}</span> · {new Date(ticket.createdAt).toLocaleDateString("en-IN")}
+                                                    {replies.length > 0 && <span className="ml-2">· <MessageCircle className="h-3 w-3 inline" /> {replies.length} {replies.length === 1 ? "reply" : "replies"}</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />}
+                                    </div>
+                                </div>
+
+                                {isExpanded && (
+                                    <div className="border-t px-4 pb-4 pt-3 space-y-3">
+                                        <div className="p-3 rounded-xl bg-muted/40 border text-sm">{ticket.description}</div>
+
+                                        {/* Conversation Thread */}
+                                        {replies.length > 0 && (
+                                            <div className="space-y-2">
+                                                <p className="text-xs font-bold uppercase text-muted-foreground">Conversation</p>
+                                                {replies.map((r: any, idx: number) => (
+                                                    <div key={idx} className={`p-3 rounded-xl text-xs ${r.sender === "USER" ? "bg-indigo-50 border border-indigo-100 ml-4" : r.sender === "OWNER" ? "bg-orange-50 border border-orange-100 mr-4" : "bg-blue-50 border border-blue-100 mr-4"}`}>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span className="font-bold">{r.sender === "USER" ? "You" : r.senderName || (r.sender === "OWNER" ? "PG Owner" : "RentPe Admin")}</span>
+                                                            <span className="opacity-60">{new Date(r.timestamp).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                                                        </div>
+                                                        <p>{r.message}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Owner/Admin notes */}
+                                        {(ticket.ownerNote || ticket.adminNote) && (
+                                            <div className="space-y-2">
+                                                {ticket.ownerNote && (
+                                                    <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 text-xs">
+                                                        <p className="font-bold text-orange-700 uppercase mb-1">Owner Note</p>
+                                                        <p>{ticket.ownerNote}</p>
+                                                    </div>
+                                                )}
+                                                {ticket.adminNote && (
+                                                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs">
+                                                        <p className="font-bold text-blue-700 uppercase mb-1">Admin Note</p>
+                                                        <p>{ticket.adminNote}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Reply Input */}
+                                        {ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && (
+                                            <div className="flex gap-2 pt-2 border-t">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Add a follow-up message..."
+                                                    value={replyText[ticket.id] || ""}
+                                                    onChange={(e) => setReplyText((prev) => ({ ...prev, [ticket.id]: e.target.value }))}
+                                                    onKeyDown={(e) => e.key === "Enter" && handleReply(ticket.id)}
+                                                    className="flex-1 border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                                />
+                                                <button onClick={() => handleReply(ticket.id)} disabled={!replyText[ticket.id]?.trim()}
+                                                    className="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-all">
+                                                    <Send className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
+                        );
+                    })}
+                </div>
+            )}
 
-                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <Shield className="h-3 w-3" /> <strong>Platform Issues</strong> — routed to RentPe Admin
-                            </p>
-                            <p className="text-[10px] text-muted-foreground/70 mb-1.5 ml-4">Includes: Billing, Refunds, KYC, Platform/App problems</p>
-                            <div className="flex flex-wrap gap-2">
-                                {categories.admin.map(c => (
-                                    <button
-                                        key={c}
-                                        onClick={() => setCategory(c)}
-                                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${category === c ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-50 border-blue-200 text-blue-700'
-                                            }`}
-                                    >
-                                        {c}
-                                    </button>
-                                ))}
+            {/* ── TAB: Raise Ticket ───────────────────────────────── */}
+            {tab === "raise" && (
+                <div className="border rounded-2xl overflow-hidden bg-card">
+                    <div className="p-5 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <h2 className="font-bold text-lg">Raise a New Support Ticket</h2>
+                        <p className="text-sm text-muted-foreground mt-0.5">Select a category — your ticket is automatically routed to the right team.</p>
+                    </div>
+                    <div className="p-5 space-y-6">
+                        {/* Category Selector */}
+                        <div>
+                            <label className="block text-sm font-bold mb-3">1. What&apos;s your issue about?</label>
+
+                            <div className="mb-2">
+                                <p className="text-xs font-semibold text-orange-700 flex items-center gap-1 mb-2">
+                                    <Building className="h-3 w-3" /> Property Issues — routed to your PG Owner
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                                    {STUDENT_CATEGORIES.filter(c => c.routesTo === "OWNER").map(cat => (
+                                        <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); setSelectedSubcategory(""); }}
+                                            className={`p-3 rounded-xl border-2 text-left transition-all ${selectedCategory === cat.key ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-orange-200 hover:bg-orange-50/50"}`}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xl">{cat.emoji}</span>
+                                                <span className="font-bold text-sm">{cat.label}</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">{cat.description}</p>
+                                            <span className="inline-block mt-1.5 px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full">{cat.routeLabel}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <p className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
+                                    <Shield className="h-3 w-3" /> Platform Issues — routed to RentPe Admin
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                    {STUDENT_CATEGORIES.filter(c => c.routesTo === "ADMIN").map(cat => (
+                                        <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); setSelectedSubcategory(""); }}
+                                            className={`p-3 rounded-xl border-2 text-left transition-all ${selectedCategory === cat.key ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-200 hover:bg-blue-50/50"}`}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xl">{cat.emoji}</span>
+                                                <span className="font-bold text-sm">{cat.label}</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">{cat.description}</p>
+                                            <span className="inline-block mt-1.5 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full">{cat.routeLabel}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
-                        {category && (
-                            <div className="p-2 rounded bg-muted text-xs flex items-center gap-2">
-                                {(() => { const r = getRoutingLabel(category); return <><r.icon className="h-4 w-4" /><span>This ticket will be sent to <strong>{r.label.replace('→ ', '')}</strong></span></>; })()}
+                        {/* Subcategory */}
+                        {activeCat && activeCat.subcategories.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-bold mb-2">2. Specify the issue type <span className="text-muted-foreground font-normal">(optional)</span></label>
+                                <div className="flex flex-wrap gap-2">
+                                    {activeCat.subcategories.map(sub => (
+                                        <button key={sub} onClick={() => setSelectedSubcategory(selectedSubcategory === sub ? "" : sub)}
+                                            className={`px-3 py-1.5 rounded-full text-xs border font-medium transition-all ${selectedSubcategory === sub ? (activeCat.color === "orange" ? "bg-orange-500 text-white border-orange-500" : "bg-blue-500 text-white border-blue-500") : "border-slate-200 hover:border-slate-300"}`}>
+                                            {sub}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
-                        <div>
-                            <label className="text-sm font-medium mb-1 block">Describe your issue</label>
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe your issue in detail..."
-                                rows={4}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-none"
-                            />
-                        </div>
+                        {/* Title */}
+                        {selectedCategory && (
+                            <div>
+                                <label className="block text-sm font-bold mb-2">{activeCat?.subcategories.length ? "3" : "2"}. Brief title *</label>
+                                <input
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    placeholder={`e.g. ${activeCat?.key === "Maintenance" ? "Water tap leaking in bathroom" : activeCat?.key === "Billing" ? "Charged extra ₹500 in invoice" : "Describe the issue in one line"}`}
+                                    className="w-full border rounded-xl px-4 py-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                />
+                            </div>
+                        )}
 
-                        {/* Photo Upload Section */}
-                        <div>
-                            <label className="text-sm font-medium mb-1 block">Screenshots / Photos</label>
-                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                                <ImagePlus className="h-3 w-3" />
-                                Please upload screenshots of the error and photos for quick support (max 3 images)
-                            </p>
-                            <div className="flex flex-wrap gap-3 mb-3">
-                                {uploadedImages.map((img, idx) => (
-                                    <div key={idx} className="relative group">
-                                        <img src={img.preview} alt={`Screenshot ${idx + 1}`} className="h-24 w-24 object-cover rounded-lg border-2 border-primary/20" />
-                                        <button
-                                            onClick={() => removeImage(idx)}
-                                            className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <X className="h-3 w-3" />
+                        {/* Description */}
+                        {selectedCategory && (
+                            <div>
+                                <label className="block text-sm font-bold mb-2">{activeCat?.subcategories.length ? "4" : "3"}. Describe in detail *</label>
+                                <textarea
+                                    value={description}
+                                    onChange={e => setDescription(e.target.value)}
+                                    placeholder="Provide as much detail as possible so the team can help you quickly..."
+                                    rows={4}
+                                    className="w-full border rounded-xl px-4 py-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                />
+                            </div>
+                        )}
+
+                        {/* Priority */}
+                        {selectedCategory && (
+                            <div>
+                                <label className="block text-sm font-bold mb-2">Priority</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {["LOW", "MEDIUM", "HIGH", "URGENT"].map(p => (
+                                        <button key={p} onClick={() => setPriority(p)}
+                                            className={`px-4 py-2 rounded-xl border-2 text-xs font-bold transition-all ${priority === p ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600"}`}>
+                                            <span>{p}</span>
+                                            <span className="block text-[9px] font-normal opacity-60">{SLA_HOURS[p].label}</span>
                                         </button>
-                                    </div>
-                                ))}
-                                {uploadedImages.length < 3 && (
-                                    <button
-                                        onClick={() => imgInputRef.current?.click()}
-                                        className="h-24 w-24 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground"
-                                    >
-                                        <ImagePlus className="h-5 w-5" />
-                                        <span className="text-[10px] font-medium">Add Photo</span>
-                                        <span className="text-[9px] opacity-60">{uploadedImages.length}/3</span>
-                                    </button>
+                                    ))}
+                                </div>
+                                {priority === "URGENT" && (
+                                    <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                                        ⚠️ URGENT tickets notify the team immediately and require action within 4 hours.
+                                    </p>
                                 )}
                             </div>
-                            <input
-                                ref={imgInputRef}
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                className="hidden"
-                                onChange={handleImageUpload}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button onClick={handleCreate} disabled={creating || !description.trim() || !category}>
-                                {creating ? "Submitting..." : "Submit Ticket"}
-                            </Button>
-                             <button 
-                                 onClick={() => setShowCreate(false)}
-                                 className="px-8 py-2.5 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest"
-                             >
-                                 CANCEL
-                             </button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                        )}
 
-            {/* Ticket List */}
-            <div className="grid gap-4">
-                {tickets.map((ticket) => {
-                    const replies = JSON.parse(ticket.replies || "[]");
-                    const routing = getRoutingLabel(ticket.category);
-                    return (
-                        <Card key={ticket.id} className={ticket.status === 'RESOLVED' ? 'opacity-70' : ''}>
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <CardTitle className="text-lg">{ticket.category}</CardTitle>
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ticket.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                                                ticket.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                    ticket.status === 'ESCALATED' ? 'bg-purple-100 text-purple-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                }`}>{ticket.status}</span>
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${routing.color}`}>
-                                                {routing.label}
-                                            </span>
+                        {/* Photos */}
+                        {selectedCategory && (
+                            <div>
+                                <label className="block text-sm font-bold mb-2">Screenshots / Photos <span className="text-muted-foreground font-normal">(optional, max 3)</span></label>
+                                <div className="flex gap-3 flex-wrap">
+                                    {uploadedImages.map((img, i) => (
+                                        <div key={i} className="relative group">
+                                            <img src={img.preview} alt="" className="h-20 w-20 object-cover rounded-xl border-2 border-indigo-100" />
+                                            <button onClick={() => setUploadedImages(prev => prev.filter((_, idx) => idx !== i))}
+                                                className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X className="h-3 w-3" />
+                                            </button>
                                         </div>
-                                        <CardDescription className="text-xs">
-                                            <span className="font-mono">{ticket.displayId}</span> •
-                                            {ticket.property?.name && ` Property: ${ticket.property.name} •`}
-                                            {new Date(ticket.createdAt).toLocaleDateString()}
-                                        </CardDescription>
-                                    </div>
-                                    <div className="p-2 rounded-full bg-muted">
-                                        {ticket.status === 'RESOLVED' ? <CheckCircle className="h-5 w-5 text-green-600" /> : <Clock className="h-5 w-5 text-yellow-600" />}
-                                    </div>
+                                    ))}
+                                    {uploadedImages.length < 3 && (
+                                        <button onClick={() => imgInputRef.current?.click()}
+                                            className="h-20 w-20 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all">
+                                            <ImagePlus className="h-5 w-5" />
+                                            <span className="text-[9px] font-medium">{uploadedImages.length}/3</span>
+                                        </button>
+                                    )}
+                                    <input ref={imgInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="p-4 rounded bg-muted/30 border mb-4">
-                                    <p className="text-sm text-foreground">{ticket.description}</p>
-                                </div>
+                            </div>
+                        )}
 
-                                {replies.length > 0 && (
-                                    <div className="space-y-3 mb-4">
-                                        <p className="text-xs font-bold uppercase text-muted-foreground">Conversation</p>
-                                        {replies.map((r: any, idx: number) => (
-                                            <div key={idx} className={`p-2 rounded text-xs ${r.sender === 'USER' ? 'bg-primary/5 border-l-2 border-primary ml-4' :
-                                                r.sender === 'OWNER' ? 'bg-orange-50 border-l-2 border-orange-400 mr-4' :
-                                                    'bg-blue-50 border-l-2 border-blue-400 mr-4'
-                                                }`}>
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-bold">{r.sender === 'USER' ? 'You' : r.sender === 'OWNER' ? 'Owner' : 'Admin'}</span>
-                                                    <span className="opacity-60">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
-                                                <p>{r.message}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {ticket.status !== 'RESOLVED' && (
-                                    <div className="flex gap-2 pt-2 border-t">
-                                        <Input
-                                            placeholder="Type a reply..."
-                                            value={replyText[ticket.id] || ""}
-                                            onChange={(e) => setReplyText(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleReply(ticket.id)}
-                                        />
-                                        <Button size="sm" onClick={() => handleReply(ticket.id)} disabled={!replyText[ticket.id]?.trim()}>
-                                            <Send className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-                {tickets.length === 0 && (
-                    <div className="p-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
-                        <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        No tickets yet. Click &quot;New Ticket&quot; to raise an issue.
+                        {/* Submit */}
+                        <div className="flex gap-3 pt-2 border-t">
+                            <button onClick={handleCreate} disabled={creating || !description.trim() || !selectedCategory || !title.trim()}
+                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl disabled:opacity-40 transition-all flex items-center gap-2">
+                                {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</> : "Submit Ticket"}
+                            </button>
+                            <button onClick={() => setTab("my")} className="px-6 py-3 bg-muted hover:bg-muted/80 font-bold text-sm rounded-xl transition-all">
+                                Cancel
+                            </button>
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
