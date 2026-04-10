@@ -15,10 +15,10 @@ interface TenantLifecycleManagerProps {
 }
 
 const CATEGORIES = [
-    { id: 'UPCOMING', label: 'Arrivals', icon: Calendar, color: 'text-blue-600 bg-blue-50' },
-    { id: 'ACTIVE', label: 'In-House', icon: User, color: 'text-indigo-600 bg-indigo-50' },
-    { id: 'MOVE_OUT', label: 'Move-Out', icon: ArrowRightLeft, color: 'text-amber-600 bg-amber-50' },
-    { id: 'PAST', label: 'Past Stays', icon: Clock, color: 'text-slate-600 bg-slate-50' },
+    { id: 'UPCOMING', label: 'Arrivals',   icon: Calendar,       color: 'text-blue-600' },
+    { id: 'ACTIVE',   label: 'In-House',   icon: User,           color: 'text-indigo-600' },
+    { id: 'MOVE_OUT', label: 'Move-Out',   icon: ArrowRightLeft, color: 'text-amber-600' },
+    { id: 'PAST',     label: 'Past Stays', icon: Clock,          color: 'text-slate-500' },
 ] as const;
 
 export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps) {
@@ -94,29 +94,34 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
 
     return (
         <Card className="border-none shadow-xl bg-white overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b p-6">
+            <CardHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
                 <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle className="text-2xl font-black text-slate-900">Tenant Lifecycle Management</CardTitle>
-                        <CardDescription className="text-slate-500 font-medium">Manage arrivals, stay status, and departures.</CardDescription>
+                        <CardTitle className="text-xl font-black text-slate-900">
+                            Tenant Lifecycle
+                        </CardTitle>
+                        <CardDescription className="text-slate-400 text-sm mt-0.5">
+                            Manage arrivals, stays and departures.
+                        </CardDescription>
                     </div>
-                    <Badge variant="outline" className="bg-white border-slate-200 text-slate-600 px-3 py-1 font-bold">
+                    <span className="text-xs font-bold bg-slate-100 text-slate-500 px-3 py-1.5 rounded-full">
                         {loading ? "Syncing..." : `${tenants.length} Records`}
-                    </Badge>
+                    </span>
                 </div>
             </CardHeader>
 
             {/* Issue #2 — shortened labels + overflow-x-auto to prevent tab overflow on mobile */}
             <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as any)} className="w-full">
-                <TabsList className="flex w-full p-1 bg-slate-100 rounded-none h-auto overflow-x-auto no-scrollbar">
+                <TabsList className="grid grid-cols-4 w-full bg-slate-100 rounded-xl p-1 h-auto gap-1">
                     {CATEGORIES.map((cat) => (
                         <TabsTrigger
                             key={cat.id}
                             value={cat.id}
-                            className="flex-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 transition-all gap-2 font-bold text-xs uppercase tracking-tighter whitespace-nowrap"
+                            className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-xs font-bold uppercase tracking-tight transition-all data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-700 text-slate-500"
                         >
-                            <cat.icon className={`h-4 w-4 ${cat.color} rounded p-0.5`} />
-                            {cat.label}
+                            <cat.icon className={`h-3.5 w-3.5 shrink-0 ${cat.color}`} />
+                            <span className="hidden sm:inline">{cat.label}</span>
+                            <span className="sm:hidden">{cat.label.split(' ')[0]}</span>
                         </TabsTrigger>
                     ))}
                 </TabsList>
@@ -128,9 +133,13 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                                 Loading stays...
                             </div>
                         ) : tenants.length === 0 ? (
-                            <div className="p-20 text-center flex flex-col items-center gap-4">
-                                <Info className="h-12 w-12 text-slate-200" />
-                                <p className="text-slate-400 font-bold text-sm">No records found for this stage.</p>
+                            <div className="py-16 text-center flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
+                                    <Info className="h-6 w-6 text-slate-300" />
+                                </div>
+                                <p className="text-slate-400 text-sm font-medium">
+                                    No records for this stage
+                                </p>
                             </div>
                         ) : (
                             <Table>
