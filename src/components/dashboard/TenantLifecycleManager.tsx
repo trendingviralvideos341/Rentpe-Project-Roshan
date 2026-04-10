@@ -33,9 +33,10 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
     const [closureNote, setClosureNote] = useState("Final settlement cleared.");
 
     const fetchData = useCallback(async () => {
+        if (activeCategory === 'LOG') return;
         setLoading(true);
         try {
-            const data = await getTenantsByCategory(ownerId, activeCategory);
+            const data = await getTenantsByCategory(ownerId, activeCategory as Exclude<typeof activeCategory, 'LOG'>);
             setTenants(data);
         } catch (e) {
             toast.error("Failed to load tenants");
