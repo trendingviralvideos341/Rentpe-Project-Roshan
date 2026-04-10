@@ -6,6 +6,7 @@
 const PRIMARY_COLOR = '#8b5cf6'; // Violet-600
 const SUCCESS_COLOR = '#10b981'; // Emerald-500
 const WARNING_COLOR = '#f59e0b'; // Amber-500
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://rentpe.in';
 
 const BaseLayout = (content: string) => `
 <!DOCTYPE html>
@@ -35,9 +36,9 @@ const BaseLayout = (content: string) => `
     <div class="footer">
       <p>Â© ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd.</p>
       <div class="footer-links">
-        <a href="https://rentpe.in/terms" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Terms</a>
-        <a href="https://rentpe.in/privacy" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Privacy</a>
-        <a href="https://rentpe.in/contact" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Contact Us</a>
+        <a href="${BASE_URL}/terms" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Terms</a>
+        <a href="${BASE_URL}/privacy" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Privacy</a>
+        <a href="${BASE_URL}/contact" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Contact Us</a>
       </div>
     </div>
   </div>
@@ -65,7 +66,7 @@ export const LifecycleTemplate = (data: {
     <p style="margin: 0; font-weight: bold; color: #1e293b;">Next Step:</p>
     <p style="margin: 4px 0 0 0; font-size: 14px;">${data.nextStep}</p>
   </div>
-  <a href="https://rentpe.in${data.actionUrl}" class="button">${data.actionLabel}</a>
+  <a href="${BASE_URL}${data.actionUrl}" class="button">${data.actionLabel}</a>
 `);
 
 // 1. BOOKING_REQUEST_SENT (Tenant)
@@ -205,7 +206,7 @@ export const KycRejectedTemplate = (name: string, docType: string, propertyName:
     <li>In JPG, PNG, or PDF format and under 5MB</li>
   </ul>
 
-  <a href="https://rentpe.in/dashboard/owner" class="button">Re-upload Document &rarr;</a>
+  <a href="${BASE_URL}/dashboard/owner" class="button">Re-upload Document &rarr;</a>
 
   <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">If you believe this is an error, contact us at <a href="mailto:support@rentpe.in" style="color: #6366f1;">support@rentpe.in</a></p>
 `);
@@ -215,7 +216,7 @@ export const OwnerNotificationTemplate = (ownerName: string, eventTitle: string,
   <h2 style="margin-top: 0;">Business Update: ${eventTitle}</h2>
   <p>Hi ${ownerName},</p>
   <p>${message}</p>
-  <a href="https://rentpe.in${actionUrl}" class="button">${actionLabel}</a>
+  <a href="${BASE_URL}${actionUrl}" class="button">${actionLabel}</a>
 `);
 
 // VERIFICATION TEAM TEMPLATE
@@ -225,7 +226,7 @@ export const VerifierNotificationTemplate = (message: string, actionUrl: string)
   <div style="background: #fdf2f8; border: 1px solid #fbcfe8; padding: 16px; border-radius: 8px; font-weight: 500;">
     ${message}
   </div>
-  <a href="https://rentpe.in${actionUrl}" class="button">Verify Documents</a>
+  <a href="${BASE_URL}${actionUrl}" class="button">Verify Documents</a>
 `);
 
 // 11. EMAIL_VERIFICATION (User)
@@ -250,7 +251,7 @@ ${BaseLayout(`
   <p>Hi ${name},</p>
   <p>We're thrilled to have you on board. RentPe is your one-stop solution for finding and managing high-fidelity student housing.</p>
   <p>Explore verified properties, manage your bookings, and experience hassle-free living.</p>
-  <a href="https://rentpe.in/properties" class="btn">Explore Properties</a>
+  <a href="${BASE_URL}/properties" class="btn">Explore Properties</a>
 `)}
 `;
 
@@ -262,7 +263,7 @@ ${BaseLayout(`
   <p><strong>Amount Due:</strong> â‚¹${amount.toLocaleString('en-IN')}</p>
   <p><strong>Due Date:</strong> ${dueDate}</p>
   <p>Please pay your rent on time to avoid late fees.</p>
-  <a href="https://rentpe.in/dashboard/student/payments" class="btn">View & Pay Invoice</a>
+  <a href="${BASE_URL}/dashboard/student/payments" class="btn">View & Pay Invoice</a>
 `)}
 `;
 
