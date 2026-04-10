@@ -16,9 +16,10 @@ export default async function AdminLayout({
                 role="admin" 
                 permissions={user?.permissions || []} 
                 displayId={user?.displayId}
+                userName={user?.name}
                 isSuperAdmin={user?.isSuperAdmin}
             />
-            <main className="flex-1 p-8 h-[calc(100vh-4rem)] overflow-y-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
+            <main className="flex-1 p-4 md:p-8 h-[calc(100vh-4rem)] overflow-y-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
                 {children}
             </main>
         </div>

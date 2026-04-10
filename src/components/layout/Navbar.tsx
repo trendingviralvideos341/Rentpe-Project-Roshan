@@ -7,13 +7,9 @@ import { useState, useTransition } from 'react';
 import { switchRole } from '@/actions/auth';
 import { UserRole } from '@/types/auth';
 import { stopImpersonation } from '@/actions/admin-auth';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/layout/NotificationBell';
 
-export function cn(...inputs: (string | undefined | null | false)[]) {
-    return twMerge(clsx(inputs));
-}
 
 const Navbar = ({ session }: { session: any }) => {
     const router = useRouter();

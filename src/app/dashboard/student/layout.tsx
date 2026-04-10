@@ -16,7 +16,7 @@ export default async function StudentLayout({
                 role="student" 
                 displayId={user?.displayId}
             />
-            <main className="flex-1 p-8 h-[calc(100vh-4rem)] overflow-y-auto w-full">
+            <main className="flex-1 p-4 md:p-8 h-[calc(100vh-4rem)] overflow-y-auto w-full">
                 {children}
             </main>
         </div>

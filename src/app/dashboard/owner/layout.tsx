@@ -27,7 +27,7 @@ export default async function OwnerLayout({
                 isStaff={isStaff} 
                 displayId={user?.displayId} 
             />
-            <main className="flex-1 p-8 bg-[#f8faff] bg-[radial-gradient(at_0%_0%,rgba(199,210,254,0.4)_0,transparent_50%),radial-gradient(at_100%_100%,rgba(221,214,254,0.4)_0,transparent_50%)] selection:bg-purple-100 min-h-screen relative overflow-hidden">
+            <main className="flex-1 p-4 md:p-8 bg-[#f8faff] bg-[radial-gradient(at_0%_0%,rgba(199,210,254,0.4)_0,transparent_50%),radial-gradient(at_100%_100%,rgba(221,214,254,0.4)_0,transparent_50%)] selection:bg-purple-100 min-h-screen relative overflow-hidden">
                 <div className="relative z-10 animate-in fade-in slide-in-from-bottom-2 duration-700">
                     {children}
                 </div>
