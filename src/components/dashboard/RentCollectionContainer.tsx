@@ -147,6 +147,8 @@ export function RentCollectionContainer() {
     const [month, setMonth] = useState(getCurrentMonth());
     const [search, setSearch] = useState('');
     const [methodFilter, setMethodFilter] = useState('ALL');
+    const [propertyFilter, setPropertyFilter] = useState('ALL');
+    const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
     const [cashModal, setCashModal] = useState<any>(null);
     const [isPending, startTransition] = useTransition();
     const [sendingId, setSendingId] = useState<string | null>(null);
@@ -172,14 +174,30 @@ export function RentCollectionContainer() {
     const totalExpected = invoices.reduce((s, i) => s + i.amount, 0);
     const collectionRate = totalExpected > 0 ? Math.round((totalReceived / totalExpected) * 100) : 0;
 
+    // ── unique options for filters ──
+    const propertyOptions = Array.from(new Set(invoices.map(i => i.propertyName).filter(Boolean)));
+    const roomTypeOptions = Array.from(new Set(invoices.map(i => i.roomType).filter(Boolean)));
+
     const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
     // ── filters ──
     const filtered = invoices.filter(inv => {
         const s = getStatus(inv);
+        // Status Tabs Filter
         if (tab === 'ONLINE' && s !== 'ONLINE_PAID') return false;
         if (tab === 'CASH' && s !== 'CASH_PAID') return false;
         if (tab === 'UNPAID' && s !== 'UNPAID' && s !== 'OVERDUE') return false;
+
+        // Dropdown Filters
+        if (propertyFilter !== 'ALL' && inv.propertyName !== propertyFilter) return false;
+        if (roomTypeFilter !== 'ALL' && inv.roomType !== roomTypeFilter) return false;
+        if (methodFilter !== 'ALL') {
+             const isPaid = inv.status === 'PAID';
+             if (methodFilter === 'ONLINE' && (!isPaid || inv.paymentMethod === 'CASH')) return false;
+             if (methodFilter === 'CASH' && (!isPaid || inv.paymentMethod !== 'CASH')) return false;
+             if (methodFilter === 'UNPAID' && isPaid) return false;
+        }
+
         const q = search.toLowerCase();
         if (q && !inv.tenantName.toLowerCase().includes(q) && !inv.tenantDisplayId?.toLowerCase().includes(q)
             && !inv.roomNumber.toLowerCase().includes(q) && !inv.tenantPhone?.includes(q) && !inv.tenantEmail?.toLowerCase().includes(q)) return false;
@@ -268,8 +286,8 @@ export function RentCollectionContainer() {
             </div>
 
             {/* Tab + Search bar */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="bg-white rounded-2xl border border-slate-100 p-1.5 flex gap-1 flex-wrap">
+            <div className="flex flex-col lg:flex-row gap-3">
+                <div className="bg-white rounded-2xl border border-slate-100 p-1.5 flex gap-1 flex-wrap shrink-0">
                     {TABS.map(t => (
                         <button key={t.key} onClick={() => setTab(t.key)}
                             className={`px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap transition-all ${tab === t.key ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:bg-slate-100'}`}>
@@ -277,16 +295,50 @@ export function RentCollectionContainer() {
                         </button>
                     ))}
                 </div>
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Tenant, ID, room, phone..."
-                        className="pl-9 pr-4 py-2.5 w-full bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                    {search && (
-                        <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <X className="w-4 h-4 text-slate-400" />
-                        </button>
-                    )}
+                <div className="flex flex-col sm:flex-row gap-2 flex-1">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input value={search} onChange={e => setSearch(e.target.value)}
+                            placeholder="Search by name, room, or ID..."
+                            className="pl-9 pr-4 py-2.5 w-full bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                        {search && (
+                            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <X className="w-4 h-4 text-slate-400" />
+                            </button>
+                        )}
+                    </div>
+                    
+                    {/* Property Filter */}
+                    <select 
+                        value={propertyFilter} 
+                        onChange={e => setPropertyFilter(e.target.value)}
+                        className="px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 min-w-[150px]"
+                    >
+                        <option value="ALL">All Properties (PGs)</option>
+                        {propertyOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+
+                    {/* Room Type Filter */}
+                    <select 
+                        value={roomTypeFilter} 
+                        onChange={e => setRoomTypeFilter(e.target.value)}
+                        className="px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 min-w-[130px]"
+                    >
+                        <option value="ALL">All Room Types</option>
+                        {roomTypeOptions.map(rt => <option key={rt} value={rt}>{rt}</option>)}
+                    </select>
+
+                    {/* Method Filter */}
+                    <select 
+                        value={methodFilter} 
+                        onChange={e => setMethodFilter(e.target.value)}
+                        className="px-3 py-2.5 bg-white border-2 border-slate-900 rounded-2xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400 shrink-0"
+                    >
+                        <option value="ALL">All Payments</option>
+                        <option value="ONLINE">🌐 Online Only</option>
+                        <option value="CASH">💵 Cash Only</option>
+                        <option value="UNPAID">❌ Unpaid Only</option>
+                    </select>
                 </div>
             </div>
 
