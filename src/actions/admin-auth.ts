@@ -6,11 +6,15 @@ import { getSession, signJWT } from "@/lib/auth";
 import { revalidatePath } from 'next/cache';
 import { logAuditEvent } from "@/lib/audit";
 
-export async function impersonateUser(targetUserId: string) {
+export async function impersonateUser(targetUserId: string, reason: string) {
     const session = await getSession();
     // Only genuine Admins can trigger impersonation, not someone who is already impersonating
     if (!session || session.role !== 'ADMIN' || session.impersonatorId) {
         throw new Error("Unauthorized: Only authentic Admins can impersonate users.");
+    }
+
+    if (!reason || reason.trim().length < 5) {
+        throw new Error("A valid reason (at least 5 characters) must be provided to enter God Mode.");
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -44,10 +48,12 @@ export async function impersonateUser(targetUserId: string) {
         actorId: session.userId,
         actorRole: session.role || 'ADMIN',
         actorName: session.name || 'Admin',
-        actionType: 'UPDATE',
+        actionType: 'IMPERSONATION_START',
         entityType: 'USER',
         entityId: targetUser.id,
-        description: `Admin ${session.userId} started impersonating ${targetUser.email}`,
+        entityName: targetUser.name,
+        description: `God Mode Entry: Admin impersonating ${targetUser.email}. Reason: ${reason}`,
+        newValue: { reason, targetEmail: targetUser.email }
     });
 
     // Return the URL prefix
@@ -91,10 +97,10 @@ export async function stopImpersonation() {
         actorId: adminUser.id,
         actorRole: 'ADMIN',
         actorName: adminUser.name || 'Admin',
-        actionType: 'UPDATE',
+        actionType: 'IMPERSONATION_STOP',
         entityType: 'USER',
         entityId: adminUser.id,
-        description: `Admin ${adminUser.email} safely returned to admin profile`,
+        description: `God Mode Exit: Admin safely returned to their own profile.`,
     });
 
     return '/dashboard/admin/users';

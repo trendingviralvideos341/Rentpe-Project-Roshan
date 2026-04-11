@@ -19,7 +19,13 @@ export async function getAuditLogs(params: {
 
     const where: any = {};
     if (actorRole && actorRole !== 'ALL') where.actorRole = actorRole;
-    if (actionType && actionType !== 'ALL') where.actionType = actionType;
+    if (actionType && actionType !== 'ALL') {
+        if (actionType === 'IMPERSONATION') {
+            where.actionType = { in: ['IMPERSONATION_START', 'IMPERSONATION_STOP'] };
+        } else {
+            where.actionType = actionType;
+        }
+    }
     if (entityType && entityType !== 'ALL') where.entityType = entityType;
     if (search) {
         where.OR = [

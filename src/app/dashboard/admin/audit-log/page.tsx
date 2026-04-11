@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 const ROLE_OPTIONS = ['ALL', 'ADMIN', 'OWNER', 'USER', 'EMPLOYEE'];
 const ENTITY_OPTIONS = ['ALL', 'USER', 'PROPERTY', 'BOOKING', 'PAYMENT', 'KYC'];
-const ACTION_OPTIONS = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT'];
+const ACTION_OPTIONS = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'IMPERSONATION'];
 
 export default function AuditLogPage() {
     const [logs, setLogs] = useState<any[]>([]);
@@ -56,8 +56,18 @@ export default function AuditLogPage() {
             case 'DELETE': return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">DELETE</span>;
             case 'APPROVE': return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">APPROVE</span>;
             case 'REJECT': return <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">REJECT</span>;
-            case 'LOGIN': return <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">LOGIN</span>;
-            default: return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{action}</span>;
+            case 'LOGIN': return <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium uppercase">LOGIN</span>;
+            case 'IMPERSONATION_START': return (
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-indigo-600 text-white rounded-full text-xs font-black shadow-sm ring-2 ring-indigo-200 uppercase tracking-tighter">
+                    <Ghost size={12} className="animate-pulse" /> START
+                </span>
+            );
+            case 'IMPERSONATION_STOP': return (
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 text-slate-100 rounded-full text-xs font-black shadow-sm border border-slate-700 uppercase tracking-tighter">
+                    <ArrowRight size={12} /> RETURN
+                </span>
+            );
+            default: return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium uppercase">{action}</span>;
         }
     };
 

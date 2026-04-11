@@ -98,6 +98,62 @@ function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reas
     );
 }
 
+// ── Impersonate (God Mode) Modal ─────────────────────────
+function ImpersonateModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reason: string) => void; onCancel: () => void }) {
+    const [reason, setReason] = useState("");
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+            <div className="bg-white dark:bg-gray-900 border-4 border-red-600 rounded-3xl p-8 w-full max-w-lg shadow-[0_0_50px_rgba(220,38,38,0.3)] space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent"></div>
+                
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-red-100 animate-pulse">
+                        <Ghost className="h-8 w-8 text-red-600" />
+                    </div>
+                    <div>
+                        <h3 className="font-black text-2xl text-slate-900 tracking-tight">Enter God Mode</h3>
+                        <p className="text-sm font-bold text-red-600 uppercase tracking-widest">Target: {user.name}</p>
+                    </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-2">
+                    <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase">
+                        <AlertTriangle className="h-4 w-4" /> Security Notice
+                    </div>
+                    <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                        You are about to impersonate another user. This action grants full access to their private data and dashboard. 
+                        <strong> This session will be tied to your Admin ID for audit trailing.</strong>
+                    </p>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Justification for Access *</label>
+                    <textarea 
+                        autoFocus
+                        value={reason} 
+                        onChange={e => setReason(e.target.value)}
+                        placeholder="e.g., Troubleshooting rent receipt generation error... (Min 5 chars)"
+                        className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-32 focus:outline-none focus:border-red-600 focus:bg-red-50/5 transition-all font-bold placeholder:font-normal" 
+                    />
+                </div>
+
+                <div className="flex gap-4 pt-2">
+                    <button onClick={onCancel} className="flex-1 py-4 text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition-all uppercase tracking-widest">
+                        ABORT
+                    </button>
+                    <button 
+                        disabled={reason.trim().length < 5} 
+                        onClick={() => onConfirm(reason)}
+                        className="flex-2 px-8 py-4 text-xs rounded-2xl text-white font-black bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl shadow-red-200 uppercase tracking-widest flex items-center justify-center gap-2"
+                    >
+                        Initiate God Mode <ArrowRight className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AdminUsersPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -112,6 +168,7 @@ export default function AdminUsersPage() {
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [blockTarget, setBlockTarget] = useState<any | null>(null);
     const [pointsTarget, setPointsTarget] = useState<any | null>(null);
+    const [impersonateTarget, setImpersonateTarget] = useState<any | null>(null);
     const [processing, setProcessing] = useState(false);
 
     // Sync tab with URL params
@@ -169,25 +226,23 @@ export default function AdminUsersPage() {
         }
     }
 
-    async function handleImpersonate(userId: string) {
-        toast("Login as this user?", {
-            description: "You will be impersonating this account.",
-            action: {
-                label: "Confirm",
-                onClick: async () => {
-                    setProcessing(true);
-                    try {
-                        const url = await impersonateUser(userId);
-                        window.location.href = url;
-                    } catch (e: any) {
-                        toast.error(e.message || "Failed to impersonate user.");
-                    } finally {
-                        setProcessing(false);
-                    }
-                },
-            },
-        });
+    async function handleImpersonateConfirm(reason: string) {
+        if (!impersonateTarget) return;
+        setProcessing(true);
+        try {
+            const url = await impersonateUser(impersonateTarget.id, reason);
+            window.location.href = url;
+        } catch (e: any) {
+            toast.error(e.message || "Failed to impersonate user.");
+        } finally {
+            setProcessing(false);
+            setImpersonateTarget(null);
+        }
     }
+
+    const handleImpersonate = (user: any) => {
+        setImpersonateTarget(user);
+    };
 
     const counts = {
         ALL: users.length,
@@ -217,6 +272,7 @@ export default function AdminUsersPage() {
         <div className="space-y-6">
             {blockTarget && <BlockModal user={blockTarget} onConfirm={handleBlockConfirm} onCancel={() => setBlockTarget(null)} />}
             {pointsTarget && <PointsModal user={pointsTarget} onConfirm={handlePointsConfirm} onCancel={() => setPointsTarget(null)} />}
+            {impersonateTarget && <ImpersonateModal user={impersonateTarget} onConfirm={handleImpersonateConfirm} onCancel={() => setImpersonateTarget(null)} />}
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold">User Management</h1>
@@ -354,7 +410,7 @@ export default function AdminUsersPage() {
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50" onClick={() => setPointsTarget(user)} title="Manage Loyalty Points">
                                                             <Star className="h-4 w-4" />
                                                         </Button>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => handleImpersonate(user.id)} title="God Mode: Impersonate User">
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => handleImpersonate(user)} title="God Mode: Impersonate User">
                                                             <Ghost className="h-4 w-4" />
                                                         </Button>
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => setBlockTarget(user)} title={isBanned ? "Restore Account" : "Block Account"}>
