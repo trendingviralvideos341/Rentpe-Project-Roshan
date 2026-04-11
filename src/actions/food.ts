@@ -132,6 +132,9 @@ export async function changeFoodPreference(
 
         // ── STUDENT: direct CONFIRMED ──
         if (role === 'USER' || role === 'STUDENT') {
+            const today = new Date();
+            const effectiveFromStudent = today; // starts immediately
+
             const pref = await (prisma as any).foodPreference.create({
                 data: {
                     bookingId,
@@ -140,7 +143,7 @@ export async function changeFoodPreference(
                     foodSelected,
                     changedBy: 'USER',
                     changedById: userId,
-                    effectiveFrom: toUTC(effectiveFrom),
+                    effectiveFrom: toUTC(effectiveFromStudent),
                     notes: notes || null,
                     status: 'CONFIRMED',
                     confirmedAt: new Date(),
@@ -153,17 +156,36 @@ export async function changeFoodPreference(
                 data: { foodSelected } as any
             });
 
+            // ── Prorated food charge for current month (opt-in only) ──────────
+            if (foodSelected && booking.foodPriceApplied > 0) {
+                const { proratedFoodCharge } = await import('@/utils/billingUtils');
+                const thisMonthCharge = proratedFoodCharge(booking.foodPriceApplied, today);
+                const monthLabel = today.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                await (prisma as any).foodRecord.create({
+                    data: {
+                        bookingId,
+                        propertyId: booking.propertyId,
+                        userId,
+                        month: monthLabel,
+                        amount: thisMonthCharge,
+                        paid: false,
+                        note: `Prorated food — opted in ${today.getDate()} ${monthLabel}`,
+                    }
+                });
+            }
+
             logAuditEvent({
                 actorId: userId, actorRole: role, actorName: (session as any).name || 'Student',
                 actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
-                description: `Student ${foodSelected ? 'enabled' : 'disabled'} food. Effective: ${effectiveFrom.toISOString()}`,
+                description: `Student ${foodSelected ? 'enabled' : 'disabled'} food. Effective: today (${today.toISOString()})`,
                 previousValue: { foodSelected: prevFoodSelected },
-                newValue: { foodSelected, effectiveFrom: effectiveFrom.toISOString() },
+                newValue: { foodSelected, effectiveFrom: today.toISOString() },
             });
 
             revalidatePath('/dashboard/student');
-            return { success: true, effectiveFrom: effectiveFrom.toISOString() };
+            return { success: true, effectiveFrom: today.toISOString() };
         }
+
 
         // ── OWNER enable: PENDING_USER confirmation flow ──
         if ((role === 'OWNER' || role === 'STAFF') && foodSelected) {

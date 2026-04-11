@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
+import { firstMonthRent, lastMonthRent } from "@/utils/billingUtils";
 
 // generateSequentialId removed (unused)
 
@@ -186,8 +187,10 @@ export async function confirmMoveIn(tenantId: string) {
             });
         }
 
-        // 4. Financial Integration: Create Billing Profile & Generate Initial Deposit Invoice
+        // 4. Financial Integration: Create Billing Profile, Prorated First Invoice & Deposit
         const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : Number(tenant.rent);
+        const moveInDate = new Date(tenant.startDate);
+
         const profile = await tx.billingProfile.create({
             data: {
                 tenantId,
@@ -195,8 +198,22 @@ export async function confirmMoveIn(tenantId: string) {
                 roomId: tenant.roomId,
                 bedId: tenant.bedId,
                 monthlyRent: rentAmount,
-                securityDeposit: rentAmount, // Default to 1 month
-                billingDay: new Date(tenant.startDate).getDate() || 1
+                securityDeposit: rentAmount,
+                billingDay: moveInDate.getDate() || 1, // anchor = move-in day
+            }
+        });
+
+        // ── Prorated first-month rent invoice ──────────────────────────────
+        const firstMonthLabel = moveInDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        const firstInvoiceAmount = firstMonthRent(rentAmount, moveInDate);
+
+        await tx.rentRecord.create({
+            data: {
+                tenantId,
+                month: firstMonthLabel,
+                amount: firstInvoiceAmount,
+                paid: false,
+                note: `Prorated — move-in ${moveInDate.getDate()} ${firstMonthLabel}`,
             }
         });
 
@@ -216,7 +233,7 @@ export async function confirmMoveIn(tenantId: string) {
             actionType: 'UPDATE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Tenant ${tenant.name} moved in. Unified ID: ${tenant.displayId}. Financials now active.`,
+            description: `Tenant ${tenant.name} moved in. First invoice: ₹${firstInvoiceAmount} (prorated from day ${moveInDate.getDate()}).`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -601,23 +618,41 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         const moveInDate = new Date(tenant.startDate);
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
-        // 1. Financial Settlement logic
-        const unpaidRent = tenant.rentRecords.filter(r => !r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
-        const totalPaidRent = tenant.rentRecords.filter(r => r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
-        // We use the rent as deposit here for migration support, but real flow should use deposit table
-        const depositAmount = tenant.rent; 
+        // 1. Prorated last-month rent — update/create the final month record
+        const monthlyRent = typeof tenant.rent === 'number' ? tenant.rent : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, ''));
+        const lastMonthLabel = moveOutDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        const prorated = lastMonthRent(monthlyRent, moveOutDate);
+
+        const existingRecord = await tx.rentRecord.findFirst({ where: { tenantId, month: lastMonthLabel } });
+        if (existingRecord) {
+            await tx.rentRecord.update({
+                where: { id: existingRecord.id },
+                data: { amount: prorated, note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
+            });
+        } else {
+            await tx.rentRecord.create({
+                data: { tenantId, month: lastMonthLabel, amount: prorated, paid: false, note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
+            });
+        }
+
+        // Recalculate unpaid AFTER patching prorated record
+        const allRecords = await tx.rentRecord.findMany({ where: { tenantId } });
+        const unpaidRent = allRecords.filter(r => !r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+        const totalPaidRent = allRecords.filter(r => r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+        const depositAmount = monthlyRent;
         const finalRefund = depositAmount - unpaidRent - deductions;
 
         const settlementSummary = `
 Settlement Summary:
 - Security Deposit: ₹${depositAmount.toLocaleString('en-IN')}
-- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')}
+- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')} (incl. prorated move-out month)
 - Deductions: ₹${deductions.toLocaleString('en-IN')}
 -------------------
 Final Refund: ₹${finalRefund.toLocaleString('en-IN')}
 -------------------
 Note: ${note}
 `.trim();
+
 
         // 2. Create formal Settlement Record
         await tx.settlementRecord.create({

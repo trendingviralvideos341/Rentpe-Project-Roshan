@@ -187,6 +187,7 @@ model Property {
   foodPreferences            FoodPreference[]
   vacatingNotices            VacatingNotice[]
   maintenanceRequests        MaintenanceRequest[]
+  minimumNoticeDays          Int                          @default(30)
 }
 
 model Room {
@@ -514,8 +515,21 @@ model RentRecord {
   amount    Float
   paid      Boolean  @default(false)
   paidOn    String?
+  note      String?  // e.g. "Prorated — move-in 18 Jun 2025"
   createdAt DateTime @default(now())
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model FoodRecord {
+  id         String   @id @default(cuid())
+  bookingId  String
+  propertyId String
+  userId     String
+  month      String   // "Jun 2025"
+  amount     Float
+  paid       Boolean  @default(false)
+  note       String?
+  createdAt  DateTime @default(now())
 }
 
 model Payment {
