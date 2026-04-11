@@ -303,34 +303,118 @@ export async function blockTenant(tenantId: string, note: string) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
-    const timestamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
-    const tenant = await prisma.tenant.update({
+    const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        data: { status: 'Blocked', actualMoveOutDate: timestamp }
-    });
-
-    await prisma.actionNote.create({
-        data: {
-            targetId: tenantId,
-            targetType: 'TENANT',
-            action: 'BLOCKED',
-            reason: note,
-            performedBy: session.userId
+        include: {
+            property: true,
+            bed: true,
+            rentRecords: true
         }
     });
 
-    logAuditEvent({
-        actorId: session.userId,
-        actorRole: session.role || 'OWNER',
-        actorName: session.name || 'Owner',
-        actionType: 'DELETE',
-        entityType: 'TENANT',
-        entityId: tenantId,
-        description: `Blocked on ${timestamp}. Reason: ${note}`,
-    });
+    if (!tenant) throw new Error("Tenant not found");
+    if (tenant.status === 'Checked Out' || tenant.status === 'Blocked') {
+        throw new Error("Tenant already moved out or blocked");
+    }
 
-    revalidatePath('/dashboard/owner/tenants');
-    return tenant;
+    return await prisma.$transaction(async (tx) => {
+        const moveOutDate = new Date();
+        const moveInDate = new Date(tenant.startDate);
+        const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // 1. Financial Settlement logic for Eviction
+        const unpaidRent = tenant.rentRecords.filter(r => !r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+        const totalPaidRent = tenant.rentRecords.filter(r => r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+        const depositAmount = typeof tenant.rent === 'number' ? tenant.rent : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, '')) || 0; 
+        
+        // In an eviction/block, we assume no extra manual damage deductions are entered in this quick action,
+        // but we seize deposit against unpaid rent.
+        const finalRefund = depositAmount - unpaidRent;
+
+        const settlementSummary = `
+EVICTION / BLOCK Summary:
+- Security Deposit: ₹${depositAmount.toLocaleString('en-IN')}
+- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')}
+-------------------
+Final Refund Due: ₹${finalRefund.toLocaleString('en-IN')}
+-------------------
+Block Reason: ${note}
+`.trim();
+
+        // 2. Create formal Settlement Record
+        await tx.settlementRecord.create({
+            data: {
+                tenantId,
+                finalRentPending: unpaidRent,
+                damageDeductions: 0,
+                depositRefunded: finalRefund > 0 ? finalRefund : 0,
+                notes: `EVICTION: ${note}`,
+                settlementDate: moveOutDate
+            }
+        });
+
+        // 3. Create History Record
+        await tx.tenantHistory.create({
+            data: {
+                tenantId: tenant.id,
+                studentId: tenant.studentId,
+                propertyName: tenant.property.name,
+                roomNumber: tenant.roomNumber,
+                bedNumber: tenant.bed?.bedNumber || "N/A",
+                moveInDate: moveInDate,
+                moveOutDate: moveOutDate,
+                stayDurationDays: duration,
+                totalPaid: totalPaidRent + (depositAmount - (finalRefund > 0 ? finalRefund : 0))
+            }
+        });
+
+        // 4. Clear Bed & Close Booking
+        if (tenant.bedId) {
+            await tx.bed.update({
+                where: { id: tenant.bedId },
+                data: { status: 'AVAILABLE', tenantId: null }
+            });
+        }
+
+        if (tenant.bookingId) {
+            await tx.booking.update({
+                where: { id: tenant.bookingId },
+                data: { status: 'CHECKED_OUT' } // Kept as checked out to free workflow
+            });
+        }
+
+        // 5. Update Tenant Status to Blocked
+        const updatedTenant = await tx.tenant.update({
+            where: { id: tenantId },
+            data: { 
+                status: 'Blocked', 
+                actualMoveOutDate: moveOutDate.toISOString(),
+                vacateNote: settlementSummary 
+            }
+        });
+
+        await tx.actionNote.create({
+            data: {
+                targetId: tenantId,
+                targetType: 'TENANT',
+                action: 'BLOCKED',
+                reason: note,
+                performedBy: session.userId
+            }
+        });
+
+        logAuditEvent({
+            actorId: session.userId,
+            actorRole: session.role || 'OWNER',
+            actorName: session.name || 'Owner',
+            actionType: 'DELETE',
+            entityType: 'TENANT',
+            entityId: tenantId,
+            description: `Tenant Blocked/Evicted. Bed cleared. Reason: ${note}`,
+        });
+
+        return updatedTenant;
+    });
 }
 
 export async function unblockTenant(tenantId: string, note: string) {

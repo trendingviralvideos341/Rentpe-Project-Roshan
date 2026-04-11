@@ -75,6 +75,19 @@ export async function createBooking(data: {
                 throw new Error("You already have an active booking for this room.");
             }
         }
+
+        // ─── SECURITY GUARD 4: Previously Evicted/Blocked from this PG ──────
+        const pastEviction = await prisma.tenant.findFirst({
+            where: {
+                studentId: userId,
+                propertyId: data.propertyId,
+                status: 'Blocked'
+            }
+        });
+
+        if (pastEviction) {
+            throw new Error("You are not eligible to book this property.");
+        }
     }
     // ─────────────────────────────────────────────────────────────────────────
 
