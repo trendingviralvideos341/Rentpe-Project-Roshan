@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star, X } from "lucide-react";
+import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star, X, Ghost } from "lucide-react";
 import { getUsers, updateUserStatus, updateUserPoints } from "@/actions/admin";
 import { impersonateUser } from "@/actions/admin-auth";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -353,6 +353,9 @@ export default function AdminUsersPage() {
                                                         </Link>
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50" onClick={() => setPointsTarget(user)} title="Manage Loyalty Points">
                                                             <Star className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => handleImpersonate(user.id)} title="God Mode: Impersonate User">
+                                                            <Ghost className="h-4 w-4" />
                                                         </Button>
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => setBlockTarget(user)} title={isBanned ? "Restore Account" : "Block Account"}>
                                                             <Ban className="h-4 w-4" />
