@@ -407,6 +407,9 @@ model RentInvoice {
   paidRentAmount   Float          @default(0)
   paidFoodAmount   Float          @default(0)
   paidAt           DateTime?
+  paymentMethod    String?        // ONLINE | CASH | BANK_TRANSFER
+  confirmedBy      String?        // userId of who confirmed
+  confirmedByName  String?        // display name
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   payments         Payment[]      @relation("InvoicePayments")
@@ -416,6 +419,7 @@ model RentInvoice {
 
   @@unique([tenantId, billingMonth])
 }
+
 
 model SecurityDeposit {
   id               String         @id @default(uuid())

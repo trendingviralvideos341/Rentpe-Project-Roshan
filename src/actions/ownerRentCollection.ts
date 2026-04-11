@@ -28,11 +28,12 @@ async function getOwnerSession() {
 // TASK 1 — RENT COLLECTION
 // ────────────────────────────────────────────────────────
 
-export async function getOwnerRentCollection(month?: string) {
+export async function getOwnerRentCollection(month?: string, propertyId?: string) {
     const { properties } = await getOwnerSession();
-    const propertyIds = properties.map((p: any) => p.id);
+    const propertyIds = propertyId
+        ? properties.filter((p: any) => p.id === propertyId).map((p: any) => p.id)
+        : properties.map((p: any) => p.id);
 
-    // Default: current month in YYYY-MM
     const targetMonth = month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
     const invoices = await prisma.rentInvoice.findMany({
@@ -44,7 +45,7 @@ export async function getOwnerRentCollection(month?: string) {
             billingProfile: {
                 include: {
                     tenant: {
-                        select: { id: true, name: true, phone: true, email: true, roomNumber: true, roomType: true }
+                        select: { id: true, displayId: true, name: true, phone: true, email: true, roomNumber: true, roomType: true }
                     }
                 }
             },
@@ -52,6 +53,20 @@ export async function getOwnerRentCollection(month?: string) {
         },
         orderBy: { dueDate: 'asc' }
     });
+
+    // All invoices for history (all months) per tenant
+    const tenantIds = [...new Set(invoices.map((inv: any) => inv.tenantId))];
+    const allInvoices = tenantIds.length > 0 ? await prisma.rentInvoice.findMany({
+        where: { tenantId: { in: tenantIds } },
+        select: { tenantId: true, month: true, billingMonth: true, amount: true, paidAmount: true, status: true, paidAt: true, paymentMethod: true },
+        orderBy: { createdAt: 'desc' }
+    }) : [];
+
+    const historyByTenant: Record<string, any[]> = {};
+    for (const inv of allInvoices) {
+        if (!historyByTenant[inv.tenantId]) historyByTenant[inv.tenantId] = [];
+        historyByTenant[inv.tenantId].push(inv);
+    }
 
     const today = new Date();
 
@@ -64,11 +79,13 @@ export async function getOwnerRentCollection(month?: string) {
             id: inv.id,
             displayId: inv.displayId,
             tenantId: inv.billingProfile?.tenant?.id,
+            tenantDisplayId: inv.billingProfile?.tenant?.displayId || '',
             tenantName: inv.billingProfile?.tenant?.name || 'Unknown',
             tenantPhone: inv.billingProfile?.tenant?.phone || '',
             tenantEmail: inv.billingProfile?.tenant?.email || '',
             propertyName: inv.booking?.propertyName || '',
             roomNumber: inv.billingProfile?.tenant?.roomNumber || '',
+            roomType: inv.billingProfile?.tenant?.roomType || '',
             month: inv.month,
             billingMonth: inv.billingMonth,
             amount: inv.amount,
@@ -76,10 +93,73 @@ export async function getOwnerRentCollection(month?: string) {
             dueDate: inv.dueDate,
             status: inv.status,
             paidAt: inv.paidAt,
+            paymentMethod: inv.paymentMethod || null,
+            confirmedBy: inv.confirmedBy || null,
+            confirmedByName: inv.confirmedByName || null,
             daysOverdue,
+            history: historyByTenant[inv.tenantId] || [],
         };
     });
 }
+
+export async function markInvoiceAsCashPaid(invoiceId: string, note?: string) {
+    const { session, userId, user } = await getOwnerSession();
+    const actorName = user?.name || 'Owner';
+    const actorRole = user?.parentOwnerId ? 'STAFF' : 'OWNER';
+
+    const invoice = await prisma.rentInvoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+            billingProfile: { include: { tenant: true } },
+            booking: { select: { propertyName: true, userId: true } }
+        }
+    });
+    if (!invoice) throw new Error('Invoice not found');
+    if (invoice.status === 'PAID') throw new Error('Invoice already paid');
+
+    const tenant = invoice.billingProfile?.tenant;
+
+    await prisma.rentInvoice.update({
+        where: { id: invoiceId },
+        data: {
+            status: 'PAID',
+            paidAmount: invoice.amount,
+            paidAt: new Date(),
+            paymentMethod: 'CASH',
+            confirmedBy: userId,
+            confirmedByName: actorName,
+        }
+    });
+
+    // Notify tenant
+    try {
+        if (invoice.booking?.userId) {
+            await prisma.notification.create({
+                data: {
+                    userId: invoice.booking.userId,
+                    type: 'PAYMENT',
+                    category: 'CASH_PAYMENT_CONFIRMED',
+                    message: `Cash payment of ₹${invoice.amount} for ${invoice.month} confirmed by ${actorName}.`,
+                    isPersistent: true,
+                }
+            });
+        }
+    } catch (e) { console.error('Notify error:', e); }
+
+    logAuditEvent({
+        actorId: userId,
+        actorRole,
+        actorName,
+        actionType: 'UPDATE',
+        entityType: 'PAYMENT',
+        entityId: invoiceId,
+        description: `Cash payment of ₹${invoice.amount} confirmed for ${tenant?.name || 'tenant'} (${invoice.month}). Note: ${note || 'None'}`,
+    });
+
+    revalidatePath('/dashboard/owner/payments');
+    return { tenantName: tenant?.name, amount: invoice.amount };
+}
+
 
 export async function sendRentReminder(invoiceId: string) {
     const { user: actorUser } = await getOwnerSession();
