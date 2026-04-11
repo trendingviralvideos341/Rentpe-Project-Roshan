@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/layout/NotificationBell';
 
 
-const Navbar = ({ session }: { session: any }) => {
+const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean }) => {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
@@ -90,7 +90,8 @@ const Navbar = ({ session }: { session: any }) => {
                     </button>
                 </div>
             )}
-            <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+            {!onlyBar && (
+                <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
                 <div className="w-full flex h-16 items-center justify-between px-6 gap-4">
                     {/* Brand Logo */}
                     <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
@@ -393,6 +394,7 @@ const Navbar = ({ session }: { session: any }) => {
                     </div>
                 )}
             </nav>
+            )}
         </>
     );
 };

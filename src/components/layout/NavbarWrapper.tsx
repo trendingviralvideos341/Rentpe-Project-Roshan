@@ -11,6 +11,11 @@ import Navbar from './Navbar';
 export default function NavbarWrapper({ session }: { session: any }) {
     const pathname = usePathname();
     const isDashboard = pathname?.startsWith('/dashboard');
-    if (isDashboard) return null;
+    const isImpersonating = !!session?.impersonatorId;
+
+    if (isDashboard) {
+        if (isImpersonating) return <Navbar session={session} onlyBar={true} />;
+        return null;
+    }
     return <Navbar session={session} />;
 }
