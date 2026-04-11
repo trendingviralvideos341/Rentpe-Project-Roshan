@@ -75,7 +75,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
     return (
         <>
             {isImpersonating && (
-                <div className="w-full bg-red-600 text-white text-sm font-bold py-2 px-4 flex justify-between items-center z-[60] relative">
+                <div className="w-full bg-red-600 text-white text-sm font-bold py-2 px-6 flex justify-between items-center z-[70] sticky top-0 shadow-lg">
                     <div className="flex items-center gap-2 animate-pulse">
                         <Eye className="h-4 w-4" />
                         [GOD MODE] IMPERSONATING: {session?.name || session?.user?.name || userRole}
