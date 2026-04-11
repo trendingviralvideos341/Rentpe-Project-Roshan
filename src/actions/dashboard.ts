@@ -12,7 +12,7 @@ export async function getOwnerDashboardStats() {
 
         const userId = session.userId;
 
-        const [propertyCount, tenantCount, paidRecordSums] = await Promise.all([
+        const [propertyCount, tenantCount, paidRecordSums, totalBeds, occupiedBeds, paidRecords] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId } }),
             prisma.tenant.count({
                 where: {
@@ -23,43 +23,70 @@ export async function getOwnerDashboardStats() {
             prisma.rentRecord.aggregate({
                 where: {
                     paid: true,
-                    tenant: {
-                        property: { ownerId: userId }
-                    }
+                    tenant: { property: { ownerId: userId } }
                 },
-                _sum: {
-                    amount: true
-                }
-            })
+                _sum: { amount: true }
+            }),
+            // Real total bed count from DB
+            prisma.bed.count({
+                where: { room: { property: { ownerId: userId } }, deletedAt: null }
+            }),
+            // Real occupied bed count from DB
+            prisma.bed.count({
+                where: { status: 'OCCUPIED', room: { property: { ownerId: userId } }, deletedAt: null }
+            }),
+            // Real payments for revenue chart - last 6 months
+            prisma.rentRecord.findMany({
+                where: {
+                    paid: true,
+                    tenant: { property: { ownerId: userId } },
+                    paidOn: { not: null }
+                },
+                select: { paidOn: true, amount: true },
+            }),
         ]);
 
         const totalRevenue = paidRecordSums._sum.amount || 0;
 
-        const revenueHistory = [
-            { month: "Oct", revenue: Math.floor(totalRevenue * 0.15) },
-            { month: "Nov", revenue: Math.floor(totalRevenue * 0.1) },
-            { month: "Dec", revenue: Math.floor(totalRevenue * 0.2) },
-            { month: "Jan", revenue: Math.floor(totalRevenue * 0.15) },
-            { month: "Feb", revenue: Math.floor(totalRevenue * 0.25) },
-            { month: "Mar", revenue: Math.floor(totalRevenue * 0.15) },
-        ];
+        // Group paid records by month (real data)
+        const monthMap: Record<string, number> = {};
+        for (const record of paidRecords) {
+            if (!record.paidOn) continue;
+            // paidOn is stored as string e.g. "02 Jan 2025"
+            try {
+                const date = new Date(record.paidOn);
+                if (isNaN(date.getTime())) continue;
+                const key = date.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+                monthMap[key] = (monthMap[key] || 0) + (record.amount || 0);
+            } catch { continue; }
+        }
 
+        // Last 6 months in order
+        const revenueHistory = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - (5 - i));
+            const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+            return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
+        });
+
+        // Real occupancy from actual bed counts
+        const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
         const occupancyStats = [
-            { name: "Occupied Beds", value: tenantCount },
-            { name: "Vacant Beds", value: Math.max(0, (propertyCount * 20) - tenantCount) }, 
+            { name: "Occupied Beds", value: occupiedBeds },
+            { name: "Vacant Beds", value: vacantBeds },
         ];
 
         const ownerUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { 
-                id: true, 
-                name: true, 
-                email: true, 
-                role: true, 
-                phone: true, 
-                createdAt: true, 
-                displayId: true, 
-                loyaltyPoints: true 
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                phone: true,
+                createdAt: true,
+                displayId: true,
+                loyaltyPoints: true
             }
         });
 
@@ -94,6 +121,7 @@ export async function getOwnerDashboardStats() {
         };
     }
 }
+
 
 export async function getOwnerInventory() {
     try {

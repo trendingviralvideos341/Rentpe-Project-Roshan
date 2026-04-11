@@ -7,7 +7,7 @@ export type AuditLogParams = {
     actorId: string;
     actorRole: string;
     actorName: string;
-    actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'LOGIN' | 'LOGOUT' | string;
+    actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'LOGIN' | 'LOGOUT' | 'BLOCK' | 'SUSPEND' | 'EXPORT' | 'OVERRIDE' | 'ESCALATE' | 'VIEW' | string;
     entityType: 'USER' | 'OWNER' | 'PROPERTY' | 'ROOM' | 'BED' | 'BOOKING' | 'PAYMENT' | 'KYC' | 'TENANT' | 'ADMIN' | string;
     entityId: string;
     entityName?: string;

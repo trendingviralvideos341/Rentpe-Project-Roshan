@@ -147,7 +147,7 @@ export async function sendRentReminder(invoiceId: string) {
 
     logAuditEvent({
         actorId: actorUser?.id || 'SYSTEM',
-        actorRole: 'OWNER',
+        actorRole: actorUser?.parentOwnerId ? 'STAFF' : 'OWNER',
         actorName: ownerName,
         actionType: 'CREATE',
         entityType: 'PAYMENT',
@@ -325,7 +325,7 @@ export async function updateDepositStatus(
 
     logAuditEvent({
         actorId: userId,
-        actorRole: 'OWNER',
+        actorRole: actorUser?.parentOwnerId ? 'STAFF' : 'OWNER',
         actorName: actorUser?.name || 'Owner',
         actionType: 'UPDATE',
         entityType: 'PAYMENT',
@@ -437,7 +437,7 @@ export async function generateBulkInvoices(month: string, tenantIds: string[]) {
 
     logAuditEvent({
         actorId: userId,
-        actorRole: 'OWNER',
+        actorRole: actorUser?.parentOwnerId ? 'STAFF' : 'OWNER',
         actorName: actorUser?.name || 'Owner',
         actionType: 'CREATE',
         entityType: 'PAYMENT',
