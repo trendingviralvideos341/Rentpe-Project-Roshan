@@ -12,7 +12,7 @@ export async function getOwnerDashboardStats() {
 
         const userId = session.userId;
 
-        const [propertyCount, tenantCount, paidRecordSums, recentActivity] = await Promise.all([
+        const [propertyCount, tenantCount, paidRecordSums] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId } }),
             prisma.tenant.count({
                 where: {
@@ -30,18 +30,6 @@ export async function getOwnerDashboardStats() {
                 _sum: {
                     amount: true
                 }
-            }),
-            prisma.auditLog.findMany({
-                where: { actorId: userId },
-                select: {
-                    id: true,
-                    actionType: true,
-                    entityType: true,
-                    createdAt: true,
-                    description: true
-                },
-                orderBy: { createdAt: 'desc' },
-                take: 5
             })
         ]);
 
@@ -79,7 +67,6 @@ export async function getOwnerDashboardStats() {
             propertyCount,
             tenantCount,
             totalRevenue,
-            recentActivity,
             revenueHistory,
             occupancyStats,
             user: {
@@ -102,7 +89,6 @@ export async function getOwnerDashboardStats() {
             propertyCount: 0,
             tenantCount: 0,
             totalRevenue: 0,
-            recentActivity: [],
             revenueHistory: [],
             occupancyStats: []
         };

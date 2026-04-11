@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
-    Building, Users, IndianRupee, Clock, RefreshCcw, TrendingUp, 
+    Building, Users, IndianRupee, RefreshCcw, TrendingUp, 
     User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, 
     ListFilter, Activity, CreditCard, UserCheck, Lock 
 } from "lucide-react";
@@ -239,42 +240,13 @@ export default function OwnerDashboard() {
                         </Card>
                     </div>
 
-                    {/* Recent Activity */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Recent Activity Log</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {(stats.recentActivity ?? []).length === 0 ? (
-                                <p className="text-muted-foreground text-center py-4">No recent activity found.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {(stats.recentActivity ?? []).map((log: any) => (
-                                        <div key={log.id} className="flex items-start gap-4 p-4 rounded-lg border bg-muted/5 hover:bg-muted/10 transition-colors z-10">
-                                            <div className="p-2 bg-primary/10 rounded-full mt-0.5 shrink-0">
-                                                <Clock className="h-4 w-4 text-primary" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <p className="text-sm font-bold">{log.actionType?.replace(/_/g, ' ') || 'ACTION'}</p>
-                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                                                        {new Date(log.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground uppercase mt-0.5">{log.entityType}</p>
-                                                {log.description && (
-                                                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-                                                        <span className="text-[10px] font-bold text-amber-700 uppercase">📝 Notes: </span>
-                                                        <span className="text-xs text-amber-900">{log.description}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                    {/* Activity Log Link */}
+                    <div className="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
+                        <p className="text-sm font-bold text-slate-600">View full activity history in Activity Log</p>
+                        <Link href="/dashboard/owner/activity-log">
+                            <Button variant="outline" size="sm">Activity Log →</Button>
+                        </Link>
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="inventory" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
