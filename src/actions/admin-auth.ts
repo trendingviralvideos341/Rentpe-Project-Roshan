@@ -51,7 +51,7 @@ export async function impersonateUser(targetUserId: string, reason: string) {
         actionType: 'IMPERSONATION_START',
         entityType: 'USER',
         entityId: targetUser.id,
-        entityName: targetUser.name,
+        entityName: targetUser.name ?? undefined,
         description: `God Mode Entry: Admin impersonating ${targetUser.email}. Reason: ${reason}`,
         newValue: { reason, targetEmail: targetUser.email }
     });

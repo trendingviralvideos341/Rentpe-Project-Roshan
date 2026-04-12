@@ -5,7 +5,7 @@ import {
     Search, Filter, Calendar, User, Building, Landmark, 
     CheckCircle, XCircle, LogIn, LogOut, ArrowRight, 
     Download, RefreshCw, ChevronLeft, ChevronRight,
-    Eye, MoreVertical, FileText, Shield, HardDrive
+    Eye, MoreVertical, FileText, Shield, HardDrive, Ghost
 } from 'lucide-react';
 import { getAuditLogs } from '@/actions/audit';
 import { toast } from 'sonner';

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star, X, Ghost } from "lucide-react";
+import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star, X, Ghost, ArrowRight } from "lucide-react";
 import { getUsers, updateUserStatus, updateUserPoints } from "@/actions/admin";
 import { impersonateUser } from "@/actions/admin-auth";
 import { useSearchParams, useRouter } from "next/navigation";
