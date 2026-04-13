@@ -657,6 +657,26 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
     });
 }
 
+export async function getPropertyByIdForAdmin(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    return prisma.property.findUnique({
+        where: { id: propertyId },
+        include: {
+            owner: {
+                select: { id: true, name: true, email: true, phone: true, displayId: true, roles: true, isOwner: true, createdAt: true }
+            },
+            rooms: {
+                include: {
+                    beds: { select: { id: true, bedNumber: true, status: true } }
+                },
+                orderBy: { roomNumber: 'asc' }
+            }
+        }
+    });
+}
+
 export async function getAdminPropertyAnalytics() {
     try {
         const session = await getSession();

@@ -195,9 +195,9 @@ export default function AdminPropertiesPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2 flex-wrap">
-                                        <Link href={`/dashboard/admin/property-approval`}>
+                                        <Link href={`/dashboard/admin/properties/${prop.id}`}>
                                             <Button size="sm" variant="outline" className="text-xs">
-                                                <Eye className="h-3.5 w-3.5 mr-1" /> Details
+                                                <Eye className="h-3.5 w-3.5 mr-1" /> View
                                             </Button>
                                         </Link>
                                         {prop.status !== 'APPROVED' && (
@@ -251,7 +251,7 @@ export default function AdminPropertiesPage() {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex gap-2 flex-wrap">
-                                                <Link href="/dashboard/admin/property-approval">
+                                                <Link href={`/dashboard/admin/properties/${prop.id}`}>
                                                     <Button size="sm" variant="outline" className="text-xs">
                                                         <Eye className="h-3.5 w-3.5 mr-1" /> View
                                                     </Button>
