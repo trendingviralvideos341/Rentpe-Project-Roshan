@@ -28,57 +28,53 @@ function statusColor(status: string) {
     return map[status] || "bg-gray-100 text-gray-700 border-gray-200";
 }
 
-function PhotoSection({ label, urls }: { label: string; urls: string[] }) {
+function PhotoBox({ label, urls, slotsCount = 1 }: { label: string; urls: string[]; slotsCount?: number }) {
     const [lightbox, setLightbox] = useState<string | null>(null);
-    if (!urls.length) return null;
     return (
-        <div className="space-y-2">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                <ImageIcon className="h-3 w-3" /> {label}
+        <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5 px-1">
+                <ImageIcon className="h-3 w-3" /> {label} <span className="text-slate-300 ml-1">({urls.length}/{slotsCount})</span>
             </p>
-            <div className="flex gap-2 flex-wrap">
-                {urls.map((url, i) => (
-                    <button
-                        key={i}
-                        className="w-24 h-24 rounded-xl overflow-hidden border-2 border-slate-200 hover:border-indigo-400 transition-all group relative shadow-sm hover:shadow-md"
-                        onClick={() => setLightbox(url)}
-                    >
-                        <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                            <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {Array.from({ length: slotsCount }).map((_, i) => {
+                    const url = urls[i];
+                    return (
+                        <div key={i} className="aspect-square relative">
+                            {url ? (
+                                <button
+                                    className="w-full h-full rounded-2xl overflow-hidden border-2 border-indigo-100 hover:border-indigo-400 transition-all group shadow-sm hover:shadow-md bg-white"
+                                    onClick={() => setLightbox(url)}
+                                >
+                                    <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                        <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
+                                        <CheckCircle className="h-3 w-3" />
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className="w-full h-full rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center p-2 text-center group">
+                                    <ImageIcon className="h-6 w-6 text-slate-300 mb-1 group-hover:text-slate-400 transition-colors" />
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Not Uploaded</span>
+                                </div>
+                            )}
                         </div>
-                    </button>
-                ))}
+                    );
+                })}
             </div>
             {lightbox && (
-                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
-                    <img src={lightbox} alt="Preview" className="max-w-full max-h-full rounded-2xl shadow-2xl" />
-                    <button className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/70" onClick={() => setLightbox(null)}>
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setLightbox(null)}>
+                    <img src={lightbox} alt="Preview" className="max-w-full max-h-full rounded-2xl shadow-2xl border-4 border-white/10" />
+                    <button className="absolute top-6 right-6 text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors" onClick={() => setLightbox(null)}>
                         <XCircle className="h-6 w-6" />
                     </button>
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white text-sm font-bold">
+                        {label} - Slot {urls.indexOf(lightbox!) + 1}
+                    </div>
                 </div>
             )}
         </div>
-    );
-}
-
-function DocLink({ label, url }: { label: string; url?: string | null }) {
-    if (!url) {
-        return (
-            <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <FileText className="h-4 w-4 text-slate-300" />
-                <span className="text-sm text-slate-400">{label}</span>
-                <span className="ml-auto text-xs text-slate-400 font-semibold">Not uploaded</span>
-            </div>
-        );
-    }
-    return (
-        <a href={url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors group">
-            <FileText className="h-4 w-4 text-indigo-600" />
-            <span className="text-sm text-indigo-700 font-semibold">{label}</span>
-            <ExternalLink className="ml-auto h-3.5 w-3.5 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
-        </a>
     );
 }
 
@@ -183,10 +179,13 @@ export default function AdminPropertyDetailPage() {
     const hallPhotos = parsePhotos(p.hallPhotos);
     const lobbyPhotos = parsePhotos(p.lobbyPhotos);
     const livePhoto = p.livePhotoUrl ? [p.livePhotoUrl] : [];
+    const aadhaarPhotos = parsePhotos(p.aadhaarProof);
+    const panPhotos = parsePhotos(p.panProof);
+    const licencePhotos = parsePhotos(p.pgLicenceUrl);
 
     const allPhotosCount = [heroImages, buildingPhotos, interiorPhotos, commonAreaPhotos,
         amenitiesPhotos, roomsPhotos, roomsAndBathroomPhotos, exteriorPhotos, parkingPhotos, washroomPhotos,
-        hallPhotos, lobbyPhotos, livePhoto].reduce((s, a) => s + a.length, 0);
+        hallPhotos, lobbyPhotos, livePhoto, aadhaarPhotos, panPhotos, licencePhotos].reduce((s, a) => s + a.length, 0);
 
     const bedStats = (p.rooms || []).reduce((acc: any, r: any) => {
         acc.total += (r.beds || []).length;
@@ -373,47 +372,52 @@ export default function AdminPropertyDetailPage() {
                         </Card>
                     )}
 
-                    {/* Legal Documents */}
+                    {/* Property Photos & Visuals */}
                     <Card className="border shadow-sm">
-                        <CardContent className="p-5 space-y-3">
-                            <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-indigo-600" /> Legal Documents
-                            </h3>
-                            <div className="space-y-2">
-                                <DocLink label="Aadhaar / ID Proof" url={p.aadhaarProof} />
-                                <DocLink label="PAN Card" url={p.panProof} />
-                                <DocLink label="PG Licence" url={p.pgLicenceUrl} />
-                                {p.pgPhotoUrl && <DocLink label="Owner Photo" url={p.pgPhotoUrl} />}
+                        <CardContent className="p-0">
+                            <div className="p-5 border-b bg-slate-50/50">
+                                <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4 text-indigo-600" /> Photo & Document Review
+                                </h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                                    Total Uploaded: {allPhotosCount} items across all categories
+                                </p>
                             </div>
-                        </CardContent>
-                    </Card>
 
-                    {/* Photo Gallery */}
-                    <Card className="border shadow-sm">
-                        <CardContent className="p-5 space-y-5">
-                            <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4 text-indigo-600" /> Photo Gallery ({allPhotosCount} photos)
-                            </h3>
-                            {allPhotosCount === 0 ? (
-                                <div className="py-12 text-center border-2 border-dashed rounded-xl">
-                                    <ImageIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                                    <p className="text-sm text-slate-400 font-semibold">No photos uploaded</p>
+                            <div className="p-5 space-y-8">
+                                {/* Property Visuals */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-1 flex-1 bg-slate-100 rounded-full" />
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">1. Property Assets</span>
+                                        <div className="h-1 flex-1 bg-slate-100 rounded-full" />
+                                    </div>
+                                    <PhotoBox label="Building Photos" urls={buildingPhotos} slotsCount={4} />
+                                    <PhotoBox label="Common Areas" urls={commonAreaPhotos} slotsCount={4} />
+                                    <PhotoBox label="Rooms & Bathrooms" urls={roomsAndBathroomPhotos} slotsCount={4} />
+                                    <PhotoBox label="Parking Area" urls={parkingPhotos} slotsCount={4} />
+                                    <PhotoBox label="Amenities Photos" urls={amenitiesPhotos} slotsCount={4} />
+                                    {interiorPhotos.length > 0 && <PhotoBox label="Interior Detail" urls={interiorPhotos} slotsCount={interiorPhotos.length} />}
+                                    {(hallPhotos.length > 0 || lobbyPhotos.length > 0) && (
+                                        <PhotoBox label="Hall / Lobby" urls={[...hallPhotos, ...lobbyPhotos]} slotsCount={Math.max(4, hallPhotos.length + lobbyPhotos.length)} />
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="space-y-5">
-                                    <PhotoSection label="Building Photos" urls={buildingPhotos} />
-                                    <PhotoSection label="Exterior" urls={exteriorPhotos} />
-                                    <PhotoSection label="Interior" urls={interiorPhotos} />
-                                    <PhotoSection label="Rooms & Bathrooms" urls={roomsAndBathroomPhotos} />
-                                    <PhotoSection label="Rooms" urls={roomsPhotos} />
-                                    <PhotoSection label="Common Areas" urls={commonAreaPhotos} />
-                                    <PhotoSection label="Amenities" urls={amenitiesPhotos} />
-                                    <PhotoSection label="Hall / Lobby" urls={[...hallPhotos, ...lobbyPhotos]} />
-                                    <PhotoSection label="Washrooms" urls={washroomPhotos} />
-                                    <PhotoSection label="Parking" urls={parkingPhotos} />
-                                    <PhotoSection label="Live Photo (Selfie)" urls={livePhoto} />
+
+                                {/* Legal Documentation */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-1 flex-1 bg-slate-100 rounded-full" />
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">2. Legal Documentation</span>
+                                        <div className="h-1 flex-1 bg-slate-100 rounded-full" />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <PhotoBox label="Owner Aadhaar (Front/Back)" urls={aadhaarPhotos} slotsCount={2} />
+                                        <PhotoBox label="Owner PAN (Front/Back)" urls={panPhotos} slotsCount={2} />
+                                        <PhotoBox label="Property / PG Licence" urls={licencePhotos} slotsCount={2} />
+                                        <PhotoBox label="Current Photo / Selfie" urls={livePhoto} slotsCount={1} />
+                                    </div>
                                 </div>
-                            )}
+                            </div>
                         </CardContent>
                     </Card>
 
