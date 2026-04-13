@@ -35,7 +35,7 @@ function PhotoBox({ label, urls, slotsCount = 1 }: { label: string; urls: string
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5 px-1">
                 <ImageIcon className="h-3 w-3" /> {label} <span className="text-slate-300 ml-1">({urls.length}/{slotsCount})</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {Array.from({ length: slotsCount }).map((_, i) => {
                     const url = urls[i];
                     return (
