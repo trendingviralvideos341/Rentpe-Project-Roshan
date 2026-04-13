@@ -410,7 +410,7 @@ export default function AdminPropertyDetailPage() {
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">2. Legal Documentation</span>
                                         <div className="h-1 flex-1 bg-slate-100 rounded-full" />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
                                         <PhotoBox label="Owner Aadhaar (Front/Back)" urls={aadhaarPhotos} slotsCount={2} />
                                         <PhotoBox label="Owner PAN (Front/Back)" urls={panPhotos} slotsCount={2} />
                                         <PhotoBox label="Property / PG Licence" urls={licencePhotos} slotsCount={2} />
