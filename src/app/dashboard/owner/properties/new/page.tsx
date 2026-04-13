@@ -170,6 +170,11 @@ export default function AddPropertyPage() {
         loadProfileAndSettings();
     }, []);
 
+    // CLOUDINARY COLD-START FIX: Hit the warmup endpoint to pre-warm the connection on page load
+    useEffect(() => {
+        fetch('/api/warmup').catch(() => {});
+    }, []);
+
     // OPTIMISTIC WARM-UP: Pre-fetch signature so it's ready before user selects photos
     useEffect(() => {
         const warmUpSignature = async () => {
@@ -183,7 +188,7 @@ export default function AddPropertyPage() {
                 setSignatureCache({ data, expiry: now + 45 * 60 * 1000 });
                 return data;
             } catch (err) {
-                // Silently fail, it's just a warm-ups
+                // Silently fail, it's just a warm-up
                 return null;
             }
         };
@@ -407,8 +412,9 @@ export default function AddPropertyPage() {
             <div key={i} className="relative group/img aspect-square border-2 border-purple-200 rounded-xl bg-white overflow-hidden shadow-sm">
                 <img src={entry.previewUrl} alt="preview" className={`w-full h-full object-cover ${entry.uploading ? 'opacity-40' : ''}`} />
                 {entry.uploading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70">
                         <Loader2 className="h-6 w-6 text-purple-600 animate-spin" />
+                        <span className="text-[9px] font-black text-purple-600 mt-1">UPLOADING...</span>
                     </div>
                 )}
                 {entry.error && (

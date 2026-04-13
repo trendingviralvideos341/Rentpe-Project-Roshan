@@ -84,7 +84,7 @@ export function useResumableUpload() {
             setError(err.message || 'Upload failed');
             throw err;
         }
-    }, [getCloudinarySignature]);
+    }, []); // empty deps — server action import never changes
 
     return {
         status,
