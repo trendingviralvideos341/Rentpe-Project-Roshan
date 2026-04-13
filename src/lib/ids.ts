@@ -57,27 +57,42 @@ export async function generateSequentialId(type: string): Promise<string> {
     // fyKey is NEVER null — "GLOBAL" for non-FY types
     const fyKey = config.resetPerFY ? fy : "GLOBAL";
 
-    // ATOMIC upsert with Serializable isolation
-    // Serializable = strictest level — no two transactions see same counter
-    const counter = await prisma.$transaction(async (tx) => {
-        return await (tx as any).idCounter.upsert({
-            where: {
-                type_fyKey: { type, fyKey }
-            },
-            update: {
-                sequence: { increment: 1 }
-            },
-            create: {
-                type,
-                fyKey,
-                sequence: 1
+    // ATOMIC upsert with ReadCommitted isolation (sufficient for counter increments)
+    // Retry up to 5x on P2034 deadlock/write-conflict with exponential backoff
+    const MAX_RETRIES = 5;
+    let counter: any;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            counter = await prisma.$transaction(async (tx) => {
+                return await (tx as any).idCounter.upsert({
+                    where: {
+                        type_fyKey: { type, fyKey }
+                    },
+                    update: {
+                        sequence: { increment: 1 }
+                    },
+                    create: {
+                        type,
+                        fyKey,
+                        sequence: 1
+                    }
+                });
+            }, {
+                isolationLevel: 'ReadCommitted', // Less strict — no deadlocks on upsert increments
+                timeout: 10000,
+                maxWait: 5000,
+            });
+            break; // Success — exit retry loop
+        } catch (e: any) {
+            // P2034 = write conflict or deadlock — retry with exponential backoff
+            if (e.code === 'P2034' && attempt < MAX_RETRIES - 1) {
+                await new Promise(r => setTimeout(r, 50 * Math.pow(2, attempt))); // 50, 100, 200, 400ms
+                continue;
             }
-        });
-    }, {
-        isolationLevel: 'Serializable',
-        timeout: 10000,
-        maxWait: 5000,
-    });
+            throw e; // Non-retriable error or max retries exceeded
+        }
+    }
 
     const padded = counter.sequence.toString().padStart(config.pad, '0');
 
