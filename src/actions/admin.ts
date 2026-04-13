@@ -1020,6 +1020,34 @@ export async function requestPropertyCorrections(propertyId: string, notes: stri
     return result;
 }
 
+export async function moveToReview(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.property.update({
+        where: { id: propertyId },
+        data: { status: 'VERIFYING_DOCUMENTS' }
+    });
+
+    await prisma.auditLog.create({
+        data: {
+            actorId: session.userId,
+            actorRole: 'ADMIN',
+            actorName: session.name || 'Admin',
+            actionType: 'UPDATE',
+            entityType: 'PROPERTY',
+            entityId: propertyId,
+            description: `Admin moved property "${result.name}" to VERIFYING_DOCUMENTS (In Review) stage.`,
+            newValue: { status: 'VERIFYING_DOCUMENTS' },
+            ipAddress: 'internal',
+            userAgent: 'server-action'
+        }
+    });
+
+    revalidatePath('/dashboard/admin/property-approval');
+    return result;
+}
+
 export async function suspendProperty(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");

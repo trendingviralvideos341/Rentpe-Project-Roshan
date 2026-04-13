@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getAllPropertiesForAdmin, getAdminPropertyStatusCounts, exemptPropertyFee, rejectProperty, requestPropertyCorrections } from "@/actions/admin";
+import { 
+    getAllPropertiesForAdmin, 
+    getAdminPropertyStatusCounts, 
+    exemptPropertyFee, 
+    rejectProperty, 
+    requestPropertyCorrections,
+    moveToReview
+} from "@/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,6 +90,16 @@ export default function AdminPropertiesPage() {
             toast.error(e.message || "Action failed");
         } finally {
             setActionLoading(false);
+        }
+    };
+
+    const handleMoveToReview = async (prop: any) => {
+        try {
+            await moveToReview(prop.id);
+            toast.success(`"${prop.name}" moved to In Review stage`);
+            fetchData();
+        } catch {
+            toast.error("Failed to move property to review");
         }
     };
 
@@ -253,12 +270,17 @@ export default function AdminPropertiesPage() {
                                             <div className="flex gap-2 flex-wrap">
                                                 <Link href={`/dashboard/admin/properties/${prop.id}`}>
                                                     <Button size="sm" variant="outline" className="text-xs">
-                                                        <Eye className="h-3.5 w-3.5 mr-1" /> View
+                                                        <Eye className="h-3.5 w-3.5 mr-1" /> View & Audit
                                                     </Button>
                                                 </Link>
-                                                {prop.status !== 'APPROVED' && (
-                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs" onClick={() => setActionModal({ type: "approve", prop })}>
-                                                        ✅ Approve
+                                                {prop.status === 'PENDING_VERIFICATION' && (
+                                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs text-white" onClick={() => handleMoveToReview(prop)}>
+                                                        🔍 Start Review
+                                                    </Button>
+                                                )}
+                                                {prop.status === 'VERIFYING_DOCUMENTS' && (
+                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs text-white" onClick={() => setActionModal({ type: "approve", prop })}>
+                                                        ✅ Make Live
                                                     </Button>
                                                 )}
                                                 <Button size="sm" variant="outline" className="text-xs text-orange-600 border-orange-200" onClick={() => setActionModal({ type: "correction", prop })}>
