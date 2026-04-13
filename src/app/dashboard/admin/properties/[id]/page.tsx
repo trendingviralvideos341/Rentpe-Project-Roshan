@@ -176,6 +176,7 @@ export default function AdminPropertyDetailPage() {
     const commonAreaPhotos = parsePhotos(p.commonAreaPhotos);
     const amenitiesPhotos = parsePhotos(p.amenitiesPhotos);
     const roomsPhotos = parsePhotos(p.roomsPhotos);
+    const roomsAndBathroomPhotos = parsePhotos(p.roomsAndBathroomPhotos);
     const exteriorPhotos = parsePhotos(p.exteriorPhotos);
     const parkingPhotos = parsePhotos(p.parkingPhotos);
     const washroomPhotos = parsePhotos(p.washroomPhotos);
@@ -184,7 +185,7 @@ export default function AdminPropertyDetailPage() {
     const livePhoto = p.livePhotoUrl ? [p.livePhotoUrl] : [];
 
     const allPhotosCount = [heroImages, buildingPhotos, interiorPhotos, commonAreaPhotos,
-        amenitiesPhotos, roomsPhotos, exteriorPhotos, parkingPhotos, washroomPhotos,
+        amenitiesPhotos, roomsPhotos, roomsAndBathroomPhotos, exteriorPhotos, parkingPhotos, washroomPhotos,
         hallPhotos, lobbyPhotos, livePhoto].reduce((s, a) => s + a.length, 0);
 
     const bedStats = (p.rooms || []).reduce((acc: any, r: any) => {
@@ -403,6 +404,7 @@ export default function AdminPropertyDetailPage() {
                                     <PhotoSection label="Building Photos" urls={buildingPhotos} />
                                     <PhotoSection label="Exterior" urls={exteriorPhotos} />
                                     <PhotoSection label="Interior" urls={interiorPhotos} />
+                                    <PhotoSection label="Rooms & Bathrooms" urls={roomsAndBathroomPhotos} />
                                     <PhotoSection label="Rooms" urls={roomsPhotos} />
                                     <PhotoSection label="Common Areas" urls={commonAreaPhotos} />
                                     <PhotoSection label="Amenities" urls={amenitiesPhotos} />
