@@ -6,12 +6,18 @@ import {
     getPropertyByIdForAdmin, 
     exemptPropertyFee, 
     rejectProperty, 
-    requestPropertyCorrections 
+    requestPropertyCorrections,
+    startPropertyVerification,
+    verifyPropertyDocuments,
+    requirePropertyPayment,
+    activateProperty,
+    suspendProperty,
+    moveToReview
 } from "@/actions/admin";
 import { 
-    verifyDocument, 
-    rejectDocument 
+    verifyDocument 
 } from "@/actions/adminPhase2";
+import { requestDocumentReupload } from "@/actions/properties";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -133,15 +139,15 @@ export default function AdminPropertyDetailPage() {
     const router = useRouter();
     const [property, setProperty] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [actionModal, setActionModal] = useState<{ type: "reject" | "correction" | "approve" } | null>(null);
+    const [actionModal, setActionModal] = useState<{ type: "reject" | "correction" | "approve" | "start_review" | "verify_docs" | "request_payment" | "activate" | "move_back" | "suspend" } | null>(null);
     const [reason, setReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
 
     // Audit System State
     const [viewerDoc, setViewerDoc] = useState<{ url: string; label: string; type: string } | null>(null);
     const [auditLoading, setAuditLoading] = useState(false);
-    const [auditRejectNote, setAuditRejectNote] = useState("");
-    const [isAuditRejecting, setIsAuditRejecting] = useState(false);
+    const [reuploadNote, setReuploadNote] = useState("");
+    const [isReuploadMode, setIsReuploadMode] = useState(false);
     const [verifiedDocs, setVerifiedDocs] = useState<string[]>([]);
 
     const fetch = useCallback(async () => {
@@ -167,21 +173,50 @@ export default function AdminPropertyDetailPage() {
 
     const handleAction = async () => {
         if (!property || !actionModal) return;
-        if (actionModal.type !== "approve" && !reason.trim()) {
+        const needsReason = ["reject", "correction", "suspend", "approve"].includes(actionModal.type);
+        if (needsReason && !reason.trim()) {
             toast.error("Please provide a reason");
             return;
         }
         setActionLoading(true);
         try {
-            if (actionModal.type === "approve") {
-                await exemptPropertyFee(property.id, "Admin approved from property review page");
-                toast.success(`"${property.name}" is now LIVE!`);
-            } else if (actionModal.type === "reject") {
-                await rejectProperty(property.id, reason);
-                toast.success("Property rejected & owner notified.");
-            } else {
-                await requestPropertyCorrections(property.id, reason);
-                toast.success("Correction request sent to owner.");
+            switch (actionModal.type) {
+                case "start_review":
+                    await startPropertyVerification(property.id);
+                    toast.success("Moved to Document Verification stage.");
+                    break;
+                case "verify_docs":
+                    await verifyPropertyDocuments(property.id);
+                    toast.success("Documents verified! Status → Verified Successfully.");
+                    break;
+                case "request_payment":
+                    await requirePropertyPayment(property.id);
+                    toast.success("Owner notified to pay the onboarding fee.");
+                    break;
+                case "approve":
+                    await exemptPropertyFee(property.id, reason);
+                    toast.success(`"${property.name}" is now LIVE! Fee exempted.`);
+                    break;
+                case "activate":
+                    await activateProperty(property.id);
+                    toast.success(`"${property.name}" is now LIVE!`);
+                    break;
+                case "move_back":
+                    await moveToReview(property.id);
+                    toast.success("Moved back to Verifying Documents.");
+                    break;
+                case "reject":
+                    await rejectProperty(property.id, reason);
+                    toast.success("Property rejected & owner notified.");
+                    break;
+                case "correction":
+                    await requestPropertyCorrections(property.id, reason);
+                    toast.success("Correction request sent to owner.");
+                    break;
+                case "suspend":
+                    await suspendProperty(property.id, reason);
+                    toast.success("Property suspended.");
+                    break;
             }
             setActionModal(null);
             setReason("");
@@ -210,23 +245,24 @@ export default function AdminPropertyDetailPage() {
         }
     };
 
-    const handleAuditReject = async () => {
-        if (!viewerDoc || !property || !auditRejectNote.trim()) {
-            toast.error("Please provide a reason for rejection");
+    const handleAuditReupload = async () => {
+        if (!viewerDoc || !property || !reuploadNote.trim()) {
+            toast.error("Please provide a reason for re-upload request");
             return;
         }
         setAuditLoading(true);
         try {
-            await rejectDocument(property.id, viewerDoc.type, auditRejectNote);
-            toast.success(`Document rejected and note sent to owner`);
+            await requestDocumentReupload(property.id, viewerDoc.type, reuploadNote);
+            toast.success(`Re-upload requested. Owner has been notified.`);
             
-            // Optimistic Update
+            // Optimistic Update — remove from verified if it was there
             setVerifiedDocs(prev => prev.filter(d => d !== viewerDoc.type));
             setViewerDoc(null);
-            setIsAuditRejecting(false);
-            setAuditRejectNote("");
+            setIsReuploadMode(false);
+            setReuploadNote("");
+            fetch();
         } catch {
-            toast.error("Failed to reject document");
+            toast.error("Failed to request re-upload");
         } finally {
             setAuditLoading(false);
         }
@@ -319,34 +355,68 @@ export default function AdminPropertyDetailPage() {
                 </div>
             </div>
 
-            {/* Verification Progress Stepper */}
-            {p.status === "VERIFYING_DOCUMENTS" && (
-                <Card className="border-2 border-indigo-100 bg-indigo-50/50 shadow-sm rounded-3xl overflow-hidden">
-                    <CardContent className="p-6">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="space-y-1">
-                                <h3 className="font-black text-indigo-900 flex items-center gap-2">
-                                    <ShieldCheck className="h-5 w-5" /> Document Verification Baseline
-                                </h3>
-                                <p className="text-xs text-indigo-600 font-medium italic">Audit individual legal documents before finalizing the verification stage.</p>
-                            </div>
-                            <div className="flex items-center gap-6">
-                                <div className="flex -space-x-2">
-                                    {mandatoryDocs.map((d, i) => (
-                                        <div key={i} className={`h-10 w-10 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${verifiedDocs.includes(d) ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"}`}>
-                                            {verifiedDocs.includes(d) ? <CheckCircle className="h-5 w-5" /> : <Shield className="h-4 w-4" />}
+            {/* ── 7-Stage Pipeline Progress Bar ── */}
+            {(() => {
+                const STAGES = [
+                    { key: ["PENDING_VERIFICATION", "UNDER_REVIEW", "CORRECTED"], label: "Submitted", short: "1" },
+                    { key: ["VERIFYING_DOCUMENTS"], label: "Verifying Docs", short: "2" },
+                    { key: ["VERIFIED_SUCCESSFULLY"], label: "Docs Verified", short: "3" },
+                    { key: ["APPROVED_PENDING_PAYMENT"], label: "Pending Payment", short: "4" },
+                    { key: ["APPROVED_PAYMENT_VERIFIED"], label: "Payment Confirmed", short: "5" },
+                    { key: ["APPROVED"], label: "Live", short: "6" },
+                ];
+                const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
+                return (
+                    <Card className="border shadow-sm rounded-3xl overflow-hidden bg-white">
+                        <CardContent className="p-5">
+                            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                                {STAGES.map((stage, i) => {
+                                    const done = activeIdx >= 0 && i < activeIdx;
+                                    const active = i === activeIdx;
+                                    return (
+                                        <div key={i} className="flex items-center gap-1 min-w-0">
+                                            <div className={`flex flex-col items-center min-w-[70px]`}>
+                                                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-black border-2 transition-all ${
+                                                    done ? "bg-emerald-500 border-emerald-500 text-white" :
+                                                    active ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200" :
+                                                    "bg-white border-slate-200 text-slate-400"
+                                                }`}>
+                                                    {done ? <CheckCircle className="h-4 w-4" /> : stage.short}
+                                                </div>
+                                                <p className={`text-[9px] font-black uppercase tracking-tight mt-1 text-center ${
+                                                    active ? "text-indigo-700" : done ? "text-emerald-600" : "text-slate-400"
+                                                }`}>{stage.label}</p>
+                                            </div>
+                                            {i < STAGES.length - 1 && (
+                                                <div className={`h-[2px] flex-1 min-w-[12px] rounded-full mb-4 transition-all ${
+                                                    done || (active && i < activeIdx) ? "bg-emerald-400" : "bg-slate-100"
+                                                }`} />
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xl font-black text-indigo-900 leading-none">{verifiedCount}/{mandatoryDocs.length}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Verified</p>
-                                </div>
+                                    );
+                                })}
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                            {p.status === "VERIFYING_DOCUMENTS" && (
+                                <div className="mt-4 pt-4 border-t flex items-center justify-between gap-4">
+                                    <p className="text-xs text-indigo-600 font-bold italic">Click photos above to audit & verify each legal document individually.</p>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <div className="flex -space-x-1.5">
+                                            {mandatoryDocs.map((d, i) => (
+                                                <div key={i} className={`h-7 w-7 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${
+                                                    verifiedDocs.includes(d) ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
+                                                }`}>
+                                                    {verifiedDocs.includes(d) ? <CheckCircle className="h-3.5 w-3.5" /> : <Shield className="h-3 w-3" />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <span className="text-sm font-black text-indigo-900">{verifiedCount}/{mandatoryDocs.length} Verified</span>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                );
+            })()}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column — Assets & Documentation */}
@@ -440,37 +510,130 @@ export default function AdminPropertyDetailPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Global Actions */}
+                    {/* Context-Sensitive Workflow Actions */}
                     <Card className="border shadow-sm rounded-3xl overflow-hidden bg-white sticky top-4">
-                        <CardContent className="p-6 space-y-3">
-                            <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest mb-2">Workflow Actions</h3>
-                            
-                            {!isLive && (
-                                <Button 
-                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl shadow-lg shadow-emerald-100"
-                                    onClick={() => setActionModal({ type: "approve" })}
+                        <CardContent className="p-5 space-y-2.5">
+                            <h3 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-3">Workflow Actions</h3>
+
+                            {/* STAGE 1 → Start Review */}
+                            {["PENDING_VERIFICATION", "UNDER_REVIEW", "CORRECTED"].includes(p.status) && (
+                                <Button
+                                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-sm"
+                                    onClick={() => setActionModal({ type: "start_review" })}
                                 >
-                                    <CheckCircle className="h-4 w-4 mr-2" /> Make Live
+                                    <ShieldCheck className="h-4 w-4 mr-2" /> Start Document Review
                                 </Button>
                             )}
-                            
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-11 border-orange-200 text-orange-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-orange-50"
-                                onClick={() => setActionModal({ type: "correction" })}
-                            >
-                                <AlertCircle className="h-4 w-4 mr-2" /> Needs Correction
-                            </Button>
 
-                            <Button 
-                                variant="destructive" 
-                                className="w-full h-11 font-black uppercase tracking-widest text-[10px] rounded-2xl"
-                                onClick={() => setActionModal({ type: "reject" })}
-                            >
-                                <XCircle className="h-4 w-4 mr-2" /> Reject Application
-                            </Button>
+                            {/* STAGE 2 → Verify Documents */}
+                            {p.status === "VERIFYING_DOCUMENTS" && (
+                                <>
+                                    <Button
+                                        className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-sm"
+                                        onClick={() => setActionModal({ type: "verify_docs" })}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" /> Mark Docs Verified
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full h-10 border-slate-200 text-slate-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50"
+                                        onClick={() => setActionModal({ type: "move_back" })}
+                                    >
+                                        <RefreshCcw className="h-4 w-4 mr-2" /> Move Back
+                                    </Button>
+                                </>
+                            )}
 
-                            <div className="pt-4 border-t border-slate-50">
+                            {/* STAGE 3 → Verified, now request payment or exempt */}
+                            {p.status === "VERIFIED_SUCCESSFULLY" && (
+                                <>
+                                    <Button
+                                        className="w-full h-11 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-sm"
+                                        onClick={() => setActionModal({ type: "request_payment" })}
+                                    >
+                                        <FileText className="h-4 w-4 mr-2" /> Request Payment
+                                    </Button>
+                                    <Button
+                                        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-sm"
+                                        onClick={() => setActionModal({ type: "approve" })}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" /> Exempt Fee & Make Live
+                                    </Button>
+                                </>
+                            )}
+
+                            {/* STAGE 4 → Awaiting payment, can waive */}
+                            {p.status === "APPROVED_PENDING_PAYMENT" && (
+                                <>
+                                    <Button
+                                        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-sm"
+                                        onClick={() => setActionModal({ type: "approve" })}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" /> Exempt Fee & Make Live
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full h-10 border-slate-200 text-slate-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50"
+                                        onClick={() => setActionModal({ type: "move_back" })}
+                                    >
+                                        <RefreshCcw className="h-4 w-4 mr-2" /> Move Back
+                                    </Button>
+                                </>
+                            )}
+
+                            {/* STAGE 5 → Payment confirmed, activate */}
+                            {p.status === "APPROVED_PAYMENT_VERIFIED" && (
+                                <Button
+                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl shadow-lg shadow-emerald-100"
+                                    onClick={() => setActionModal({ type: "activate" })}
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Activate & Make Live 🚀
+                                </Button>
+                            )}
+
+                            {/* STAGE 6 → Live: only action is suspend */}
+                            {p.status === "APPROVED" && (
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-11 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-red-50"
+                                    onClick={() => setActionModal({ type: "suspend" })}
+                                >
+                                    <XCircle className="h-4 w-4 mr-2" /> Suspend Property
+                                </Button>
+                            )}
+
+                            {/* SUSPENDED → reinstate */}
+                            {p.status === "SUSPENDED" && (
+                                <Button
+                                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-sm"
+                                    onClick={() => setActionModal({ type: "activate" })}
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Reinstate Property
+                                </Button>
+                            )}
+
+                            {/* Always available (except for live property) */}
+                            {!["APPROVED", "SUSPENDED"].includes(p.status) && (
+                                <div className="pt-1 space-y-2">
+                                    <div className="h-[1px] bg-slate-100 my-1" />
+                                    <Button
+                                        variant="outline"
+                                        className="w-full h-10 border-orange-200 text-orange-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-orange-50"
+                                        onClick={() => setActionModal({ type: "correction" })}
+                                    >
+                                        <AlertCircle className="h-4 w-4 mr-2" /> Needs Correction
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        className="w-full h-10 font-black uppercase tracking-widest text-[10px] rounded-2xl"
+                                        onClick={() => setActionModal({ type: "reject" })}
+                                    >
+                                        <XCircle className="h-4 w-4 mr-2" /> Reject Application
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className="pt-3 border-t border-slate-50">
                                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-tighter">
                                     <span>Last Sync</span>
                                     <span>{new Date(p.updatedAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -513,50 +676,90 @@ export default function AdminPropertyDetailPage() {
                         {/* Modal Actions Footer */}
                         <div className="p-6 border-t bg-white">
                             {verifiedDocs.includes(viewerDoc.type) ? (
-                                <div className="flex items-center justify-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl text-emerald-700 font-black uppercase tracking-widest text-sm">
-                                    <CheckCircle className="h-6 w-6" /> This Document is Verified
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-4">
-                                    {isAuditRejecting ? (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl text-emerald-700 font-black uppercase tracking-widest text-sm">
+                                        <CheckCircle className="h-6 w-6" /> This Document is Verified
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full h-11 rounded-2xl font-black uppercase tracking-widest text-[11px] border-amber-200 text-amber-600 hover:bg-amber-50"
+                                        onClick={() => setIsReuploadMode(true)}
+                                    >
+                                        <RefreshCcw className="h-4 w-4 mr-2" /> Request Re-upload
+                                    </Button>
+                                    {isReuploadMode && (
                                         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                                            <p className="text-xs font-black text-rose-600 uppercase tracking-widest px-1">Reason for Rejection</p>
-                                            <textarea 
-                                                className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-50 transition-all min-h-[100px]"
-                                                placeholder="e.g. Image is blurry, name mismatch, etc."
-                                                value={auditRejectNote}
-                                                onChange={e => setAuditRejectNote(e.target.value)}
+                                            <p className="text-xs font-black text-amber-600 uppercase tracking-widest px-1">Reason for Re-upload Request</p>
+                                            <textarea
+                                                className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-50 transition-all min-h-[90px]"
+                                                placeholder="e.g. Image is blurry, document expired, name mismatch…"
+                                                value={reuploadNote}
+                                                onChange={e => setReuploadNote(e.target.value)}
                                             />
                                             <div className="flex gap-3">
-                                                <Button variant="ghost" className="flex-1 rounded-2xl h-12 font-bold text-slate-500" onClick={() => setIsAuditRejecting(false)}>Back</Button>
-                                                <Button 
-                                                    disabled={auditLoading || !auditRejectNote.trim()}
-                                                    className="flex-[2] bg-rose-600 hover:bg-rose-700 text-white rounded-2xl h-12 font-black uppercase tracking-widest text-[11px] shadow-lg shadow-rose-100"
-                                                    onClick={handleAuditReject}
+                                                <Button variant="ghost" className="flex-1 rounded-2xl h-11 font-bold text-slate-500" onClick={() => setIsReuploadMode(false)}>Cancel</Button>
+                                                <Button
+                                                    disabled={auditLoading || !reuploadNote.trim()}
+                                                    className="flex-[2] bg-amber-500 hover:bg-amber-600 text-white rounded-2xl h-11 font-black uppercase tracking-widest text-[11px]"
+                                                    onClick={handleAuditReupload}
                                                 >
-                                                    {auditLoading ? "Rejecting..." : "Confirm Rejection"}
+                                                    {auditLoading ? "Sending..." : "Send Re-upload Request"}
                                                 </Button>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="flex flex-col sm:flex-row gap-4">
-                                            <Button 
-                                                disabled={auditLoading}
-                                                className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-emerald-100"
-                                                onClick={handleAuditVerify}
-                                            >
-                                                {auditLoading ? "Processing..." : "Approve & Mark Verified"}
-                                            </Button>
-                                            <Button 
-                                                disabled={auditLoading}
-                                                variant="outline"
-                                                className="flex-1 h-14 border-2 border-rose-200 text-rose-600 rounded-2xl font-black uppercase tracking-widest text-[12px] hover:bg-rose-50 hover:border-rose-300"
-                                                onClick={() => setIsAuditRejecting(true)}
-                                            >
-                                                Reject Document
-                                            </Button>
-                                        </div>
                                     )}
+                                </div>
+                            ) : isReuploadMode ? (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                                    <p className="text-xs font-black text-amber-600 uppercase tracking-widest px-1">Reason for Re-upload Request</p>
+                                    <textarea
+                                        className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-50 transition-all min-h-[100px]"
+                                        placeholder="e.g. Image is blurry, document expired, name mismatch…"
+                                        value={reuploadNote}
+                                        onChange={e => setReuploadNote(e.target.value)}
+                                    />
+                                    <div className="flex gap-3">
+                                        <Button variant="ghost" className="flex-1 rounded-2xl h-12 font-bold text-slate-500" onClick={() => setIsReuploadMode(false)}>← Back</Button>
+                                        <Button
+                                            disabled={auditLoading || !reuploadNote.trim()}
+                                            className="flex-[2] bg-amber-500 hover:bg-amber-600 text-white rounded-2xl h-12 font-black uppercase tracking-widest text-[11px] shadow-lg shadow-amber-100"
+                                            onClick={handleAuditReupload}
+                                        >
+                                            {auditLoading ? "Sending..." : "Confirm Re-upload Request"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    {/* APPROVE */}
+                                    <Button
+                                        disabled={auditLoading}
+                                        className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-emerald-100"
+                                        onClick={handleAuditVerify}
+                                    >
+                                        <CheckCircle className="h-5 w-5 mr-2" />
+                                        {auditLoading ? "Processing..." : "Approve & Mark Verified"}
+                                    </Button>
+
+                                    {/* REQUEST REUPLOAD */}
+                                    <Button
+                                        disabled={auditLoading}
+                                        variant="outline"
+                                        className="w-full h-12 border-2 border-amber-200 text-amber-600 rounded-2xl font-black uppercase tracking-widest text-[11px] hover:bg-amber-50 hover:border-amber-300"
+                                        onClick={() => setIsReuploadMode(true)}
+                                    >
+                                        <RefreshCcw className="h-4 w-4 mr-2" /> Request Re-upload
+                                    </Button>
+
+                                    {/* CLOSE */}
+                                    <Button
+                                        disabled={auditLoading}
+                                        variant="ghost"
+                                        className="w-full h-11 rounded-2xl font-bold text-slate-400 hover:text-slate-600 text-[11px] uppercase tracking-widest"
+                                        onClick={() => setViewerDoc(null)}
+                                    >
+                                        <X className="h-4 w-4 mr-2" /> Close
+                                    </Button>
                                 </div>
                             )}
                         </div>
@@ -564,51 +767,61 @@ export default function AdminPropertyDetailPage() {
                 </div>
             )}
 
-            {/* 2. GLOBAL ACTION MODAL (APPROVE/REJECT/CORRECTION) */}
-            {actionModal && (
-                <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setActionModal(null)}>
-                    <Card className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 space-y-4">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                {actionModal.type === "approve" ? <CheckCircle className="h-6 w-6 text-emerald-500" /> : <AlertCircle className="h-6 w-6 text-orange-500" />}
-                                {actionModal.type === "approve" ? "Final Activation" : actionModal.type === "reject" ? "Reject Application" : "Request Corrections"}
-                            </h3>
+            {/* 2. GLOBAL ACTION MODAL */}
+            {actionModal && (() => {
+                const cfg: Record<string, { title: string; icon: any; color: string; needsReason: boolean; placeholder?: string; warning?: string }> = {
+                    start_review:     { title: "Start Document Review", icon: ShieldCheck, color: "bg-blue-600 hover:bg-blue-700", needsReason: false, warning: "This will move the property to the Verifying Documents stage." },
+                    verify_docs:      { title: "Mark Documents Verified", icon: CheckCircle, color: "bg-indigo-600 hover:bg-indigo-700", needsReason: false, warning: "All uploaded documents will be marked as verified. Status → Verified Successfully." },
+                    request_payment:  { title: "Request Onboarding Payment", icon: FileText, color: "bg-purple-600 hover:bg-purple-700", needsReason: false, warning: "Owner will be notified to pay the onboarding fee to go live." },
+                    approve:          { title: "Exempt Fee & Make Live", icon: CheckCircle, color: "bg-emerald-600 hover:bg-emerald-700", needsReason: true, placeholder: "Reason for fee exemption (required)", warning: "Property will go LIVE immediately. Fee is waived." },
+                    activate:         { title: "Activate — Make Property Live", icon: CheckCircle, color: "bg-emerald-600 hover:bg-emerald-700", needsReason: false, warning: "Payment is confirmed. Property will go LIVE on the platform now." },
+                    move_back:        { title: "Move Back to Review", icon: RefreshCcw, color: "bg-slate-700 hover:bg-slate-800", needsReason: false, warning: "Property will be moved back to the Verifying Documents stage." },
+                    reject:           { title: "Reject Application", icon: XCircle, color: "bg-rose-600 hover:bg-rose-700", needsReason: true, placeholder: "Why is this application being rejected?" },
+                    correction:       { title: "Request Corrections", icon: AlertCircle, color: "bg-orange-600 hover:bg-orange-700", needsReason: true, placeholder: "What specific details need correction?" },
+                    suspend:          { title: "Suspend Property", icon: XCircle, color: "bg-red-700 hover:bg-red-800", needsReason: true, placeholder: "Reason for suspension (visible to owner)?" },
+                };
+                const c = cfg[actionModal.type];
+                const Icon = c.icon;
+                return (
+                    <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setActionModal(null); setReason(""); }}>
+                        <Card className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                            <div className="p-6 space-y-4">
+                                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                    <Icon className="h-5 w-5" />
+                                    {c.title}
+                                </h3>
+                                <p className="text-sm font-medium text-slate-500">Acting on: <strong className="text-slate-900">{p.name}</strong></p>
 
-                            <p className="text-sm font-medium text-slate-600">You are performing this action on <strong className="text-slate-900">{p.name}</strong>.</p>
+                                {c.warning && (
+                                    <div className="p-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] font-bold text-slate-600 leading-relaxed">
+                                        {c.warning}
+                                    </div>
+                                )}
 
-                            {actionModal.type !== "approve" && (
-                                <textarea 
-                                    className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 transition-all min-h-[120px]"
-                                    placeholder={actionModal.type === "reject" ? "Why is this application being rejected?" : "What specific details need correction?"}
-                                    value={reason}
-                                    onChange={e => setReason(e.target.value)}
-                                />
-                            )}
+                                {c.needsReason && (
+                                    <textarea
+                                        className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 transition-all min-h-[110px]"
+                                        placeholder={c.placeholder || "Provide a reason..."}
+                                        value={reason}
+                                        onChange={e => setReason(e.target.value)}
+                                    />
+                                )}
 
-                            {actionModal.type === "approve" && (
-                                <div className="p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl text-[11px] font-bold text-emerald-700 leading-relaxed">
-                                    This will mark the property as LIVE and ACTIVE on the platform. All documents are assumed to be audited.
+                                <div className="flex gap-3 pt-2">
+                                    <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold text-slate-400" onClick={() => { setActionModal(null); setReason(""); }}>Cancel</Button>
+                                    <Button
+                                        disabled={actionLoading || (c.needsReason && !reason.trim())}
+                                        className={`flex-[2] h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${c.color} text-white shadow-lg`}
+                                        onClick={handleAction}
+                                    >
+                                        {actionLoading ? "Processing..." : "Confirm"}
+                                    </Button>
                                 </div>
-                            )}
-
-                            <div className="flex gap-3 pt-4">
-                                <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold text-slate-400" onClick={() => setActionModal(null)}>Cancel</Button>
-                                <Button 
-                                    disabled={actionLoading}
-                                    className={`flex-[2] h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${
-                                        actionModal.type === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                                        actionModal.type === 'reject' ? 'bg-rose-600 hover:bg-rose-700' :
-                                        'bg-orange-600 hover:bg-orange-700'
-                                    } text-white shadow-lg`}
-                                    onClick={handleAction}
-                                >
-                                    {actionLoading ? "Processing..." : "Confirm Action"}
-                                </Button>
                             </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
+                        </Card>
+                    </div>
+                );
+            })()}
         </div>
     );
 }
