@@ -149,10 +149,12 @@ export default function AdminPropertyDetailPage() {
         try {
             const data = await getPropertyByIdForAdmin(id);
             setProperty(data);
-            try {
-                setVerifiedDocs(JSON.parse(data.verifiedDocs || "[]"));
-            } catch {
-                setVerifiedDocs([]);
+            if (data) {
+                try {
+                    setVerifiedDocs(JSON.parse(data.verifiedDocs || "[]"));
+                } catch {
+                    setVerifiedDocs([]);
+                }
             }
         } catch {
             toast.error("Failed to load property details");
