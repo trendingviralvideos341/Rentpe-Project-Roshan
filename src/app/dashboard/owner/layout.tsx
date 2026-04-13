@@ -8,7 +8,7 @@ export default async function OwnerLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const user = await getCurrentUser() as any;
+    const user = await getCurrentUser().catch(() => null) as any;
     const permissions = (() => {
         if (!user?.staffPermissions) return [];
         try {
