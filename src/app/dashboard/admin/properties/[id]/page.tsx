@@ -107,6 +107,10 @@ function PhotoBox({
                     <button className="absolute top-6 right-6 text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors" onClick={() => setLightbox(null)}>
                         <XCircle className="h-6 w-6" />
                     </button>
+                    {/* Simplified status overlay */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white text-sm font-bold">
+                        {label} - Preview Mode
+                    </div>
                 </div>
             )}
         </div>
