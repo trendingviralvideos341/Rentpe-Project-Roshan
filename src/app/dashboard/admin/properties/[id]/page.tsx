@@ -52,11 +52,15 @@ function PhotoBox({ label, urls, slotsCount = 1 }: { label: string; urls: string
                                     <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
                                         <CheckCircle className="h-3 w-3" />
                                     </div>
+                                    <div className="absolute bottom-2 left-2 bg-black/40 backdrop-blur-sm text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-white/20">
+                                        {label} {i + 1}
+                                    </div>
                                 </button>
                             ) : (
                                 <div className="w-full h-full rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center p-2 text-center group">
                                     <ImageIcon className="h-6 w-6 text-slate-300 mb-1 group-hover:text-slate-400 transition-colors" />
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Not Uploaded</span>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{label} {i + 1}</span>
+                                    <span className="text-[7px] font-bold text-slate-300 uppercase tracking-tighter">Not Uploaded</span>
                                 </div>
                             )}
                         </div>
