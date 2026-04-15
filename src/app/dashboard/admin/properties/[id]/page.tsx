@@ -731,7 +731,7 @@ export default function AdminPropertyDetailPage() {
                                                     onClick={isVerified ? handleViewerUnverify : handleViewerVerify}
                                                     className={`flex-1 h-12 rounded-full flex items-center justify-center gap-2 px-6 transition-all active:scale-95 shadow-lg group disabled:opacity-50 ${
                                                         isVerified
-                                                            ? "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-100"
+                                                            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100"
                                                             : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100"
                                                     }`}
                                                 >
