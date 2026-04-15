@@ -120,35 +120,7 @@ function ImageCard({
                 </div>
             </div>
 
-            {/* Action Buttons — per image */}
-            <div className="flex gap-1.5">
-                {isVerified ? (
-                    <button
-                        disabled={verifyLoading}
-                        onClick={handleUnverify}
-                        className="flex-1 h-8 rounded-xl bg-red-500 hover:bg-red-600 active:scale-95 active:bg-red-700 disabled:opacity-60 text-white text-[9px] font-black uppercase tracking-wide transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
-                    >
-                        <XCircle className="h-3 w-3" />
-                        {verifyLoading ? "…" : "Unverify"}
-                    </button>
-                ) : (
-                    <button
-                        disabled={verifyLoading}
-                        onClick={handleVerify}
-                        className="flex-1 h-8 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 active:bg-emerald-700 disabled:opacity-60 text-white text-[9px] font-black uppercase tracking-wide transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
-                    >
-                        <CheckCircle className="h-3 w-3" />
-                        {verifyLoading ? "…" : "Verify"}
-                    </button>
-                )}
-                <button
-                    onClick={onReupload}
-                    className="flex-1 h-8 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 active:bg-orange-700 text-white text-[9px] font-black uppercase tracking-wide transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center gap-1"
-                >
-                    <RotateCcw className="h-3 w-3" />
-                    Reupload
-                </button>
-            </div>
+
         </div>
     );
 }
@@ -169,7 +141,7 @@ function DocSection({
     if (photos.length === 0) return null;
 
     const verifiedCount = photos.filter((_, i) => {
-        const key = isLegal ? category : `${category}-${i}`;
+        const key = `${category}-${i}`;
         return verifiedDocs.includes(key);
     }).length;
 
@@ -195,7 +167,7 @@ function DocSection({
             <CardContent className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {photos.map((url, i) => {
-                        const docKey = isLegal ? category : `${category}-${i}`;
+                        const docKey = `${category}-${i}`;
                         const cardLabel = isLegal ? label : `${label} ${i + 1}`;
                         const isVerified = verifiedDocs.includes(docKey);
                         return (
@@ -379,7 +351,7 @@ export default function AdminPropertyDetailPage() {
     const amenitiesPhotos = parsePhotos(p.amenitiesPhotos);
     const parkingPhotos = parsePhotos(p.parkingPhotos);
 
-    const mandatoryDocs = ["AADHAAR", "PAN", "PG_LICENCE", "LIVE_PHOTO"];
+    const mandatoryDocs = ["AADHAAR-0", "AADHAAR-1", "PAN-0", "PAN-1", "PG_LICENCE-0", "PG_LICENCE-1", "LIVE_PHOTO-0"];
     const verifiedCount = mandatoryDocs.filter(d => verifiedDocs.includes(d)).length;
 
     const STAGES = [
