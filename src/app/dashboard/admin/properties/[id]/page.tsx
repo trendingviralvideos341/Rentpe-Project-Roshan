@@ -725,19 +725,19 @@ export default function AdminPropertyDetailPage() {
                                                     <span className="text-[10px] font-black uppercase tracking-widest">Reject</span>
                                                 </button>
 
-                                                {/* APPROVE */}
+                                                {/* APPROVE / UNVERIFY */}
                                                 <button
                                                     disabled={auditLoading}
-                                                    onClick={handleViewerVerify}
+                                                    onClick={isVerified ? handleViewerUnverify : handleViewerVerify}
                                                     className={`flex-1 h-12 rounded-full flex items-center justify-center gap-2 px-6 transition-all active:scale-95 shadow-lg group disabled:opacity-50 ${
                                                         isVerified
-                                                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100"
+                                                            ? "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-100"
                                                             : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100"
                                                     }`}
                                                 >
-                                                    <CheckCircle className="h-5 w-5" />
+                                                    {isVerified ? <RotateCcw className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
                                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                                        {auditLoading ? "…" : isVerified ? "Verified" : "Approve"}
+                                                        {auditLoading ? "…" : isVerified ? "Unverify" : "Approve"}
                                                     </span>
                                                 </button>
 
