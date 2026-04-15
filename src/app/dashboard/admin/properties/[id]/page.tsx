@@ -847,7 +847,7 @@ export default function AdminPropertyDetailPage() {
                     approve:         { title: "Exempt Fee & Make Live", color: "bg-emerald-600 hover:bg-emerald-700", needsReason: true, placeholder: "Reason for fee exemption (required)", warning: "Property goes LIVE immediately. Fee waived." },
                     activate:        { title: "Activate — Make Property Live", color: "bg-emerald-600 hover:bg-emerald-700", needsReason: false, warning: "Property will go LIVE on the platform." },
                     move_back:       { title: "Move Back to Review", color: "bg-slate-700 hover:bg-slate-800", needsReason: true, placeholder: "Reason for moving application back...", warning: "Moves property back to previous verification stage." },
-                    reject:          { title: "Reject Application", color: "bg-rose-600 hover:bg-rose-700", needsReason: true, placeholder: "Why is this being rejected?" },
+                    reject:          { title: "Reject Application", color: "bg-indigo-600 hover:bg-indigo-700", needsReason: true, placeholder: "Why is this being rejected?" },
                     correction:      { title: "Request Corrections", color: "bg-orange-600 hover:bg-orange-700", needsReason: true, placeholder: "What needs correction?" },
                     suspend:         { title: "Suspend Property", color: "bg-red-700 hover:bg-red-800", needsReason: true, placeholder: "Reason for suspension (visible to owner)?" },
                 };
@@ -863,15 +863,17 @@ export default function AdminPropertyDetailPage() {
                                     <div className="p-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] font-bold text-slate-600">{c.warning}</div>
                                 )}
                                 
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Reason / Note <span className="text-red-500">*</span></label>
-                                    <textarea
-                                        className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 transition-all min-h-[110px] resize-none"
-                                        placeholder={c.placeholder || "Provide mandatory notes for this action..."}
-                                        value={reason}
-                                        onChange={e => setReason(e.target.value)}
-                                    />
-                                </div>
+                                {c.needsReason && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Reason / Note <span className="text-red-500">*</span></label>
+                                        <textarea
+                                            className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 transition-all min-h-[110px] resize-none"
+                                            placeholder={c.placeholder || "Provide mandatory notes for this action..."}
+                                            value={reason}
+                                            onChange={e => setReason(e.target.value)}
+                                        />
+                                    </div>
+                                )}
 
                                 <div className="flex gap-3 pt-2">
                                     <Button 
@@ -881,8 +883,8 @@ export default function AdminPropertyDetailPage() {
                                         Cancel
                                     </Button>
                                     <Button
-                                        disabled={actionLoading || !reason.trim()}
-                                        className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg active:scale-[0.98] transition-all"
+                                        disabled={actionLoading || (c.needsReason && !reason.trim())}
+                                        className={`flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${c.color} text-white shadow-lg active:scale-[0.98] transition-all`}
                                         onClick={handleAction}
                                     >{actionLoading ? "Processing..." : "Confirm"}</Button>
                                 </div>
