@@ -661,28 +661,43 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
 
                 <TabsContent value="details" className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <Card className="md:col-span-2 rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
-                            <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-6">
-                                <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{property.description}</p>
-                                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t-2 border-slate-50">
-                                    <div className="space-y-2">
-                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Available Amenities</div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {(property.amenities || '').split(',').filter(Boolean).map((a: string) => (
-                                                <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">{a.trim()}</span>
-                                            ))}
+                        <div className="md:col-span-2 space-y-6">
+                            <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
+                                <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6">
+                                    <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{property.description}</p>
+                                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t-2 border-slate-50">
+                                        <div className="space-y-2">
+                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Available Amenities</div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(property.amenities || '').split(',').filter(Boolean).map((a: string) => (
+                                                    <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">{a.trim()}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest">House Rules</div>
+                                            <p className="text-xs font-bold text-slate-600">{property.rules || "Standard PG Rules Apply"}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest">House Rules</div>
-                                        <p className="text-xs font-bold text-slate-600">{property.rules || "Standard PG Rules Apply"}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
+                                <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Gallery</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6">
+                                    <PropertyPhotoCarousel 
+                                        property={property} 
+                                        className="rounded-xl overflow-hidden shadow-sm border border-slate-100" 
+                                        aspectClassName="aspect-video"
+                                    />
+                                </CardContent>
+                            </Card>
+                        </div>
                         <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
                             <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
                                 <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Location Map</CardTitle>
@@ -697,18 +712,6 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         </Card>
                     </div>
 
-                    <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
-                        <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Gallery</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                            <PropertyPhotoCarousel 
-                                property={property} 
-                                className="rounded-xl overflow-hidden shadow-sm border border-slate-100" 
-                                aspectClassName="aspect-[2.4/1]"
-                            />
-                        </CardContent>
-                    </Card>
                 </TabsContent>
 
                 <TabsContent value="rooms" className="space-y-6">
