@@ -873,8 +873,12 @@ export default function AdminPropertyDetailPage() {
                                     />
                                 )}
                                 <div className="flex gap-3 pt-2">
-                                    <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold text-slate-400 active:scale-[0.98]"
-                                        onClick={() => { setActionModal(null); setReason(""); }}>Cancel</Button>
+                                    <Button 
+                                        className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-red-500 hover:bg-red-600 text-white shadow-lg active:scale-[0.98] transition-all"
+                                        onClick={() => { setActionModal(null); setReason(""); }}
+                                    >
+                                        Cancel
+                                    </Button>
                                     <Button
                                         disabled={actionLoading || (c.needsReason && !reason.trim())}
                                         className={`flex-[2] h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${c.color} text-white shadow-lg active:scale-[0.98] transition-all`}
