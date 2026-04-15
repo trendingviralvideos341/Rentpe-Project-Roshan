@@ -93,16 +93,20 @@ function ImageCard({
             {/* Image */}
             <div
                 className={`relative group rounded-2xl overflow-hidden bg-slate-100 aspect-square border-2 transition-all duration-200 cursor-zoom-in ${
-                    isVerified ? "border-emerald-400 shadow-emerald-100 shadow-md" : "border-slate-200 hover:border-indigo-300"
+                    isVerified ? "border-emerald-400 shadow-emerald-100 shadow-md" : "border-orange-300 shadow-orange-50"
                 }`}
                 onClick={onZoom}
             >
                 <img src={url} alt={label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
 
-                {/* Verified badge */}
-                {isVerified && (
-                    <div className="absolute top-2 right-2 h-6 w-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-md border-2 border-white">
+                {/* Status Badge */}
+                {isVerified ? (
+                    <div className="absolute top-2 right-2 h-6 w-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-md border-2 border-white z-10">
                         <CheckCircle className="h-3.5 w-3.5 text-white" />
+                    </div>
+                ) : (
+                    <div className="absolute top-2 right-2 h-6 w-6 bg-orange-500 rounded-full flex items-center justify-center shadow-md border-2 border-white z-10">
+                        <AlertCircle className="h-3.5 w-3.5 text-white" />
                     </div>
                 )}
 
