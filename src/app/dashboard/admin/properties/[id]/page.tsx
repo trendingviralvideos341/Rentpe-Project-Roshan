@@ -595,36 +595,30 @@ export default function AdminPropertyDetailPage() {
                                         <ShieldCheck className="h-4 w-4 mr-2" /> Start Document Review
                                     </Button>
                                 )}
-                                {p.status === "VERIFYING_DOCUMENTS" && (<>
+                                {p.status === "VERIFYING_DOCUMENTS" && (
                                     <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                         onClick={() => setActionModal({ type: "verify_docs" })}>
                                         <CheckCircle className="h-4 w-4 mr-2" /> Mark Docs Verified
                                     </Button>
-                                    <Button variant="outline" className="w-full h-10 border-slate-200 text-slate-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-slate-50 active:scale-[0.98] transition-all"
-                                        onClick={() => setActionModal({ type: "move_back" })}>
-                                        <RefreshCcw className="h-4 w-4 mr-2" /> Move Back
-                                    </Button>
-                                </>)}
-                                {p.status === "VERIFIED_SUCCESSFULLY" && (<>
-                                    <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
-                                        onClick={() => setActionModal({ type: "request_payment" })}>
-                                        <FileText className="h-4 w-4 mr-2" /> Request Payment
-                                    </Button>
+                                )}
+                                {p.status === "VERIFIED_SUCCESSFULLY" && (
+                                    <div className="space-y-2.5">
+                                        <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
+                                            onClick={() => setActionModal({ type: "request_payment" })}>
+                                            <FileText className="h-4 w-4 mr-2" /> Request Payment
+                                        </Button>
+                                        <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
+                                            onClick={() => setActionModal({ type: "approve" })}>
+                                            <CheckCircle className="h-4 w-4 mr-2" /> Exempt Fee & Make Live
+                                        </Button>
+                                    </div>
+                                )}
+                                {p.status === "APPROVED_PENDING_PAYMENT" && (
                                     <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                         onClick={() => setActionModal({ type: "approve" })}>
                                         <CheckCircle className="h-4 w-4 mr-2" /> Exempt Fee & Make Live
                                     </Button>
-                                </>)}
-                                {p.status === "APPROVED_PENDING_PAYMENT" && (<>
-                                    <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
-                                        onClick={() => setActionModal({ type: "approve" })}>
-                                        <CheckCircle className="h-4 w-4 mr-2" /> Exempt Fee & Make Live
-                                    </Button>
-                                    <Button variant="outline" className="w-full h-10 border-slate-200 font-black uppercase tracking-widest text-[10px] rounded-2xl active:scale-[0.98] transition-all"
-                                        onClick={() => setActionModal({ type: "move_back" })}>
-                                        <RefreshCcw className="h-4 w-4 mr-2" /> Move Back
-                                    </Button>
-                                </>)}
+                                )}
                                 {p.status === "APPROVED_PAYMENT_VERIFIED" && (
                                     <Button className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all"
                                         onClick={() => setActionModal({ type: "activate" })}>
@@ -645,11 +639,15 @@ export default function AdminPropertyDetailPage() {
                                 )}
                                 {!["APPROVED", "SUSPENDED"].includes(p.status) && (
                                     <div className="pt-1 space-y-2 border-t border-slate-100">
+                                        <Button className="w-full h-10 bg-slate-700 hover:bg-slate-800 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
+                                            onClick={() => setActionModal({ type: "move_back" })}>
+                                            <RotateCcw className="h-4 w-4 mr-2" /> Move Back Step
+                                        </Button>
                                         <Button variant="outline" className="w-full h-10 border-orange-200 text-orange-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-orange-50 active:scale-[0.98] transition-all"
                                             onClick={() => setActionModal({ type: "correction" })}>
                                             <AlertCircle className="h-4 w-4 mr-2" /> Needs Correction
                                         </Button>
-                                        <Button variant="destructive" className="w-full h-10 font-black uppercase tracking-widest text-[10px] rounded-2xl active:scale-[0.98] transition-all"
+                                        <Button className="w-full h-10 bg-red-600 hover:bg-red-700 active:bg-red-800 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all shadow-md"
                                             onClick={() => setActionModal({ type: "reject" })}>
                                             <XCircle className="h-4 w-4 mr-2" /> Reject Application
                                         </Button>
@@ -848,7 +846,7 @@ export default function AdminPropertyDetailPage() {
                     request_payment: { title: "Request Onboarding Payment", color: "bg-purple-600 hover:bg-purple-700", needsReason: false, warning: "Owner will be notified to pay the onboarding fee." },
                     approve:         { title: "Exempt Fee & Make Live", color: "bg-emerald-600 hover:bg-emerald-700", needsReason: true, placeholder: "Reason for fee exemption (required)", warning: "Property goes LIVE immediately. Fee waived." },
                     activate:        { title: "Activate — Make Property Live", color: "bg-emerald-600 hover:bg-emerald-700", needsReason: false, warning: "Property will go LIVE on the platform." },
-                    move_back:       { title: "Move Back to Review", color: "bg-slate-700 hover:bg-slate-800", needsReason: false, warning: "Moved back to Verifying Documents stage." },
+                    move_back:       { title: "Move Back to Review", color: "bg-slate-700 hover:bg-slate-800", needsReason: true, placeholder: "Reason for moving application back...", warning: "Moves property back to previous verification stage." },
                     reject:          { title: "Reject Application", color: "bg-rose-600 hover:bg-rose-700", needsReason: true, placeholder: "Why is this being rejected?" },
                     correction:      { title: "Request Corrections", color: "bg-orange-600 hover:bg-orange-700", needsReason: true, placeholder: "What needs correction?" },
                     suspend:         { title: "Suspend Property", color: "bg-red-700 hover:bg-red-800", needsReason: true, placeholder: "Reason for suspension (visible to owner)?" },
