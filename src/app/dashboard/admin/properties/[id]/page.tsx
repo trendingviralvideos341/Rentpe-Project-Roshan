@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import {
     ArrowLeft, Building2, User, Phone, Mail, MapPin, RefreshCcw,
     CheckCircle, XCircle, AlertCircle, Image as ImageIcon, Eye, BedDouble,
-    FileText, Shield, ShieldCheck, X, ZoomIn, RotateCcw
+    FileText, Shield, ShieldCheck, X, ZoomIn, RotateCcw, ChevronLeft, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 
@@ -213,6 +213,7 @@ export default function AdminPropertyDetailPage() {
     const [reuploadNote, setReuploadNote] = useState("");
     const [auditLoading, setAuditLoading] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
+    const [carouselIdx, setCarouselIdx] = useState(0);
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
@@ -493,6 +494,74 @@ export default function AdminPropertyDetailPage() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Verified Images Carousel */}
+                        {(() => {
+                            const verifiedImages: { url: string; label: string }[] = [];
+                            docSections.forEach(sec => {
+                                sec.photos.forEach((url, i) => {
+                                    const key = `${sec.category}-${i}`;
+                                    if (verifiedDocs.includes(key)) {
+                                        verifiedImages.push({ url, label: sec.isLegal ? sec.label : `${sec.label} ${i + 1}` });
+                                    }
+                                });
+                            });
+                            if (verifiedImages.length === 0) return null;
+                            const safeIdx = carouselIdx % verifiedImages.length;
+                            const current = verifiedImages[safeIdx];
+                            return (
+                                <Card className="border shadow-sm rounded-3xl bg-white overflow-hidden">
+                                    <div className="p-4 border-b bg-emerald-50 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                            <h3 className="font-black text-emerald-800 text-sm uppercase tracking-widest">Verified Documents</h3>
+                                        </div>
+                                        <span className="text-xs font-black text-emerald-700 bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-full">
+                                            {safeIdx + 1} / {verifiedImages.length}
+                                        </span>
+                                    </div>
+                                    <div className="relative bg-slate-100 aspect-video flex items-center justify-center overflow-hidden">
+                                        <img
+                                            key={safeIdx}
+                                            src={current.url}
+                                            alt={current.label}
+                                            className="max-h-full max-w-full object-contain transition-all duration-300"
+                                        />
+                                        {/* Nav Arrows */}
+                                        <button
+                                            onClick={() => setCarouselIdx(prev => (prev - 1 + verifiedImages.length) % verifiedImages.length)}
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+                                        >
+                                            <ChevronLeft className="h-5 w-5 text-slate-700" />
+                                        </button>
+                                        <button
+                                            onClick={() => setCarouselIdx(prev => (prev + 1) % verifiedImages.length)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white active:scale-95 transition-all"
+                                        >
+                                            <ChevronRight className="h-5 w-5 text-slate-700" />
+                                        </button>
+                                        {/* Label Chip */}
+                                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+                                            {current.label}
+                                        </div>
+                                    </div>
+                                    {/* Dots */}
+                                    <div className="flex items-center justify-center gap-1.5 p-3">
+                                        {verifiedImages.map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setCarouselIdx(i)}
+                                                className={`rounded-full transition-all ${
+                                                    i === safeIdx
+                                                        ? "h-2 w-6 bg-emerald-500"
+                                                        : "h-2 w-2 bg-slate-200 hover:bg-slate-300"
+                                                }`}
+                                            />
+                                        ))}
+                                    </div>
+                                </Card>
+                            );
+                        })()}
                     </div>
 
                     <div className="space-y-4">
