@@ -881,7 +881,7 @@ export default function AdminPropertyDetailPage() {
                                     </Button>
                                     <Button
                                         disabled={actionLoading || (c.needsReason && !reason.trim())}
-                                        className={`flex-[2] h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] ${c.color} text-white shadow-lg active:scale-[0.98] transition-all`}
+                                        className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg active:scale-[0.98] transition-all"
                                         onClick={handleAction}
                                     >{actionLoading ? "Processing..." : "Confirm"}</Button>
                                 </div>
