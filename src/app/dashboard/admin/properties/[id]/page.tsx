@@ -236,6 +236,7 @@ export default function AdminPropertyDetailPage() {
     } | null>(null);
     const [reuploadNote, setReuploadNote] = useState("");
     const [auditLoading, setAuditLoading] = useState(false);
+    const [isZoomed, setIsZoomed] = useState(false);
 
     const fetchProperty = useCallback(async () => {
         setLoading(true);
@@ -278,6 +279,7 @@ export default function AdminPropertyDetailPage() {
     const openViewer = (url: string, label: string, docKey: string, isPhoto: boolean, reuploadMode = false) => {
         setViewer({ url, label, docKey, isPhoto, reuploadMode });
         setReuploadNote("");
+        setIsZoomed(false);
     };
 
     const handleViewerVerify = async () => {
@@ -664,88 +666,101 @@ export default function AdminPropertyDetailPage() {
                                 </div>
                             </div>
 
-                            {/* Image */}
-                            <div className="flex-1 overflow-auto bg-slate-100 flex items-center justify-center p-4 md:p-8 min-h-[40vh]">
-                                <img
-                                    src={viewer.url}
-                                    alt={viewer.label}
-                                    className="max-w-full max-h-[65vh] object-contain rounded-2xl shadow-xl border-4 border-white"
-                                />
-                            </div>
-
-                            {/* Footer */}
-                            <div className="border-t bg-white">
-                                {viewer.reuploadMode ? (
-                                    <div className="p-5 space-y-3">
-                                        <p className="text-xs font-black text-orange-600 uppercase tracking-widest">Reason for Re-upload Request</p>
-                                        <textarea
-                                            className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-50 transition-all min-h-[90px] resize-none"
-                                            placeholder="e.g. Image is blurry, document expired, name mismatch…"
-                                            value={reuploadNote}
-                                            onChange={e => setReuploadNote(e.target.value)}
-                                            autoFocus
-                                        />
-                                        <div className="flex gap-2">
-                                            <button
-                                                className="flex-1 h-11 rounded-2xl border-2 border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 active:scale-[0.98] transition-all"
-                                                onClick={() => setViewer(prev => prev ? { ...prev, reuploadMode: false } : null)}
-                                            >← Back</button>
-                                            <button
-                                                disabled={auditLoading || !reuploadNote.trim()}
-                                                className="flex-[2] h-11 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[0.98] active:bg-orange-700 disabled:opacity-50 text-white text-[11px] font-black uppercase tracking-widest transition-all"
-                                                onClick={handleViewerReupload}
-                                            >{auditLoading ? "Sending…" : "Confirm Re-upload Request"}</button>
+                                    <div className="flex-1 overflow-auto bg-slate-100 flex items-center justify-center p-4 md:p-8 min-h-[50vh] relative group/img">
+                                        <div 
+                                            className={`transition-all duration-300 ease-in-out flex items-center justify-center ${isZoomed ? "scale-150 cursor-zoom-out" : "scale-100 cursor-zoom-in"}`}
+                                            onClick={() => setIsZoomed(!isZoomed)}
+                                        >
+                                            <img
+                                                src={viewer.url}
+                                                alt={viewer.label}
+                                                className="max-w-full max-h-[65vh] object-contain rounded-2xl shadow-xl border-4 border-white transition-all duration-300"
+                                            />
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-stretch divide-x divide-slate-100">
-                                        {/* REJECT */}
-                                        <button
-                                            disabled={auditLoading}
-                                            className="flex-1 py-5 px-4 flex flex-col items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 active:scale-[0.98] text-red-600 transition-all group"
-                                            onClick={handleViewerUnverify}
-                                        >
-                                            <XCircle className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Reject</span>
-                                        </button>
 
-                                        {/* APPROVE */}
-                                        <button
-                                            disabled={auditLoading}
-                                            className={`flex-[2] py-5 px-4 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-[0.98] group ${
-                                                isVerified
-                                                    ? "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white"
-                                                    : "bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700"
-                                            }`}
-                                            onClick={handleViewerVerify}
+                                        {/* Zoom Toggle Floating Button */}
+                                        <button 
+                                            onClick={() => setIsZoomed(!isZoomed)}
+                                            className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white active:scale-90 transition-all z-10 opacity-100 md:opacity-0 group-hover/img:opacity-100"
                                         >
-                                            <CheckCircle className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">
-                                                {auditLoading ? "Processing…" : isVerified ? "✓ Verified" : "Approve"}
-                                            </span>
-                                        </button>
-
-                                        {/* REUPLOAD */}
-                                        <button
-                                            disabled={auditLoading}
-                                            className="flex-1 py-5 px-4 flex flex-col items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 active:bg-orange-200 active:scale-[0.98] text-orange-600 transition-all group"
-                                            onClick={() => setViewer(prev => prev ? { ...prev, reuploadMode: true } : null)}
-                                        >
-                                            <RotateCcw className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Reupload</span>
-                                        </button>
-
-                                        {/* CLOSE */}
-                                        <button
-                                            className="px-6 py-5 flex flex-col items-center justify-center gap-1.5 bg-slate-900 hover:bg-black active:bg-slate-800 active:scale-[0.98] text-white transition-all group"
-                                            onClick={() => { setViewer(null); setReuploadNote(""); }}
-                                        >
-                                            <X className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Close</span>
+                                            <ZoomIn className={`h-4 w-4 text-slate-900 transition-transform duration-300 ${isZoomed ? "rotate-180" : ""}`} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{isZoomed ? "Zoom Out" : "Zoom In"}</span>
                                         </button>
                                     </div>
-                                )}
-                            </div>
+
+                                    {/* Footer */}
+                                    <div className="border-t bg-white">
+                                        {viewer.reuploadMode ? (
+                                            <div className="p-5 space-y-3">
+                                                <p className="text-xs font-black text-orange-600 uppercase tracking-widest">Reason for Re-upload Request</p>
+                                                <textarea
+                                                    className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-50 transition-all min-h-[90px] resize-none"
+                                                    placeholder="e.g. Image is blurry, document expired, name mismatch…"
+                                                    value={reuploadNote}
+                                                    onChange={e => setReuploadNote(e.target.value)}
+                                                    autoFocus
+                                                />
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        className="flex-1 h-11 rounded-2xl border-2 border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 active:scale-95 transition-all"
+                                                        onClick={() => setViewer(prev => prev ? { ...prev, reuploadMode: false } : null)}
+                                                    >← Back</button>
+                                                    <button
+                                                        disabled={auditLoading || !reuploadNote.trim()}
+                                                        className="flex-[2] h-11 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 active:bg-orange-700 disabled:opacity-50 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-md hover:shadow-lg"
+                                                        onClick={handleViewerReupload}
+                                                    >{auditLoading ? "Sending…" : "Confirm Re-upload Request"}</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-stretch divide-x divide-slate-100">
+                                                {/* REJECT */}
+                                                <button
+                                                    disabled={auditLoading}
+                                                    className="flex-1 py-6 px-4 flex flex-col items-center justify-center gap-2 bg-red-50 hover:bg-red-100 active:bg-red-200 active:scale-95 text-red-600 transition-all group"
+                                                    onClick={handleViewerUnverify}
+                                                >
+                                                    <XCircle className="h-7 w-7 group-hover:scale-125 group-active:scale-90 transition-transform duration-200" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Reject</span>
+                                                </button>
+
+                                                {/* APPROVE */}
+                                                <button
+                                                    disabled={auditLoading}
+                                                    className={`flex-[2] py-6 px-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 group ${
+                                                        isVerified
+                                                            ? "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white"
+                                                            : "bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700"
+                                                    }`}
+                                                    onClick={handleViewerVerify}
+                                                >
+                                                    <CheckCircle className="h-8 w-8 group-hover:scale-125 group-active:scale-90 transition-transform duration-200" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                                        {auditLoading ? "Processing…" : isVerified ? "✓ Verified" : "Approve"}
+                                                    </span>
+                                                </button>
+
+                                                {/* REUPLOAD */}
+                                                <button
+                                                    disabled={auditLoading}
+                                                    className="flex-1 py-6 px-4 flex flex-col items-center justify-center gap-2 bg-orange-50 hover:bg-orange-100 active:bg-orange-200 active:scale-95 text-orange-600 transition-all group"
+                                                    onClick={() => setViewer(prev => prev ? { ...prev, reuploadMode: true } : null)}
+                                                >
+                                                    <RotateCcw className="h-7 w-7 group-hover:scale-125 group-active:scale-90 transition-transform duration-200" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Reupload</span>
+                                                </button>
+
+                                                {/* CLOSE */}
+                                                <button
+                                                    className="px-8 py-6 flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-black active:bg-slate-800 active:scale-95 text-white transition-all group"
+                                                    onClick={() => { setViewer(null); setReuploadNote(""); }}
+                                                >
+                                                    <X className="h-7 w-7 group-hover:scale-125 group-active:scale-90 transition-transform duration-200" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Close</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                         </div>
                     </div>
                 );
