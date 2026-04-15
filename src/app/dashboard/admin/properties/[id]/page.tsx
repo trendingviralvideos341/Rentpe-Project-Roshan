@@ -498,7 +498,7 @@ export default function AdminPropertyDetailPage() {
                         {/* Verified Images Carousel */}
                         {(() => {
                             const verifiedImages: { url: string; label: string }[] = [];
-                            docSections.forEach(sec => {
+                            docSections.filter(sec => !sec.isLegal).forEach(sec => {
                                 sec.photos.forEach((url, i) => {
                                     const key = `${sec.category}-${i}`;
                                     if (verifiedDocs.includes(key)) {

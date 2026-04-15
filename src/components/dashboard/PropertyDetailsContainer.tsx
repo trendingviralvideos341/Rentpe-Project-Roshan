@@ -21,6 +21,7 @@ import {
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
+import { PropertyPhotoCarousel } from "@/components/PropertyPhotoCarousel";
 import { toast } from "sonner";
 
 export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' | 'staff', permissions?: string[] }) {
@@ -701,13 +702,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Gallery</CardTitle>
                         </CardHeader>
                         <CardContent className="p-6">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {property.images && safeParse(property.images).map((img: string, i: number) => (
-                                    <div key={i} className="aspect-square bg-slate-100 rounded-3xl overflow-hidden border-4 border-white shadow-md hover:scale-105 transition-transform duration-500">
-                                        <img src={img} className="object-cover w-full h-full" alt="Gallery" />
-                                    </div>
-                                ))}
-                            </div>
+                            <PropertyPhotoCarousel property={property} className="rounded-xl overflow-hidden shadow-sm border border-slate-100" />
                         </CardContent>
                     </Card>
                 </TabsContent>
