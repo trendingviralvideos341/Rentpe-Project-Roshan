@@ -390,14 +390,19 @@ export default function AdminPropertiesPage() {
                             )}
 
                             <div className="flex gap-3 pt-4">
-                                <Button variant="ghost" className="flex-1 rounded-2xl font-bold text-slate-400" onClick={() => setActionModal(null)}>Cancel</Button>
                                 <Button 
-                                    disabled={actionLoading}
-                                    className={`flex-1 rounded-2xl font-black uppercase tracking-widest text-[10px] ${
+                                    className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-slate-900 hover:bg-black text-white shadow-lg active:scale-[0.98] transition-all"
+                                    onClick={() => { setActionModal(null); setActionReason(""); }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    disabled={actionLoading || ((actionModal.type === 'reject' || actionModal.type === 'correction') && !actionReason.trim())}
+                                    className={`flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[10px] ${
                                         actionModal.type === 'reject' ? 'bg-red-600 hover:bg-red-700' :
                                         actionModal.type === 'correction' ? 'bg-orange-600 hover:bg-orange-700' :
                                         'bg-blue-600 hover:bg-blue-700'
-                                    } text-white shadow-lg`}
+                                    } text-white shadow-lg active:scale-[0.98] transition-all`}
                                     onClick={handleAction}
                                 >
                                     {actionLoading ? "Processing..." : "Confirm Action"}
