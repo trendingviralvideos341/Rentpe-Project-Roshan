@@ -862,23 +862,26 @@ export default function AdminPropertyDetailPage() {
                                 {c.warning && (
                                     <div className="p-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] font-bold text-slate-600">{c.warning}</div>
                                 )}
-                                {c.needsReason && (
+                                
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Reason / Note <span className="text-red-500">*</span></label>
                                     <textarea
                                         className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 transition-all min-h-[110px] resize-none"
-                                        placeholder={c.placeholder || "Provide a reason..."}
+                                        placeholder={c.placeholder || "Provide mandatory notes for this action..."}
                                         value={reason}
                                         onChange={e => setReason(e.target.value)}
                                     />
-                                )}
+                                </div>
+
                                 <div className="flex gap-3 pt-2">
                                     <Button 
-                                        className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-red-500 hover:bg-red-600 text-white shadow-lg active:scale-[0.98] transition-all"
+                                        className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-slate-900 hover:bg-black text-white shadow-lg active:scale-[0.98] transition-all"
                                         onClick={() => { setActionModal(null); setReason(""); }}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
-                                        disabled={actionLoading || (c.needsReason && !reason.trim())}
+                                        disabled={actionLoading || !reason.trim()}
                                         className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg active:scale-[0.98] transition-all"
                                         onClick={handleAction}
                                     >{actionLoading ? "Processing..." : "Confirm"}</Button>
