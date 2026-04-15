@@ -717,41 +717,39 @@ export default function AdminPropertyDetailPage() {
                                     </div>
 
                                     {/* Footer */}
-                                    <div className="border-t bg-white">
+                                    <div className="p-6 border-t bg-white">
                                         {viewer.reuploadMode ? (
-                                            <div className="p-5 space-y-3 animate-in slide-in-from-bottom-2">
-                                                <p className="text-xs font-black text-orange-600 uppercase tracking-widest">Reason for Re-upload Request</p>
+                                            <div className="p-6 space-y-4 animate-in slide-in-from-bottom-2 bg-slate-50/50 rounded-[32px] border-2 border-slate-100">
+                                                <p className="text-xs font-black text-orange-600 uppercase tracking-widest px-2">Reason for Re-upload Request</p>
                                                 <textarea
-                                                    className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-50 transition-all min-h-[90px]"
+                                                    className="w-full border-2 border-slate-100 rounded-[24px] p-4 text-sm font-medium focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-50 transition-all min-h-[100px] shadow-sm"
                                                     placeholder="e.g. Image is blurry, document expired, name mismatch…"
                                                     value={reuploadNote}
                                                     onChange={e => setReuploadNote(e.target.value)}
                                                     autoFocus
                                                 />
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-3">
                                                     <button
-                                                        className="flex-1 h-11 rounded-2xl border-2 border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors"
+                                                        className="flex-1 h-12 rounded-full border-2 border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95"
                                                         onClick={() => setViewer(prev => prev ? { ...prev, reuploadMode: false } : null)}
                                                     >← Back</button>
                                                     <button
                                                         disabled={auditLoading || !reuploadNote.trim()}
-                                                        className="flex-[2] h-11 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50 text-white text-[11px] font-black uppercase tracking-widest transition-all"
+                                                        className="flex-[2] h-12 rounded-full bg-orange-500 hover:bg-orange-600 active:scale-95 active:shadow-inner disabled:opacity-50 text-white text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-orange-200"
                                                         onClick={handleViewerReupload}
                                                     >{auditLoading ? "Sending…" : "Confirm Re-upload Request"}</button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="flex items-stretch border-t border-slate-100">
+                                            <div className="flex items-center justify-center gap-4 py-2 px-4">
                                             
                                                 {/* REJECT */}
                                                 <button
                                                     disabled={auditLoading}
                                                     onClick={handleViewerUnverify}
-                                                    className="flex-1 py-5 flex flex-col items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 active:scale-[0.98] border-r border-slate-100 text-red-600 transition-all group disabled:opacity-50"
+                                                    className="flex-1 h-12 rounded-full bg-red-500 hover:bg-red-600 active:bg-red-700 active:scale-95 text-white flex items-center justify-center gap-2 px-6 transition-all shadow-lg shadow-red-100 group disabled:opacity-50"
                                                 >
-                                                    <div className="h-9 w-9 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center transition-colors">
-                                                        <XCircle className="h-5 w-5" />
-                                                    </div>
+                                                    <XCircle className="h-5 w-5" />
                                                     <span className="text-[10px] font-black uppercase tracking-widest">Reject</span>
                                                 </button>
 
@@ -759,19 +757,15 @@ export default function AdminPropertyDetailPage() {
                                                 <button
                                                     disabled={auditLoading}
                                                     onClick={handleViewerVerify}
-                                                    className={`flex-[2] py-5 flex flex-col items-center justify-center gap-1.5 border-r border-slate-100 transition-all active:scale-[0.98] group disabled:opacity-50 ${
+                                                    className={`flex-1 h-12 rounded-full flex items-center justify-center gap-2 px-6 transition-all active:scale-95 shadow-lg group disabled:opacity-50 ${
                                                         isVerified
-                                                            ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                                                            : "bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700"
+                                                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100"
+                                                            : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100"
                                                     }`}
                                                 >
-                                                    <div className={`h-9 w-9 rounded-full flex items-center justify-center transition-all group-hover:scale-110 ${
-                                                        isVerified ? "bg-emerald-400" : "bg-emerald-100 group-hover:bg-emerald-200"
-                                                    }`}>
-                                                        <CheckCircle className="h-5 w-5" />
-                                                    </div>
+                                                    <CheckCircle className="h-5 w-5" />
                                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                                        {auditLoading ? "Processing…" : isVerified ? "✓ Verified" : "Approve"}
+                                                        {auditLoading ? "…" : isVerified ? "Verified" : "Approve"}
                                                     </span>
                                                 </button>
 
@@ -779,22 +773,18 @@ export default function AdminPropertyDetailPage() {
                                                 <button
                                                     disabled={auditLoading}
                                                     onClick={() => setViewer(prev => prev ? { ...prev, reuploadMode: true } : null)}
-                                                    className="flex-1 py-5 flex flex-col items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 active:bg-orange-200 active:scale-[0.98] border-r border-slate-100 text-orange-600 transition-all group disabled:opacity-50"
+                                                    className="flex-1 h-12 rounded-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 active:scale-95 text-white flex items-center justify-center gap-2 px-6 transition-all shadow-lg shadow-orange-100 group disabled:opacity-50"
                                                 >
-                                                    <div className="h-9 w-9 rounded-full bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center transition-all group-hover:scale-110">
-                                                        <RefreshCcw className="h-5 w-5" />
-                                                    </div>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Reupload</span>
+                                                    <RefreshCcw className="h-5 w-5" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-center truncate">Reupload</span>
                                                 </button>
 
                                                 {/* CLOSE */}
                                                 <button
                                                     onClick={() => { setViewer(null); setReuploadNote(""); setZoomLevel(1); }}
-                                                    className="px-6 py-5 flex flex-col items-center justify-center gap-1.5 bg-slate-900 hover:bg-black active:scale-[0.98] text-white transition-all group"
+                                                    className="flex-1 h-12 rounded-full bg-slate-900 hover:bg-black active:scale-95 text-white flex items-center justify-center gap-2 px-6 transition-all shadow-lg shadow-slate-200 group"
                                                 >
-                                                    <div className="h-9 w-9 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition-all group-hover:scale-110">
-                                                        <X className="h-5 w-5" />
-                                                    </div>
+                                                    <X className="h-5 w-5" />
                                                     <span className="text-[10px] font-black uppercase tracking-widest">Close</span>
                                                 </button>
                                             </div>
