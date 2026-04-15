@@ -32,9 +32,10 @@ interface PropertyPhotoCarouselProps {
         amenitiesPhotos?: any;
     };
     className?: string;
+    aspectClassName?: string;
 }
 
-export function PropertyPhotoCarousel({ property, className = "" }: PropertyPhotoCarouselProps) {
+export function PropertyPhotoCarousel({ property, className = "", aspectClassName = "aspect-video" }: PropertyPhotoCarouselProps) {
     const [idx, setIdx] = useState(0);
 
     const all: PhotoEntry[] = [
@@ -62,7 +63,7 @@ export function PropertyPhotoCarousel({ property, className = "" }: PropertyPhot
     return (
         <div className={`rounded-2xl overflow-hidden bg-slate-100 ${className}`}>
             {/* Image Area */}
-            <div className="relative aspect-video flex items-center justify-center overflow-hidden bg-slate-900">
+            <div className={`relative ${aspectClassName} flex items-center justify-center overflow-hidden bg-slate-900`}>
                 <img
                     key={safeIdx}
                     src={current.url}

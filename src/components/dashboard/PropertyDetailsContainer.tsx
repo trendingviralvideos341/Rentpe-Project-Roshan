@@ -702,7 +702,11 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Gallery</CardTitle>
                         </CardHeader>
                         <CardContent className="p-6">
-                            <PropertyPhotoCarousel property={property} className="rounded-xl overflow-hidden shadow-sm border border-slate-100" />
+                            <PropertyPhotoCarousel 
+                                property={property} 
+                                className="rounded-xl overflow-hidden shadow-sm border border-slate-100" 
+                                aspectClassName="aspect-[2.4/1]"
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
