@@ -65,7 +65,11 @@ export async function getPendingOwnerActionCount() {
         select: { status: true, adminNotes: true }
     });
 
-    return properties.filter(p => p.status === 'REJECTED' || (p.status === 'PENDING_VERIFICATION' && p.adminNotes?.includes('[REUPLOAD'))).length;
+    return properties.filter(p => 
+        p.status === 'REJECTED' || 
+        p.status === 'NEEDS_CORRECTION' || 
+        (p.status === 'PENDING_VERIFICATION' && p.adminNotes?.includes('[REUPLOAD'))
+    ).length;
 }
 
 export async function getPropertyById(id: string) {

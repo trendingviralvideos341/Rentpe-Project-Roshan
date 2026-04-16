@@ -22,7 +22,7 @@ const STATUS_MESSAGES: Record<string, { label: string; color: string; bg: string
     PENDING_VERIFICATION: { label: 'Awaiting Rentpe Team Verification', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-300', icon: Clock },
     VERIFYING_DOCUMENTS: { label: 'Under Review', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-300', icon: Eye },
     CORRECTED: { label: 'Documents Re-submitted. Awaiting review', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-300', icon: Clock },
-    NEEDS_CORRECTION: { label: 'Action Required: Fix Documents', color: 'text-orange-800', bg: 'bg-orange-50', border: 'border-orange-300', icon: AlertTriangle },
+    NEEDS_CORRECTION: { label: 'Action Required: Fix Documents', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300', icon: AlertTriangle },
     VERIFIED_SUCCESSFULLY: { label: 'Documents Verified. Waiting for Team Approval', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-400', icon: ShieldCheck },
     APPROVED_PAYMENT_VERIFIED: { label: 'Payment Received. Awaiting Final Activation', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-300', icon: ShieldCheck },
     APPROVED_PENDING_PAYMENT: { label: 'Verification Success! Pay Fee to go Live', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-400', icon: CreditCard },
@@ -66,8 +66,8 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
             <div className="flex items-center justify-center py-2 transition-all">
                 {isReupload ? (
                     <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-5 w-5 text-orange-600 animate-pulse" />
-                        <span className="font-black text-base text-orange-800 tracking-tight">Action Required: Document Re-upload Requested</span>
+                        <AlertTriangle className="h-5 w-5 text-red-600 animate-pulse" />
+                        <span className="font-black text-base text-red-800 tracking-tight">Action Required: Document Re-upload Requested</span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-3">

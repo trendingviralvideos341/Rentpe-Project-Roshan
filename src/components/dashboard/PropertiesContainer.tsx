@@ -153,12 +153,14 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             "text-white font-black uppercase tracking-widest text-[10px] px-3 py-1 ring-4 ring-white shadow-xl",
                                             property.status === 'APPROVED' ? "bg-emerald-600 hover:bg-emerald-700" :
                                             ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? "bg-blue-600" :
+                                            property.status === 'NEEDS_CORRECTION' ? "bg-orange-500" :
                                             property.status === 'CORRECTED' ? "bg-indigo-600" :
                                             ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? "bg-amber-500 animate-pulse" :
                                             property.status === 'VERIFIED_SUCCESSFULLY' ? "bg-emerald-600" : "bg-red-600"
                                         )}>
                                             {property.status === 'APPROVED' ? 'Live' : 
                                              ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? 'In Review' :
+                                             property.status === 'NEEDS_CORRECTION' ? 'Pending' :
                                              property.status === 'CORRECTED' ? 'Resubmitted' :
                                              ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? 'Action Needed' :
                                              property.status === 'VERIFIED_SUCCESSFULLY' ? 'Verified' :
