@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { 
     getAllPropertiesForAdmin, 
     getAdminPropertyStatusCounts, 
@@ -129,7 +130,7 @@ export default function AdminPropertiesPage() {
         }
     };
 
-    const filtered = properties.filter(p =>
+    const filtered = properties.filter((p: any) =>
         !searchQ || p.id === searchQ || p.name?.toLowerCase().includes(searchQ.toLowerCase()) ||
         p.city?.toLowerCase().includes(searchQ.toLowerCase()) ||
         p.owner?.name?.toLowerCase().includes(searchQ.toLowerCase())
@@ -228,7 +229,7 @@ export default function AdminPropertiesPage() {
                         </div>
                     </div>
                 ) : (
-                    filtered.map((prop) => (
+                    filtered.map((prop: any) => (
                         <Card key={prop.id} className="rounded-3xl border shadow-sm hover:shadow-xl transition-all group overflow-hidden bg-white">
                             <CardContent className="p-0">
                                 <div className="flex flex-col md:flex-row items-stretch min-h-[140px]">
