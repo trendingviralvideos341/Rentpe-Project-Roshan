@@ -382,7 +382,7 @@ export async function savePropertyDocuments(propertyId: string, docs: any) {
     if (docs.pgPhotoUrl?.startsWith('data:')) uploadData.pgPhotoUrl = await uploadToCloudinary(docs.pgPhotoUrl, folder);
     if (docs.livePhotoUrl?.startsWith('data:')) uploadData.livePhotoUrl = await uploadToCloudinary(docs.livePhotoUrl, folder);
 
-    if (property.status === 'NEEDS_CORRECTION') uploadData.status = 'CORRECTED';
+    if (property.status === 'NEEDS_CORRECTION') uploadData.status = 'VERIFYING_DOCUMENTS';
 
     return prisma.$transaction(async (tx) => {
         const updated = await tx.property.update({

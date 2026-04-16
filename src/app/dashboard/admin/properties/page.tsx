@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { 
     getAllPropertiesForAdmin, 
     getAdminPropertyStatusCounts, 
@@ -10,7 +9,9 @@ import {
     startPropertyVerification,
     verifyPropertyDocuments,
     requirePropertyPayment,
-    activateProperty
+    activateProperty,
+    rollbackPropertyStatus,
+    logCorrectionView
 } from "@/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +59,7 @@ export default function AdminPropertiesPage() {
     const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
     const [filter, setFilter] = useState("PENDING_VERIFICATION");
     const [loading, setLoading] = useState(true);
-    const [actionModal, setActionModal] = useState<{ type: "reject" | "correction" | "approve" | "verify" | "payment"; prop: any } | null>(null);
+    const [actionModal, setActionModal] = useState<{ type: "reject" | "correction" | "approve" | "verify" | "payment" | "rollback" | "view_correction"; prop: any } | null>(null);
     const [actionReason, setActionReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [searchQ, setSearchQ] = useState("");
@@ -112,6 +113,10 @@ export default function AdminPropertiesPage() {
                 if (!actionReason.trim()) throw new Error("Correction notes required");
                 await requestPropertyCorrections(propId, actionReason);
                 toast.success("Owner notified to make corrections");
+            } else if (actionModal.type === "rollback") {
+                if (!actionReason.trim()) throw new Error("Rollback reason required");
+                await rollbackPropertyStatus(propId, actionReason);
+                toast.success(`"${propName}" rolled back successfully`);
             }
 
             setActionModal(null);
@@ -294,10 +299,30 @@ export default function AdminPropertiesPage() {
                                     {/* Actions Right */}
                                     <div className="md:w-64 bg-slate-50/50 p-5 md:p-6 border-l border-slate-100 flex flex-col gap-2 justify-center">
                                         <Link href={`/dashboard/admin/properties/${prop.id}`}>
-                                            <Button variant="outline" className="w-full bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50">
+                                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full border-none">
                                                 <Eye className="h-4 w-4 mr-2" /> Details
                                             </Button>
                                         </Link>
+
+                                        {prop.status === 'NEEDS_CORRECTION' && (
+                                            <>
+                                                <Button 
+                                                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                    onClick={async () => {
+                                                        await logCorrectionView(prop.id);
+                                                        setActionModal({ type: "view_correction", prop });
+                                                    }}
+                                                >
+                                                    Needs Corrections Details
+                                                </Button>
+                                                <Button 
+                                                    className="w-full bg-slate-600 hover:bg-slate-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                    onClick={() => setActionModal({ type: "rollback", prop })}
+                                                >
+                                                    Move Back
+                                                </Button>
+                                            </>
+                                        )}
 
                                         {/* State Machine Action */}
                                         {prop.status === 'PENDING_VERIFICATION' && (
@@ -310,12 +335,25 @@ export default function AdminPropertiesPage() {
                                         )}
 
                                         {prop.status === 'VERIFYING_DOCUMENTS' && (
-                                            <Button 
-                                                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[10px]"
-                                                onClick={() => setActionModal({ type: "verify", prop })}
-                                            >
-                                                Mark Verified <CheckCircle className="h-3.5 w-3.5 ml-2" />
-                                            </Button>
+                                            <>
+                                                {prop.adminNotes && (
+                                                    <Button 
+                                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[10px] rounded-full animate-pulse shadow-lg shadow-orange-100"
+                                                        onClick={async () => {
+                                                            await logCorrectionView(prop.id);
+                                                            setActionModal({ type: "view_correction", prop });
+                                                        }}
+                                                    >
+                                                        Correction Details
+                                                    </Button>
+                                                )}
+                                                <Button 
+                                                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                    onClick={() => setActionModal({ type: "verify", prop })}
+                                                >
+                                                    Mark Verified <CheckCircle className="h-3.5 w-3.5 ml-2" />
+                                                </Button>
+                                            </>
                                         )}
 
                                         {prop.status === 'VERIFIED_SUCCESSFULLY' && (
@@ -363,11 +401,15 @@ export default function AdminPropertiesPage() {
                                 {actionModal.type === 'approve' && <CheckCircle className="h-6 w-6 text-emerald-500" />}
                                 {actionModal.type === 'verify' && <CheckCircle className="h-6 w-6 text-purple-500" />}
                                 {actionModal.type === 'correction' && <AlertTriangle className="h-6 w-6 text-orange-500" />}
+                                {actionModal.type === 'view_correction' && <FileText className="h-6 w-6 text-orange-500" />}
+                                {actionModal.type === 'rollback' && <RefreshCcw className="h-6 w-6 text-slate-500" />}
                                 {actionModal.type === 'reject' && <Trash2 className="h-6 w-6 text-red-500" />}
                                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
                                     {actionModal.type === 'approve' ? (actionModal.prop.status === 'APPROVED_PENDING_PAYMENT' ? 'Final Activation' : 'Approve Submission') : 
                                      actionModal.type === 'verify' ? 'Confirm Verification' :
                                      actionModal.type === 'correction' ? 'Request Correction' :
+                                     actionModal.type === 'view_correction' ? 'Correction Details' :
+                                     actionModal.type === 'rollback' ? 'Rollback Status' :
                                      actionModal.type === 'reject' ? 'Reject Submission' : 'Confirmation'}
                                 </h3>
                             </div>
@@ -377,15 +419,28 @@ export default function AdminPropertiesPage() {
                                 <p className="text-xs text-slate-400 font-medium">ID: {actionModal.prop.displayId}</p>
                             </div>
 
-                            {(actionModal.type === 'reject' || actionModal.type === 'correction') && (
+                            {(actionModal.type === 'reject' || actionModal.type === 'correction' || actionModal.type === 'rollback') && (
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Reason / Note <span className="text-red-500">*</span></label>
                                     <textarea 
                                         className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-50 transition-all min-h-[100px]"
-                                        placeholder={actionModal.type === 'reject' ? "Why is this property being rejected?" : "What details need to be updated by the owner?"}
+                                        placeholder={
+                                            actionModal.type === 'reject' ? "Why is this property being rejected?" : 
+                                            actionModal.type === 'rollback' ? "Why are you rolling back this property status?" :
+                                            "What details need to be updated by the owner?"
+                                        }
                                         value={actionReason}
                                         onChange={e => setActionReason(e.target.value)}
                                     />
+                                </div>
+                            )}
+
+                            {actionModal.type === 'view_correction' && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Active Correction Notes</label>
+                                    <div className="w-full bg-orange-50 border-2 border-orange-100 rounded-2xl p-4 text-sm font-bold text-orange-900 min-h-[100px]">
+                                        {actionModal.prop.adminNotes || "No correction notes found."}
+                                    </div>
                                 </div>
                             )}
 
@@ -394,19 +449,22 @@ export default function AdminPropertiesPage() {
                                     className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-slate-900 hover:bg-black text-white shadow-lg active:scale-[0.98] transition-all"
                                     onClick={() => { setActionModal(null); setActionReason(""); }}
                                 >
-                                    Cancel
+                                    {actionModal.type === 'view_correction' ? "Close" : "Cancel"}
                                 </Button>
-                                <Button 
-                                    disabled={actionLoading || ((actionModal.type === 'reject' || actionModal.type === 'correction') && !actionReason.trim())}
-                                    className={`flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[10px] ${
-                                        actionModal.type === 'reject' ? 'bg-red-600 hover:bg-red-700' :
-                                        actionModal.type === 'correction' ? 'bg-orange-600 hover:bg-orange-700' :
-                                        'bg-blue-600 hover:bg-blue-700'
-                                    } text-white shadow-lg active:scale-[0.98] transition-all`}
-                                    onClick={handleAction}
-                                >
-                                    {actionLoading ? "Processing..." : "Confirm Action"}
-                                </Button>
+                                {actionModal.type !== 'view_correction' && (
+                                    <Button 
+                                        disabled={actionLoading || ((actionModal.type === 'reject' || actionModal.type === 'correction' || actionModal.type === 'rollback') && !actionReason.trim())}
+                                        className={`flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-[10px] ${
+                                            actionModal.type === 'reject' ? 'bg-red-600 hover:bg-red-700' :
+                                            actionModal.type === 'rollback' ? 'bg-slate-600 hover:bg-slate-700' :
+                                            actionModal.type === 'correction' ? 'bg-orange-600 hover:bg-orange-700' :
+                                            'bg-blue-600 hover:bg-blue-700'
+                                        } text-white shadow-lg active:scale-[0.98] transition-all`}
+                                        onClick={handleAction}
+                                    >
+                                        {actionLoading ? "Processing..." : "Confirm Action"}
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </Card>
