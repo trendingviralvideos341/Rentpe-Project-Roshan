@@ -39,7 +39,8 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (s === 'VERIFIED_SUCCESSFULLY') return 3;
         if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
         if (s === 'APPROVED') return 5;
-        if (s === 'NEEDS_CORRECTION' || s === 'REJECTED' || s === 'SUSPENDED' || s === 'CORRECTED') return 1; 
+        if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 3; 
+        if (s === 'REJECTED' || s === 'SUSPENDED') return 1;
         return 1;
     };
 

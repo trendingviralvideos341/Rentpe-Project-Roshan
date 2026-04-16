@@ -1195,6 +1195,15 @@ export async function rollbackPropertyStatus(propertyId: string, notes: string) 
             data: { status: previousStatus as any, adminNotes: notes || null }
         });
 
+        // Notify Owner about the rollback
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_PENDING",
+                message: `Update: Your property "${property.name}" status has been adjusted back to ${previousStatus}. Admin Note: ${notes}`
+            }
+        });
+
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
@@ -1209,8 +1218,6 @@ export async function rollbackPropertyStatus(propertyId: string, notes: string) 
                 userAgent: 'server-action'
             }
         });
-
-        // NOTE: No owner notification is sent for rollbacks as they are intended for internal stage corrections/mistakes.
 
         return updated;
     });
