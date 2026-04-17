@@ -61,6 +61,8 @@ function ImageCard({
     label,
     docKey,
     isVerified,
+    isReuploadRequired,
+    reuploadReason,
     onZoom,
     onVerify,
     onUnverify,
@@ -70,6 +72,8 @@ function ImageCard({
     label: string;
     docKey: string;
     isVerified: boolean;
+    isReuploadRequired?: boolean;
+    reuploadReason?: string;
     onZoom: () => void;
     onVerify: () => void;
     onUnverify: () => void;
@@ -93,14 +97,22 @@ function ImageCard({
             {/* Image */}
             <div
                 className={`relative group rounded-2xl overflow-hidden bg-slate-100 aspect-square border-2 transition-all duration-200 cursor-zoom-in ${
-                    isVerified ? "border-emerald-400 shadow-emerald-100 shadow-md" : "border-orange-300 shadow-orange-50"
+                    isReuploadRequired 
+                        ? "border-red-500 shadow-red-100 shadow-lg ring-4 ring-red-50" 
+                        : isVerified 
+                            ? "border-emerald-400 shadow-emerald-100 shadow-md" 
+                            : "border-orange-300 shadow-orange-50"
                 }`}
                 onClick={onZoom}
             >
                 <img src={url} alt={label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
 
                 {/* Status Badge */}
-                {isVerified ? (
+                {isReuploadRequired ? (
+                    <div className="absolute top-2 right-2 h-6 w-6 bg-red-600 animate-pulse rounded-full flex items-center justify-center shadow-md border-2 border-white z-10" title="Reupload Requested">
+                        <AlertCircle className="h-3.5 w-3.5 text-white" />
+                    </div>
+                ) : isVerified ? (
                     <div className="absolute top-2 right-2 h-6 w-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-md border-2 border-white z-10">
                         <CheckCircle className="h-3.5 w-3.5 text-white" />
                     </div>
@@ -110,18 +122,30 @@ function ImageCard({
                     </div>
                 )}
 
-                {/* Hover overlay with zoom icon */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-lg">
-                        <ZoomIn className="h-4 w-4 text-slate-800" />
-                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Zoom</span>
+                {/* Reupload Reason Banner */}
+                {isReuploadRequired && reuploadReason && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-red-600/90 backdrop-blur-md text-white px-2 py-1.5 z-40 flex flex-col border-t border-red-500/50">
+                        <span className="text-[7px] font-black uppercase tracking-widest text-red-100 mb-0.5">Reupload Reason</span>
+                        <span className="text-[9px] font-medium leading-tight truncate">{reuploadReason}</span>
                     </div>
-                </div>
+                )}
 
-                {/* Label chip */}
-                <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-md">
-                    {label}
-                </div>
+                {!isReuploadRequired && (
+                    <>
+                        {/* Hover overlay with zoom icon */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-lg">
+                                <ZoomIn className="h-4 w-4 text-slate-800" />
+                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Zoom</span>
+                            </div>
+                        </div>
+
+                        {/* Label chip */}
+                        <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-md">
+                            {label}
+                        </div>
+                    </>
+                )}
             </div>
 
 
@@ -177,6 +201,11 @@ function DocSection({
                         const docKey = getDocKey(i);
                         const cardLabel = isLegal ? label : `${label} ${i + 1}`;
                         const isVerified = verifiedDocs.includes(docKey);
+                        
+                        const reuploadLine = adminNotes?.split('\n').find((l: string) => l.startsWith(`[REUPLOAD:${docKey}]`));
+                        const isReuploadRequired = !!reuploadLine;
+                        const reuploadReason = reuploadLine ? reuploadLine.replace(`[REUPLOAD:${docKey}]`, '').trim() : '';
+
                         return (
                             <ImageCard
                                 key={i}
@@ -184,6 +213,8 @@ function DocSection({
                                 label={cardLabel}
                                 docKey={docKey}
                                 isVerified={isVerified}
+                                isReuploadRequired={isReuploadRequired}
+                                reuploadReason={reuploadReason}
                                 onZoom={() => onOpenViewer(url, cardLabel, docKey, !isLegal, false)}
                                 onVerify={() => onVerifyDoc(docKey, cardLabel, !isLegal)}
                                 onUnverify={() => onUnverifyDoc(docKey, cardLabel)}
