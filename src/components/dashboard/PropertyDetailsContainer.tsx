@@ -170,31 +170,47 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     }, [stopCapture]);
 
     const handleFileUpload = async (file: File, docType: string, index?: number) => {
+        const OVERALL_LIMIT = 25 * 1024 * 1024; // 25MB total across all photos
+        const SINGLE_FILE_LIMIT = 10 * 1024 * 1024; // 10MB per single file
+
         const categories: Record<string, any> = {
-            buildingPhotos: { name: "Building Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            commonAreaPhotos: { name: "Common Area Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            roomsAndBathroomPhotos: { name: "Rooms & Bathroom Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            parkingPhotos: { name: "Parking Area Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            amenitiesPhotos: { name: "Other Amenities Photos", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            aadhaarProof: { name: "Aadhaar Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            panProof: { name: "PAN Proof", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            pgLicenceUrl: { name: "PG Licence", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: true },
-            livePhotoUrl: { name: "Current Photo", maxSize: 5 * 1024 * 1024, maxMb: 5, isArray: false }
+            buildingPhotos: { name: "Building Photos", isArray: true },
+            commonAreaPhotos: { name: "Common Area Photos", isArray: true },
+            roomsAndBathroomPhotos: { name: "Rooms & Bathroom Photos", isArray: true },
+            parkingPhotos: { name: "Parking Area Photos", isArray: true },
+            amenitiesPhotos: { name: "Other Amenities Photos", isArray: true },
+            aadhaarProof: { name: "Aadhaar Proof", isArray: true },
+            panProof: { name: "PAN Proof", isArray: true },
+            pgLicenceUrl: { name: "PG Licence", isArray: true },
+            livePhotoUrl: { name: "Current Photo", isArray: false }
         };
 
         const cat = categories[docType];
-        if (file.size > cat.maxSize) {
-            toast.error(`File "${file.name}" exceeds the ${cat.name} size limit (${cat.maxMb}MB).`);
+
+        // Single file size guard
+        if (file.size > SINGLE_FILE_LIMIT) {
+            toast.error(`File "${file.name}" is too large. Maximum allowed per file is 10MB.`);
             return;
         }
 
-        if (cat?.isArray) {
-            const photos = property[docType] ? safeParse(property[docType]) : [];
-            const totalUsed = photos.reduce((acc: number, p: any) => acc + (typeof p === 'object' ? p.size : 1024 * 1024), 0);
-            if (totalUsed + file.size > cat.maxSize) {
-                toast.error(`Storage full! Only ${((cat.maxSize - totalUsed) / (1024 * 1024)).toFixed(2)} MB remaining in ${cat.name}.`);
-                return;
-            }
+        // Overall 25MB limit across ALL photo categories combined
+        const allPhotoKeys = ['buildingPhotos', 'commonAreaPhotos', 'roomsAndBathroomPhotos', 'parkingPhotos', 'amenitiesPhotos', 'aadhaarProof', 'panProof', 'pgLicenceUrl'];
+        const totalUsedOverall = allPhotoKeys.reduce((total: number, key: string) => {
+            const photos = property[key] ? safeParse(property[key]) : [];
+            const keySize = photos
+                .filter((p: any) => p !== null && p !== undefined)
+                .reduce((acc: number, p: any) => {
+                    if (typeof p === 'object' && p?.size) return acc + p.size;
+                    if (typeof p === 'string' && p.length > 0) return acc + 512 * 1024; // ~512KB estimate for legacy string URLs
+                    return acc;
+                }, 0);
+            return total + keySize;
+        }, 0);
+
+        if (totalUsedOverall + file.size > OVERALL_LIMIT) {
+            const remaining = Math.max(0, OVERALL_LIMIT - totalUsedOverall);
+            toast.error(`Overall storage limit reached! Only ${(remaining / (1024 * 1024)).toFixed(1)} MB remaining out of your 25MB total.`);
+            return;
         }
 
         const toastId = toast.loading(`Uploading ${docType.split(/(?=[A-Z])/).join(' ')}...`);
