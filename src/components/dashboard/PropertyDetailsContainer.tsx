@@ -300,6 +300,18 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                     updatedProperty[docType] = null;
                 }
                 setProperty(updatedProperty);
+
+                // Auto-wipe reupload notes in local state
+                if (property.adminNotes) {
+                    const lines = property.adminNotes.split('\n');
+                    const reuploadTag = index !== undefined ? `[REUPLOAD:${docType}-${index}]` : `[REUPLOAD:${docType}]`;
+                    const filteredLines = lines.filter((l: string) => !l.startsWith(reuploadTag));
+                    const newAdminNotes = filteredLines.join('\n');
+                    if (newAdminNotes !== property.adminNotes) {
+                        setProperty(prev => ({ ...prev, adminNotes: newAdminNotes || null }));
+                    }
+                }
+
                 toast.success("Deleted successfully.", { id: toastId });
             } else {
                 toast.error("Delete failed.", { id: toastId });

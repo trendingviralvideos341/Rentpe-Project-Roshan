@@ -538,6 +538,19 @@ export async function deletePropertyDocument(propertyId: string, docType: string
     }
 
     updateData.verifiedDocs = JSON.stringify(verifiedDocs);
+
+    // Auto-wipe reupload notes if they exist for this doc
+    const currentNotes = (property as any).adminNotes;
+    if (currentNotes) {
+        const lines = currentNotes.split('\n');
+        const reuploadTag = index !== undefined ? `[REUPLOAD:${docType}-${index}]` : `[REUPLOAD:${docType}]`;
+        const filteredLines = lines.filter((l: string) => !l.startsWith(reuploadTag));
+        const newAdminNotes = filteredLines.join('\n');
+        if (newAdminNotes !== currentNotes) {
+            updateData.adminNotes = newAdminNotes || null;
+        }
+    }
+
     try {
         await prisma.property.update({ where: { id: propertyId }, data: updateData });
         return { success: true };
