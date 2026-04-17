@@ -461,15 +461,15 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                                 <span className="text-[9px] font-black text-white mt-3 uppercase tracking-[0.2em] drop-shadow-md">View Entry</span>
                                             </div>
                                             <div className="absolute top-2 right-2 z-40">
-                                                {isDocVerified ? (
-                                                    <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
-                                                        <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
-                                                        <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>
-                                                    </div>
-                                                ) : isReuploadRequired ? (
+                                                {isReuploadRequired ? (
                                                     <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
                                                         <AlertCircle className="w-3 h-3 mr-1" />
                                                         <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
+                                                    </div>
+                                                ) : isDocVerified ? (
+                                                    <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
+                                                        <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
+                                                        <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>
                                                     </div>
                                                 ) : (
                                                     <div className="bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
@@ -531,7 +531,12 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                     <span className="text-[10px] font-black text-white mt-4 uppercase tracking-[0.2em] drop-shadow-md">View Document</span>
                                 </div>
                                 <div className="absolute top-3 right-3 z-40">
-                                    {property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) ? (
+                                    {property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
+                                        <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
+                                        </div>
+                                    ) : property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) ? (
                                         <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
                                             <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
                                             <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>

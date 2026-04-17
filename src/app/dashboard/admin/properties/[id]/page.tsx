@@ -133,12 +133,13 @@ function ImageCard({
 
 function DocSection({
     label, desc, photos, category, isLegal, required, singleKey,
-    verifiedDocs, onVerifyDoc, onUnverifyDoc, onOpenViewer,
+    verifiedDocs, adminNotes, onVerifyDoc, onUnverifyDoc, onOpenViewer,
 }: {
     label: string; desc: string; photos: string[];
     category: string; isLegal: boolean; required: number;
     singleKey?: boolean;
     verifiedDocs: string[];
+    adminNotes?: string | null;
     onVerifyDoc: (docKey: string, label: string, isPhoto: boolean) => Promise<void>;
     onUnverifyDoc: (docKey: string, label: string) => Promise<void>;
     onOpenViewer: (url: string, label: string, docKey: string, isPhoto: boolean, reuploadMode?: boolean) => void;
@@ -149,7 +150,9 @@ function DocSection({
 
     const verifiedCount = photos.filter((_, i) => verifiedDocs.includes(getDocKey(i))).length;
 
-    const allVerified = verifiedCount === photos.length;
+    // A section is only "All Verified" if every slot is verified AND none has a pending reupload
+    const hasAnyReupload = photos.some((_, i) => adminNotes?.includes(`[REUPLOAD:${getDocKey(i)}]`));
+    const allVerified = verifiedCount === photos.length && !hasAnyReupload;
 
     return (
         <Card className={`border-2 shadow-sm rounded-3xl overflow-hidden bg-white ${isLegal ? "border-indigo-100" : "border-slate-100"}`}>
@@ -682,6 +685,7 @@ export default function AdminPropertyDetailPage() {
                             key={section.category}
                             {...section}
                             verifiedDocs={verifiedDocs}
+                            adminNotes={p.adminNotes}
                             onVerifyDoc={handleVerifyDoc}
                             onUnverifyDoc={handleUnverifyDoc}
                             onOpenViewer={openViewer}
