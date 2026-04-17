@@ -10,18 +10,26 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const KEY_MAP: Record<string, string> = {
+    // Legal docs — old admin format → correct owner format
     "AADHAAR-0":    "aadhaarProof-0",
     "AADHAAR-1":    "aadhaarProof-1",
     "PAN-0":        "panProof-0",
     "PAN-1":        "panProof-1",
     "PG_LICENCE-0": "pgLicenceUrl-0",
     "PG_LICENCE-1": "pgLicenceUrl-1",
-    "LIVE_PHOTO-0": "livePhotoUrl-0",
-    // Also handle without-index variants (old KYC queue format)
+    "LIVE_PHOTO-0": "livePhotoUrl",   // owner uses isArray:false → no index
+    // Without-index variants (old KYC queue format)
     "AADHAAR":      "aadhaarProof-0",
     "PAN":          "panProof-0",
     "PG_LICENCE":   "pgLicenceUrl-0",
-    "LIVE_PHOTO":   "livePhotoUrl-0",
+    "LIVE_PHOTO":   "livePhotoUrl",
+    // livePhotoUrl with index → without index (owner reads without index)
+    "livePhotoUrl-0": "livePhotoUrl",
+    // Rooms category mismatch
+    "roomsPhotos-0": "roomsAndBathroomPhotos-0",
+    "roomsPhotos-1": "roomsAndBathroomPhotos-1",
+    "roomsPhotos-2": "roomsAndBathroomPhotos-2",
+    "roomsPhotos-3": "roomsAndBathroomPhotos-3",
 };
 
 async function migrate() {

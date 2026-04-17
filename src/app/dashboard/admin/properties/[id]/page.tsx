@@ -132,11 +132,12 @@ function ImageCard({
 // ─── Doc Section ──────────────────────────────────────────────────────────────
 
 function DocSection({
-    label, desc, photos, category, isLegal, required,
+    label, desc, photos, category, isLegal, required, singleKey,
     verifiedDocs, onVerifyDoc, onUnverifyDoc, onOpenViewer,
 }: {
     label: string; desc: string; photos: string[];
     category: string; isLegal: boolean; required: number;
+    singleKey?: boolean;
     verifiedDocs: string[];
     onVerifyDoc: (docKey: string, label: string, isPhoto: boolean) => Promise<void>;
     onUnverifyDoc: (docKey: string, label: string) => Promise<void>;
@@ -144,10 +145,9 @@ function DocSection({
 }) {
     if (photos.length === 0) return null;
 
-    const verifiedCount = photos.filter((_, i) => {
-        const key = `${category}-${i}`;
-        return verifiedDocs.includes(key);
-    }).length;
+    const getDocKey = (i: number) => singleKey ? category : `${category}-${i}`;
+
+    const verifiedCount = photos.filter((_, i) => verifiedDocs.includes(getDocKey(i))).length;
 
     const allVerified = verifiedCount === photos.length;
 
@@ -171,7 +171,7 @@ function DocSection({
             <CardContent className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {photos.map((url, i) => {
-                        const docKey = `${category}-${i}`;
+                        const docKey = getDocKey(i);
                         const cardLabel = isLegal ? label : `${label} ${i + 1}`;
                         const isVerified = verifiedDocs.includes(docKey);
                         return (
@@ -356,7 +356,7 @@ export default function AdminPropertyDetailPage() {
     const amenitiesPhotos = parsePhotos(p.amenitiesPhotos);
     const parkingPhotos = parsePhotos(p.parkingPhotos);
 
-    const mandatoryDocs = ["aadhaarProof-0", "aadhaarProof-1", "panProof-0", "panProof-1", "pgLicenceUrl-0", "pgLicenceUrl-1", "livePhotoUrl-0"];
+    const mandatoryDocs = ["aadhaarProof-0", "aadhaarProof-1", "panProof-0", "panProof-1", "pgLicenceUrl-0", "pgLicenceUrl-1", "livePhotoUrl"];
     const verifiedCount = mandatoryDocs.filter(d => verifiedDocs.includes(d)).length;
 
     const STAGES = [
@@ -373,10 +373,10 @@ export default function AdminPropertyDetailPage() {
         { label: "Owner Aadhaar", desc: "Government ID - Aadhaar Card", photos: aadhaarPhotos, category: "aadhaarProof", isLegal: true, required: 2 },
         { label: "Owner PAN Card", desc: "PAN Card", photos: panPhotos, category: "panProof", isLegal: true, required: 2 },
         { label: "PG / Property License", desc: "Business license", photos: licencePhotos, category: "pgLicenceUrl", isLegal: true, required: 2 },
-        { label: "Identity Check (Selfie)", desc: "Live selfie verification", photos: livePhoto, category: "livePhotoUrl", isLegal: true, required: 1 },
+        { label: "Identity Check (Selfie)", desc: "Live selfie verification", photos: livePhoto, category: "livePhotoUrl", isLegal: true, required: 1, singleKey: true },
         { label: "Building Photos", desc: "Exterior property photos", photos: buildingPhotos, category: "buildingPhotos", isLegal: false, required: 4 },
         { label: "Common Area", desc: "Hallway, lobby, shared spaces", photos: commonAreaPhotos, category: "commonAreaPhotos", isLegal: false, required: 4 },
-        { label: "Rooms & Bathrooms", desc: "Individual room photos", photos: roomsPhotos, category: "roomsPhotos", isLegal: false, required: 4 },
+        { label: "Rooms & Bathrooms", desc: "Individual room photos", photos: roomsPhotos, category: "roomsAndBathroomPhotos", isLegal: false, required: 4 },
         { label: "Amenities", desc: "Amenity and facility photos", photos: amenitiesPhotos, category: "amenitiesPhotos", isLegal: false, required: 4 },
         { label: "Parking Area", desc: "Parking facility", photos: parkingPhotos, category: "parkingPhotos", isLegal: false, required: 2 },
     ].filter(s => s.photos.length > 0);
