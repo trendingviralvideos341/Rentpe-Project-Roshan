@@ -439,6 +439,13 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         {(() => {
                             const photos = property[cat.key] ? safeParse(property[cat.key]) : [];
                             const slots = [];
+                            // Compute the first empty (null/undefined/missing) index once — all "Add Photo" slots target this
+                            const firstEmptyIndex = (() => {
+                                const ei = photos.findIndex((p: any) => !p);
+                                return ei !== -1 ? ei : photos.length;
+                            })();
+                            const uploadIndex = firstEmptyIndex < (cat.max || 4) ? firstEmptyIndex : undefined;
+
                             for (let i = 0; i < (cat.max || 4); i++) {
                                 if (photos[i]) {
                                     const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
@@ -500,7 +507,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                                     <input 
                                                         type="file" 
                                                         className="hidden" 
-                                                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key, i)}
+                                                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], cat.key, uploadIndex)}
                                                         accept={cat.accept}
                                                     />
                                                 </label>
