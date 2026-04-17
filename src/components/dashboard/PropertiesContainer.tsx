@@ -2,9 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building, Plus, MapPin, AlertCircle, ArrowRight, CreditCard, Trash2 } from "lucide-react";
+import { Building, Plus, MapPin, AlertCircle, ArrowRight, CreditCard, Trash2, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getProperties } from "@/actions/properties";
 import { Badge } from "@/components/ui/badge";
 import { ImageCarousel } from "@/components/ImageCarousel";
@@ -30,23 +30,37 @@ interface PropertiesContainerProps {
 export function PropertiesContainer({ role, permissions = [] }: PropertiesContainerProps) {
     const [properties, setProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [onboardingFee, setOnboardingFee] = useState(99);
+    const latestStatuses = useRef<Record<string, string>>({});
 
     // Custom Modal State
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [propertyToCancel, setPropertyToCancel] = useState<{ id: string; name: string } | null>(null);
 
-    const fetchProperties = async () => {
-        setLoading(true);
+    const fetchProperties = async (silent = false) => {
+        if (!silent) setLoading(true);
+        else setRefreshing(true);
         try {
             const data = await getProperties();
+            // Detect status changes and notify owner
+            if (silent && latestStatuses.current) {
+                (data as any[]).forEach((p: any) => {
+                    const prev = latestStatuses.current[p.id];
+                    if (prev && prev !== p.status) {
+                        toast.info(`"${p.name}" status updated: ${p.status.replace(/_/g, ' ')}`);
+                    }
+                });
+            }
+            latestStatuses.current = Object.fromEntries((data as any[]).map((p: any) => [p.id, p.status]));
             setProperties(data);
         } catch (error) {
             console.error(error);
-            toast.error("Failed to fetch properties");
+            if (!silent) toast.error("Failed to fetch properties");
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -107,6 +121,9 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
         getPlatformSettings().then(settings => {
             if (settings?.ownerOnboardingFeeFlat) setOnboardingFee(settings.ownerOnboardingFeeFlat);
         });
+        // Poll every 20s so admin verification changes reflect without manual reload
+        const interval = setInterval(() => fetchProperties(true), 20000);
+        return () => clearInterval(interval);
     }, []);
 
     if (loading && properties.length === 0) return (
@@ -125,13 +142,25 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                     <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-1">My Properties</h1>
                     <p className="text-slate-500 font-medium">Manage and monitor your PG listings in real-time.</p>
                 </div>
-                {(role === 'owner' || (role === 'staff' && permissions.includes('register_property'))) && (
-                    <Link href={`${basePath}/properties/new`}>
-                        <Button className="rounded-xl h-11 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 font-bold transition-all active:scale-95">
-                            <Plus className="mr-2 h-5 w-5" /> Add New Property
-                        </Button>
-                    </Link>
-                )}
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchProperties(true)}
+                        disabled={refreshing}
+                        className="rounded-xl border-2 border-slate-200 font-black uppercase text-[10px] tracking-widest h-10 px-4 gap-2"
+                    >
+                        <RefreshCcw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                        {refreshing ? 'Syncing...' : 'Sync Status'}
+                    </Button>
+                    {(role === 'owner' || (role === 'staff' && permissions.includes('register_property'))) && (
+                        <Link href={`${basePath}/properties/new`}>
+                            <Button className="rounded-xl h-11 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 font-bold transition-all active:scale-95">
+                                <Plus className="mr-2 h-5 w-5" /> Add New Property
+                            </Button>
+                        </Link>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
