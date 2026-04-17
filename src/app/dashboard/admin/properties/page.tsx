@@ -376,14 +376,12 @@ export default function AdminPropertiesPage() {
                                         )}
 
                                         {['PENDING_VERIFICATION', 'VERIFYING_DOCUMENTS', 'VERIFIED_SUCCESSFULLY'].includes(prop.status) && (
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                <Button size="sm" variant="outline" className="text-[9px] border-orange-200 text-orange-600 font-black uppercase tracking-widest px-0" onClick={() => setActionModal({ type: "correction", prop })}>
-                                                    Correction
-                                                </Button>
-                                                <Button size="sm" variant="destructive" className="text-[9px] font-black uppercase tracking-widest px-0" onClick={() => setActionModal({ type: "reject", prop })}>
-                                                    Reject
-                                                </Button>
-                                            </div>
+                                            <Button 
+                                                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full mt-2 h-9 shadow-lg shadow-orange-100 transition-all active:scale-[0.98]" 
+                                                onClick={() => setActionModal({ type: "correction", prop })}
+                                            >
+                                                Request Correction
+                                            </Button>
                                         )}
                                     </div>
                                 </div>
