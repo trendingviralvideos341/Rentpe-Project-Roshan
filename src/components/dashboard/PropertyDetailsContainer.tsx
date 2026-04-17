@@ -516,19 +516,19 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                 </div>
                                 <div className="absolute top-3 right-3 z-40">
                                     {property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) ? (
-                                        <div className="bg-green-600 text-white px-5 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 border-2 border-green-400/50 scale-105">
-                                            <CheckCircle className="w-5 h-5 fill-white/20" />
-                                            <span className="text-[13px] font-black uppercase tracking-[0.3em] drop-shadow-md">Verified</span>
+                                        <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
+                                            <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>
                                         </div>
                                     ) : property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
-                                        <div className="bg-orange-600 animate-pulse text-white px-4 py-2 rounded-2xl shadow-xl flex items-center border-2 border-orange-400/50" title="Reupload Required">
-                                            <AlertCircle className="w-4 h-4 mr-2" />
-                                            <span className="text-[11px] font-black uppercase tracking-widest">Reupload Required</span>
+                                        <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
                                         </div>
                                     ) : (
-                                        <div className="bg-amber-500 text-white px-4 py-2 rounded-2xl shadow-xl flex items-center border-2 border-amber-300/50" title="Pending Approval">
-                                            <AlertCircle className="w-4 h-4 mr-2" />
-                                            <span className="text-[11px] font-black uppercase tracking-widest">Pending</span>
+                                        <div className="bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
                                         </div>
                                     )}
                                 </div>
