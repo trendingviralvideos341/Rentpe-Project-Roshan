@@ -83,23 +83,35 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     const [viewDialog, setViewDialog] = useState<{ isOpen: boolean; catKey: string; index?: number; isArray: boolean; label: string; desc: string } | null>(null);
     const [previewZoom, setPreviewZoom] = useState(1);
 
-    useEffect(() => {
-        const fetchProperty = async () => {
-            try {
-                const data = await getPropertyById(propertyId);
-                if (!data) {
-                    router.push(`/dashboard/${role}/properties`);
-                    return;
-                }
-                setProperty(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchProperty = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        else setRefreshing(true);
+        try {
+            const data = await getPropertyById(propertyId);
+            if (!data) {
+                router.push(`/dashboard/${role}/properties`);
+                return;
             }
-        };
-        fetchProperty();
+            setProperty(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
     }, [propertyId, role, router]);
+
+    useEffect(() => {
+        fetchProperty();
+    }, [fetchProperty]);
+
+    // Poll every 30s so admin's verification changes appear on owner side without a reload
+    useEffect(() => {
+        const interval = setInterval(() => fetchProperty(true), 30000);
+        return () => clearInterval(interval);
+    }, [fetchProperty]);
 
     const startCapture = async () => {
         setIsCaptureOpen(true);
@@ -591,6 +603,16 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         <span className="text-lg font-black font-mono tracking-tighter">{property.displayId}</span>
                     </div>
                 )}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchProperty(true)}
+                    disabled={refreshing}
+                    className="rounded-2xl border-2 border-slate-200 font-black uppercase text-[10px] tracking-widest h-10 px-4 gap-2"
+                >
+                    <RefreshCcw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                    {refreshing ? "Syncing..." : "Sync Status"}
+                </Button>
             </div>
 
             {/* ── RentPe Property Lifecycle (Deactivation & Reactivation) ── */}
