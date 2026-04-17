@@ -36,8 +36,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (s === 'DRAFT') return 0;
         if (s === 'PENDING_VERIFICATION') return 1; 
         if (s === 'VERIFYING_DOCUMENTS') return 2; 
-        if (s === 'VERIFIED_SUCCESSFULLY') return 3;
-        if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
+        if (s === 'VERIFIED_SUCCESSFULLY' || s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
         if (s === 'APPROVED') return 5;
         if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 3; 
         if (s === 'REJECTED' || s === 'SUSPENDED') return 1;
@@ -104,7 +103,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
                                 <div className={cn(
                                     "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 relative z-20 shadow-sm",
                                     stepStatus === 'completed' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-100' :
-                                    stepStatus === 'active' ? 'bg-white text-orange-600 ring-4 ring-orange-50 scale-110' :
+                                    stepStatus === 'active' ? 'bg-white text-orange-600 ring-4 ring-orange-50 scale-110 animate-pulse' :
                                     stepStatus === 'warning' ? 'bg-orange-500 text-white shadow-md shadow-orange-100 animate-pulse' :
                                     stepStatus === 'error' ? 'bg-red-500 text-white' :
                                     'bg-white text-slate-300 border-2 border-slate-100'

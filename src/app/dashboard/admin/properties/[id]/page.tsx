@@ -367,7 +367,10 @@ export default function AdminPropertyDetailPage() {
         { key: ["APPROVED_PAYMENT_VERIFIED"], label: "Payment Confirmed", short: "5" },
         { key: ["APPROVED"], label: "Live", short: "6" },
     ];
-    const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
+    let activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
+    // Milestone alignment: Once docs are verified, the active task is Payment.
+    if (p.status === 'VERIFIED_SUCCESSFULLY') activeIdx = 3;
+    if (p.status === 'APPROVED_PENDING_PAYMENT') activeIdx = 3;
 
     const docSections = [
         { label: "Owner Aadhaar", desc: "Government ID - Aadhaar Card", photos: aadhaarPhotos, category: "aadhaarProof", isLegal: true, required: 2 },
@@ -419,14 +422,17 @@ export default function AdminPropertyDetailPage() {
                                     <div className="flex flex-col items-center min-w-[70px]">
                                         <div className={`h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-black border-2 transition-all ${
                                             done ? "bg-emerald-500 border-emerald-500 text-white" :
-                                            active ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200" :
+                                            active ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 animate-pulse" :
                                             "bg-white border-slate-200 text-slate-400"
                                         }`}>
                                             {done ? <CheckCircle className="h-4 w-4" /> : stage.short}
                                         </div>
-                                        <p className={`text-[9px] font-black uppercase tracking-tight mt-1 text-center ${
-                                            active ? "text-indigo-700" : done ? "text-emerald-600" : "text-slate-400"
-                                        }`}>{stage.label}</p>
+                                        <div className="relative">
+                                            <p className={`text-[9px] font-black uppercase tracking-tight mt-1 text-center ${
+                                                active ? "text-indigo-700 font-black" : done ? "text-emerald-600" : "text-slate-400"
+                                            }`}>{stage.label}</p>
+                                            {active && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full animate-ping" />}
+                                        </div>
                                     </div>
                                     {i < STAGES.length - 1 && (
                                         <div className={`h-[2px] flex-1 min-w-[12px] rounded-full mb-4 ${i < activeIdx ? "bg-emerald-400" : "bg-slate-100"}`} />
