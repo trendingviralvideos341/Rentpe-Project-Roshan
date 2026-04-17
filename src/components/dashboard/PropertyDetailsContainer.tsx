@@ -450,7 +450,9 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                 if (photos[i]) {
                                     const img = typeof photos[i] === 'string' ? photos[i] : photos[i].url;
                                     const isDocVerified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(`${cat.key}-${i}`);
-                                    const isReuploadRequired = property.adminNotes?.includes(`[REUPLOAD:${cat.key}-${i}]`);
+                                    const reuploadLine = property.adminNotes?.split('\n').find((l: string) => l.startsWith(`[REUPLOAD:${cat.key}-${i}]`));
+                                    const isReuploadRequired = !!reuploadLine;
+                                    const reuploadReason = reuploadLine ? reuploadLine.replace(`[REUPLOAD:${cat.key}-${i}]`, '').trim() : '';
 
                                     slots.push(
                                         <div 
@@ -485,8 +487,17 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                                     </div>
                                                 )}
                                             </div>
+                                            {isReuploadRequired && reuploadReason && (
+                                                <div className="absolute bottom-0 left-0 right-0 bg-red-600/95 backdrop-blur-md text-white px-2 py-1.5 z-40 flex flex-col border-t border-red-500/50" title={reuploadReason}>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-red-200 mb-0.5 flex items-center gap-1">
+                                                        <AlertCircle className="w-2.5 h-2.5" /> Admin Note
+                                                    </span>
+                                                    <span className="text-[10px] font-medium leading-tight truncate">{reuploadReason}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     );
+
                                 } else {
                                     slots.push(
                                         isLocked ? (
@@ -523,45 +534,56 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
             ) : (
                 <div className="flex flex-col h-full">
                     {property[cat.key] ? (
-                        <div className="flex-1 flex flex-col">
-                            <div 
-                                className={`relative flex-1 min-h-[160px] rounded-lg border shadow-sm group/img ${property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? 'border-red-500 border-2 ring-4 ring-red-100 bg-red-50' : 'bg-white'} overflow-hidden cursor-pointer`}
-                                onClick={() => setViewDialog({ isOpen: true, catKey: cat.key, isArray: false, label: cat.label, desc: cat.desc })}
-                            >
-                                <img src={property[cat.key]} className="absolute inset-0 w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700" />
-                                <div 
-                                    className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[2px] z-30"
-                                >
-                                    <div className="bg-white/95 p-4 rounded-full shadow-2xl scale-75 group-hover/img:scale-110 transition-all">
-                                        <Search className="w-6 h-6 text-slate-900" />
+                        (() => {
+                            const reuploadLine = property.adminNotes?.split('\n').find((l: string) => l.startsWith(`[REUPLOAD:${cat.key}]`));
+                            const isReuploadRequired = !!reuploadLine;
+                            const reuploadReason = reuploadLine ? reuploadLine.replace(`[REUPLOAD:${cat.key}]`, '').trim() : '';
+
+                            return (
+                                <div className="flex-1 flex flex-col">
+                                    <div 
+                                        className={`relative flex-1 min-h-[160px] rounded-lg border shadow-sm group/img ${isReuploadRequired ? 'border-red-500 border-2 ring-4 ring-red-100 bg-red-50' : 'bg-white'} overflow-hidden cursor-pointer`}
+                                        onClick={() => setViewDialog({ isOpen: true, catKey: cat.key, isArray: false, label: cat.label, desc: cat.desc })}
+                                    >
+                                        <img src={property[cat.key]} className="absolute inset-0 w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700" />
+                                        <div 
+                                            className="absolute inset-0 bg-slate-900/0 hover:bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-[2px] z-30"
+                                        >
+                                            <div className="bg-white/95 p-4 rounded-full shadow-2xl scale-75 group-hover/img:scale-110 transition-all">
+                                                <Search className="w-6 h-6 text-slate-900" />
+                                            </div>
+                                            <span className="text-[10px] font-black text-white mt-4 uppercase tracking-[0.2em] drop-shadow-md">View Document</span>
+                                        </div>
+                                        <div className="absolute top-3 right-3 z-40">
+                                            {isReuploadRequired ? (
+                                                <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
+                                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
+                                                </div>
+                                            ) : property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) ? (
+                                                <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
+                                                    <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
+                                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {isReuploadRequired && reuploadReason && (
+                                            <div className="absolute bottom-0 left-0 right-0 bg-red-600/95 backdrop-blur-md text-white px-3 py-2 z-40 flex flex-col border-t border-red-500/50" title={reuploadReason}>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-red-200 mb-0.5 flex items-center gap-1.5">
+                                                    <AlertCircle className="w-3 h-3" /> Admin Note
+                                                </span>
+                                                <span className="text-xs font-medium leading-tight truncate">{reuploadReason}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <span className="text-[10px] font-black text-white mt-4 uppercase tracking-[0.2em] drop-shadow-md">View Document</span>
                                 </div>
-                                <div className="absolute top-3 right-3 z-40">
-                                    {property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
-                                        <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
-                                            <AlertCircle className="w-3 h-3 mr-1" />
-                                            <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
-                                        </div>
-                                    ) : property.verifiedDocs && safeParse(property.verifiedDocs).includes(cat.key) ? (
-                                        <div className="bg-green-600 text-white px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 border border-green-400/30">
-                                            <CheckCircle className="w-3.5 h-3.5 fill-white/20" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest drop-shadow-sm">Verified</span>
-                                        </div>
-                                    ) : property.adminNotes?.includes(`[REUPLOAD:${cat.key}]`) ? (
-                                        <div className="bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
-                                            <AlertCircle className="w-3 h-3 mr-1" />
-                                            <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
-                                        </div>
-                                    ) : (
-                                        <div className="bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
-                                            <AlertCircle className="w-3 h-3 mr-1" />
-                                            <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                            );
+                        })()
                     ) : cat.isLive ? (
                         <div 
                             className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-cyan-200 rounded-2xl bg-cyan-50/20 hover:bg-cyan-50/50 hover:border-cyan-400 transition-all p-8 group/upload cursor-pointer shadow-inner"
