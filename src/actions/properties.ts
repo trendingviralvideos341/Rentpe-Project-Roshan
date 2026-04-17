@@ -561,7 +561,10 @@ export async function togglePropertyDocumentVerification(propertyId: string, doc
 
     try {
         await prisma.property.update({ where: { id: propertyId }, data: { verifiedDocs: JSON.stringify(verifiedDocs) } });
+        revalidatePath('/dashboard/owner/properties');
         revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+        revalidatePath('/dashboard/owner/verifications');
+        revalidatePath('/dashboard/admin/properties');
         revalidatePath(`/dashboard/admin/properties/${propertyId}`);
         return { success: true };
     } catch (e: any) {

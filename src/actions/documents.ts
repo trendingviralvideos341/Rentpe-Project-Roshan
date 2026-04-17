@@ -330,6 +330,8 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
     }
 
     revalidatePath('/dashboard/owner/verifications');
+    revalidatePath('/dashboard/owner/properties');
     revalidatePath('/dashboard/admin/doc-verification');
+    revalidatePath('/dashboard/admin/properties');
     return doc;
 }

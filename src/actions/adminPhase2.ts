@@ -117,6 +117,11 @@ export async function verifyDocument(propertyId: string, docType: string) {
     });
 
     revalidatePath('/dashboard/admin/kyc');
+    revalidatePath('/dashboard/admin/properties');
+    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+    revalidatePath('/dashboard/owner/verifications');
     return { success: true };
 }
 
@@ -173,6 +178,11 @@ export async function rejectDocument(propertyId: string, docType: string, reason
     });
 
     revalidatePath('/dashboard/admin/kyc');
+    revalidatePath('/dashboard/admin/properties');
+    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+    revalidatePath('/dashboard/owner/verifications');
     return { success: true };
 }
 
