@@ -812,6 +812,7 @@ export async function verifyPropertyDocuments(propertyId: string) {
     });
 
     revalidatePath('/dashboard/admin/property-approval');
+    revalidatePath('/dashboard/owner/properties');
     return result;
 }
 
