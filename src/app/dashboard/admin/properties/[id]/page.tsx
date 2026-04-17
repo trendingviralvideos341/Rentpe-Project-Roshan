@@ -356,7 +356,7 @@ export default function AdminPropertyDetailPage() {
     const amenitiesPhotos = parsePhotos(p.amenitiesPhotos);
     const parkingPhotos = parsePhotos(p.parkingPhotos);
 
-    const mandatoryDocs = ["AADHAAR-0", "AADHAAR-1", "PAN-0", "PAN-1", "PG_LICENCE-0", "PG_LICENCE-1", "LIVE_PHOTO-0"];
+    const mandatoryDocs = ["aadhaarProof-0", "aadhaarProof-1", "panProof-0", "panProof-1", "pgLicenceUrl-0", "pgLicenceUrl-1", "livePhotoUrl-0"];
     const verifiedCount = mandatoryDocs.filter(d => verifiedDocs.includes(d)).length;
 
     const STAGES = [
@@ -370,10 +370,10 @@ export default function AdminPropertyDetailPage() {
     const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
 
     const docSections = [
-        { label: "Owner Aadhaar", desc: "Government ID - Aadhaar Card", photos: aadhaarPhotos, category: "AADHAAR", isLegal: true, required: 2 },
-        { label: "Owner PAN Card", desc: "PAN Card", photos: panPhotos, category: "PAN", isLegal: true, required: 2 },
-        { label: "PG / Property License", desc: "Business license", photos: licencePhotos, category: "PG_LICENCE", isLegal: true, required: 2 },
-        { label: "Identity Check (Selfie)", desc: "Live selfie verification", photos: livePhoto, category: "LIVE_PHOTO", isLegal: true, required: 1 },
+        { label: "Owner Aadhaar", desc: "Government ID - Aadhaar Card", photos: aadhaarPhotos, category: "aadhaarProof", isLegal: true, required: 2 },
+        { label: "Owner PAN Card", desc: "PAN Card", photos: panPhotos, category: "panProof", isLegal: true, required: 2 },
+        { label: "PG / Property License", desc: "Business license", photos: licencePhotos, category: "pgLicenceUrl", isLegal: true, required: 2 },
+        { label: "Identity Check (Selfie)", desc: "Live selfie verification", photos: livePhoto, category: "livePhotoUrl", isLegal: true, required: 1 },
         { label: "Building Photos", desc: "Exterior property photos", photos: buildingPhotos, category: "buildingPhotos", isLegal: false, required: 4 },
         { label: "Common Area", desc: "Hallway, lobby, shared spaces", photos: commonAreaPhotos, category: "commonAreaPhotos", isLegal: false, required: 4 },
         { label: "Rooms & Bathrooms", desc: "Individual room photos", photos: roomsPhotos, category: "roomsPhotos", isLegal: false, required: 4 },
