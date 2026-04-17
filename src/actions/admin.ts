@@ -634,11 +634,7 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
 
     const where: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
-        if (statusFilter === 'REJECTED') {
-            where.status = { in: ['REJECTED', 'SUSPENDED'] };
-        } else {
-            where.status = statusFilter;
-        }
+        where.status = statusFilter;
     }
 
     return prisma.property.findMany({

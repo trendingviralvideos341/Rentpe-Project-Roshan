@@ -20,19 +20,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { 
     Building, RefreshCcw, Eye, CheckCircle, XCircle, AlertTriangle, 
-    Phone, Mail, FileText, Check, CreditCard, Ban, Trash2, 
-    MapPin, User as UserIcon, Calendar, ArrowRight
+    FileText, Check, CreditCard, Trash2, DollarSign,
+    MapPin, User as UserIcon, Calendar, ArrowRight, ShieldOff
 } from "lucide-react";
 import Link from "next/link";
 
 const STATUS_TABS = [
-    { key: "PENDING_VERIFICATION", label: "Approve Applications", icon: FileText, color: "bg-blue-600" },
-    { key: "VERIFYING_DOCUMENTS", label: "Verifying Documents", icon: Eye, color: "bg-purple-600" },
-    { key: "NEEDS_CORRECTION", label: "Needs Correction", icon: AlertTriangle, color: "bg-amber-500" },
-    { key: "VERIFIED_SUCCESSFULLY", label: "Verified Successfully", icon: Check, color: "bg-orange-500" },
-    { key: "APPROVED_PENDING_PAYMENT", label: "Pending Payment", icon: CreditCard, color: "bg-orange-600" },
-    { key: "APPROVED", label: "Live Properties", icon: Building, color: "bg-green-600" },
-    { key: "REJECTED", label: "Rejected", icon: Trash2, color: "bg-red-600" },
+    { key: "PENDING_VERIFICATION",   label: "Pending Applications",  icon: FileText,      color: "bg-blue-600" },
+    { key: "VERIFYING_DOCUMENTS",    label: "Pending Verification",  icon: Eye,           color: "bg-purple-600" },
+    { key: "NEEDS_CORRECTION",       label: "Needs Correction",      icon: AlertTriangle, color: "bg-amber-500" },
+    { key: "VERIFIED_SUCCESSFULLY",  label: "Verified Successfully", icon: Check,         color: "bg-teal-600" },
+    { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payment",      icon: CreditCard,    color: "bg-orange-500" },
+    { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",    icon: DollarSign,    color: "bg-cyan-600" },
+    { key: "APPROVED",               label: "Live Properties",       icon: Building,      color: "bg-green-600" },
+    { key: "SUSPENDED",              label: "Suspended",             icon: ShieldOff,     color: "bg-slate-600" },
+    { key: "REJECTED",               label: "Rejected Applications", icon: Trash2,        color: "bg-red-600" },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -153,18 +155,28 @@ export default function AdminPropertiesPage() {
                 </div>
             </div>
 
-            {/* Quick Stats - Premium Style */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: "Pending Verification", count: statusCounts['PENDING_VERIFICATION'] || 0, color: "text-blue-600", bg: "bg-blue-50 border-blue-100" },
-                    { label: "Live Properties", count: statusCounts['APPROVED'] || 0, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100" },
-                    { label: "Needs Correction", count: statusCounts['NEEDS_CORRECTION'] || 0, color: "text-orange-600", bg: "bg-orange-50 border-orange-100" },
-                    { label: "Rejected/Suspended", count: (statusCounts['REJECTED'] || 0) + (statusCounts['SUSPENDED'] || 0), color: "text-red-600", bg: "bg-red-50 border-red-100" },
-                ].map((s, i) => (
-                    <div key={i} className={`p-5 rounded-2xl border-2 shadow-sm ${s.bg} flex flex-col gap-1 hover:scale-[1.02] transition-transform cursor-default`}>
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{s.label}</span>
-                        <span className={`text-2xl font-black ${s.color}`}>{s.count}</span>
-                    </div>
+            {/* Quick Stats — 8 Clickable Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                {([
+                    { key: "PENDING_VERIFICATION",    label: "Pending Applications",  color: "text-blue-600",    bg: "bg-blue-50 border-blue-100",     ring: "hover:ring-blue-300" },
+                    { key: "VERIFYING_DOCUMENTS",     label: "Pending Verification",  color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
+                    { key: "NEEDS_CORRECTION",        label: "Needs Correction",      color: "text-amber-600",   bg: "bg-amber-50 border-amber-100",   ring: "hover:ring-amber-300" },
+                    { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payments",      color: "text-orange-600",  bg: "bg-orange-50 border-orange-100", ring: "hover:ring-orange-300" },
+                    { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",     color: "text-cyan-600",    bg: "bg-cyan-50 border-cyan-100",     ring: "hover:ring-cyan-300" },
+                    { key: "APPROVED",                label: "Live Properties",       color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100",ring: "hover:ring-emerald-300" },
+                    { key: "REJECTED",                label: "Rejected",              color: "text-red-600",     bg: "bg-red-50 border-red-100",       ring: "hover:ring-red-300" },
+                    { key: "SUSPENDED",               label: "Suspended",             color: "text-slate-600",   bg: "bg-slate-50 border-slate-200",   ring: "hover:ring-slate-300" },
+                ] as const).map((s) => (
+                    <button
+                        key={s.key}
+                        onClick={() => setFilter(s.key)}
+                        className={`p-3 rounded-2xl border-2 shadow-sm ${s.bg} flex flex-col gap-1 transition-all hover:scale-[1.03] hover:shadow-md hover:ring-2 ${s.ring} cursor-pointer text-left ${
+                            filter === s.key ? "ring-2 scale-[1.03] shadow-md " + s.ring : ""
+                        }`}
+                    >
+                        <span className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-tight">{s.label}</span>
+                        <span className={`text-xl font-black ${s.color}`}>{statusCounts[s.key] || 0}</span>
+                    </button>
                 ))}
             </div>
 
@@ -372,6 +384,15 @@ export default function AdminPropertiesPage() {
                                                 onClick={() => setActionModal({ type: "approve", prop })}
                                             >
                                                 Verify & Make Live <CheckCircle className="h-3.5 w-3.5 ml-2" />
+                                            </Button>
+                                        )}
+
+                                        {prop.status === 'APPROVED_PAYMENT_VERIFIED' && (
+                                            <Button 
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                onClick={() => setActionModal({ type: "approve", prop })}
+                                            >
+                                                Activate & Make Live <CheckCircle className="h-3.5 w-3.5 ml-2" />
                                             </Button>
                                         )}
 
