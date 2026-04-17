@@ -308,7 +308,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                     const filteredLines = lines.filter((l: string) => !l.startsWith(reuploadTag));
                     const newAdminNotes = filteredLines.join('\n');
                     if (newAdminNotes !== property.adminNotes) {
-                        setProperty(prev => ({ ...prev, adminNotes: newAdminNotes || null }));
+                        setProperty({ ...updatedProperty, adminNotes: newAdminNotes || null });
                     }
                 }
 
