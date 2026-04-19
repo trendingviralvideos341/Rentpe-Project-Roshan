@@ -57,8 +57,8 @@ export async function createBooking(data: {
             throw new Error("You cannot book your own property.");
         }
 
-        // ─── SECURITY GUARD 2: Property must be LIVE ────────────────────────
-        if (ownedProperty.status !== 'LIVE') {
+        // ─── SECURITY GUARD 2: Property must be LIVE or APPROVED ────────────
+        if (ownedProperty.status !== 'LIVE' && ownedProperty.status !== 'APPROVED') {
             throw new Error("This property is not currently available for booking.");
         }
 
