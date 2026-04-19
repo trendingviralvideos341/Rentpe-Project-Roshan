@@ -508,8 +508,8 @@ export default function AdminPropertyDetailPage() {
                 <button
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200 ${
                         activeTab === "overview"
-                            ? "bg-white shadow-md text-slate-900 border border-slate-200"
-                            : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                            ? "bg-indigo-600 shadow-md shadow-indigo-200 text-white border border-indigo-700"
+                            : "bg-white shadow-md text-slate-900 border border-slate-200"
                     }`}
                     onClick={() => setActiveTab("overview")}
                 >
@@ -520,7 +520,7 @@ export default function AdminPropertyDetailPage() {
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200 ${
                         activeTab === "verification"
                             ? "bg-indigo-600 shadow-md shadow-indigo-200 text-white border border-indigo-700"
-                            : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                            : "bg-white shadow-md text-slate-900 border border-slate-200"
                     }`}
                     onClick={() => setActiveTab("verification")}
                 >
@@ -530,7 +530,7 @@ export default function AdminPropertyDetailPage() {
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tabular-nums ${
                             activeTab === "verification"
                                 ? "bg-white/20 text-white"
-                                : "bg-slate-200 text-slate-600"
+                                : "bg-indigo-100 text-indigo-700"
                         }`}>
                             {verifiedDocs.length}
                         </span>
