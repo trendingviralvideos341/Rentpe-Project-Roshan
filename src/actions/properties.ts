@@ -104,7 +104,7 @@ export async function getPropertyById(id: string) {
         return property;
     }
 
-    if (property.status !== 'APPROVED') return null;
+    if (!['LIVE', 'APPROVED'].includes(property.status)) return null;
 
     // For public view, filter only verified photos
     const verifiedDocs = JSON.parse(property.verifiedDocs || '[]');
