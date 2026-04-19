@@ -634,12 +634,7 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
 
     const where: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
-        // 'APPROVED' tab shows both APPROVED and LIVE (both mean property is live on platform)
-        if (statusFilter === 'APPROVED') {
-            where.status = { in: ['APPROVED', 'LIVE'] };
-        } else {
-            where.status = statusFilter;
-        }
+        where.status = statusFilter;
     }
 
     return prisma.property.findMany({
@@ -881,7 +876,7 @@ export async function exemptPropertyFee(propertyId: string, reason: string) {
         const updated = await tx.property.update({
             where: { id: propertyId },
             data: { 
-                status: 'APPROVED', 
+                status: 'LIVE', 
                 isVerified: true,
                 displayId: newPropertyDisplayId 
             }
@@ -1111,7 +1106,7 @@ export async function activateProperty(propertyId: string, notes?: string) {
         const updated = await tx.property.update({ 
             where: { id: propertyId }, 
             data: { 
-                status: 'APPROVED', 
+                status: 'LIVE', 
                 isVerified: true,
                 displayId: newPropertyDisplayId // Save the upgraded ID
             } 

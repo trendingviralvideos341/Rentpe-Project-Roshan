@@ -189,8 +189,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             property.status === 'VERIFIED_SUCCESSFULLY' ? "bg-emerald-600" :
                                             property.status === 'SUSPENDED' ? "bg-orange-600" : "bg-red-600"
                                         )}>
-                                            {property.status === 'LIVE' ? 'Live' :
-                                             property.status === 'APPROVED' ? 'Live' : 
+                                            {['LIVE', 'APPROVED'].includes(property.status) ? 'Live' :
                                              ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? 'In Review' :
                                              property.status === 'NEEDS_CORRECTION' ? 'Pending' :
                                              property.status === 'CORRECTED' ? 'Resubmitted' :

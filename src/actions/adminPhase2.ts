@@ -785,7 +785,7 @@ export async function getAdminAnalytics(days: number = 30) {
         prisma.dispute.count({ where: { createdAt: { gte: cutoff } } }),
         prisma.user.count({ where: { deletedAt: null } }),
         prisma.property.count(),
-        prisma.property.count({ where: { status: 'APPROVED' } }),
+        prisma.property.count({ where: { status: 'LIVE' } }),
         prisma.ticket.count({ where: { status: 'OPEN' } }),
         prisma.dispute.count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
     ]);

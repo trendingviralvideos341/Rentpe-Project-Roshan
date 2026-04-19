@@ -57,8 +57,8 @@ export async function createBooking(data: {
             throw new Error("You cannot book your own property.");
         }
 
-        // ─── SECURITY GUARD 2: Property must be LIVE or APPROVED ────────────
-        if (ownedProperty.status !== 'LIVE' && ownedProperty.status !== 'APPROVED') {
+        // ─── SECURITY GUARD 2: Property must be LIVE ────────────────────────
+        if (ownedProperty.status !== 'LIVE') {
             throw new Error("This property is not currently available for booking.");
         }
 
@@ -1120,7 +1120,7 @@ export async function getPlatformAnalytics() {
 
     const [totalProperties, liveProperties, totalBookings, kycPending, activeTenants, pendingDocuments] = await Promise.all([
         prisma.property.count(),
-        prisma.property.count({ where: { status: 'APPROVED' } }),
+        prisma.property.count({ where: { status: 'LIVE' } }),
         prisma.booking.count(),
         prisma.booking.count({ where: { status: { in: ['KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED'] } } }),
         prisma.tenant.count({ where: { status: 'ACTIVE' } }),

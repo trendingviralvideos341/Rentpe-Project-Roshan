@@ -15,7 +15,7 @@ export async function searchProperties(query?: string, filters?: {
     minRating?: number;
     sortBy?: 'price_asc' | 'price_desc' | 'rating' | 'newest';
 }) {
-    const where: any = { status: 'APPROVED' };
+    const where: any = { status: { in: ['APPROVED', 'LIVE'] } };
 
     // Full-text search across name/city/address
     if (query?.trim()) {
@@ -128,7 +128,7 @@ export async function searchProperties(query?: string, filters?: {
 export async function getSearchFilterOptions() {
     try {
         const properties = await prisma.property.findMany({
-            where: { status: 'APPROVED' },
+            where: { status: 'LIVE' },
             select: { city: true, amenities: true, genderType: true, propertyType: true }
         });
 

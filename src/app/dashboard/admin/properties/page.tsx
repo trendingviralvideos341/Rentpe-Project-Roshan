@@ -32,7 +32,7 @@ const STATUS_TABS = [
     { key: "VERIFIED_SUCCESSFULLY",  label: "Verified Successfully", icon: Check,         color: "bg-teal-600" },
     { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payment",      icon: CreditCard,    color: "bg-orange-500" },
     { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",    icon: DollarSign,    color: "bg-cyan-600" },
-    { key: "APPROVED",               label: "Live Properties",       icon: Building,      color: "bg-green-600" },
+    { key: "LIVE",                   label: "Live Properties",       icon: Building,      color: "bg-green-600" },
     { key: "SUSPENDED",              label: "Suspended",             icon: ShieldOff,     color: "bg-slate-600" },
     { key: "REJECTED",               label: "Rejected Applications", icon: Trash2,        color: "bg-red-600" },
 ];
@@ -44,7 +44,6 @@ function StatusBadge({ status }: { status: string }) {
         NEEDS_CORRECTION: { label: "NEEDS CORRECTION", color: "bg-amber-50 text-amber-600 border-amber-200" },
         VERIFIED_SUCCESSFULLY: { label: "VERIFIED SUCCESSFULLY", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
         APPROVED_PENDING_PAYMENT: { label: "PENDING PAYMENT", color: "bg-orange-50 text-orange-600 border-orange-200" },
-        APPROVED: { label: "LIVE & ACTIVE", color: "bg-green-50 text-green-600 border-green-200" },
         LIVE: { label: "LIVE & ACTIVE", color: "bg-green-50 text-green-600 border-green-200" },
         REJECTED: { label: "REJECTED", color: "bg-red-50 text-red-600 border-red-200" },
         SUSPENDED: { label: "SUSPENDED", color: "bg-slate-50 text-slate-600 border-slate-200" },
@@ -164,7 +163,7 @@ export default function AdminPropertiesPage() {
                     { key: "NEEDS_CORRECTION",        label: "Needs Correction",      color: "text-amber-600",   bg: "bg-amber-50 border-amber-100",   ring: "hover:ring-amber-300" },
                     { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payments",      color: "text-orange-600",  bg: "bg-orange-50 border-orange-100", ring: "hover:ring-orange-300" },
                     { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",     color: "text-cyan-600",    bg: "bg-cyan-50 border-cyan-100",     ring: "hover:ring-cyan-300" },
-                    { key: "APPROVED",                label: "Live Properties",       color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100",ring: "hover:ring-emerald-300" },
+                    { key: "LIVE",                   label: "Live Properties",       color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100",ring: "hover:ring-emerald-300" },
                     { key: "REJECTED",                label: "Rejected",              color: "text-red-600",     bg: "bg-red-50 border-red-100",       ring: "hover:ring-red-300" },
                     { key: "SUSPENDED",               label: "Suspended",             color: "text-slate-600",   bg: "bg-slate-50 border-slate-200",   ring: "hover:ring-slate-300" },
                 ] as const).map((s) => (
@@ -176,7 +175,7 @@ export default function AdminPropertiesPage() {
                         }`}
                     >
                         <span className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-tight">{s.label}</span>
-                        <span className={`text-xl font-black ${s.color}`}>{s.key === 'APPROVED' ? ((statusCounts['APPROVED'] || 0) + (statusCounts['LIVE'] || 0)) : (statusCounts[s.key] || 0)}</span>
+                        <span className={`text-xl font-black ${s.color}`}>{statusCounts[s.key] || 0}</span>
                     </button>
                 ))}
             </div>
@@ -201,7 +200,7 @@ export default function AdminPropertiesPage() {
                                 <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`} />
                                 {tab.label}
                                 <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"}`}>
-                                    {tab.key === 'APPROVED' ? ((statusCounts['APPROVED'] || 0) + (statusCounts['LIVE'] || 0)) : count}
+                                    {count}
                                 </span>
                             </button>
                         );

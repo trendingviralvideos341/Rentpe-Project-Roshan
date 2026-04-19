@@ -46,7 +46,7 @@ export async function getSuperAdminBusinessSnapshot() {
         prisma.user.count({ where: { role: 'OWNER', deletedAt: null } }),
         prisma.user.count({ where: { role: 'ADMIN', deletedAt: null } }),
         prisma.property.count(),
-        prisma.property.count({ where: { status: 'APPROVED' } }),
+        prisma.property.count({ where: { status: 'LIVE' } }),
         prisma.property.count({ where: { status: 'SUSPENDED' } }),
         prisma.room.count(),
         (prisma as any).bed.count(),
@@ -231,7 +231,7 @@ export async function getPlatformPropertyPerformance(limit: number = 20) {
     await isSuperAdmin();
 
     const properties = await prisma.property.findMany({
-        where: { status: 'APPROVED' },
+        where: { status: 'LIVE' },
         include: { rooms: true, reviews: true, _count: { select: { bookings: true } } }
     });
 

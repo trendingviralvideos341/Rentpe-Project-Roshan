@@ -193,7 +193,7 @@ export async function getAdminDashboardStats() {
         prisma.user.count({ where: { role: 'OWNER', deletedAt: null } }),
         prisma.user.count({ where: { role: 'USER', deletedAt: null } }),
         prisma.property.count(),
-        prisma.property.count({ where: { status: 'APPROVED' } }),
+        prisma.property.count({ where: { status: 'LIVE' } }),
         prisma.property.count({ where: { status: { in: ['PENDING_VERIFICATION', 'VERIFYING_DOCUMENTS', 'LISTING_SUBMITTED'] } } }),
         prisma.booking.count(),
         prisma.booking.count({ where: { status: 'PENDING_APPROVAL' } }),
