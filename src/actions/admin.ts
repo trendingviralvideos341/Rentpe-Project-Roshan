@@ -1101,10 +1101,11 @@ export async function activateProperty(propertyId: string, notes?: string) {
     let newAdminNotes = property.adminNotes || null;
 
     if (property.status === 'SUSPENDED' && property.adminNotes?.startsWith('[PREV_STATUS:')) {
-        const match = property.adminNotes.match(/^\[PREV_STATUS:([^\]]+)\]\n?(.*)/s);
-        if (match) {
-            nextStatus = match[1];
-            newAdminNotes = match[2].trim() || null;
+        const closingBracket = property.adminNotes.indexOf(']');
+        if (closingBracket !== -1) {
+            nextStatus = property.adminNotes.slice('[PREV_STATUS:'.length, closingBracket);
+            const remainder = property.adminNotes.slice(closingBracket + 1).replace(/^\n/, '').trim();
+            newAdminNotes = remainder || null;
         }
     }
 
