@@ -229,6 +229,8 @@ export async function createProperty(data: FormData | any) {
         const r = parsedRooms[i];
         const roomId = randomUUID();
         const availability = parseInt(r.availability) || 0;
+        // securityDeposit from UI is '1' or '2' (months). Clamp to max 2 as per platform rule.
+        const depositMonths = Math.min(parseInt(r.securityDeposit) || 1, 2);
         roomsToCreate.push({
             id: roomId,
             displayId: (roomIdsList as string[])[i],
@@ -238,6 +240,7 @@ export async function createProperty(data: FormData | any) {
             price: parseFloat(r.price),
             availability,
             totalBeds: availability,
+            depositMonths,
             status: 'AVAILABLE',
         });
         for (let j = 0; j < availability; j++) {

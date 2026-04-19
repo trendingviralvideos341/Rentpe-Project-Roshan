@@ -100,7 +100,7 @@ export default function AddPropertyPage() {
     const [pinError, setPinError] = useState("");
     const [postOffices, setPostOffices] = useState<{ Name: string; District: string; State: string }[]>([]);
 
-    const [rooms, setRooms] = useState<{ roomNumber: string; type: string; price: string; availability: string }[]>([]);
+    const [rooms, setRooms] = useState<{ roomNumber: string; type: string; price: string; availability: string; securityDeposit: string }[]>([]);
 
     const [uploadingCount, setUploadingCount] = useState(0);
 
@@ -257,7 +257,8 @@ export default function AddPropertyPage() {
     };
 
     const addRoom = () => {
-        setRooms([...rooms, { roomNumber: "", type: "Single Sharing", price: "", availability: "1" }]);
+        if (rooms.length >= 1) return; // Only 1 room allowed during registration
+        setRooms([...rooms, { roomNumber: "", type: "Single Sharing", price: "", availability: "1", securityDeposit: "" }]);
     };
 
     const removeRoom = (i: number) => {
@@ -622,6 +623,7 @@ export default function AddPropertyPage() {
             if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
             if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${i + 1}: Valid price required`;
             if (!room.availability || parseInt(room.availability) <= 0) errs[`room_${i}_avail`] = `Room ${i + 1}: Availability required`;
+            if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${i + 1}: Security deposit selection is required`;
         });
 
         setErrors(errs);
@@ -1170,21 +1172,37 @@ export default function AddPropertyPage() {
                         <CardDescription>Add rooms with pricing and availability. (At least 1 room required)</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4 bg-rose-50/10">
+                        {/* Registration Limit Banner */}
+                        <div className="flex items-start gap-3 bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+                            <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-sm font-black text-amber-800">Room Registration Limit</p>
+                                <p className="text-xs text-amber-700 mt-0.5 font-medium">
+                                    Currently you are allowed to add <span className="font-black">1 room</span> during property registration. Once your property is approved, you can add the remaining rooms from your dashboard.
+                                </p>
+                            </div>
+                        </div>
+
                         {rooms.length === 0 && (
                             <div className={`text-center py-6 text-muted-foreground ${errors.rooms ? "bg-red-50 border border-red-200 rounded-lg" : ""}`}>
                                 No rooms added yet. Click below to add your first room.
                             </div>
                         )}
-                        {rooms.map((room, i) => (
-                            <div key={i} className="border rounded-lg p-4 space-y-3 relative bg-muted/20">
-                                <button type="button" onClick={() => removeRoom(i)} className="absolute top-2 right-2 text-red-400 hover:text-red-600" suppressHydrationWarning>
+                        {rooms.map((room, i) => {
+                            const rentVal = parseFloat(room.price) || 0;
+                            const deposit1M = rentVal > 0 ? `₹${rentVal.toLocaleString('en-IN')}` : '—';
+                            const deposit2M = rentVal > 0 ? `₹${(rentVal * 2).toLocaleString('en-IN')}` : '—';
+                            return (
+                            <div key={i} className="border-2 border-rose-200 rounded-xl p-5 space-y-4 relative bg-white shadow-sm">
+                                <button type="button" onClick={() => removeRoom(i)} className="absolute top-3 right-3 text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 rounded-lg p-1 transition-all" suppressHydrationWarning>
                                     <X className="h-4 w-4" />
                                 </button>
-                                <p className="text-sm font-bold text-rose-700">Room #{i + 1}</p>
+                                <p className="text-sm font-black text-rose-700">Room #{i + 1}</p>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Room Number <span className="text-red-500">*</span></label>
                                         <Input className={`mt-1 ${errors[`room_${i}_number`] ? "border-red-500" : ""}`} placeholder="e.g. 101" value={room.roomNumber} onChange={e => updateRoom(i, "roomNumber", e.target.value)} suppressHydrationWarning />
+                                        {errors[`room_${i}_number`] && <p className="text-[10px] text-red-500 mt-1 font-bold">{errors[`room_${i}_number`]}</p>}
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Bed Type <span className="text-red-500">*</span></label>
@@ -1199,7 +1217,6 @@ export default function AddPropertyPage() {
                                                 if (type === "Four Sharing") autoAvail = "4";
                                                 if (type === "Five Sharing") autoAvail = "5";
                                                 if (type === "Six Sharing") autoAvail = "6";
-
                                                 const updated = [...rooms];
                                                 updated[i].type = type;
                                                 updated[i].availability = autoAvail;
@@ -1218,6 +1235,7 @@ export default function AddPropertyPage() {
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Monthly Rent (₹) <span className="text-red-500">*</span></label>
                                         <Input type="number" className={`mt-1 ${errors[`room_${i}_price`] ? "border-red-500" : ""}`} placeholder="5000" min={0} value={room.price} onChange={e => updateRoom(i, "price", e.target.value)} suppressHydrationWarning />
+                                        {errors[`room_${i}_price`] && <p className="text-[10px] text-red-500 mt-1 font-bold">{errors[`room_${i}_price`]}</p>}
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted-foreground">Beds Available <span className="text-red-500">*</span></label>
@@ -1231,16 +1249,138 @@ export default function AddPropertyPage() {
                                         />
                                     </div>
                                 </div>
+
+                                {/* Security Deposit Section */}
+                                <div className={`rounded-xl border-2 p-4 space-y-3 ${
+                                    errors[`room_${i}_deposit`] ? 'border-red-400 bg-red-50/50' : 'border-indigo-200 bg-indigo-50/40'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-black text-indigo-700 uppercase tracking-widest flex items-center gap-1.5">
+                                            🛡️ Security Deposit
+                                            <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black ml-1">MANDATORY</span>
+                                        </label>
+                                        <span className="text-[10px] text-indigo-500 font-bold">Max allowed: 2 months rent</span>
+                                    </div>
+                                    {rentVal <= 0 && (
+                                        <p className="text-xs text-amber-600 font-semibold italic">⚠️ Enter monthly rent above to see deposit options</p>
+                                    )}
+                                    {rentVal > 0 && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {/* 1 Month Option */}
+                                            <label className={`flex flex-col items-center justify-center gap-1.5 border-2 rounded-xl p-3 cursor-pointer transition-all ${
+                                                room.securityDeposit === '1'
+                                                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                    : 'border-indigo-200 bg-white hover:border-indigo-400 text-slate-700'
+                                            }`}>
+                                                <input
+                                                    type="radio"
+                                                    name={`deposit_${i}`}
+                                                    value="1"
+                                                    className="hidden"
+                                                    checked={room.securityDeposit === '1'}
+                                                    onChange={() => updateRoom(i, 'securityDeposit', '1')}
+                                                    suppressHydrationWarning
+                                                />
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                    room.securityDeposit === '1' ? 'text-indigo-200' : 'text-indigo-500'
+                                                }`}>1 Month</span>
+                                                <span className={`text-lg font-black ${
+                                                    room.securityDeposit === '1' ? 'text-white' : 'text-slate-900'
+                                                }`}>{deposit1M}</span>
+                                                {room.securityDeposit === '1' && (
+                                                    <span className="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded-full text-white">✓ SELECTED</span>
+                                                )}
+                                            </label>
+                                            {/* 2 Months Option */}
+                                            <label className={`flex flex-col items-center justify-center gap-1.5 border-2 rounded-xl p-3 cursor-pointer transition-all ${
+                                                room.securityDeposit === '2'
+                                                    ? 'border-purple-600 bg-purple-600 text-white shadow-lg shadow-purple-200'
+                                                    : 'border-purple-200 bg-white hover:border-purple-400 text-slate-700'
+                                            }`}>
+                                                <input
+                                                    type="radio"
+                                                    name={`deposit_${i}`}
+                                                    value="2"
+                                                    className="hidden"
+                                                    checked={room.securityDeposit === '2'}
+                                                    onChange={() => updateRoom(i, 'securityDeposit', '2')}
+                                                    suppressHydrationWarning
+                                                />
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                    room.securityDeposit === '2' ? 'text-purple-200' : 'text-purple-500'
+                                                }`}>2 Months <span className="text-[8px]">MAX</span></span>
+                                                <span className={`text-lg font-black ${
+                                                    room.securityDeposit === '2' ? 'text-white' : 'text-slate-900'
+                                                }`}>{deposit2M}</span>
+                                                {room.securityDeposit === '2' && (
+                                                    <span className="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded-full text-white">✓ SELECTED</span>
+                                                )}
+                                            </label>
+                                        </div>
+                                    )}
+                                    {errors[`room_${i}_deposit`] && (
+                                        <p className="text-[10px] text-red-600 font-black uppercase italic animate-pulse">{errors[`room_${i}_deposit`]}</p>
+                                    )}
+                                    {room.securityDeposit && rentVal > 0 && (
+                                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                            <p className="text-[11px] text-green-700 font-bold">
+                                                Security deposit set to {room.securityDeposit === '1' ? '1 month' : '2 months'} = <span className="font-black">{room.securityDeposit === '1' ? deposit1M : deposit2M}</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Save Room Button */}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full h-11 border-2 border-green-500 text-green-700 hover:bg-green-50 font-black text-sm tracking-wide transition-all"
+                                    onClick={() => {
+                                        const errs: Record<string, string> = {};
+                                        if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room number required`;
+                                        if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Valid price required`;
+                                        if (!room.securityDeposit) errs[`room_${i}_deposit`] = `Security deposit selection is required`;
+                                        if (Object.keys(errs).length > 0) { setErrors(prev => ({ ...prev, ...errs })); return; }
+                                        // Clear any room errors on successful save
+                                        setErrors(prev => {
+                                            const next = { ...prev };
+                                            delete next[`room_${i}_number`];
+                                            delete next[`room_${i}_price`];
+                                            delete next[`room_${i}_avail`];
+                                            delete next[`room_${i}_deposit`];
+                                            delete next.rooms;
+                                            return next;
+                                        });
+                                        toast.success(`Room #${i + 1} saved! Fill in remaining details and submit your property.`);
+                                    }}
+                                    suppressHydrationWarning
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Save Room #{i + 1}
+                                </Button>
                             </div>
-                        ))}
-                        <Button 
-                            type="button" 
-                            className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-200 border-none active:scale-95 transition-all text-sm" 
-                            onClick={addRoom}
-                            suppressHydrationWarning
-                        >
-                            <Plus className="h-5 w-5 mr-2" /> Add Your Property Room
-                        </Button>
+                            );
+                        })}
+
+                        {/* Add Room Button — disabled after 1 room */}
+                        {rooms.length < 1 ? (
+                            <Button 
+                                type="button" 
+                                className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-200 border-none active:scale-95 transition-all text-sm" 
+                                onClick={addRoom}
+                                suppressHydrationWarning
+                            >
+                                <Plus className="h-5 w-5 mr-2" /> Add Your Property Room
+                            </Button>
+                        ) : (
+                            <div className="flex items-center gap-3 bg-slate-50 border-2 border-slate-200 rounded-xl p-4">
+                                <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-black text-slate-700">1 Room Added</p>
+                                    <p className="text-xs text-slate-500 font-medium">You can add more rooms after your property is approved by the admin.</p>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
