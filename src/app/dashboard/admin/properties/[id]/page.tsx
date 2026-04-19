@@ -395,16 +395,13 @@ export default function AdminPropertyDetailPage() {
 
     const STAGES = [
         { key: ["PENDING_VERIFICATION", "UNDER_REVIEW", "CORRECTED"], label: "Submitted", short: "1" },
-        { key: ["VERIFYING_DOCUMENTS"], label: "Verifying Docs", short: "2" },
+        { key: ["VERIFYING_DOCUMENTS", "NEEDS_CORRECTION"], label: "Verifying Docs", short: "2" },
         { key: ["VERIFIED_SUCCESSFULLY"], label: "Docs Verified", short: "3" },
         { key: ["APPROVED_PENDING_PAYMENT"], label: "Pending Payment", short: "4" },
         { key: ["APPROVED_PAYMENT_VERIFIED"], label: "Payment Confirmed", short: "5" },
         { key: ["APPROVED"], label: "Live", short: "6" },
     ];
-    let activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
-    // Milestone alignment: Once docs are verified, the active task is Payment.
-    if (p.status === 'VERIFIED_SUCCESSFULLY') activeIdx = 3;
-    if (p.status === 'APPROVED_PENDING_PAYMENT') activeIdx = 3;
+    const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
 
     const docSections = [
         { label: "Owner Aadhaar", desc: "Government ID - Aadhaar Card", photos: aadhaarPhotos, category: "aadhaarProof", isLegal: true, required: 2 },
