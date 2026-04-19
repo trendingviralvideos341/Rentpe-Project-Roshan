@@ -1050,9 +1050,12 @@ export async function suspendProperty(propertyId: string, notes: string) {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     const result = await prisma.$transaction(async (tx) => {
+        const existingProperty = await tx.property.findUnique({ where: { id: propertyId } });
+        if (!existingProperty) throw new Error("Property not found");
+
         const property = await tx.property.update({
             where: { id: propertyId },
-            data: { status: 'SUSPENDED', adminNotes: notes || null }
+            data: { status: 'SUSPENDED', adminNotes: `[PREV_STATUS:${existingProperty.status}]\n${notes || ''}`.trim() }
         });
 
         await tx.notification.create({
@@ -1093,7 +1096,18 @@ export async function activateProperty(propertyId: string, notes?: string) {
 
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw new Error("Property not found");
-    
+    // Determine the next status for reactivating suspended properties
+    let nextStatus = 'LIVE';
+    let newAdminNotes = property.adminNotes || null;
+
+    if (property.status === 'SUSPENDED' && property.adminNotes?.startsWith('[PREV_STATUS:')) {
+        const match = property.adminNotes.match(/^\[PREV_STATUS:([^\]]+)\]\n?(.*)/s);
+        if (match) {
+            nextStatus = match[1];
+            newAdminNotes = match[2].trim() || null;
+        }
+    }
+
     // Allow activation if payment is verified OR if it was previously suspended
     if (property.status !== 'APPROVED_PAYMENT_VERIFIED' && property.status !== 'SUSPENDED') {
         throw new Error(`Cannot activate property from status: ${property.status}`);
@@ -1106,8 +1120,9 @@ export async function activateProperty(propertyId: string, notes?: string) {
         const updated = await tx.property.update({ 
             where: { id: propertyId }, 
             data: { 
-                status: 'LIVE', 
-                isVerified: true,
+                status: nextStatus, 
+                isVerified: nextStatus === 'LIVE' || property.isVerified,
+                adminNotes: newAdminNotes,
                 displayId: newPropertyDisplayId // Save the upgraded ID
             } 
         });
@@ -1132,9 +1147,9 @@ export async function activateProperty(propertyId: string, notes?: string) {
                 entityType: 'PROPERTY',
                 entityId: propertyId,
                 description: property.status === 'SUSPENDED' 
-                    ? `Admin REACTIVATED property "${property.name}". Internal Note: ${notes || 'No note provided'}`
+                    ? `Admin REACTIVATED property "${property.name}" to status ${nextStatus}. Internal Note: ${notes || 'No note provided'}`
                     : `Admin activated property "${property.name}". Upgraded ID: ${property.displayId} -> ${newPropertyDisplayId}. Status: APPROVED (Live).`,
-                newValue: { status: 'APPROVED', internalNote: notes, displayId: newPropertyDisplayId, ownerDisplayId: newOwnerDisplayId },
+                newValue: { status: nextStatus, internalNote: notes, displayId: newPropertyDisplayId, ownerDisplayId: newOwnerDisplayId },
                 ipAddress: 'internal',
                 userAgent: 'server-action'
             }

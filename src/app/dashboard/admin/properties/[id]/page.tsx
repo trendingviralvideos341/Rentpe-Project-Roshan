@@ -31,14 +31,16 @@ import Link from "next/link";
 
 function statusColor(status: string) {
     const map: Record<string, string> = {
-        APPROVED: "bg-green-100 text-green-800 border-green-200",
+        LIVE: "bg-emerald-100 text-emerald-800 border-emerald-200",
+        APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-200",
         PENDING_VERIFICATION: "bg-amber-100 text-amber-800 border-amber-200",
         VERIFYING_DOCUMENTS: "bg-blue-100 text-blue-800 border-blue-200",
         REJECTED: "bg-red-100 text-red-800 border-red-200",
         NEEDS_CORRECTION: "bg-orange-100 text-orange-800 border-orange-200",
         SUSPENDED: "bg-slate-100 text-slate-700 border-slate-200",
-        VERIFIED_SUCCESSFULLY: "bg-emerald-100 text-emerald-800 border-emerald-200",
+        VERIFIED_SUCCESSFULLY: "bg-teal-100 text-teal-800 border-teal-200",
         APPROVED_PENDING_PAYMENT: "bg-purple-100 text-purple-800 border-purple-200",
+        APPROVED_PAYMENT_VERIFIED: "bg-cyan-100 text-cyan-800 border-cyan-200",
     };
     return map[status] || "bg-gray-100 text-gray-700 border-gray-200";
 }
@@ -399,7 +401,7 @@ export default function AdminPropertyDetailPage() {
         { key: ["VERIFIED_SUCCESSFULLY"], label: "Docs Verified", short: "3" },
         { key: ["APPROVED_PENDING_PAYMENT"], label: "Pending Payment", short: "4" },
         { key: ["APPROVED_PAYMENT_VERIFIED"], label: "Payment Confirmed", short: "5" },
-        { key: ["APPROVED"], label: "Live", short: "6" },
+        { key: ["APPROVED", "LIVE"], label: "Live", short: "6" },
     ];
     const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
 
@@ -699,7 +701,7 @@ export default function AdminPropertyDetailPage() {
                                         <CheckCircle className="h-4 w-4 mr-2" /> Activate & Make Live 🚀
                                     </Button>
                                 )}
-                                {p.status === "APPROVED" && (
+                                {["APPROVED", "LIVE"].includes(p.status) && (
                                     <Button variant="outline" className="w-full h-11 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-red-50 active:scale-[0.98] transition-all"
                                         onClick={() => setActionModal({ type: "suspend" })}>
                                         <XCircle className="h-4 w-4 mr-2" /> Suspend Property
@@ -711,7 +713,7 @@ export default function AdminPropertyDetailPage() {
                                         <CheckCircle className="h-4 w-4 mr-2" /> Reinstate Property
                                     </Button>
                                 )}
-                                {!["APPROVED", "SUSPENDED"].includes(p.status) && (
+                                {!["APPROVED", "LIVE", "SUSPENDED"].includes(p.status) && (
                                     <div className="pt-1 space-y-2 border-t border-slate-100">
                                         <Button className="w-full h-10 bg-slate-700 hover:bg-slate-800 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                             onClick={() => setActionModal({ type: "move_back" })}>
