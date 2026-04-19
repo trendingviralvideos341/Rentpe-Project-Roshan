@@ -45,6 +45,7 @@ function StatusBadge({ status }: { status: string }) {
         VERIFIED_SUCCESSFULLY: { label: "VERIFIED SUCCESSFULLY", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
         APPROVED_PENDING_PAYMENT: { label: "PENDING PAYMENT", color: "bg-orange-50 text-orange-600 border-orange-200" },
         APPROVED: { label: "LIVE & ACTIVE", color: "bg-green-50 text-green-600 border-green-200" },
+        LIVE: { label: "LIVE & ACTIVE", color: "bg-green-50 text-green-600 border-green-200" },
         REJECTED: { label: "REJECTED", color: "bg-red-50 text-red-600 border-red-200" },
         SUSPENDED: { label: "SUSPENDED", color: "bg-slate-50 text-slate-600 border-slate-200" },
     };
@@ -175,7 +176,7 @@ export default function AdminPropertiesPage() {
                         }`}
                     >
                         <span className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-tight">{s.label}</span>
-                        <span className={`text-xl font-black ${s.color}`}>{statusCounts[s.key] || 0}</span>
+                        <span className={`text-xl font-black ${s.color}`}>{s.key === 'APPROVED' ? ((statusCounts['APPROVED'] || 0) + (statusCounts['LIVE'] || 0)) : (statusCounts[s.key] || 0)}</span>
                     </button>
                 ))}
             </div>
@@ -200,7 +201,7 @@ export default function AdminPropertiesPage() {
                                 <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`} />
                                 {tab.label}
                                 <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"}`}>
-                                    {count}
+                                    {tab.key === 'APPROVED' ? ((statusCounts['APPROVED'] || 0) + (statusCounts['LIVE'] || 0)) : count}
                                 </span>
                             </button>
                         );

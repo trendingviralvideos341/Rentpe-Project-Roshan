@@ -27,6 +27,7 @@ const STATUS_MESSAGES: Record<string, { label: string; color: string; bg: string
     APPROVED_PAYMENT_VERIFIED: { label: 'Payment Received. Awaiting Final Activation', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-300', icon: ShieldCheck },
     APPROVED_PENDING_PAYMENT: { label: 'Verification Success! Pay Fee to go Live', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-400', icon: CreditCard },
     APPROVED: { label: 'Property is Live', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: ShieldCheck },
+    LIVE: { label: 'Property is Live', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: ShieldCheck },
     SUSPENDED: { label: 'Property Suspended', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300', icon: AlertTriangle },
     REJECTED: { label: 'Property Rejected', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300', icon: AlertTriangle },
 };
@@ -37,7 +38,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (s === 'PENDING_VERIFICATION') return 1; 
         if (s === 'VERIFYING_DOCUMENTS') return 2; 
         if (s === 'VERIFIED_SUCCESSFULLY' || s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
-        if (s === 'APPROVED') return 5;
+        if (s === 'APPROVED' || s === 'LIVE') return 5;
         if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 3; 
         if (s === 'REJECTED' || s === 'SUSPENDED') return 1;
         return 1;
@@ -46,7 +47,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
     const getStepStatus = (stepIndex: number, activeIndex: number, currentStatus: string) => {
         if (stepIndex < activeIndex) return 'completed';
         if (stepIndex === activeIndex) {
-            if (currentStatus === 'APPROVED' && stepIndex === 5) return 'completed'; // Terminal state is completed
+            if ((currentStatus === 'APPROVED' || currentStatus === 'LIVE') && stepIndex === 5) return 'completed'; // Terminal state is completed
             if (currentStatus === 'APPROVED_PAYMENT_VERIFIED' && stepIndex === 4) return 'completed';
             if (currentStatus === 'SUSPENDED' || currentStatus === 'REJECTED') return 'error';
             if (currentStatus === 'NEEDS_CORRECTION' || currentStatus === 'APPROVED_PENDING_PAYMENT' || adminNotes?.includes('[REUPLOAD')) return 'warning';

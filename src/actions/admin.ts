@@ -634,7 +634,12 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
 
     const where: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
-        where.status = statusFilter;
+        // 'APPROVED' tab shows both APPROVED and LIVE (both mean property is live on platform)
+        if (statusFilter === 'APPROVED') {
+            where.status = { in: ['APPROVED', 'LIVE'] };
+        } else {
+            where.status = statusFilter;
+        }
     }
 
     return prisma.property.findMany({

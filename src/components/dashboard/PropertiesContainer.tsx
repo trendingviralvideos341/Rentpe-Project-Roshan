@@ -180,14 +180,17 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                     <div className="absolute top-3 right-3 z-40">
                                         <Badge className={cn(
                                             "text-white font-black uppercase tracking-widest text-[10px] px-3 py-1 ring-4 ring-white shadow-xl",
+                                            property.status === 'LIVE' ? "bg-emerald-600 hover:bg-emerald-700" :
                                             property.status === 'APPROVED' ? "bg-emerald-600 hover:bg-emerald-700" :
                                             ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? "bg-blue-600" :
                                             property.status === 'NEEDS_CORRECTION' ? "bg-orange-500" :
                                             property.status === 'CORRECTED' ? "bg-indigo-600" :
                                             ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? "bg-amber-500 animate-pulse" :
-                                            property.status === 'VERIFIED_SUCCESSFULLY' ? "bg-emerald-600" : "bg-red-600"
+                                            property.status === 'VERIFIED_SUCCESSFULLY' ? "bg-emerald-600" :
+                                            property.status === 'SUSPENDED' ? "bg-orange-600" : "bg-red-600"
                                         )}>
-                                            {property.status === 'APPROVED' ? 'Live' : 
+                                            {property.status === 'LIVE' ? 'Live' :
+                                             property.status === 'APPROVED' ? 'Live' : 
                                              ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? 'In Review' :
                                              property.status === 'NEEDS_CORRECTION' ? 'Pending' :
                                              property.status === 'CORRECTED' ? 'Resubmitted' :
@@ -292,7 +295,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                                     {processingId === property.id ? "Processing..." : "PAY ₹99"}
                                                 </Button>
                                             )}
-                                            {property.status !== 'APPROVED' && (role === 'owner' || permissions.includes('manage_properties')) && (
+                                            {property.status !== 'APPROVED' && property.status !== 'LIVE' && (role === 'owner' || permissions.includes('manage_properties')) && (
                                                 <button 
                                                     className="h-10 px-8 text-[11px] font-black bg-red-600 hover:bg-red-700 text-white rounded-2xl transition-all active:scale-95 shadow-lg shadow-red-100 uppercase tracking-widest border border-red-700/20"
                                                     onClick={(e) => handleCancelClick(e, property.id, property.name)}
