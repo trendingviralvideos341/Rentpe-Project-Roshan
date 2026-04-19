@@ -242,7 +242,7 @@ export default function AdminPropertiesPage() {
                     </div>
                 ) : (
                     filtered.map((prop: any) => (
-                        <Card key={prop.id} className="rounded-3xl border shadow-sm hover:shadow-xl transition-all group overflow-hidden bg-white">
+                        <Card key={prop.id} className="rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all group overflow-hidden bg-white">
                             <CardContent className="p-0">
                                 <div className="flex flex-col md:flex-row items-stretch min-h-[140px]">
                                     {/* Thumbnail */}
@@ -310,26 +310,26 @@ export default function AdminPropertiesPage() {
                                     </div>
 
                                     {/* Actions Right */}
-                                    <div className="md:w-64 bg-slate-50/50 p-5 md:p-6 border-l border-slate-100 flex flex-col gap-2 justify-center">
+                                    <div className="md:w-56 bg-gradient-to-b from-slate-50 to-white p-4 border-l border-slate-100 flex flex-col gap-2 justify-center">
                                         <Link href={`/dashboard/admin/properties/${prop.id}`}>
-                                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full border-none">
-                                                <Eye className="h-4 w-4 mr-2" /> Details
+                                            <Button className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm shadow-indigo-200">
+                                                <Eye className="h-3.5 w-3.5 mr-1.5" /> Details
                                             </Button>
                                         </Link>
 
                                         {prop.status === 'NEEDS_CORRECTION' && (
                                             <>
                                                 <Button 
-                                                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                    className="w-full h-9 bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-amber-100"
                                                     onClick={async () => {
                                                         await logCorrectionView(prop.id);
                                                         setActionModal({ type: "view_correction", prop });
                                                     }}
                                                 >
-                                                    Needs Corrections Details
+                                                    Corrections Details
                                                 </Button>
                                                 <Button 
-                                                    className="w-full bg-slate-600 hover:bg-slate-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                    className="w-full h-9 bg-slate-700 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-[9px] rounded-xl"
                                                     onClick={() => setActionModal({ type: "rollback", prop })}
                                                 >
                                                     Move Back
@@ -337,13 +337,12 @@ export default function AdminPropertiesPage() {
                                             </>
                                         )}
 
-                                        {/* State Machine Action */}
                                         {prop.status === 'PENDING_VERIFICATION' && (
                                             <Button 
-                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px]"
+                                                className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-blue-100"
                                                 onClick={() => setActionModal({ type: "approve", prop })}
                                             >
-                                                Approve Application <ArrowRight className="h-3.5 w-3.5 ml-2" />
+                                                Approve Application <ArrowRight className="h-3 w-3 ml-1.5" />
                                             </Button>
                                         )}
 
@@ -351,7 +350,7 @@ export default function AdminPropertiesPage() {
                                             <>
                                                 {prop.adminNotes && (
                                                     <Button 
-                                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[10px] rounded-full animate-pulse shadow-lg shadow-orange-100"
+                                                        className="w-full h-9 bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl animate-pulse shadow-lg shadow-amber-100"
                                                         onClick={async () => {
                                                             await logCorrectionView(prop.id);
                                                             setActionModal({ type: "view_correction", prop });
@@ -361,44 +360,44 @@ export default function AdminPropertiesPage() {
                                                     </Button>
                                                 )}
                                                 <Button 
-                                                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                    className="w-full h-9 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-purple-100"
                                                     onClick={() => setActionModal({ type: "verify", prop })}
                                                 >
-                                                    Mark Verified <CheckCircle className="h-3.5 w-3.5 ml-2" />
+                                                    Mark Verified <CheckCircle className="h-3 w-3 ml-1.5" />
                                                 </Button>
                                             </>
                                         )}
 
                                         {prop.status === 'VERIFIED_SUCCESSFULLY' && (
                                             <Button 
-                                                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[10px]"
+                                                className="w-full h-9 bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-orange-100"
                                                 onClick={() => setActionModal({ type: "payment", prop })}
                                             >
-                                                Request Payment <CreditCard className="h-3.5 w-3.5 ml-2" />
+                                                Request Payment <CreditCard className="h-3 w-3 ml-1.5" />
                                             </Button>
                                         )}
 
                                         {prop.status === 'APPROVED_PENDING_PAYMENT' && (
                                             <Button 
-                                                className="w-full bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest text-[10px]"
+                                                className="w-full h-9 bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-green-100"
                                                 onClick={() => setActionModal({ type: "approve", prop })}
                                             >
-                                                Verify & Make Live <CheckCircle className="h-3.5 w-3.5 ml-2" />
+                                                Verify & Make Live <CheckCircle className="h-3 w-3 ml-1.5" />
                                             </Button>
                                         )}
 
                                         {prop.status === 'APPROVED_PAYMENT_VERIFIED' && (
                                             <Button 
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full"
+                                                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-emerald-100"
                                                 onClick={() => setActionModal({ type: "approve", prop })}
                                             >
-                                                Activate & Make Live <CheckCircle className="h-3.5 w-3.5 ml-2" />
+                                                Activate & Make Live <CheckCircle className="h-3 w-3 ml-1.5" />
                                             </Button>
                                         )}
 
                                         {['PENDING_VERIFICATION', 'VERIFYING_DOCUMENTS', 'VERIFIED_SUCCESSFULLY'].includes(prop.status) && (
                                             <Button 
-                                                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black uppercase tracking-widest text-[10px] rounded-full mt-2 h-9 shadow-lg shadow-orange-100 transition-all active:scale-[0.98]" 
+                                                className="w-full h-9 bg-rose-500 hover:bg-rose-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-rose-100" 
                                                 onClick={() => setActionModal({ type: "correction", prop })}
                                             >
                                                 Request Correction
