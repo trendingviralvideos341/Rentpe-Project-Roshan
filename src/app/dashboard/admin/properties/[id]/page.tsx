@@ -456,8 +456,10 @@ export default function AdminPropertyDetailPage() {
                 <CardContent className="p-6">
                     <div className="flex items-center gap-0 overflow-x-auto pb-2">
                         {STAGES.map((stage, i) => {
-                            const done = activeIdx >= 0 && i < activeIdx;
-                            const active = i === activeIdx;
+                            const isLastStage = i === STAGES.length - 1;
+                            const isPropertyLive = p.status === 'LIVE' || p.status === 'APPROVED';
+                            const done = activeIdx >= 0 && (i < activeIdx || (i === activeIdx && isLastStage && isPropertyLive));
+                            const active = i === activeIdx && !(isLastStage && isPropertyLive);
                             return (
                                 <div key={i} className="flex items-center flex-1 min-w-0">
                                     <div className="flex flex-col items-center flex-shrink-0">
