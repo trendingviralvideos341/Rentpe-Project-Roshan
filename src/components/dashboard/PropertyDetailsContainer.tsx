@@ -731,15 +731,28 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
 
             {/* Content Tabs */}
             <Tabs defaultValue="details" className="w-full">
-                <TabsList className="flex items-center w-full max-w-2xl bg-white border-2 border-slate-100 p-2 rounded-[24px] h-20 mb-12 shadow-sm">
-                    <TabsTrigger value="details" className="flex-1 rounded-full font-black uppercase text-[11px] tracking-widest gap-3 h-14 data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all">
-                        <Home className="w-5 h-5" /> Property Details
+                <TabsList className="flex items-center w-full max-w-2xl bg-white border border-slate-200 p-1.5 rounded-2xl h-14 mb-12 shadow-sm gap-1">
+                    <TabsTrigger
+                        value="details"
+                        className="flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 text-slate-500 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-200 transition-all duration-200"
+                    >
+                        <Home className="w-4 h-4" /> Property Details
                     </TabsTrigger>
-                    <TabsTrigger value="rooms" className="flex-1 rounded-full font-black uppercase text-[11px] tracking-widest gap-3 h-14 data-[state=active]:bg-emerald-600 data-[state=active]:text-white transition-all">
-                        <UtensilsCrossed className="w-5 h-5" /> Room & Food ({property.rooms?.length || 0})
+                    <TabsTrigger
+                        value="rooms"
+                        className="flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 text-slate-500 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-200 transition-all duration-200"
+                    >
+                        <UtensilsCrossed className="w-4 h-4" /> Room & Food ({property.rooms?.length || 0})
                     </TabsTrigger>
-                    <TabsTrigger value="verification" className={`flex-1 rounded-full font-black uppercase text-[11px] tracking-widest gap-3 h-14 data-[state=active]:text-white transition-all ${property.adminNotes?.includes('[REUPLOAD') ? 'bg-red-50 text-red-600 data-[state=active]:bg-red-600' : 'data-[state=active]:bg-amber-600'}`}>
-                        <ShieldCheck className="w-5 h-5" /> Verification
+                    <TabsTrigger
+                        value="verification"
+                        className={`flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 text-slate-500 transition-all duration-200 data-[state=active]:text-white data-[state=active]:shadow-md ${
+                            property.adminNotes?.includes('[REUPLOAD')
+                                ? 'data-[state=active]:bg-red-500 data-[state=active]:shadow-red-200'
+                                : 'data-[state=active]:bg-amber-500 data-[state=active]:shadow-amber-200'
+                        }`}
+                    >
+                        <ShieldCheck className="w-4 h-4" /> Verification
                     </TabsTrigger>
                 </TabsList>
 
