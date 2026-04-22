@@ -12,7 +12,10 @@ import {
     requirePropertyPayment,
     activateProperty,
     suspendProperty,
-    moveToReview
+    moveToReview,
+    adminAddRoomToProperty,
+    adminEditRoom,
+    adminDeleteRoom,
 } from "@/actions/admin";
 import { verifyDocument } from "@/actions/adminPhase2";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
@@ -23,7 +26,8 @@ import { toast } from "sonner";
 import {
     ArrowLeft, Building2, User, Phone, Mail, MapPin, RefreshCcw,
     CheckCircle, XCircle, AlertCircle, Image as ImageIcon, Eye, BedDouble,
-    FileText, Shield, ShieldCheck, X, ZoomIn, RotateCcw, ChevronLeft, ChevronRight
+    FileText, Shield, ShieldCheck, X, ZoomIn, RotateCcw, ChevronLeft, ChevronRight,
+    Plus, Trash2, UtensilsCrossed, Pencil
 } from "lucide-react";
 import Link from "next/link";
 
@@ -239,7 +243,7 @@ export default function AdminPropertyDetailPage() {
     const [actionModal, setActionModal] = useState<{ type: string } | null>(null);
     const [reason, setReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<"overview" | "verification">("verification");
+    const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "verification">("overview");
     const [verifiedDocs, setVerifiedDocs] = useState<string[]>([]);
 
     // Viewer state
@@ -250,6 +254,16 @@ export default function AdminPropertyDetailPage() {
     const [auditLoading, setAuditLoading] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [carouselIdx, setCarouselIdx] = useState(0);
+
+    // ── Admin Room Management State ──────────────────────────────────────────
+    const [roomForm, setRoomForm] = useState({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 as 0 | 1 | 2 });
+    const [roomFormErrors, setRoomFormErrors] = useState<Record<string, string>>({});
+    const [savingRoom, setSavingRoom] = useState(false);
+    const [editRoomOpen, setEditRoomOpen] = useState(false);
+    const [editRoomId, setEditRoomId] = useState<string | null>(null);
+    const [editRoomForm, setEditRoomForm] = useState({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 1 as 0 | 1 | 2 });
+    const [editRoomErrors, setEditRoomErrors] = useState<Record<string, string>>({});
+    const [savingEditRoom, setSavingEditRoom] = useState(false);
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
@@ -364,6 +378,80 @@ export default function AdminPropertyDetailPage() {
             setActionModal(null); setReason(""); fetchProperty();
         } catch (e: any) { toast.error(e.message || "Action failed"); }
         finally { setActionLoading(false); }
+    };
+
+    // ── Admin Room Handlers ──────────────────────────────────────────────────
+    const handleAdminSaveRoom = async () => {
+        const errs: Record<string, string> = {};
+        if (!roomForm.roomNumber.trim()) errs.roomNumber = 'Room number is required';
+        if (!roomForm.price || parseFloat(roomForm.price) <= 0) errs.price = 'Valid monthly rent is required';
+        if (roomForm.depositMonths === 0) errs.depositMonths = 'Security deposit selection is mandatory';
+        if (Object.keys(errs).length > 0) { setRoomFormErrors(errs); return; }
+        setRoomFormErrors({});
+        setSavingRoom(true);
+        try {
+            const newRoom = await adminAddRoomToProperty(property!.id, {
+                roomNumber: roomForm.roomNumber,
+                type: roomForm.type,
+                price: parseFloat(roomForm.price),
+                availability: parseInt(roomForm.availability),
+                depositMonths: roomForm.depositMonths,
+            });
+            setProperty((prev: any) => ({ ...prev, rooms: [...(prev.rooms || []), newRoom] }));
+            setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 });
+            toast.success('Room added successfully!');
+        } catch (e: any) { toast.error(`Error: ${e.message}`); }
+        finally { setSavingRoom(false); }
+    };
+
+    const openAdminEditRoom = (room: any) => {
+        setEditRoomId(room.id);
+        setEditRoomForm({
+            roomNumber: room.roomNumber,
+            type: room.type,
+            price: String(room.price),
+            availability: String(room.availability),
+            depositMonths: (room.depositMonths || 1) as 0 | 1 | 2,
+        });
+        setEditRoomErrors({});
+        setEditRoomOpen(true);
+    };
+
+    const handleAdminEditRoom = async () => {
+        if (!editRoomId) return;
+        const errs: Record<string, string> = {};
+        if (!editRoomForm.roomNumber.trim()) errs.roomNumber = 'Room number is required';
+        if (!editRoomForm.price || parseFloat(editRoomForm.price) <= 0) errs.price = 'Valid monthly rent is required';
+        if (editRoomForm.depositMonths === 0) errs.depositMonths = 'Security deposit selection is mandatory';
+        if (Object.keys(errs).length > 0) { setEditRoomErrors(errs); return; }
+        setEditRoomErrors({});
+        setSavingEditRoom(true);
+        try {
+            const updated = await adminEditRoom(editRoomId, {
+                roomNumber: editRoomForm.roomNumber,
+                type: editRoomForm.type,
+                price: parseFloat(editRoomForm.price),
+                availability: parseInt(editRoomForm.availability),
+                depositMonths: editRoomForm.depositMonths,
+            });
+            setProperty((prev: any) => ({
+                ...prev,
+                rooms: prev.rooms.map((r: any) => r.id === editRoomId ? { ...r, ...updated } : r)
+            }));
+            setEditRoomOpen(false);
+            setEditRoomId(null);
+            toast.success('Room updated!');
+        } catch (e: any) { toast.error(`Error: ${e.message}`); }
+        finally { setSavingEditRoom(false); }
+    };
+
+    const handleAdminDeleteRoom = async (roomId: string, roomNumber: string) => {
+        if (!confirm(`Delete Room ${roomNumber}? All its beds will be cancelled.`)) return;
+        try {
+            await adminDeleteRoom(roomId);
+            setProperty((prev: any) => ({ ...prev, rooms: prev.rooms.filter((r: any) => r.id !== roomId) }));
+            toast.success(`Room ${roomNumber} removed.`);
+        } catch (e: any) { toast.error(`Error: ${e.message}`); }
     };
 
     if (loading) return (
@@ -522,6 +610,24 @@ export default function AdminPropertyDetailPage() {
                 </button>
                 <button
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200 ${
+                        activeTab === "rooms"
+                            ? "bg-emerald-600 shadow-md shadow-emerald-200 text-white border border-emerald-700"
+                            : "bg-white shadow-md text-slate-900 border border-slate-200"
+                    }`}
+                    onClick={() => setActiveTab("rooms")}
+                >
+                    <BedDouble className="h-3.5 w-3.5" />
+                    Room &amp; Food
+                    {(p.rooms?.length || 0) > 0 && (
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tabular-nums ${
+                            activeTab === "rooms" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                            {p.rooms.length}
+                        </span>
+                    )}
+                </button>
+                <button
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200 ${
                         activeTab === "verification"
                             ? "bg-indigo-600 shadow-md shadow-indigo-200 text-white border border-indigo-700"
                             : "bg-white shadow-md text-slate-900 border border-slate-200"
@@ -529,7 +635,7 @@ export default function AdminPropertyDetailPage() {
                     onClick={() => setActiveTab("verification")}
                 >
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    Verification Documents
+                    Verification Docs
                     {verifiedDocs.length > 0 && (
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tabular-nums ${
                             activeTab === "verification"
@@ -541,6 +647,236 @@ export default function AdminPropertyDetailPage() {
                     )}
                 </button>
             </div>
+
+            {/* ── ROOM & FOOD TAB ── */}
+            {activeTab === "rooms" && (
+                <div className="space-y-6">
+                    {/* Food & Mess Service */}
+                    <div className="p-6 bg-orange-50/50 rounded-3xl border-2 border-orange-100 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-orange-600 rounded-lg shadow-sm">
+                                    <UtensilsCrossed className="w-4 h-4 text-white" />
+                                </div>
+                                <h4 className="text-xs font-black uppercase tracking-widest text-orange-700">Food &amp; Mess Service</h4>
+                            </div>
+                            <Badge className={`rounded-xl border-2 px-3 py-1 font-black uppercase text-[9px] tracking-widest shadow-sm ${
+                                p.foodType === 'INCLUDED' ? 'bg-green-50 text-green-600 border-green-100' :
+                                p.foodType === 'OPTIONAL' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                                {p.foodType?.replace('_', ' ') || 'NOT AVAILABLE'}
+                            </Badge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-6">
+                            <div className="flex items-center gap-3">
+                                <div className="text-2xl">{p.foodType === 'INCLUDED' ? '🍱' : p.foodType === 'OPTIONAL' ? '🍴' : '🚫'}</div>
+                                <div>
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Service Status</div>
+                                    <div className="text-sm font-bold text-slate-700 uppercase">
+                                        {p.foodType === 'INCLUDED' ? 'Included in Rent' : p.foodType === 'OPTIONAL' ? 'Optional (Add-on)' : 'Not Available'}
+                                    </div>
+                                </div>
+                            </div>
+                            {p.foodType === 'OPTIONAL' && (
+                                <div className="border-l-2 border-orange-100 pl-6 space-y-1">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Monthly Charge</div>
+                                    <div className="text-lg font-black text-orange-600 tracking-tighter">₹{p.foodPricePerMonth || 0}</div>
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-[10px] font-bold text-orange-600/70 border-t border-orange-100/50 pt-3 uppercase tracking-tight">
+                            {p.foodType === 'INCLUDED' ? '✅ Meals are pre-included in the monthly rent amount.' :
+                             p.foodType === 'OPTIONAL' ? 'ℹ️ Students can subscribe to this food service for the extra monthly charge.' :
+                             '❌ This property currently does not offer mess or food services.'}
+                        </p>
+                    </div>
+
+                    {/* Room Inventory Header */}
+                    <div className="flex justify-between items-center flex-wrap gap-3">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                Room Inventory
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{p.rooms?.length || 0} Rooms</Badge>
+                                <Badge variant="outline" className="bg-red-50 text-red-600 border-red-100 text-[9px] font-black">ADMIN VIEW</Badge>
+                            </h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Admin can add, edit and remove rooms for this property</p>
+                        </div>
+                    </div>
+
+                    {/* Two-column: rooms left, Add Room panel right */}
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+                        {/* LEFT — Room Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            {(p.rooms?.length ?? 0) === 0 && (
+                                <div className="col-span-full text-center py-12 text-slate-400 font-bold text-sm bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                    No rooms yet. Use the panel on the right to add the first room.
+                                </div>
+                            )}
+                            {p.rooms?.map((room: any) => {
+                                const depositAmt = (room.depositMonths || 0) * (room.price || 0);
+                                return (
+                                    <div key={room.id} className="border-2 border-emerald-100 rounded-2xl p-4 text-sm flex flex-col justify-between bg-white hover:shadow-xl hover:shadow-emerald-100 transition-all hover:-translate-y-1 group">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center border-b border-emerald-100 pb-3">
+                                                <span className="font-bold flex items-center gap-1.5 text-base">
+                                                    <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
+                                                </span>
+                                                <Badge variant="outline" className="rounded-xl border-emerald-100 bg-blue-50 px-2 py-1 font-black uppercase text-[9px] tracking-widest text-blue-700">{room.type}</Badge>
+                                            </div>
+                                            <div className="flex justify-between items-end">
+                                                <div className="space-y-1.5">
+                                                    <span className="flex items-center gap-1.5 font-bold bg-emerald-50/80 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
+                                                        <BedDouble className="h-3.5 w-3.5" /> {room.availability} BEDS READY
+                                                    </span>
+                                                    <div className="flex flex-col gap-0.5 bg-amber-50/80 px-2.5 py-1.5 rounded-md">
+                                                        <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest leading-none">Security Deposit</span>
+                                                        <span className="text-[13px] font-black text-amber-700 tracking-tight">
+                                                            ₹{depositAmt.toLocaleString('en-IN')}
+                                                            <span className="text-[9px] font-bold ml-1 text-amber-500">({room.depositMonths}M)</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
+                                                    <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{(room.price || 0).toLocaleString('en-IN')}</span>
+                                                </div>
+                                            </div>
+                                            <div className="pt-2 border-t border-emerald-100 flex gap-2">
+                                                <Button
+                                                    className="flex-1 h-9 text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all active:scale-95"
+                                                    onClick={() => openAdminEditRoom(room)}
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5 mr-1" /> EDIT
+                                                </Button>
+                                                <Button
+                                                    className="h-9 w-9 p-0 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
+                                                    onClick={() => handleAdminDeleteRoom(room.id, room.roomNumber)}
+                                                    title="Delete Room"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* RIGHT — Add Room Inline Panel */}
+                        <div className="sticky top-6">
+                            <div className="border-2 border-emerald-200 rounded-3xl overflow-hidden shadow-xl shadow-emerald-100 bg-white">
+                                <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-5 flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                                        <Plus className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Add New Room</h3>
+                                        <p className="text-[10px] text-emerald-200 font-bold mt-0.5">Admin — All fields mandatory</p>
+                                    </div>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    {/* Room Number */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number <span className="text-red-500">*</span></label>
+                                        <input
+                                            className={`w-full h-11 rounded-xl border-2 px-3 font-bold text-slate-800 focus:outline-none ${
+                                                roomFormErrors.roomNumber ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-emerald-300'
+                                            }`}
+                                            placeholder="e.g. 101, B-4"
+                                            value={roomForm.roomNumber}
+                                            onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value}); setRoomFormErrors(p => { const n={...p}; delete n.roomNumber; return n; }); }}
+                                        />
+                                        {roomFormErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.roomNumber}</p>}
+                                    </div>
+                                    {/* Bed Type */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type <span className="text-red-500">*</span></label>
+                                        <select
+                                            className="w-full h-11 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                            value={roomForm.type}
+                                            onChange={e => { const type = e.target.value; const match = type.match(/(\d+)/); const count = match ? match[1] : '1'; setRoomForm({...roomForm, type, availability: count}); }}
+                                        >
+                                            {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                    {/* Rent + Beds */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Rent (₹) <span className="text-red-500">*</span></label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">₹</span>
+                                                <input
+                                                    type="number" min={1}
+                                                    className={`w-full h-11 rounded-xl border-2 pl-7 font-bold text-slate-800 focus:outline-none ${
+                                                        roomFormErrors.price ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-emerald-300'
+                                                    }`}
+                                                    placeholder="5000"
+                                                    value={roomForm.price}
+                                                    onChange={e => { setRoomForm({...roomForm, price: e.target.value}); setRoomFormErrors(p => { const n={...p}; delete n.price; return n; }); }}
+                                                />
+                                            </div>
+                                            {roomFormErrors.price && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.price}</p>}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds</label>
+                                            <input type="number" readOnly className="w-full h-11 rounded-xl border-2 border-slate-100 px-3 font-bold text-slate-500 bg-slate-50 cursor-not-allowed" value={roomForm.availability} />
+                                        </div>
+                                    </div>
+                                    {/* Security Deposit */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                                            🛡️ Security Deposit <span className="text-red-500">*</span>
+                                            <span className="text-[9px] text-slate-400 font-bold normal-case">(Max 2 months)</span>
+                                        </label>
+                                        {!roomForm.price || parseFloat(roomForm.price) <= 0 ? (
+                                            <p className="text-[11px] text-amber-600 font-semibold italic bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">⚠️ Enter monthly rent above to see deposit options</p>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {([1, 2] as const).map(m => {
+                                                    const rent = parseFloat(roomForm.price) || 0;
+                                                    const sel = roomForm.depositMonths === m;
+                                                    return (
+                                                        <button key={m} type="button"
+                                                            onClick={() => { setRoomForm({...roomForm, depositMonths: m}); setRoomFormErrors(p => { const n={...p}; delete n.depositMonths; return n; }); }}
+                                                            className={`h-[72px] rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black ${
+                                                                sel ? (m===1 ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'border-purple-600 bg-purple-600 text-white shadow-lg shadow-purple-200')
+                                                                    : 'border-slate-100 bg-white hover:border-emerald-200'
+                                                            }`}
+                                                        >
+                                                            <span className={`text-[9px] font-black uppercase tracking-widest ${sel ? 'text-white/80' : 'text-slate-500'}`}>{m} Month{m>1?'s':''}</span>
+                                                            <span className={`text-base font-black ${sel ? 'text-white' : 'text-slate-800'}`}>₹{(rent*m).toLocaleString('en-IN')}</span>
+                                                            {sel && <span className="text-[8px] font-black bg-white/20 px-1.5 py-0.5 rounded-full text-white">✓ SELECTED</span>}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {roomFormErrors.depositMonths && <p className="text-[10px] text-red-600 font-black animate-pulse">{roomFormErrors.depositMonths}</p>}
+                                        <p className="text-[9px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Max 2 months • Refundable</p>
+                                    </div>
+                                    {/* Summary */}
+                                    {roomForm.roomNumber && roomForm.price && parseFloat(roomForm.price) > 0 && roomForm.depositMonths > 0 && (
+                                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                            <p className="text-[11px] text-green-700 font-bold">
+                                                Room {roomForm.roomNumber} • ₹{parseFloat(roomForm.price).toLocaleString('en-IN')}/mo • Deposit ₹{(parseFloat(roomForm.price)*roomForm.depositMonths).toLocaleString('en-IN')} ({roomForm.depositMonths}M)
+                                            </p>
+                                        </div>
+                                    )}
+                                    <Button
+                                        className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100 disabled:opacity-50 transition-all active:scale-95"
+                                        onClick={handleAdminSaveRoom}
+                                        disabled={savingRoom}
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        {savingRoom ? 'Adding Room...' : 'Add Room'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Overview Tab */}
             {activeTab === "overview" && (
@@ -916,6 +1252,102 @@ export default function AdminPropertyDetailPage() {
                     </div>
                 );
             })()}
+
+            {/* ── EDIT ROOM DIALOG (Admin) ── */}
+            {editRoomOpen && editRoomId && (
+                <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => { setEditRoomOpen(false); setEditRoomErrors({}); }}>
+                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-5 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                                <Pencil className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest">Edit Room</h3>
+                                <p className="text-[10px] text-indigo-200 font-bold mt-0.5">All fields are mandatory</p>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number <span className="text-red-500">*</span></label>
+                                    <input
+                                        className={`w-full h-11 rounded-xl border-2 px-3 font-bold text-slate-800 focus:outline-none ${
+                                            editRoomErrors.roomNumber ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-indigo-300'
+                                        }`}
+                                        value={editRoomForm.roomNumber}
+                                        onChange={e => { setEditRoomForm({...editRoomForm, roomNumber: e.target.value}); setEditRoomErrors(p => { const n={...p}; delete n.roomNumber; return n; }); }}
+                                    />
+                                    {editRoomErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{editRoomErrors.roomNumber}</p>}
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type</label>
+                                    <select
+                                        className="w-full h-11 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-indigo-300 focus:outline-none"
+                                        value={editRoomForm.type}
+                                        onChange={e => { const type = e.target.value; const match = type.match(/(\d+)/); const count = match ? match[1] : editRoomForm.availability; setEditRoomForm({...editRoomForm, type, availability: count}); }}
+                                    >
+                                        {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Rent (₹) <span className="text-red-500">*</span></label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400">₹</span>
+                                        <input type="number" min={1}
+                                            className={`w-full h-11 rounded-xl border-2 pl-7 font-bold text-slate-800 focus:outline-none ${
+                                                editRoomErrors.price ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-indigo-300'
+                                            }`}
+                                            value={editRoomForm.price}
+                                            onChange={e => { setEditRoomForm({...editRoomForm, price: e.target.value}); setEditRoomErrors(p => { const n={...p}; delete n.price; return n; }); }}
+                                        />
+                                    </div>
+                                    {editRoomErrors.price && <p className="text-[10px] text-red-600 font-bold">{editRoomErrors.price}</p>}
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
+                                    <input type="number" readOnly className="w-full h-11 rounded-xl border-2 border-slate-100 px-3 font-bold text-slate-500 bg-slate-50 cursor-not-allowed" value={editRoomForm.availability} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Security Deposit <span className="text-red-500">*</span></label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {([1, 2] as const).map(m => {
+                                        const rent = parseFloat(editRoomForm.price) || 0;
+                                        const sel = editRoomForm.depositMonths === m;
+                                        return (
+                                            <button key={m} type="button"
+                                                onClick={() => { setEditRoomForm({...editRoomForm, depositMonths: m}); setEditRoomErrors(p => { const n={...p}; delete n.depositMonths; return n; }); }}
+                                                className={`h-20 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black ${
+                                                    sel ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-100 scale-[1.02] shadow-md' : 'border-slate-100 bg-white hover:border-indigo-200'
+                                                }`}
+                                            >
+                                                <span className={`text-xs font-black uppercase tracking-widest ${sel ? 'text-indigo-700' : 'text-slate-500'}`}>{m} Month{m>1?'s':''}</span>
+                                                <span className={`text-lg font-black ${sel ? 'text-indigo-900' : 'text-slate-400'}`}>₹{(rent*m).toLocaleString('en-IN')}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {editRoomErrors.depositMonths && <p className="text-[10px] text-red-600 font-bold">{editRoomErrors.depositMonths}</p>}
+                                <p className="text-[9px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Max 2 months • Refundable</p>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => { setEditRoomOpen(false); setEditRoomErrors({}); }}
+                                    className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-sm bg-slate-900 hover:bg-black text-white transition-all active:scale-95"
+                                >Cancel</button>
+                                <Button
+                                    className="flex-1 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-sm shadow-md disabled:opacity-50"
+                                    onClick={handleAdminEditRoom}
+                                    disabled={savingEditRoom}
+                                >{savingEditRoom ? 'Saving...' : 'Save Changes'}</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── ACTION MODAL ── */}
             {actionModal && (() => {

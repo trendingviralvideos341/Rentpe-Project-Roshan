@@ -673,6 +673,153 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
     });
 }
 
+export async function adminAddRoomToProperty(propertyId: string, roomData: any) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+
+    const availability = parseInt(roomData.availability) || 1;
+    const depositMonths = Math.min(parseInt(roomData.depositMonths) || 1, 2);
+
+    const [roomDisplayId, bedIdsList] = await Promise.all([
+        generateSequentialId('ROOM'),
+        Promise.all(Array(availability).fill(0).map(() => generateSequentialId('BED'))),
+    ]);
+
+    return prisma.$transaction(async (tx) => {
+        const room = await tx.room.create({
+            data: {
+                displayId: roomDisplayId,
+                propertyId,
+                roomNumber: roomData.roomNumber.toString(),
+                type: roomData.type,
+                price: parseFloat(roomData.price),
+                availability,
+                totalBeds: availability,
+                depositMonths,
+                status: 'AVAILABLE',
+            }
+        });
+
+        for (let i = 0; i < availability; i++) {
+            await tx.bed.create({
+                data: {
+                    displayId: bedIdsList[i],
+                    roomId: room.id,
+                    bedNumber: `${room.roomNumber}-${String.fromCharCode(64 + i + 1)}`,
+                    status: 'AVAILABLE'
+                }
+            });
+        }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'CREATE',
+                entityType: 'ROOM',
+                entityId: room.id,
+                description: `Admin added room ${room.roomNumber} to property "${property.name}". Price: ₹${room.price}, Deposit: ${depositMonths}M`,
+                newValue: { roomNumber: room.roomNumber, price: room.price, depositMonths },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return room;
+    });
+}
+
+export async function adminEditRoom(roomId: string, roomData: any) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const room = await prisma.room.findUnique({ where: { id: roomId }, include: { property: true } });
+    if (!room) throw new Error("Room not found");
+
+    const oldAvailability = room.availability;
+    const newAvailability = parseInt(roomData.availability) || oldAvailability;
+    const depositMonths = Math.min(parseInt(roomData.depositMonths) || (room as any).depositMonths || 1, 2);
+
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.room.update({
+            where: { id: roomId },
+            data: {
+                roomNumber: roomData.roomNumber?.toString() || room.roomNumber,
+                type: roomData.type || room.type,
+                price: parseFloat(roomData.price) || room.price,
+                availability: newAvailability,
+                totalBeds: newAvailability,
+                depositMonths,
+            } as any
+        });
+
+        if (newAvailability > oldAvailability) {
+            const bedsToAdd = newAvailability - oldAvailability;
+            const bedIdsList = await Promise.all(Array(bedsToAdd).fill(0).map(() => generateSequentialId('BED')));
+            for (let i = 0; i < bedsToAdd; i++) {
+                await tx.bed.create({
+                    data: {
+                        displayId: bedIdsList[i],
+                        roomId,
+                        bedNumber: `${updated.roomNumber}-${String.fromCharCode(64 + oldAvailability + i + 1)}`,
+                        status: 'AVAILABLE'
+                    }
+                });
+            }
+        }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'ROOM',
+                entityId: roomId,
+                description: `Admin updated room ${updated.roomNumber} on property "${room.property.name}". Price: ₹${updated.price}, Availability: ${updated.availability}`,
+                newValue: { price: updated.price, availability: updated.availability, depositMonths },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return updated;
+    });
+}
+
+export async function adminDeleteRoom(roomId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const room = await prisma.room.findUnique({ where: { id: roomId }, include: { property: true } });
+    if (!room) throw new Error("Room not found");
+
+    return prisma.$transaction(async (tx) => {
+        await tx.bed.updateMany({ where: { roomId }, data: { status: 'CANCELLED' } });
+        const deleted = await tx.room.update({ where: { id: roomId }, data: { status: 'CANCELLED' } });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'DELETE',
+                entityType: 'ROOM',
+                entityId: roomId,
+                description: `Admin removed room ${room.roomNumber} from property "${room.property.name}"`,
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return deleted;
+    });
+}
+
 export async function getAdminPropertyAnalytics() {
     try {
         const session = await getSession();
@@ -1397,45 +1544,6 @@ export async function adminAddRoom(propertyId: string, data: any) {
     return result;
 }
 
-export async function adminDeleteRoom(roomId: string) {
-    const session = await getSession();
-    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
-
-    const room = await prisma.room.findUnique({
-        where: { id: roomId },
-        include: { property: true, beds: true }
-    });
-    if (!room) throw new Error("Room not found");
-
-    // Check if any beds are occupied
-    const occupiedBeds = room.beds.some(bed => bed.status === 'OCCUPIED');
-    if (occupiedBeds) throw new Error("Cannot delete room with occupied beds");
-
-    const result = await prisma.$transaction(async (tx) => {
-        // Cascade soft-delete beds
-        await tx.bed.updateMany({ where: { roomId: roomId }, data: { status: 'CANCELLED' } });
-        const deleted = await tx.room.update({ where: { id: roomId }, data: { status: 'CANCELLED' } });
-
-        await tx.auditLog.create({
-            data: {
-                actorId: session.userId,
-                actorRole: 'ADMIN',
-                actorName: session.name || 'Admin',
-                actionType: 'DELETE',
-                entityType: 'ROOM',
-                entityId: roomId,
-                description: `Admin deleted room ${room.roomNumber} from property "${room.property.name}"`,
-                ipAddress: 'internal',
-                userAgent: 'server-action'
-            }
-        });
-
-        return deleted;
-    });
-
-    revalidatePath('/dashboard/admin/property-approval');
-    return result;
-}
 
 export async function logCorrectionView(propertyId: string) {
     const session = await getSession();
