@@ -52,6 +52,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     // Add Room State
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
     const [roomForm, setRoomForm] = useState({ roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 as 0 | 1 | 2 });
+    const [roomFormErrors, setRoomFormErrors] = useState<Record<string, string>>({});
     const [savingRoom, setSavingRoom] = useState(false);
 
     // Edit Room State
@@ -325,10 +326,16 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     };
 
     const handleSaveRoom = async () => {
-        if (!roomForm.roomNumber || !roomForm.price) {
-            toast.error("Room Number and Rent Price are required.");
+        const errs: Record<string, string> = {};
+        if (!roomForm.roomNumber.trim()) errs.roomNumber = "Room number is required";
+        if (!roomForm.price || parseFloat(roomForm.price) <= 0) errs.price = "Valid monthly rent is required";
+        if (!roomForm.availability || parseInt(roomForm.availability) <= 0) errs.availability = "Beds available must be at least 1";
+        if (roomForm.depositMonths === 0) errs.depositMonths = "Security deposit selection is mandatory";
+        if (Object.keys(errs).length > 0) {
+            setRoomFormErrors(errs);
             return;
         }
+        setRoomFormErrors({});
 
         setSavingRoom(true);
         try {
@@ -336,12 +343,13 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 roomNumber: roomForm.roomNumber,
                 type: roomForm.type,
                 price: parseFloat(roomForm.price),
-                availability: parseInt(roomForm.availability)
+                availability: parseInt(roomForm.availability),
+                depositMonths: roomForm.depositMonths,
             });
 
             setProperty({ ...property, rooms: [...(property.rooms || []), newRoom] });
-            setIsAddRoomOpen(false);
-            setRoomForm({ roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 1 });
+            setRoomForm({ roomNumber: "", type: "Single Sharing (1)", price: "", availability: "1", depositMonths: 0 });
+            setRoomFormErrors({});
             toast.success("Room added successfully!");
         } catch (e: any) {
             toast.error(`Error adding room: ${e.message}`);
@@ -717,7 +725,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                     )}
                 </div>
             )}
-            {(role === 'owner' || (role === 'staff' && permissions?.includes('request_deactivation'))) && property.status === 'APPROVED' && (
+            {(role === 'owner' || (role === 'staff' && permissions?.includes('request_deactivation'))) && (property.status === 'APPROVED' || property.status === 'LIVE') && (
                 <div className="flex justify-end">
                     <button
                         onClick={() => setIsDeactivationOpen(true)}
@@ -812,7 +820,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 </TabsContent>
 
                 <TabsContent value="rooms" className="space-y-6">
-                    {/* Food & Mess Service Section (Standardized with Admin/Owner Registration) */}
+                    {/* Food & Mess Service Section */}
                     <div className="p-6 bg-orange-50/50 rounded-3xl border-2 border-orange-100 space-y-4 mb-8">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -829,7 +837,6 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                 {property.foodType?.replace('_', ' ') || 'NOT AVAILABLE'}
                             </Badge>
                         </div>
-
                         <div className="flex flex-wrap items-center gap-6">
                             <div className="flex items-center gap-3">
                                 <div className="text-2xl">{property.foodType === 'INCLUDED' ? '🍱' : property.foodType === 'OPTIONAL' ? '🍴' : '🚫'}</div>
@@ -847,7 +854,6 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                 </div>
                             )}
                         </div>
-                        
                         <p className="text-[10px] font-bold text-orange-600/70 border-t border-orange-100/50 pt-3 uppercase tracking-tight">
                             {property.foodType === 'INCLUDED' ? '✅ Meals are pre-included in the monthly rent amount.' : 
                              property.foodType === 'OPTIONAL' ? 'ℹ️ Students can choose to subscribe to this food service for the extra monthly charge.' : 
@@ -855,83 +861,273 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         </p>
                     </div>
 
-                    <div className="flex flex-col gap-4 mb-6">
-                        <div className="flex justify-between items-center flex-wrap gap-3">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                                    Room Inventory <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{property.rooms?.length || 0} Rooms</Badge>
-                                </h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Manage available rooms and their pricing</p>
-                            </div>
-                            {role === 'owner' && property.status === 'APPROVED' && (
-                                <Button
-                                    className="h-11 px-6 rounded-2xl font-black uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 flex items-center gap-2 active:scale-95 transition-all"
-                                    onClick={() => setIsAddRoomOpen(true)}
-                                >
-                                    <Plus className="w-4 h-4" /> Add New Room
-                                </Button>
-                            )}
+                    {/* Room Inventory Header */}
+                    <div className="flex justify-between items-center flex-wrap gap-3 mb-2">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                Room Inventory <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">{property.rooms?.length || 0} Rooms</Badge>
+                            </h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Manage available rooms and their pricing</p>
                         </div>
-                        {role === 'owner' && property.status !== 'APPROVED' && (
-                            <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] font-bold text-amber-700">
-                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                Room management is available once your property is approved by RentPe Team.
-                            </div>
-                        )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {property.rooms?.map((room: any) => (
-                            <div key={room.id} className="border-2 border-emerald-50 rounded-2xl p-4 text-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-100 transition-all bg-white hover:-translate-y-1">
-                                {room.photoUrl && (
-                                    <div className="absolute inset-0 z-0 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <img src={room.photoUrl} className="w-full h-full object-cover" />
+                    {/* Not live banner */}
+                    {role === 'owner' && !['APPROVED', 'LIVE'].includes(property.status) && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] font-bold text-amber-700 mb-4">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                            Room management is available once your property is approved by RentPe Team.
+                        </div>
+                    )}
+
+                    {/* Two-column layout for LIVE/APPROVED: rooms left, add-room right */}
+                    {role === 'owner' && ['APPROVED', 'LIVE'].includes(property.status) ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+                            {/* LEFT: Room Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                {(property.rooms?.length ?? 0) === 0 && (
+                                    <div className="col-span-full text-center py-10 text-slate-400 font-bold text-sm bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                        No rooms added yet. Use the panel on the right to add your first room.
                                     </div>
                                 )}
-                                <div className="p-2 space-y-4 relative z-10">
-                                    <div className="relative z-10 flex justify-between items-center mb-4 border-b border-emerald-100 pb-3">
-                                        <span className="font-bold flex items-center gap-1.5 text-base">
-                                            <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
-                                        </span>
-                                        <Badge variant="outline" className="rounded-xl border-emerald-100 bg-blue-50 px-3 py-1 font-black uppercase text-[9px] tracking-widest text-blue-700">{room.type}</Badge>
-                                    </div>
-                                    <div className="relative z-10 flex justify-between items-end text-muted-foreground mt-2">
-                                        <div className="space-y-1">
-                                            <span className="flex items-center gap-1.5 font-bold bg-emerald-50/50 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
-                                                <BedDouble className="h-4 w-4" /> {room.availability} BEDS READY
-                                            </span>
-                                            <span className="flex items-center gap-1.5 font-bold bg-amber-50/50 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wide text-amber-700">
-                                                <ShieldCheck className="h-3.5 w-3.5" /> {room.depositMonths} Month Deposit
-                                            </span>
+                                {property.rooms?.map((room: any) => {
+                                    const depositAmt = (room.depositMonths || 0) * (room.price || 0);
+                                    return (
+                                        <div key={room.id} className="border-2 border-emerald-100 rounded-2xl p-4 text-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-100 transition-all bg-white hover:-translate-y-1">
+                                            {room.photoUrl && (
+                                                <div className="absolute inset-0 z-0 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                    <img src={room.photoUrl} className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                            <div className="relative z-10 space-y-3">
+                                                <div className="flex justify-between items-center border-b border-emerald-100 pb-3">
+                                                    <span className="font-bold flex items-center gap-1.5 text-base">
+                                                        <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
+                                                    </span>
+                                                    <Badge variant="outline" className="rounded-xl border-emerald-100 bg-blue-50 px-2 py-1 font-black uppercase text-[9px] tracking-widest text-blue-700">{room.type}</Badge>
+                                                </div>
+                                                <div className="flex justify-between items-end">
+                                                    <div className="space-y-1.5">
+                                                        <span className="flex items-center gap-1.5 font-bold bg-emerald-50/80 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
+                                                            <BedDouble className="h-3.5 w-3.5" /> {room.availability} BEDS READY
+                                                        </span>
+                                                        <div className="flex flex-col gap-0.5 bg-amber-50/80 px-2.5 py-1.5 rounded-md">
+                                                            <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest leading-none">Security Deposit</span>
+                                                            <span className="text-[13px] font-black text-amber-700 tracking-tight">
+                                                                ₹{depositAmt.toLocaleString('en-IN')}
+                                                                <span className="text-[9px] font-bold ml-1 text-amber-500">({room.depositMonths}M)</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-[9px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
+                                                        <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{(room.price || 0).toLocaleString('en-IN')}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="pt-2 border-t border-emerald-100 flex gap-2">
+                                                    <Button 
+                                                        className="flex-1 h-9 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all active:scale-95" 
+                                                        onClick={() => openEditRoomDialog(room)}
+                                                    >
+                                                        EDIT
+                                                    </Button>
+                                                    <Button 
+                                                        className="h-9 w-9 p-0 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
+                                                        onClick={() => handleDeleteRoom(room.id, room.roomNumber)}
+                                                        title="Delete Room"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
-                                            <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{room.price.toLocaleString()}</span>
+                                    );
+                                })}
+                            </div>
+
+                            {/* RIGHT: Add Room Inline Panel */}
+                            <div className="sticky top-6">
+                                <div className="border-2 border-emerald-200 rounded-3xl overflow-hidden shadow-xl shadow-emerald-100 bg-white">
+                                    {/* Panel Header */}
+                                    <div className="bg-emerald-600 px-6 py-5 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                                            <Plus className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Add New Room</h3>
+                                            <p className="text-[10px] text-emerald-200 font-bold mt-0.5">All fields are mandatory</p>
                                         </div>
                                     </div>
-                                    <div className="relative z-10 mt-3 pt-3 border-t border-emerald-100 flex gap-2">
-                                        {role === 'owner' && property.status === 'APPROVED' && (
-                                            <>
-                                                <Button 
-                                                    className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-md shadow-emerald-100 active:scale-95" 
-                                                    onClick={() => openEditRoomDialog(room)}
-                                                >
-                                                    EDIT ROOM
-                                                </Button>
-                                                <Button 
-                                                    className="h-10 w-10 p-0 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
-                                                    onClick={() => handleDeleteRoom(room.id, room.roomNumber)}
-                                                    title="Delete Room"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </>
+
+                                    <div className="p-6 space-y-4">
+                                        {/* Room Number */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number <span className="text-red-500">*</span></label>
+                                            <Input
+                                                placeholder="e.g. 101, B-4"
+                                                className={`h-11 rounded-xl border-2 font-bold text-slate-800 ${roomFormErrors.roomNumber ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-emerald-300'}`}
+                                                value={roomForm.roomNumber}
+                                                onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value}); setRoomFormErrors(p => { const n = {...p}; delete n.roomNumber; return n; }); }}
+                                            />
+                                            {roomFormErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.roomNumber}</p>}
+                                        </div>
+
+                                        {/* Bed Type */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type <span className="text-red-500">*</span></label>
+                                            <select
+                                                className="w-full h-11 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
+                                                value={roomForm.type}
+                                                onChange={e => {
+                                                    const type = e.target.value;
+                                                    const match = type.match(/(\d+)/);
+                                                    const count = match ? match[1] : "1";
+                                                    setRoomForm({...roomForm, type, availability: count});
+                                                }}
+                                            >
+                                                {['Single Sharing (1)','Double Sharing (2)','Three Sharing (3)','Four Sharing (4)','Five Sharing (5)','Six Sharing (6)'].map(t => <option key={t}>{t}</option>)}
+                                            </select>
+                                        </div>
+
+                                        {/* Monthly Rent + Beds */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Rent (₹) <span className="text-red-500">*</span></label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        className={`h-11 rounded-xl border-2 pl-7 font-bold text-slate-800 ${roomFormErrors.price ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-emerald-300'}`}
+                                                        placeholder="5000"
+                                                        value={roomForm.price}
+                                                        onChange={e => { setRoomForm({...roomForm, price: e.target.value}); setRoomFormErrors(p => { const n = {...p}; delete n.price; return n; }); }}
+                                                    />
+                                                </div>
+                                                {roomFormErrors.price && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.price}</p>}
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
+                                                <Input
+                                                    type="number"
+                                                    readOnly
+                                                    className="h-11 rounded-xl border-2 border-slate-100 font-bold text-slate-500 bg-slate-50 cursor-not-allowed"
+                                                    value={roomForm.availability}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Security Deposit */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                                                🛡️ Security Deposit <span className="text-red-500">*</span>
+                                                <span className="text-[9px] text-slate-400 font-bold normal-case">(Max 2 months)</span>
+                                            </label>
+                                            {!roomForm.price || parseFloat(roomForm.price) <= 0 ? (
+                                                <p className="text-[11px] text-amber-600 font-semibold italic bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
+                                                    ⚠️ Enter monthly rent above to see deposit options
+                                                </p>
+                                            ) : (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {([1, 2] as const).map(m => {
+                                                        const rent = parseFloat(roomForm.price) || 0;
+                                                        const selected = roomForm.depositMonths === m;
+                                                        return (
+                                                            <button
+                                                                key={m}
+                                                                type="button"
+                                                                onClick={() => { setRoomForm({...roomForm, depositMonths: m}); setRoomFormErrors(p => { const n = {...p}; delete n.depositMonths; return n; }); }}
+                                                                className={`h-[72px] rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black ${
+                                                                    selected
+                                                                        ? m === 1
+                                                                            ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                                            : 'border-purple-600 bg-purple-600 text-white shadow-lg shadow-purple-200'
+                                                                        : 'border-slate-100 bg-white hover:border-emerald-200'
+                                                                }`}
+                                                            >
+                                                                <span className={`text-[9px] font-black uppercase tracking-widest ${selected ? 'text-white/80' : 'text-slate-500'}`}>
+                                                                    {m} Month{m > 1 ? 's' : ''}
+                                                                </span>
+                                                                <span className={`text-base font-black ${selected ? 'text-white' : 'text-slate-800'}`}>
+                                                                    ₹{(rent * m).toLocaleString('en-IN')}
+                                                                </span>
+                                                                {selected && (
+                                                                    <span className="text-[8px] font-black bg-white/20 px-1.5 py-0.5 rounded-full text-white">✓ SELECTED</span>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {roomFormErrors.depositMonths && <p className="text-[10px] text-red-600 font-black animate-pulse">{roomFormErrors.depositMonths}</p>}
+                                            <p className="text-[9px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Max 2 months • Refundable</p>
+                                        </div>
+
+                                        {/* Confirmation summary */}
+                                        {roomForm.roomNumber && roomForm.price && parseFloat(roomForm.price) > 0 && roomForm.depositMonths > 0 && (
+                                            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                                                <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                                <p className="text-[11px] text-green-700 font-bold">
+                                                    Room {roomForm.roomNumber} • ₹{parseFloat(roomForm.price).toLocaleString('en-IN')}/mo • Deposit: ₹{(parseFloat(roomForm.price) * roomForm.depositMonths).toLocaleString('en-IN')} ({roomForm.depositMonths}M)
+                                                </p>
+                                            </div>
                                         )}
+
+                                        {/* Submit */}
+                                        <Button
+                                            className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                            onClick={handleSaveRoom}
+                                            disabled={savingRoom}
+                                        >
+                                            <Plus className="w-4 h-4 mr-2" />
+                                            {savingRoom ? 'Adding Room...' : 'Add Room'}
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ) : (
+                        /* Non-owner or non-live: just show room grid */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {property.rooms?.map((room: any) => {
+                                const depositAmt = (room.depositMonths || 0) * (room.price || 0);
+                                return (
+                                    <div key={room.id} className="border-2 border-emerald-50 rounded-2xl p-4 text-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-100 transition-all bg-white hover:-translate-y-1">
+                                        {room.photoUrl && (
+                                            <div className="absolute inset-0 z-0 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                <img src={room.photoUrl} className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        <div className="p-2 space-y-4 relative z-10">
+                                            <div className="relative z-10 flex justify-between items-center mb-4 border-b border-emerald-100 pb-3">
+                                                <span className="font-bold flex items-center gap-1.5 text-base">
+                                                    <Building2 className="h-4 w-4 text-emerald-600" /> Room {room.roomNumber}
+                                                </span>
+                                                <Badge variant="outline" className="rounded-xl border-emerald-100 bg-blue-50 px-3 py-1 font-black uppercase text-[9px] tracking-widest text-blue-700">{room.type}</Badge>
+                                            </div>
+                                            <div className="relative z-10 flex justify-between items-end text-muted-foreground mt-2">
+                                                <div className="space-y-1">
+                                                    <span className="flex items-center gap-1.5 font-bold bg-emerald-50/50 px-2.5 py-1 rounded-md text-[11px] uppercase tracking-wide text-emerald-700">
+                                                        <BedDouble className="h-4 w-4" /> {room.availability} BEDS READY
+                                                    </span>
+                                                    <div className="flex flex-col gap-0.5 bg-amber-50/80 px-2.5 py-1.5 rounded-md">
+                                                        <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest leading-none">Security Deposit</span>
+                                                        <span className="text-[13px] font-black text-amber-700 tracking-tight">
+                                                            ₹{depositAmt.toLocaleString('en-IN')}
+                                                            <span className="text-[9px] font-bold ml-1 text-amber-500">({room.depositMonths}M)</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mb-1">Monthly Rent</span>
+                                                    <span className="font-black text-green-700 text-2xl tracking-tighter leading-none">₹{(room.price || 0).toLocaleString('en-IN')}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="verification" className="space-y-8">
@@ -1166,10 +1362,9 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 </DialogContent>
             </Dialog>
 
-            {/* Add Room Dialog — Premium Design (same layout) */}
-            <Dialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen}>
+            {/* Add Room Dialog — kept for non-LIVE fallback, not used when inline panel is shown */}
+            <Dialog open={isAddRoomOpen} onOpenChange={(open) => { if (!open) { setIsAddRoomOpen(false); setRoomFormErrors({}); } }}>
                 <DialogContent className="max-w-lg rounded-3xl shadow-2xl p-0 overflow-hidden border-0">
-                    {/* Header */}
                     <div className="flex items-center gap-4 px-8 pt-8 pb-4">
                         <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200 flex-shrink-0">
                             <Plus className="w-6 h-6 text-white" />
@@ -1179,27 +1374,26 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Register Inventory for {property?.name}</p>
                         </div>
                     </div>
-
                     <div className="px-8 pb-8 space-y-5">
-                        {/* Row 1: Room Number + Bed Type */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Room Number <span className="text-red-500">*</span></label>
                                 <Input
                                     placeholder="e.g. 101, B-4"
-                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-800 focus:border-emerald-300"
+                                    className={`h-12 rounded-xl border-2 font-bold text-slate-800 ${roomFormErrors.roomNumber ? 'border-red-400' : 'border-slate-100 focus:border-emerald-300'}`}
                                     value={roomForm.roomNumber}
-                                    onChange={e => setRoomForm({...roomForm, roomNumber: e.target.value})}
+                                    onChange={e => { setRoomForm({...roomForm, roomNumber: e.target.value}); setRoomFormErrors(p => { const n = {...p}; delete n.roomNumber; return n; }); }}
                                 />
+                                {roomFormErrors.roomNumber && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.roomNumber}</p>}
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bed Type <span className="text-red-500">*</span></label>
                                 <select
                                     className="w-full h-12 rounded-xl border-2 border-slate-100 bg-white px-3 font-bold text-slate-800 focus:border-emerald-300 focus:outline-none"
                                     value={roomForm.type}
                                     onChange={e => {
                                         const type = e.target.value;
-                                        const match = type.match(/\((\d+)\)/);
+                                        const match = type.match(/(\d+)/);
                                         const count = match ? match[1] : "1";
                                         setRoomForm({...roomForm, type, availability: count});
                                     }}
@@ -1208,44 +1402,27 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                 </select>
                             </div>
                         </div>
-
-                        {/* Row 2: Monthly Price + Beds Available */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Price (₹)</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Price (₹) <span className="text-red-500">*</span></label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400">₹</span>
                                     <Input
                                         type="number"
-                                        className="h-12 rounded-xl border-2 border-slate-100 pl-7 font-bold text-slate-800 focus:border-emerald-300"
+                                        className={`h-12 rounded-xl border-2 pl-7 font-bold text-slate-800 ${roomFormErrors.price ? 'border-red-400' : 'border-slate-100 focus:border-emerald-300'}`}
                                         value={roomForm.price}
-                                        onChange={e => setRoomForm({...roomForm, price: e.target.value})}
+                                        onChange={e => { setRoomForm({...roomForm, price: e.target.value}); setRoomFormErrors(p => { const n = {...p}; delete n.price; return n; }); }}
                                     />
                                 </div>
+                                {roomFormErrors.price && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.price}</p>}
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beds Available</label>
-                                <Input
-                                    type="number"
-                                    readOnly
-                                    className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-500 bg-slate-50 cursor-not-allowed"
-                                    value={roomForm.availability}
-                                />
+                                <Input type="number" readOnly className="h-12 rounded-xl border-2 border-slate-100 font-bold text-slate-500 bg-slate-50 cursor-not-allowed" value={roomForm.availability} />
                             </div>
                         </div>
-
-                        {/* Info note */}
-                        <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
-                            <span className="text-emerald-600 mt-0.5 text-sm">ⓘ</span>
-                            <p className="text-[11px] text-emerald-700 font-semibold leading-relaxed">
-                                Adding beds will automatically generate new bed ID records (e.g. 101-A, 101-B).<br />
-                                You can manage individual beds from the Bed Management tab.
-                            </p>
-                        </div>
-
-                        {/* Security Deposit Months */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Security Deposit Months *</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Security Deposit Months <span className="text-red-500">*</span></label>
                             <div className="grid grid-cols-2 gap-3">
                                 {([1, 2] as const).map(m => {
                                     const rent = parseFloat(roomForm.price) || 0;
@@ -1253,30 +1430,25 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                         <button
                                             key={m}
                                             type="button"
-                                            onClick={() => setRoomForm({...roomForm, depositMonths: m})}
+                                            onClick={() => { setRoomForm({...roomForm, depositMonths: m}); setRoomFormErrors(p => { const n = {...p}; delete n.depositMonths; return n; }); }}
                                             className={`h-20 rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all font-black ${
                                                 roomForm.depositMonths === m
                                                     ? 'border-emerald-500 bg-emerald-50 ring-4 ring-emerald-100 scale-[1.02] shadow-md'
                                                     : 'border-slate-100 bg-white hover:border-emerald-200'
                                             }`}
                                         >
-                                            <span className={`text-xs font-black uppercase tracking-widest ${roomForm.depositMonths === m ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                                {m} Month{m > 1 ? 's' : ''}
-                                            </span>
-                                            <span className={`text-lg font-black ${roomForm.depositMonths === m ? 'text-emerald-900' : 'text-slate-400'}`}>
-                                                ₹{(rent * m).toLocaleString('en-IN')}
-                                            </span>
+                                            <span className={`text-xs font-black uppercase tracking-widest ${roomForm.depositMonths === m ? 'text-emerald-700' : 'text-slate-500'}`}>{m} Month{m > 1 ? 's' : ''}</span>
+                                            <span className={`text-lg font-black ${roomForm.depositMonths === m ? 'text-emerald-900' : 'text-slate-400'}`}>₹{(rent * m).toLocaleString('en-IN')}</span>
                                         </button>
                                     );
                                 })}
                             </div>
-                            <p className="text-[10px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Maximum 2 months for residential PG/Hostel • Deposit is refundable</p>
+                            {roomFormErrors.depositMonths && <p className="text-[10px] text-red-600 font-bold">{roomFormErrors.depositMonths}</p>}
+                            <p className="text-[10px] text-slate-400 font-semibold">Per Model Tenancy Act 2021 — Maximum 2 months • Deposit is refundable</p>
                         </div>
-
-                        {/* Buttons */}
                         <div className="flex gap-3 pt-2">
                             <button
-                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 }); }}
+                                onClick={() => { setIsAddRoomOpen(false); setRoomForm({ roomNumber: '', type: 'Single Sharing (1)', price: '', availability: '1', depositMonths: 0 }); setRoomFormErrors({}); }}
                                 className="flex-1 h-12 rounded-2xl font-black uppercase tracking-widest text-sm bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm"
                             >
                                 CANCEL
@@ -1284,9 +1456,9 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             <Button
                                 className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={handleSaveRoom}
-                                disabled={savingRoom || roomForm.depositMonths === 0}
+                                disabled={savingRoom}
                             >
-                                + {savingRoom ? 'REGISTERING...' : roomForm.depositMonths === 0 ? 'SELECT DEPOSIT' : 'ADD NEW ROOM'}
+                                + {savingRoom ? 'REGISTERING...' : 'ADD ROOM'}
                             </Button>
                         </div>
                     </div>
