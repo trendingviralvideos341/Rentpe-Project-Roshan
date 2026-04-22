@@ -1103,3 +1103,16 @@ export async function rejectPropertyReactivation(propertyId: string, rejectionRe
     revalidatePath('/dashboard/admin/deactivation-requests');
     return { success: true };
 }
+
+export async function updatePropertyRules(propertyId: string, rules: string[]) {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
+    await (prisma.property as any).update({
+        where: { id: propertyId },
+        data: { rules: JSON.stringify(rules) }
+    });
+    revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+    return { success: true };
+}

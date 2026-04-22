@@ -16,6 +16,7 @@ import {
     adminAddRoomToProperty,
     adminEditRoom,
     adminDeleteRoom,
+    adminUpdateProperty,
 } from "@/actions/admin";
 import { verifyDocument } from "@/actions/adminPhase2";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
@@ -265,6 +266,12 @@ export default function AdminPropertyDetailPage() {
     const [editRoomErrors, setEditRoomErrors] = useState<Record<string, string>>({});
     const [savingEditRoom, setSavingEditRoom] = useState(false);
 
+    // ── Admin Property Rules State ────────────────────────────────────────────
+    const [adminRulesEditOpen, setAdminRulesEditOpen] = useState(false);
+    const [adminRulesDraft, setAdminRulesDraft] = useState<string[]>([]);
+    const [adminNewRuleInput, setAdminNewRuleInput] = useState('');
+    const [savingAdminRules, setSavingAdminRules] = useState(false);
+
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
     const handleZoomReset = () => setZoomLevel(1);
@@ -452,6 +459,26 @@ export default function AdminPropertyDetailPage() {
             setProperty((prev: any) => ({ ...prev, rooms: prev.rooms.filter((r: any) => r.id !== roomId) }));
             toast.success(`Room ${roomNumber} removed.`);
         } catch (e: any) { toast.error(`Error: ${e.message}`); }
+    };
+
+    const parseAdminRules = (val: any): string[] => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        try { const p = JSON.parse(val); return Array.isArray(p) ? p : (val ? [String(val)] : []); }
+        catch { return val ? [String(val)] : []; }
+    };
+
+    const handleAdminSaveRules = async (rules: string[]) => {
+        if (!property) return;
+        setSavingAdminRules(true);
+        try {
+            await adminUpdateProperty(property.id, { rules: JSON.stringify(rules) });
+            setProperty((prev: any) => ({ ...prev, rules: JSON.stringify(rules) }));
+            setAdminRulesEditOpen(false);
+            setAdminNewRuleInput('');
+            toast.success('Property rules updated!');
+        } catch (e: any) { toast.error(`Error: ${e.message}`); }
+        finally { setSavingAdminRules(false); }
     };
 
     if (loading) return (
@@ -976,7 +1003,90 @@ export default function AdminPropertyDetailPage() {
                                 </Card>
                             );
                         })()}
+
+                        {/* Property Rules — admin editable */}
+                        <Card className="border shadow-sm rounded-3xl bg-white">
+                            <CardContent className="p-6 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm uppercase tracking-widest">
+                                        🏠 Property Rules
+                                    </h3>
+                                    {!adminRulesEditOpen && (
+                                        <button
+                                            onClick={() => { setAdminRulesDraft(parseAdminRules(property.rules)); setAdminRulesEditOpen(true); }}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-all active:scale-95"
+                                        >
+                                            <Pencil className="w-3 h-3" /> Edit Rules
+                                        </button>
+                                    )}
+                                </div>
+                                {!adminRulesEditOpen ? (
+                                    <div>
+                                        {parseAdminRules(property.rules).length === 0 ? (
+                                            <p className="text-sm text-slate-400 font-bold italic">No rules set. Click &quot;Edit Rules&quot; to add property rules.</p>
+                                        ) : (
+                                            <ul className="space-y-2">
+                                                {parseAdminRules(property.rules).map((rule: string, i: number) => (
+                                                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700">
+                                                        <span className="text-amber-500 font-black mt-0.5 shrink-0">•</span>
+                                                        <span className="font-medium leading-snug">{rule}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <div className="space-y-2">
+                                            {adminRulesDraft.map((rule: string, i: number) => (
+                                                <div key={i} className="flex items-center gap-2 bg-slate-50 border border-amber-100 rounded-xl px-3 py-2">
+                                                    <span className="text-amber-500 font-black shrink-0">•</span>
+                                                    <span className="flex-1 text-sm font-medium text-slate-700">{rule}</span>
+                                                    <button
+                                                        onClick={() => setAdminRulesDraft(adminRulesDraft.filter((_, idx) => idx !== i))}
+                                                        className="h-7 w-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 shrink-0 transition-all"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {adminRulesDraft.length === 0 && (
+                                                <p className="text-xs text-slate-400 italic py-1">No rules yet — add one below.</p>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                value={adminNewRuleInput}
+                                                onChange={e => setAdminNewRuleInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter' && adminNewRuleInput.trim()) { setAdminRulesDraft([...adminRulesDraft, adminNewRuleInput.trim()]); setAdminNewRuleInput(''); } }}
+                                                placeholder="Type a rule and press Enter..."
+                                                className="flex-1 h-10 rounded-xl border-2 border-amber-200 px-3 text-sm font-medium focus:outline-none focus:border-amber-400 bg-white"
+                                            />
+                                            <button
+                                                disabled={!adminNewRuleInput.trim()}
+                                                onClick={() => { if (adminNewRuleInput.trim()) { setAdminRulesDraft([...adminRulesDraft, adminNewRuleInput.trim()]); setAdminNewRuleInput(''); } }}
+                                                className="h-10 w-10 flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white rounded-xl disabled:opacity-40 transition-all shrink-0"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2 pt-2 border-t border-slate-100">
+                                            <button
+                                                onClick={() => { setAdminRulesEditOpen(false); setAdminNewRuleInput(''); }}
+                                                className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[10px] uppercase tracking-widest transition-all"
+                                            >Cancel</button>
+                                            <button
+                                                onClick={() => handleAdminSaveRules(adminRulesDraft)}
+                                                disabled={savingAdminRules}
+                                                className="flex-1 h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
+                                            >{savingAdminRules ? 'Saving...' : 'Save Rules'}</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
+
 
                     <div className="space-y-4">
                         {/* Owner */}
@@ -1040,7 +1150,7 @@ export default function AdminPropertyDetailPage() {
                                     </Button>
                                 )}
                                 {["APPROVED", "LIVE"].includes(p.status) && (
-                                    <Button variant="outline" className="w-full h-11 border-red-200 text-red-600 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-red-50 active:scale-[0.98] transition-all"
+                                    <Button className="w-full h-11 bg-red-600 hover:bg-red-700 active:bg-red-800 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all shadow-md shadow-red-200"
                                         onClick={() => setActionModal({ type: "suspend" })}>
                                         <XCircle className="h-4 w-4 mr-2" /> Suspend Property
                                     </Button>

@@ -117,6 +117,7 @@ model Property {
   address                    String
   city                       String
   description                String?
+  rules                      String?
   amenities                  String
   images                     String
   status                     String                       @default("PENDING_VERIFICATION")

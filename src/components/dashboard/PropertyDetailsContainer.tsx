@@ -9,14 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation } from "@/actions/properties";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation, updatePropertyRules } from "@/actions/properties";
 import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
     BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
     Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
-    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle, Zap
+    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle, Zap, Pencil
 } from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -73,6 +73,12 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     const [reactivationReason, setReactivationReason] = useState('');
     const [reactivating, setReactivating] = useState(false);
 
+    // Property Rules State
+    const [rulesEditOpen, setRulesEditOpen] = useState(false);
+    const [rulesDraft, setRulesDraft] = useState<string[]>([]);
+    const [newRuleInput, setNewRuleInput] = useState('');
+    const [savingRules, setSavingRules] = useState(false);
+
     // Live Capture State
     const [isCaptureOpen, setIsCaptureOpen] = useState(false);
     const [capturing, setCapturing] = useState(false);
@@ -113,6 +119,25 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
         const interval = setInterval(() => fetchProperty(true), 30000);
         return () => clearInterval(interval);
     }, [fetchProperty]);
+
+    const parseRules = (val: any): string[] => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        try { const p = JSON.parse(val); return Array.isArray(p) ? p : (val ? [String(val)] : []); }
+        catch { return val ? [String(val)] : []; }
+    };
+
+    const handleSaveRules = async (rules: string[]) => {
+        setSavingRules(true);
+        try {
+            await updatePropertyRules(property.id, rules);
+            setProperty({ ...property, rules: JSON.stringify(rules) });
+            setRulesEditOpen(false);
+            setNewRuleInput('');
+            toast.success('Property rules saved!');
+        } catch (e: any) { toast.error(`Error: ${e.message}`); }
+        finally { setSavingRules(false); }
+    };
 
     const startCapture = async () => {
         setIsCaptureOpen(true);
@@ -765,58 +790,135 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2 space-y-6">
-                            <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
-                                <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                                    <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{property.description}</p>
-                                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t-2 border-slate-50">
-                                        <div className="space-y-2">
-                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Available Amenities</div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {(property.amenities || '').split(',').filter(Boolean).map((a: string) => (
-                                                    <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">{a.trim()}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest">House Rules</div>
-                                            <p className="text-xs font-bold text-slate-600">{property.rules || "Standard PG Rules Apply"}</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
-                                <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                                    <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Gallery</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    <PropertyPhotoCarousel 
-                                        property={property} 
-                                        className="rounded-xl overflow-hidden shadow-sm border border-slate-100" 
-                                        aspectClassName="aspect-video"
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Property Description + Amenities */}
                         <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
                             <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
-                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Location Map</CardTitle>
+                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6 flex flex-col items-center justify-center min-h-[200px] text-center space-y-3">
-                                <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-3xl">📍</div>
-                                <div>
-                                    <div className="font-black text-slate-800 uppercase tracking-tight">{property.city}</div>
-                                    <p className="text-xs font-bold text-slate-400 mt-1">{property.address}</p>
+                            <CardContent className="p-6 space-y-6">
+                                <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{property.description}</p>
+                                <div className="pt-4 border-t-2 border-slate-50 space-y-2">
+                                    <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Available Amenities</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(property.amenities || '').split(',').filter(Boolean).map((a: string) => (
+                                            <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">{a.trim()}</span>
+                                        ))}
+                                    </div>
                                 </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Gallery */}
+                        <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
+                            <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
+                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Gallery</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <PropertyPhotoCarousel
+                                    property={property}
+                                    className="rounded-xl overflow-hidden shadow-sm border border-slate-100"
+                                    aspectClassName="aspect-video"
+                                />
                             </CardContent>
                         </Card>
                     </div>
 
+                    {/* Property Rules — editable bullet points */}
+                    <Card className="rounded-3xl border-2 border-amber-100 shadow-sm overflow-hidden bg-amber-50/20">
+                        <CardHeader className="bg-amber-50/60 border-b-2 border-amber-100">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-black uppercase tracking-widest text-amber-700">🏠 Property Rules</CardTitle>
+                                {!rulesEditOpen && (
+                                    <button
+                                        onClick={() => { setRulesDraft(parseRules(property.rules)); setRulesEditOpen(true); }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-all active:scale-95"
+                                    >
+                                        <Pencil className="w-3 h-3" /> Edit Rules
+                                    </button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            {!rulesEditOpen ? (
+                                <div>
+                                    {parseRules(property.rules).length === 0 ? (
+                                        <p className="text-sm text-slate-400 font-bold italic">No rules set yet. Click “Edit Rules” to add property rules.</p>
+                                    ) : (
+                                        <ul className="space-y-2">
+                                            {parseRules(property.rules).map((rule: string, i: number) => (
+                                                <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700">
+                                                    <span className="text-amber-500 font-black mt-0.5 shrink-0">•</span>
+                                                    <span className="font-medium leading-snug">{rule}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        {rulesDraft.map((rule: string, i: number) => (
+                                            <div key={i} className="flex items-center gap-2 bg-white border border-amber-100 rounded-xl px-3 py-2.5">
+                                                <span className="text-amber-500 font-black shrink-0">•</span>
+                                                <span className="flex-1 text-sm font-medium text-slate-700">{rule}</span>
+                                                <button
+                                                    onClick={() => setRulesDraft(rulesDraft.filter((_, idx) => idx !== i))}
+                                                    className="h-7 w-7 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 shrink-0 transition-all"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {rulesDraft.length === 0 && (
+                                            <p className="text-xs text-slate-400 italic py-2">No rules yet — add one below.</p>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={newRuleInput}
+                                            onChange={e => setNewRuleInput(e.target.value)}
+                                            onKeyDown={e => { if (e.key === 'Enter' && newRuleInput.trim()) { setRulesDraft([...rulesDraft, newRuleInput.trim()]); setNewRuleInput(''); } }}
+                                            placeholder="Type a rule and press Enter or click Add..."
+                                            className="flex-1 h-10 rounded-xl border-2 border-amber-200 px-3 text-sm font-medium focus:outline-none focus:border-amber-400 bg-white"
+                                        />
+                                        <button
+                                            disabled={!newRuleInput.trim()}
+                                            onClick={() => { if (newRuleInput.trim()) { setRulesDraft([...rulesDraft, newRuleInput.trim()]); setNewRuleInput(''); } }}
+                                            className="h-10 w-10 flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white rounded-xl disabled:opacity-40 transition-all shrink-0 active:scale-95"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-2 pt-2 border-t border-amber-100">
+                                        <button
+                                            onClick={() => { setRulesEditOpen(false); setNewRuleInput(''); }}
+                                            className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[11px] uppercase tracking-widest transition-all active:scale-95"
+                                        >Cancel</button>
+                                        <button
+                                            onClick={() => handleSaveRules(rulesDraft)}
+                                            disabled={savingRules}
+                                            className="flex-1 h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[11px] uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95"
+                                        >{savingRules ? 'Saving...' : 'Save Rules'}</button>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Location Map — moved to bottom */}
+                    <Card className="rounded-3xl border-2 border-slate-50 shadow-sm overflow-hidden">
+                        <CardHeader className="bg-slate-50/50 border-b-2 border-slate-50">
+                            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Location Map</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-center min-h-[140px] gap-6">
+                            <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-3xl shrink-0">📍</div>
+                            <div className="text-center sm:text-left">
+                                <div className="font-black text-slate-800 uppercase tracking-tight text-lg">{property.city}</div>
+                                <p className="text-sm font-bold text-slate-400 mt-1">{property.address}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="rooms" className="space-y-6">
