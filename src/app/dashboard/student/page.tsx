@@ -170,6 +170,12 @@ export default function StudentDashboardPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleCancel = async (bookingId: string) => {
+        const reason = prompt("Why are you cancelling this booking?");
+        if (!reason || !reason.trim()) {
+            toast.error("Cancellation reason is required.");
+            return;
+        }
+
         toast("Cancel this booking request?", {
             description: "This action cannot be undone.",
             action: {
@@ -177,7 +183,7 @@ export default function StudentDashboardPage() {
                 onClick: async () => {
                     setCancellingId(bookingId);
                     try {
-                        await cancelBooking(bookingId);
+                        await cancelBooking(bookingId, reason);
                         toast.success("Booking cancelled successfully.");
                         await fetchData();
                     } catch (e: any) {

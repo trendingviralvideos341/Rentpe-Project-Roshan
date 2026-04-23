@@ -77,6 +77,8 @@ const TIMELINE_STEPS = [
 export function BookingTimeline({ booking }: BookingTimelineProps) {
     const currentStatus = booking.status;
     const isRejected = currentStatus === 'REJECTED';
+    const isCancelled = currentStatus === 'CANCELLED';
+    const isFailed = isRejected || isCancelled;
 
     const getActiveIndex = (status: string) => {
         // Step 0 — Application
@@ -122,7 +124,7 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                 {/* Timeline Steps */}
                 {TIMELINE_STEPS.map((step, index) => {
                     const isCompleted = index < activeIndex || (currentStatus === 'COMPLETED' && index === TIMELINE_STEPS.length - 1);
-                    const isCurrent = index === activeIndex && !isRejected;
+                    const isCurrent = index === activeIndex && !isFailed;
                     const isUpcoming = index > activeIndex;
                     const Icon = step.icon;
                     const dateVal = booking[step.dateField] || (index === 0 ? booking.createdAt : null);
@@ -178,19 +180,21 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                     );
                 })}
 
-                {/* Rejected State */}
-                {isRejected && (
+                {/* Failed State (Rejected or Cancelled) */}
+                {isFailed && (
                     <div className="col-span-full mt-4 p-4 rounded-2xl bg-red-50 border-2 border-red-200 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="p-2 bg-red-100 rounded-full">
                             <AlertCircle className="w-6 h-6 text-red-600" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black text-red-900 uppercase tracking-widest">Booking Rejected</h3>
+                            <h3 className="text-sm font-black text-red-900 uppercase tracking-widest">
+                                Booking {isCancelled ? 'Cancelled' : 'Rejected'}
+                            </h3>
                             <p className="text-xs text-red-700 font-medium mt-1">
-                                {booking.rejectionReason || booking.cancelReason || 'Your application was unfortunately not accepted at this time.'}
+                                {booking.cancelReason || booking.rejectionReason || (isCancelled ? 'This booking has been cancelled.' : 'Your application was unfortunately not accepted at this time.')}
                             </p>
                             <p className="text-[10px] text-red-600 italic mt-2">
-                                Dated: {booking.rejectedAt ? format(new Date(booking.rejectedAt), "dd MMM yyyy, HH:mm") : format(new Date(booking.updatedAt), "dd MMM yyyy, HH:mm")}
+                                Dated: {format(new Date(booking.updatedAt), "dd MMM yyyy, HH:mm")}
                             </p>
                         </div>
                     </div>

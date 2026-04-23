@@ -423,8 +423,9 @@ export function BookingsContainer() {
         setCancelModal({ id: bookingId, name: guestName });
     };
     const confirmCancel = async () => {
+        if (!cancelReason.trim()) { toast.error("Please provide a cancellation reason."); return; }
         try {
-            await cancelBooking(cancelModal!.id, cancelReason || "Cancelled by owner");
+            await cancelBooking(cancelModal!.id, cancelReason);
             toast.success("Booking cancelled.");
             setCancelModal(null); setCancelReason(""); fetchData();
         } catch { toast.error("Failed to cancel booking."); }
@@ -637,7 +638,14 @@ export function BookingsContainer() {
                                                 {booking.onboardingDate || booking.moveInDate || "—"}
                                                 <div className="text-[9px] opacity-60">{new Date(booking.createdAt).toLocaleDateString('en-IN')}</div>
                                             </td>
-                                            <td className="p-4"><StatusBadge status={booking.status} /></td>
+                                            <td className="p-4">
+                                                <StatusBadge status={booking.status} />
+                                                {(booking.status === 'REJECTED' || booking.status === 'CANCELLED') && (booking.rejectionReason || booking.cancelReason) && (
+                                                    <div className="text-[9px] text-red-600 font-bold mt-1 max-w-[120px] leading-tight break-words">
+                                                        Reason: {booking.rejectionReason || booking.cancelReason}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="p-4"><OwnerNextStep booking={booking} /></td>
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end items-center gap-2">
@@ -701,7 +709,7 @@ export function BookingsContainer() {
                         <h3 className="font-black text-lg text-red-700">Cancel Booking</h3>
                         <p className="text-sm text-muted-foreground">Cancel booking for <strong>{cancelModal.name}</strong>? This cannot be undone.</p>
                         <textarea className="w-full border rounded-xl p-3 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-red-300"
-                            placeholder="Reason (optional)..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
+                            placeholder="Provide a reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
                         <div className="flex gap-3">
                             <Button variant="outline" className="flex-1" onClick={() => { setCancelModal(null); setCancelReason(""); }}>Back</Button>
                             <Button variant="destructive" className="flex-1" onClick={confirmCancel}>✕ Confirm Cancel</Button>
