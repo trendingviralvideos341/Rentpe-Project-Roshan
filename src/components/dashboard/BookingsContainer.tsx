@@ -315,7 +315,7 @@ export function BookingsContainer() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "PAID" | "REJECTED" | "CANCELLED">("ALL");
+    const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "KYC" | "ROOM_ALLOCATED" | "AGREEMENT" | "MOVE_IN_SET" | "ACTIVE" | "REJECTED" | "CANCELLED">("ALL");
     const [search, setSearch] = useState("");
     const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
     const [propertyFilter, setPropertyFilter] = useState("ALL");
@@ -431,6 +431,18 @@ export function BookingsContainer() {
     };
 
     // ── Filtering ─────────────────────────────────────────────────
+    const STATUS_GROUPS: Record<string, string[]> = {
+        ALL: [],
+        PENDING: ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
+        KYC: ["KYC_PENDING", "APPROVED_KYC_PENDING"],
+        ROOM_ALLOCATED: ["APPROVED", "ROOM_RESERVED"],
+        AGREEMENT: ["AGREEMENT_PENDING", "PAID", "CASH_PAID"],
+        MOVE_IN_SET: ["MOVE_IN_SCHEDULED"],
+        ACTIVE: ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
+        REJECTED: ["REJECTED", "KYC_FAILED"],
+        CANCELLED: ["CANCELLED", "EXPIRED"],
+    };
+
     const filteredBookings = bookings.filter(b => {
         const matchesSearch =
             (b.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -444,11 +456,10 @@ export function BookingsContainer() {
         }
         if (propertyFilter !== "ALL" && b.propertyName !== propertyFilter) return false;
         if (roomTypeFilter !== "ALL" && b.occupancy !== roomTypeFilter) return false;
-        if (activeTab === "PENDING") return ["REQUESTED", "APPLIED", "PENDING_APPROVAL"].includes(b.status);
-        if (activeTab === "APPROVED") return ["APPROVED", "APPROVED_PENDING_TOKEN", "KYC_PENDING", "APPROVED_KYC_PENDING", "ROOM_RESERVED", "AGREEMENT_PENDING"].includes(b.status);
-        if (activeTab === "PAID") return ["PAID", "CASH_PAID", "MOVE_IN_SCHEDULED", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED", "ACTIVE", "CHECKED_OUT", "COMPLETED"].includes(b.status);
-        if (activeTab === "REJECTED") return b.status === "REJECTED" || b.status === "KYC_FAILED";
-        if (activeTab === "CANCELLED") return b.status === "CANCELLED" || b.status === "EXPIRED";
+
+        const group = STATUS_GROUPS[activeTab];
+        if (activeTab !== "ALL" && group && !group.includes(b.status)) return false;
+
         return true;
     });
 
@@ -585,15 +596,20 @@ export function BookingsContainer() {
                         ))}
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                        {(["ALL", "PENDING", "APPROVED", "PAID", "REJECTED", "CANCELLED"] as const).map(t => (
+                        {([
+                            ["ALL", `📋 All (${bookings.length})`],
+                            ["PENDING", `🔴 New`],
+                            ["KYC", `📝 KYC`],
+                            ["ROOM_ALLOCATED", `🛏 Room Allocated`],
+                            ["AGREEMENT", `✍️ Agreement`],
+                            ["MOVE_IN_SET", `📅 Move-In Set`],
+                            ["ACTIVE", `🏠 Active`],
+                            ["REJECTED", `❌ Rejected`],
+                            ["CANCELLED", `🚫 Cancelled`],
+                        ] as const).map(([t, label]) => (
                             <Button key={t} size="sm" onClick={() => setActiveTab(t)}
                                 className={`h-7 text-[10px] font-bold transition-all ${activeTab === t ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md" : "bg-white border hover:bg-muted text-foreground"}`}>
-                                {t === "ALL" ? `📋 All (${bookings.length})`
-                                    : t === "PENDING" ? `🔴 New`
-                                    : t === "APPROVED" ? `⏳ In Progress`
-                                    : t === "PAID" ? `✅ Paid/Active`
-                                    : t === "REJECTED" ? `❌ Rejected`
-                                    : `🚫 Cancelled`}
+                                {label}
                             </Button>
                         ))}
                     </div>
