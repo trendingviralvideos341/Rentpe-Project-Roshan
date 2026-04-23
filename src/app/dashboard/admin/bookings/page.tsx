@@ -14,7 +14,8 @@ import {
     approveBooking, 
     rejectBooking as rejectBookingAction, 
     markBookingPaid, 
-    checkInBooking 
+    checkInBooking,
+    cancelBooking
 } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
@@ -282,6 +283,8 @@ export default function AdminBookingsPage() {
     const [paymentFilter, setPaymentFilter] = useState("ALL");
     const [rejectModal, setRejectModal] = useState<{ id: string } | null>(null);
     const [rejectReason, setRejectReason] = useState("");
+    const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
 
     const fetchBookings = useCallback(async () => {
         setLoading(true);
@@ -332,6 +335,19 @@ export default function AdminBookingsPage() {
         } catch { toast.error("Rejection failed."); }
     };
 
+    const handleCancel = (bookingId: string, guestName: string) => {
+        setCancelReason("");
+        setCancelModal({ id: bookingId, name: guestName });
+    };
+
+    const confirmCancel = async () => {
+        try {
+            await cancelBooking(cancelModal!.id, cancelReason);
+            toast.success("Booking cancelled.");
+            setCancelModal(null); setCancelReason(""); fetchBookings();
+        } catch { toast.error("Failed to cancel booking."); }
+    };
+
     const handleMarkCashPaid = (bookingId: string) => {
         toast("Mark booking as Cash Paid?", {
             description: "Admin override — reservation will be confirmed.",
@@ -364,12 +380,27 @@ export default function AdminBookingsPage() {
         });
     };
 
+    const STATUS_GROUPS: Record<string, string[]> = {
+        ALL: [],
+        APPLIED: ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
+        KYC_PENDING: ["KYC_PENDING", "APPROVED_KYC_PENDING"],
+        ROOM_ALLOCATED: ["APPROVED", "ROOM_RESERVED"],
+        AGREEMENT_SIGNED: ["AGREEMENT_PENDING", "PAID", "CASH_PAID"],
+        MOVE_IN_SCHEDULED: ["MOVE_IN_SCHEDULED"],
+        APPROVED_PAYMENT_PENDING: ["APPROVED_PAYMENT_PENDING"],
+        ACTIVE: ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
+        REJECTED: ["REJECTED", "KYC_FAILED"],
+        CANCELLED: ["CANCELLED", "EXPIRED"],
+    };
+
     const filtered = bookings.filter(b => {
         const matchesSearch =
             (b.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
             (b.displayId || "").toLowerCase().includes(search.toLowerCase()) ||
             (b.propertyName || "").toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = filterStatus === "ALL" || b.status === filterStatus;
+
+        const group = STATUS_GROUPS[filterStatus];
+        const matchesStatus = filterStatus === "ALL" || (group && group.includes(b.status));
         
         // Date Logic
         if (dateFilter !== "ALL") {
@@ -470,19 +501,22 @@ export default function AdminBookingsPage() {
                     </div>
 
                     <div className="flex gap-2 flex-wrap">
-                        {(["ALL", "APPLIED", "KYC_PENDING", "APPROVED_PAYMENT_PENDING", "PAID", "ACTIVE", "REJECTED", "CANCELLED"] as const).map(t => (
+                        {([
+                            ["ALL", "📋 All"],
+                            ["APPLIED", "🔴 New"],
+                            ["KYC_PENDING", "📝 KYC"],
+                            ["ROOM_ALLOCATED", "🛏 Room Allocated"],
+                            ["AGREEMENT_SIGNED", "✍️ Agreement"],
+                            ["MOVE_IN_SCHEDULED", "📅 Move-In Set"],
+                            ["ACTIVE", "🏠 Active"],
+                            ["REJECTED", "❌ Rejected"],
+                            ["CANCELLED", "🚫 Cancelled"],
+                        ] as const).map(([t, label]) => (
                             <Button key={t} size="sm" onClick={() => setFilterStatus(t)}
                                 className={`h-7 text-[10px] font-bold transition-all ${filterStatus === t
                                     ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
                                     : "bg-white border hover:bg-muted text-foreground"}`}>
-                                {t === "ALL" ? "📋 All"
-                                    : t === "APPLIED" ? "🔴 New"
-                                    : t === "KYC_PENDING" ? "📝 KYC"
-                                    : t === "APPROVED_PAYMENT_PENDING" ? "💳 Payment"
-                                    : t === "PAID" ? "✅ Paid"
-                                    : t === "ACTIVE" ? "🏠 Active"
-                                    : t === "REJECTED" ? "❌ Rejected"
-                                    : "🚫 Cancelled"}
+                                {label}
                             </Button>
                         ))}
                     </div>
@@ -591,8 +625,15 @@ export default function AdminBookingsPage() {
                                                                     {booking.status === 'APPROVED' && (
                                                                         <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
                                                                     )}
-                                                                    {(booking.status === 'PAID' || booking.status === 'CASH_PAID') && (
+                                                                    {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
                                                                         <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>🚀 Check-in</Button>
+                                                                    )}
+                                                                    {!['ACTIVE', 'COMPLETED', 'CHECKED_OUT', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(booking.status) && (
+                                                                        <button
+                                                                            onClick={() => handleCancel(booking.id, booking.guestName)}
+                                                                            className="h-7 px-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 uppercase tracking-wide">
+                                                                            ✕ Cancel
+                                                                        </button>
                                                                     )}
                                                                     <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-colors"
                                                                         onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
@@ -634,6 +675,29 @@ export default function AdminBookingsPage() {
                                 <div className="flex gap-3">
                                     <Button variant="outline" className="flex-1" onClick={() => { setRejectModal(null); setRejectReason(""); }}>Cancel</Button>
                                     <Button variant="destructive" className="flex-1" onClick={confirmReject}>Confirm Reject</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Cancel Modal ── */}
+                    {cancelModal && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                            <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+                                <h3 className="font-black text-lg text-red-700">Cancel Booking</h3>
+                                <p className="text-sm text-muted-foreground">Cancel booking for <strong>{cancelModal.name}</strong>? This cannot be undone.</p>
+                                <p className="text-[11px] text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100 italic">
+                                    ※ Please note: This reason will be sent to the customer to explain the cancellation.
+                                </p>
+                                <textarea
+                                    className="w-full border rounded-xl p-3 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                    placeholder="Provide a reason for cancellation..."
+                                    value={cancelReason}
+                                    onChange={e => setCancelReason(e.target.value)}
+                                />
+                                <div className="flex gap-3">
+                                    <Button variant="outline" className="flex-1" onClick={() => { setCancelModal(null); setCancelReason(""); }}>Back</Button>
+                                    <Button variant="destructive" className="flex-1" onClick={confirmCancel} disabled={!cancelReason.trim()}>✕ Confirm Cancel</Button>
                                 </div>
                             </div>
                         </div>
