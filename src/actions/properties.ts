@@ -1114,5 +1114,6 @@ export async function updatePropertyRules(propertyId: string, rules: string[]) {
         data: { rules: JSON.stringify(rules) }
     });
     revalidatePath(`/dashboard/owner/properties/${propertyId}`);
+    revalidatePath(`/property/${propertyId}`);
     return { success: true };
 }

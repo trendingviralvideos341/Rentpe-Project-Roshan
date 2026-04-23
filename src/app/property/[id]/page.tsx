@@ -250,6 +250,33 @@ export default function PropertyDetailPage() {
                         <PropertyPhotoCarousel property={property} className="shadow-md border border-slate-200" />
                     </div>
 
+                    {/* Property Rules */}
+                    {(() => {
+                        const parseRules = (val: any): string[] => {
+                            if (!val) return [];
+                            if (Array.isArray(val)) return val;
+                            try { const p = JSON.parse(val); return Array.isArray(p) ? p : (val ? [String(val)] : []); }
+                            catch { return val ? [String(val)] : []; }
+                        };
+                        const rules = parseRules(property.rules);
+                        if (rules.length === 0) return null;
+                        return (
+                            <div>
+                                <h2 className="text-xl font-bold mb-4">🏠 House Rules</h2>
+                                <div className="border border-amber-100 bg-amber-50/40 rounded-2xl p-5">
+                                    <ul className="space-y-2.5">
+                                        {rules.map((rule: string, i: number) => (
+                                            <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700">
+                                                <span className="text-amber-500 font-black mt-0.5 shrink-0">•</span>
+                                                <span className="font-medium leading-snug">{rule}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     {/* Food Menu — Hidden per user request */}
                     {/* <div>
                         <h2 className="text-xl font-bold mb-4">Weekly Food Menu</h2>
