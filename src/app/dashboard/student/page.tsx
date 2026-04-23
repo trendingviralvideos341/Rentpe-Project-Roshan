@@ -316,7 +316,17 @@ export default function StudentDashboardPage() {
                                                     </CardDescription>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-bold text-lg">{booking.amount}</p>
+                                                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
+                                                        isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                                                        isVacating ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                                                        isCompleted ? 'bg-slate-100 text-slate-600 border-slate-300' :
+                                                        isCancelled ? 'bg-gray-100 text-gray-500 border-gray-300' :
+                                                        isPaid ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                                                        isApproved ? 'bg-violet-100 text-violet-700 border-violet-300' :
+                                                        'bg-gray-100 text-gray-600 border-gray-300'
+                                                    }`}>
+                                                        {booking.status.replace(/_/g, ' ')}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </CardHeader>
@@ -498,65 +508,44 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             )}
 
-                                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                <div className="flex gap-2">
-                                                    {showDocs && (
-                                                        <Button
-                                                            variant="outline" size="sm"
-                                                            onClick={() => setExpandedDocs(expandedDocs === booking.id ? null : booking.id)}
-                                                            className="text-xs">
-                                                            <FileText className="h-4 w-4 mr-1.5" />
-                                                            Documents {expandedDocs === booking.id ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
-                                                        </Button>
-                                                    )}
-                                                    {/* Download Agreement */}
-                                                    {(booking.agreementSigned && (isPaid || isCheckedIn || isActive || isVacating || isCompleted)) && (
-                                                        <Button variant="outline" size="sm" className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                                                            onClick={() => toast.info("Agreement download: Your signed agreement is stored securely. Download from your email or contact support.")}
-                                                        >
-                                                            <Download className="h-3.5 w-3.5 mr-1" /> Agreement
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                                <div className="flex gap-2 flex-wrap">
-                                                    {/* ✍️ Sign Agreement CTA */}
-                                                    {(isAgreementPending || (isPaid && !booking.agreementSigned)) && (
-                                                        <div className="w-full bg-violet-50 border-2 border-violet-400 rounded-xl p-4 text-center">
-                                                            <p className="text-sm font-bold text-violet-800 mb-1">✍️ Please Sign Your Rental Agreement</p>
-                                                            <p className="text-xs text-violet-600 mb-3">Your payment is confirmed. Sign the agreement to complete your booking.</p>
-                                                            <Button className="bg-violet-600 hover:bg-violet-700 text-white font-bold" size="sm" onClick={() => setSigningBooking(booking)}>
-                                                                ✍️ Sign Agreement Now
-                                                            </Button>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Cancel for pending */}
-                                                    {(booking.status === 'PENDING_APPROVAL' || booking.status === 'APPLIED') && (
-                                                        <button
-                                                            onClick={() => handleCancel(booking.id)}
-                                                            disabled={cancellingId === booking.id}
-                                                            className="px-6 py-2 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest disabled:opacity-50">
-                                                            {cancellingId === booking.id ? "Cancelling..." : "❌ Cancel Request"}
-                                                        </button>
-                                                    )}
-                                                    {isPaid && (
-                                                        <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
-                                                            <FileText className="h-4 w-4 mr-2" /> View Receipt
-                                                        </Button>
-                                                    )}
-                                                    {(isCheckedIn || isActive) && (
-                                                        <>
-                                                            <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
-                                                                <FileText className="h-4 w-4 mr-2" /> View Receipt
-                                                            </Button>
-                                                            <Button size="sm"
-                                                                onClick={() => setReviewBooking(booking)}
-                                                                className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-bold border border-yellow-300">
-                                                                <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" /> Share Experience
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {/* Rent Receipt */}
+                                                {(isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
+                                                    <Button variant="outline" size="sm" className="text-xs h-8 px-3 border-slate-200 rounded-full"
+                                                        onClick={() => setSelectedBooking(booking)}>
+                                                        <FileText className="h-3.5 w-3.5 mr-1" /> Rent Receipt
+                                                    </Button>
+                                                )}
+                                                {/* Agreement PDF */}
+                                                {booking.agreementSigned && (
+                                                    <Button variant="outline" size="sm" className="text-xs h-8 px-3 border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-full"
+                                                        onClick={() => toast.info('Your signed agreement is stored securely. Contact support to download.')}>
+                                                        <Download className="h-3.5 w-3.5 mr-1" /> Agreement PDF
+                                                    </Button>
+                                                )}
+                                                {/* Share Experience */}
+                                                {(isCheckedIn || isActive) && (
+                                                    <Button size="sm" className="h-8 px-3 text-xs bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-bold border border-yellow-300 rounded-full"
+                                                        onClick={() => setReviewBooking(booking)}>
+                                                        <Star className="h-3.5 w-3.5 mr-1 fill-yellow-500 text-yellow-500" /> Rate Us
+                                                    </Button>
+                                                )}
+                                                {/* ✍️ Sign Agreement CTA */}
+                                                {(isAgreementPending || (isPaid && !booking.agreementSigned)) && (
+                                                    <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full"
+                                                        onClick={() => setSigningBooking(booking)}>
+                                                        ✍️ Sign Agreement
+                                                    </Button>
+                                                )}
+                                                {/* 🔴 Cancel Booking button — shown on every cancellable stage */}
+                                                {!isActive && !isVacating && !isCompleted && !isCancelled && booking.status !== 'REJECTED' && (
+                                                    <button
+                                                        onClick={() => handleCancel(booking.id)}
+                                                        disabled={cancellingId === booking.id}
+                                                        className="h-8 px-4 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-sm disabled:opacity-50 uppercase tracking-wider">
+                                                        {cancellingId === booking.id ? 'Cancelling...' : '✕ Cancel Booking'}
+                                                    </button>
+                                                )}
                                             </div>
 
                                             {/* ── ACTIVE TENANT: Vacating Section ── */}
@@ -665,16 +654,7 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             )}
 
-                                            {/* ── Document Section (Phase 31 KYC) ── */}
-                                            {expandedDocs === booking.id && showDocs && (
-                                                <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                                                    <StudentKYCUploader
-                                                        bookingId={booking.id}
-                                                        existingDocs={booking.documents || []}
-                                                        onUploadSuccess={() => fetchData()}
-                                                    />
-                                                </div>
-                                            )}
+
                                         </CardContent>
                                     </Card>
                                 );

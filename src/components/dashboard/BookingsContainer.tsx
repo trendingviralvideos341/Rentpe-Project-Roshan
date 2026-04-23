@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid } from "@/actions/bookings";
+import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking } from "@/actions/bookings";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { toast } from "sonner";
@@ -331,6 +331,10 @@ export function BookingsContainer() {
     // Physical KYC Modal
     const [kycBooking, setKycBooking] = useState<any | null>(null);
 
+    // Cancel Modal
+    const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
+
     const fetchData = async () => {
         setLoading(true);
         try { setBookings(await getBookings()); }
@@ -414,6 +418,18 @@ export function BookingsContainer() {
         } catch { toast.error("Rejection failed."); }
     };
 
+    const handleCancelBooking = (bookingId: string, guestName: string) => {
+        setCancelReason("");
+        setCancelModal({ id: bookingId, name: guestName });
+    };
+    const confirmCancel = async () => {
+        try {
+            await cancelBooking(cancelModal!.id, cancelReason || "Cancelled by owner");
+            toast.success("Booking cancelled.");
+            setCancelModal(null); setCancelReason(""); fetchData();
+        } catch { toast.error("Failed to cancel booking."); }
+    };
+
     // ── Filtering ─────────────────────────────────────────────────
     const filteredBookings = bookings.filter(b => {
         const matchesSearch =
@@ -436,7 +452,19 @@ export function BookingsContainer() {
         return true;
     });
 
-    // ── Action buttons per booking status ─────────────────────────
+    // ── Cancel capsule — shown on every active (non-terminal) stage ───────
+    const CancelCapsule = ({ booking }: { booking: any }) => {
+        const terminal = ['CANCELLED', 'EXPIRED', 'REJECTED', 'COMPLETED', 'CHECKED_OUT', 'ACTIVE', 'CHECKIN_CONFIRMED'];
+        if (terminal.includes(booking.status)) return null;
+        return (
+            <button
+                onClick={() => handleCancelBooking(booking.id, booking.guestName)}
+                className="h-8 px-3 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm">
+                ✕ Cancel
+            </button>
+        );
+    };
+
     const renderActionButtons = (booking: any) => {
         const s = booking.status;
         const hasRoom = !!booking.roomAssigned;
@@ -446,28 +474,38 @@ export function BookingsContainer() {
             <>
                 <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
                 <Button size="sm" variant="destructive" className="h-8 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
+                <CancelCapsule booking={booking} />
             </>
         );
 
         // Step 2: Approved but no room → Allocate Room
         if (s === 'APPROVED_PENDING_TOKEN' || (s === 'APPROVED' && !hasRoom)) return (
-            <Button size="sm" className="h-8 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={() => setAllocateBooking(booking)}>
-                <BedDouble className="w-3 h-3 mr-1" />Allocate Room
-            </Button>
+            <>
+                <Button size="sm" className="h-8 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={() => setAllocateBooking(booking)}>
+                    <BedDouble className="w-3 h-3 mr-1" />Allocate Room
+                </Button>
+                <CancelCapsule booking={booking} />
+            </>
         );
 
         // Step 3: Room allocated, awaiting payment — owner can mark cash paid
         if (hasRoom && ['APPROVED', 'KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
-            <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
-                <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
-            </Button>
+            <>
+                <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
+                    <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
+                </Button>
+                <CancelCapsule booking={booking} />
+            </>
         );
 
         // Step 4: Paid + Agreement signed → Physical KYC → Check-in
         if (['PAID', 'CASH_PAID', 'BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
-            <Button size="sm" className="h-8 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}>
-                <ShieldCheck className="w-3 h-3 mr-1" />Verify ID & Check-in
-            </Button>
+            <>
+                <Button size="sm" className="h-8 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}>
+                    <ShieldCheck className="w-3 h-3 mr-1" />Verify ID & Check-in
+                </Button>
+                <CancelCapsule booking={booking} />
+            </>
         );
 
         return null;
@@ -654,6 +692,22 @@ export function BookingsContainer() {
                     onConfirm={handleConfirmCheckIn}
                     tenantName={kycBooking.guestName}
                 />
+            )}
+
+            {/* ── Cancel Modal ── */}
+            {cancelModal && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+                        <h3 className="font-black text-lg text-red-700">Cancel Booking</h3>
+                        <p className="text-sm text-muted-foreground">Cancel booking for <strong>{cancelModal.name}</strong>? This cannot be undone.</p>
+                        <textarea className="w-full border rounded-xl p-3 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-red-300"
+                            placeholder="Reason (optional)..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => { setCancelModal(null); setCancelReason(""); }}>Back</Button>
+                            <Button variant="destructive" className="flex-1" onClick={confirmCancel}>✕ Confirm Cancel</Button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* ── Reject Modal ── */}

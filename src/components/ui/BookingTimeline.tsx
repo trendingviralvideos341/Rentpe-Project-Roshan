@@ -172,9 +172,7 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                                     </span>
                                 )}
 
-                                <p className="text-[9px] md:hidden lg:block text-slate-400 font-medium leading-relaxed">
-                                    {step.description}
-                                </p>
+
                             </div>
                         </div>
                     );
