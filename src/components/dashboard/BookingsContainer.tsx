@@ -707,6 +707,9 @@ export function BookingsContainer() {
                     <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
                         <h3 className="font-black text-lg text-red-700">Cancel Booking</h3>
                         <p className="text-sm text-muted-foreground">Cancel booking for <strong>{cancelModal.name}</strong>? This cannot be undone.</p>
+                        <p className="text-[11px] text-red-600 font-bold italic bg-red-50 p-2 rounded-lg border border-red-100 italic">
+                             ※ Please note: This reason will be sent to the customer to explain the cancellation.
+                        </p>
                         <textarea className="w-full border rounded-xl p-3 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-red-300"
                             placeholder="Provide a reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
                         <div className="flex gap-3">
