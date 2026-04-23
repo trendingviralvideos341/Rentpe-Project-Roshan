@@ -195,3 +195,28 @@ export async function updateRoomByOwner(roomId: string, data: {
 
     return updated;
 }
+
+/** Get rooms for the allocation modal — filtered by type with available bed count */
+export async function getRoomsForAllocation(propertyId: string, roomType?: string) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
+        throw new Error("Unauthorized");
+    }
+
+    const whereClause: any = { propertyId };
+    if (roomType) whereClause.type = roomType;
+
+    const rooms = await prisma.room.findMany({
+        where: whereClause,
+        include: {
+            beds: { select: { id: true, bedNumber: true, status: true, tenantId: true, lockedByBookingId: true, tenant: { select: { name: true } } } }
+        },
+        orderBy: { roomNumber: 'asc' }
+    });
+
+    return rooms.map(r => ({
+        ...r,
+        availableBeds: r.beds.filter(b => b.status === 'AVAILABLE').length,
+        beds: r.beds,
+    }));
+}

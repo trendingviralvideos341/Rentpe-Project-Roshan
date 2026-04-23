@@ -832,7 +832,7 @@ export async function cancelBooking(id: string, reason?: string) {
     return updated;
 }
 
-export async function signAgreement(id: string) {
+export async function signAgreement(id: string, agreementMeta?: { agreementText?: string; agreementId?: string; agreementPdfUrl?: string }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -842,7 +842,14 @@ export async function signAgreement(id: string) {
 
     const updated = await prisma.booking.update({
         where: { id },
-        data: { status: 'BOOKING_CONFIRMED', agreementSigned: true, agreementSignedAt: new Date() }
+        data: {
+            status: 'BOOKING_CONFIRMED',
+            agreementSigned: true,
+            agreementSignedAt: new Date(),
+            ...(agreementMeta?.agreementText ? { agreementText: agreementMeta.agreementText } as any : {}),
+            ...(agreementMeta?.agreementId ? { agreementId: agreementMeta.agreementId } as any : {}),
+            ...(agreementMeta?.agreementPdfUrl ? { agreementPdfUrl: agreementMeta.agreementPdfUrl } as any : {}),
+        }
     });
 
     if (booking.propertyId) {
@@ -859,7 +866,7 @@ export async function signAgreement(id: string) {
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
-        description: `Digital agreement signed by ${booking.guestName}.`,
+        description: `Digital agreement signed by ${booking.guestName}. AgreementId: ${agreementMeta?.agreementId || 'N/A'}.`,
     });
 
     revalidatePath('/dashboard/student');
@@ -1130,3 +1137,105 @@ export async function getPlatformAnalytics() {
     return { totalProperties, liveProperties, totalBookings, kycPending, activeTenants, pendingDocuments };
 }
 
+/** Student/Owner: Complete the vacating process (only if all dues paid) */
+export async function completeVacate(bookingId: string) {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+
+    const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+            property: { select: { id: true, name: true, address: true, city: true, ownerId: true } },
+            room: { select: { roomNumber: true, type: true, price: true } },
+            user: { select: { name: true, email: true } },
+        }
+    });
+
+    if (!booking) throw new Error('Booking not found');
+    // Allow student who owns the booking or owner/admin
+    const isStudent = booking.userId === session.userId;
+    const isOwnerOrAdmin = session.role === 'OWNER' || session.role === 'ADMIN';
+    if (!isStudent && !isOwnerOrAdmin) throw new Error('Unauthorized');
+
+    // Check for pending tenant dues
+    const tenant = await prisma.tenant.findFirst({ 
+        where: { bookingId },
+        include: { rentRecords: true }
+    });
+
+    if (tenant) {
+        const unpaidDues = tenant.rentRecords.filter(r => !r.paid);
+        if (unpaidDues.length > 0) {
+            const totalUnpaid = unpaidDues.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+            throw new Error(`Cannot complete vacate. You have ₹${totalUnpaid.toLocaleString('en-IN')} in unpaid dues. Please pay all pending rent first.`);
+        }
+    }
+
+    // Mark booking COMPLETED
+    const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'COMPLETED' } as any
+    });
+
+    // Mark tenant as Checked Out
+    if (tenant) {
+        await prisma.tenant.update({
+            where: { id: tenant.id },
+            data: { status: 'Checked Out', actualMoveOutDate: new Date().toISOString() }
+        });
+        // Free the bed
+        if (tenant.bedId) {
+            await prisma.bed.update({
+                where: { id: tenant.bedId },
+                data: { status: 'AVAILABLE', tenantId: null }
+            }).catch(() => {});
+        }
+    }
+
+    // Notify owner
+    try {
+        await prisma.notification.create({
+            data: {
+                userId: booking.property?.ownerId ?? session.userId,
+                type: 'BOOKING',
+                category: 'BOOKING_COMPLETED',
+                message: `${booking.guestName} has completed their stay at ${booking.propertyName}. Bed is now available.`,
+                isPersistent: true,
+            }
+        });
+    } catch (e) { console.error('Notify error', e); }
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role || 'USER',
+        actorName: session.name || 'User',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Tenant ${booking.guestName} completed vacate. Booking marked COMPLETED.`,
+    });
+
+    revalidatePath('/dashboard/student');
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/owner/tenants');
+
+    // Return settlement data for PDF
+    const rentRecords = tenant?.rentRecords || [];
+    const paidTotal = rentRecords.filter(r => r.paid).reduce((acc, r) => acc + Number(r.amount), 0);
+
+    return {
+        booking: updated,
+        settlementData: {
+            tenantName: booking.guestName,
+            propertyName: booking.propertyName || booking.property?.name,
+            roomNumber: booking.roomAssigned || booking.room?.roomNumber,
+            roomType: booking.occupancy,
+            moveInDate: booking.moveInDate,
+            moveOutDate: new Date().toLocaleDateString('en-IN'),
+            totalPaidRent: paidTotal,
+            depositAmount: booking.depositAmount || 0,
+            platformFee: (booking as any).platformFee || (booking as any).platformFeeAmount || 0,
+            rentRecords,
+        }
+    };
+}

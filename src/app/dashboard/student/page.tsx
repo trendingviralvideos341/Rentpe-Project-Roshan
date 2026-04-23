@@ -3,12 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getBookings, cancelBooking, signAgreement } from "@/actions/bookings";
+import { getBookings, cancelBooking, signAgreement, completeVacate } from "@/actions/bookings";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, PackageOpen, LogOut } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -136,7 +136,8 @@ export default function StudentDashboardPage() {
     const [signingBooking, setSigningBooking] = useState<any>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [profile, setProfile] = useState<any>(null);
-    const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined); // undefined = loading
+    const [vacatingId, setVacatingId] = useState<string | null>(null);
+    const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined);
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -257,21 +258,21 @@ export default function StudentDashboardPage() {
                         <div className="space-y-4">
                             {/* Actionable Alerts Unified Banner */}
                             {bookings.some((b: any) =>
-                b.status === 'APPROVED_PENDING_TOKEN' ||
                 b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED' ||
                 b.status === 'AGREEMENT_PENDING' ||
+                (b.status === 'APPROVED' && !!b.roomAssigned && !b.agreementSigned) ||
                 ((b.status === 'PAID' || b.status === 'CASH_PAID' || b.status === 'MOVE_IN_SCHEDULED') && !b.agreementSigned)
             ) && (
                 <div className="space-y-3 mb-6">
                     {bookings.map((booking: any) => {
-                        if (booking.status === 'APPROVED_PENDING_TOKEN')
-                            return <AlertBanner key={`alert-token-${booking.id}`} type="error" message={`Action Required: Pay ₹${booking.tokenAmount || 1000} token to reserve your room at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' })} />;
                         if (booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING')
                             return <AlertBanner key={`alert-kyc-${booking.id}`} type="warning" message={`Upload KYC documents for ${booking.propertyName} to proceed.`} actionLabel="Upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
                         if (booking.status === 'KYC_FAILED')
                             return <AlertBanner key={`alert-kycfail-${booking.id}`} type="error" message={`KYC Failed for ${booking.propertyName}. ${booking.kycNotes ? `Reason: ${booking.kycNotes}` : ''} Please re-upload your documents.`} actionLabel="Re-upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
                         if (booking.status === 'AGREEMENT_PENDING')
                             return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
+                        if (booking.status === 'APPROVED' && booking.roomAssigned && !booking.agreementSigned)
+                            return <AlertBanner key={`alert-pay-${booking.id}`} type="warning" message={`Room allocated at ${booking.propertyName}! Pay now to confirm your booking.`} actionLabel="Pay Now" onAction={() => document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' })} />;
                         if ((booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !booking.agreementSigned)
                             return <AlertBanner key={`alert-paidsign-${booking.id}`} type="info" message={`Sign Agreement: Payment confirmed for ${booking.propertyName}. Please sign to complete.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
                         return null;
@@ -280,18 +281,21 @@ export default function StudentDashboardPage() {
             )}
 
                             {bookings.map((booking: any) => {
-                                const isTokenPending = booking.status === 'APPROVED_PENDING_TOKEN';
-                                const isRoomReserved = booking.status === 'ROOM_RESERVED';
                                 const isKycPending = booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_FAILED';
-                                const isPaymentPending = booking.status === 'APPROVED_PAYMENT_PENDING' || booking.status === 'APPROVED';
+                                // Payment pending = room allocated but student hasn't paid yet
+                                const isPaymentPending = (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING' || booking.status === 'ROOM_RESERVED') && !!booking.roomAssigned;
                                 const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
-                                const isApproved = isTokenPending || isRoomReserved || isKycPending || isPaymentPending || isAgreementPending;
-                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED' || booking.status === 'ACTIVE';
+                                const isApproved = isKycPending || isPaymentPending || isAgreementPending;
+                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
                                 const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !isCheckedIn;
+                                const isActive = booking.status === 'ACTIVE' || booking.status === 'CHECKED_IN' || booking.status === 'CHECKIN_CONFIRMED';
+                                const isVacating = booking.status === 'VACATING';
+                                const isCompleted = booking.status === 'COMPLETED' || booking.status === 'CHECKED_OUT';
                                 const isCancelled = booking.status === 'CANCELLED' || booking.status === 'EXPIRED';
-                                const isCashPending = booking.paymentMethod === 'CASH' && isPaymentPending;
-                                const showDocs = isRoomReserved || isKycPending || isPaymentPending || isPaid || isCheckedIn;
+                                const showDocs = isKycPending || isPaymentPending || isPaid || isCheckedIn || isActive;
                                 const hasPendingAmount = (isPaid || isPaymentPending) && booking.pendingAmount && parseFloat(booking.pendingAmount) > 0;
+                                // Vacating: all dues must be paid for Complete Vacate button to be green
+                                const hasPendingDues = booking.tenant?.rentRecords?.some((r: any) => !r.paid) ?? false;
 
                                 return (
                                     <Card key={booking.id} className={`${isApproved ? "border-green-400 border-2" : isPaid ? "border-blue-300 border-2" : hasPendingAmount ? "border-red-400 border-2" : isCancelled ? "border-gray-300 opacity-70" : ""}`}>
@@ -360,29 +364,49 @@ export default function StudentDashboardPage() {
 
 
 
-                                            {/* ── Dynamic Fee Breakdown (Phase 4) ── */}
-                                            {isApproved && booking.room && (
-                                                <div className="border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-sm mb-4">
-                                                    <div className="bg-slate-50 px-4 py-2 border-b border-slate-100">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Breakdown</p>
+                                            {/* ── Dynamic Fee Breakdown (when room is allocated and payment pending) ── */}
+                                            {isPaymentPending && booking.roomAssigned && (
+                                                <div className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-400 rounded-2xl p-5 space-y-4">
+                                                    <p className="text-sm font-black text-indigo-800">💳 Complete Your Payment</p>
+                                                    <p className="text-xs text-indigo-600">Room <strong>{booking.roomAssigned}</strong> is reserved for you. Pay now to confirm.</p>
+                                                    <div className="space-y-2 text-sm">
+                                                        <div className="flex justify-between">
+                                                            <span className="text-slate-600">Monthly Rent</span>
+                                                            <span className="font-bold">₹{Number(booking.amount || booking.room?.price || 0).toLocaleString('en-IN')}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-emerald-600">Security Deposit ({booking.depositMonths || 2}m)</span>
+                                                            <span className="font-bold text-emerald-700">₹{Number(booking.depositAmount || 0).toLocaleString('en-IN')}</span>
+                                                        </div>
+                                                        {booking.foodSelected && booking.property?.foodPricePerMonth && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-orange-600">Food Charge/month</span>
+                                                                <span className="font-bold">₹{Number(booking.property.foodPricePerMonth).toLocaleString('en-IN')}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between pt-2 border-t border-indigo-200 font-black text-indigo-900">
+                                                            <span>Total Payable Now</span>
+                                                            <span>₹{(Number(booking.amount || booking.room?.price || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span>
+                                                        </div>
                                                     </div>
-                                                    <BookingFeeBreakdown
-                                                        rent={booking.room.price}
-                                                        depositAmount={booking.depositAmount || (booking.room.price * (booking.depositMonths || 1))}
-                                                        depositMonths={booking.depositMonths || booking.room.depositMonths || 1}
-                                                        platformFee={booking.platformFeeAmount || 499}
-                                                    />
+                                                    <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-black h-12 rounded-2xl shadow-lg shadow-indigo-200" asChild>
+                                                        <a href={`/secure/payment?id=${booking.id}&amount=${Number(booking.amount || 0) + Number(booking.depositAmount || 0)}&type=booking`}>
+                                                            💳 Pay ₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')} Online Now
+                                                        </a>
+                                                    </Button>
+                                                    <p className="text-[10px] text-center text-indigo-500">Secured payment · Deposit refundable · No hidden fees</p>
                                                 </div>
                                             )}
 
-                                            {/* ── Unified Agreement Modal ── */}
+                                            {/* ── Agreement Modal + Download ── */}
                                             <PropertyAgreementModal
                                                 isOpen={!!signingBooking && signingBooking.id === booking.id}
                                                 onClose={() => setSigningBooking(null)}
                                                 onAccept={async () => {
                                                     const toastId = toast.loading("Signing agreement...");
                                                     try {
-                                                        await signAgreement(booking.id);
+                                                        const agreementId = `AGT-${Date.now()}-${booking.id.slice(0, 8).toUpperCase()}`;
+                                                        await signAgreement(booking.id, { agreementId });
                                                         toast.success("Agreement signed! Welcome aboard 🎉", { id: toastId });
                                                         await fetchData();
                                                         setSigningBooking(null);
@@ -414,7 +438,7 @@ export default function StudentDashboardPage() {
                                                         ? Number(booking.depositAmount)
                                                         : (Number(booking.room?.price) || Number(String(booking.amount).replace(/[^0-9.]/g, '')) || 0) * (booking.depositMonths || booking.room?.depositMonths || 1)
                                                 }
-                                                platformFee={Number(booking.platformFeeAmount) || 0}
+                                                platformFee={0}
                                             />
 
                                             {/* ── Professional Journey Stepper (Phase 31) ── */}
@@ -474,41 +498,32 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             )}
 
-                                            {/* ── Action Buttons ── */}
                                             <div className="flex items-center justify-between gap-2 flex-wrap">
                                                 <div className="flex gap-2">
                                                     {showDocs && (
                                                         <Button
-                                                            variant="outline"
-                                                            size="sm"
+                                                            variant="outline" size="sm"
                                                             onClick={() => setExpandedDocs(expandedDocs === booking.id ? null : booking.id)}
-                                                            className="text-xs"
-                                                        >
+                                                            className="text-xs">
                                                             <FileText className="h-4 w-4 mr-1.5" />
                                                             Documents {expandedDocs === booking.id ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
                                                         </Button>
                                                     )}
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    {/* Cancel button for pending bookings */}
-                                                    {/* 💳 Pay Token CTA */}
-                                                    {isTokenPending && (
-                                                        <div className="w-full bg-purple-50 border-2 border-purple-400 rounded-xl p-4 text-center">
-                                                            <p className="text-sm font-bold text-purple-800 mb-1">💳 Pay Token to Reserve Your Room</p>
-                                                            <p className="text-xs text-purple-600 mb-3">A token of ₹{booking.tokenAmount || 1000} locks your room for 7 days while you complete KYC.</p>
-                                                            <div className="flex gap-2 justify-center">
-                                                                <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold" size="sm" asChild>
-                                                                    <a href={`/secure/payment?id=${booking.id}&amount=${booking.tokenAmount || 1000}&type=token`}>💳 Pay ₹{booking.tokenAmount || 1000} Token Online</a>
-                                                                </Button>
-                                                            </div>
-                                                        </div>
+                                                    {/* Download Agreement */}
+                                                    {(booking.agreementSigned && (isPaid || isCheckedIn || isActive || isVacating || isCompleted)) && (
+                                                        <Button variant="outline" size="sm" className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                                            onClick={() => toast.info("Agreement download: Your signed agreement is stored securely. Download from your email or contact support.")}
+                                                        >
+                                                            <Download className="h-3.5 w-3.5 mr-1" /> Agreement
+                                                        </Button>
                                                     )}
-
+                                                </div>
+                                                <div className="flex gap-2 flex-wrap">
                                                     {/* ✍️ Sign Agreement CTA */}
-                                                    {isAgreementPending && (
+                                                    {(isAgreementPending || (isPaid && !booking.agreementSigned)) && (
                                                         <div className="w-full bg-violet-50 border-2 border-violet-400 rounded-xl p-4 text-center">
                                                             <p className="text-sm font-bold text-violet-800 mb-1">✍️ Please Sign Your Rental Agreement</p>
-                                                            <p className="text-xs text-violet-600 mb-3">Your KYC has been verified! Sign the agreement to confirm your booking.</p>
+                                                            <p className="text-xs text-violet-600 mb-3">Your payment is confirmed. Sign the agreement to complete your booking.</p>
                                                             <Button className="bg-violet-600 hover:bg-violet-700 text-white font-bold" size="sm" onClick={() => setSigningBooking(booking)}>
                                                                 ✍️ Sign Agreement Now
                                                             </Button>
@@ -520,8 +535,7 @@ export default function StudentDashboardPage() {
                                                         <button
                                                             onClick={() => handleCancel(booking.id)}
                                                             disabled={cancellingId === booking.id}
-                                                            className="px-6 py-2 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest disabled:opacity-50"
-                                                        >
+                                                            className="px-6 py-2 text-[10px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest disabled:opacity-50">
                                                             {cancellingId === booking.id ? "Cancelling..." : "❌ Cancel Request"}
                                                         </button>
                                                     )}
@@ -530,27 +544,126 @@ export default function StudentDashboardPage() {
                                                             <FileText className="h-4 w-4 mr-2" /> View Receipt
                                                         </Button>
                                                     )}
-                                                    {isCheckedIn && (
+                                                    {(isCheckedIn || isActive) && (
                                                         <>
                                                             <Button variant="outline" size="sm" onClick={() => setSelectedBooking(booking)}>
                                                                 <FileText className="h-4 w-4 mr-2" /> View Receipt
                                                             </Button>
-                                                            <Button
-                                                                size="sm"
+                                                            <Button size="sm"
                                                                 onClick={() => setReviewBooking(booking)}
-                                                                className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-bold border border-yellow-300"
-                                                            >
+                                                                className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-bold border border-yellow-300">
                                                                 <Star className="h-4 w-4 mr-2 fill-yellow-500 text-yellow-500" /> Share Experience
                                                             </Button>
                                                         </>
                                                     )}
-                                                    {isPaid && booking.agreementSigned && (
-                                                        <Button className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold shadow-lg" asChild>
-                                                            <Link href={`/dashboard/student/ready-to-move`}>🏃 Ready to Move-in</Link>
-                                                        </Button>
-                                                    )}
                                                 </div>
                                             </div>
+
+                                            {/* ── ACTIVE TENANT: Vacating Section ── */}
+                                            {(isActive || isVacating) && (
+                                                <div className="mt-4 border-t border-dashed border-slate-200 pt-4 space-y-3">
+                                                    {isActive && !isVacating && (
+                                                        <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                                            <div>
+                                                                <p className="text-xs font-black text-amber-800">🚪 Planning to Move Out?</p>
+                                                                <p className="text-[10px] text-amber-600">Submit a vacating notice to start the checkout process.</p>
+                                                            </div>
+                                                            <Button size="sm" variant="outline"
+                                                                className="text-xs border-amber-400 text-amber-700 hover:bg-amber-50 font-bold"
+                                                                onClick={() => {
+                                                                    const reason = prompt('Reason for vacating (e.g. course ended, job change):');
+                                                                    if (!reason) return;
+                                                                    import('@/actions/vacatingNotice').then(({ fileVacatingNotice }) => {
+                                                                        const dt = new Date();
+                                                                        dt.setDate(dt.getDate() + 30);
+                                                                        fileVacatingNotice({ bookingId: booking.id, plannedMoveOut: dt.toISOString().split('T')[0], reason })
+                                                                            .then(() => { toast.success('Vacating notice submitted!'); fetchData(); })
+                                                                            .catch((e: any) => toast.error(e.message || 'Failed to submit notice.'));
+                                                                    });
+                                                                }}>
+                                                                <PackageOpen className="h-3.5 w-3.5 mr-1" /> Initiate Vacating
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    {isVacating && (
+                                                        <div className="space-y-3">
+                                                            <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                                                                <p className="text-xs font-black text-orange-800">📦 Vacating in Progress</p>
+                                                                <p className="text-[10px] text-orange-600">Your vacating notice has been submitted. Once owner acknowledges and all dues are cleared, you can complete vacate.</p>
+                                                            </div>
+                                                            {hasPendingDues ? (
+                                                                <div className="p-3 bg-red-50 border-2 border-red-300 rounded-xl">
+                                                                    <p className="text-xs font-black text-red-700">⚠️ Pending Dues Must Be Cleared First</p>
+                                                                    <p className="text-[10px] text-red-500">Pay all pending rent before completing vacate.</p>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    disabled={vacatingId === booking.id}
+                                                                    onClick={async () => {
+                                                                        setVacatingId(booking.id);
+                                                                        try {
+                                                                            const result = await completeVacate(booking.id);
+                                                                            toast.success('✅ Stay Completed! Thank you for being a RentPe resident.');
+                                                                            // Download settlement summary
+                                                                            const sd = result.settlementData;
+                                                                            const { generateInvoicePDF } = await import('@/utils/invoiceGenerator');
+                                                                            generateInvoicePDF({
+                                                                                invoiceId: `VACATE-${booking.displayId}`,
+                                                                                date: sd.moveOutDate,
+                                                                                description: `Vacate Summary — ${sd.propertyName}`,
+                                                                                month: sd.moveOutDate,
+                                                                                amount: sd.totalPaidRent,
+                                                                                tenantName: sd.tenantName,
+                                                                                paymentMethod: 'Final Settlement',
+                                                                            });
+                                                                            await fetchData();
+                                                                        } catch (e: any) {
+                                                                            toast.error(e.message || 'Could not complete vacate.');
+                                                                        } finally {
+                                                                            setVacatingId(null);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full py-3 flex items-center justify-center gap-2 text-sm font-black bg-green-600 hover:bg-green-700 text-white rounded-2xl shadow-lg shadow-green-100 transition-all active:scale-[0.99] disabled:opacity-50">
+                                                                    {vacatingId === booking.id ? (
+                                                                        <><span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Processing...</>
+                                                                    ) : (
+                                                                        <><LogOut className="w-4 h-4" /> ✅ Complete Vacate &amp; Download Summary</>
+                                                                    )}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* ── COMPLETED: Download Vacate Summary ── */}
+                                            {isCompleted && (
+                                                <div className="mt-4 border-t border-dashed border-slate-200 pt-4">
+                                                    <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                                        <div>
+                                                            <p className="text-xs font-black text-emerald-800">✅ Stay Completed</p>
+                                                            <p className="text-[10px] text-emerald-600">Your tenancy has been successfully completed.</p>
+                                                        </div>
+                                                        <Button size="sm" variant="outline"
+                                                            className="text-xs border-emerald-400 text-emerald-700 hover:bg-emerald-50 font-bold"
+                                                            onClick={async () => {
+                                                                const { generateInvoicePDF } = await import('@/utils/invoiceGenerator');
+                                                                generateInvoicePDF({
+                                                                    invoiceId: `VACATE-${booking.displayId}`,
+                                                                    date: new Date().toLocaleDateString('en-IN'),
+                                                                    description: `Vacate Summary — ${booking.propertyName}`,
+                                                                    month: new Date().toLocaleDateString('en-IN'),
+                                                                    amount: 0,
+                                                                    tenantName: booking.guestName,
+                                                                    paymentMethod: 'Completed',
+                                                                });
+                                                            }}>
+                                                            <Download className="h-3.5 w-3.5 mr-1" /> Download Summary
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* ── Document Section (Phase 31 KYC) ── */}
                                             {expandedDocs === booking.id && showDocs && (
