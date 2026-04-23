@@ -315,7 +315,7 @@ export function BookingsContainer() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "KYC" | "ROOM_ALLOCATED" | "AGREEMENT" | "MOVE_IN_SET" | "ACTIVE" | "REJECTED" | "CANCELLED">("ALL");
+    const [activeTab, setActiveTab] = useState<"ALL" | "NEW_REQUEST" | "ALLOCATE_ROOM" | "STUDENT_PAYS" | "AGREEMENT" | "PHYSICAL_VERIFY" | "CHECKED_IN" | "REJECTED" | "CANCELLED">("ALL");
     const [search, setSearch] = useState("");
     const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
     const [propertyFilter, setPropertyFilter] = useState("ALL");
@@ -433,14 +433,14 @@ export function BookingsContainer() {
     // ── Filtering ─────────────────────────────────────────────────
     const STATUS_GROUPS: Record<string, string[]> = {
         ALL: [],
-        PENDING: ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
-        KYC: ["KYC_PENDING", "APPROVED_KYC_PENDING"],
-        ROOM_ALLOCATED: ["APPROVED", "ROOM_RESERVED"],
-        AGREEMENT: ["AGREEMENT_PENDING", "PAID", "CASH_PAID"],
-        MOVE_IN_SET: ["MOVE_IN_SCHEDULED"],
-        ACTIVE: ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
-        REJECTED: ["REJECTED", "KYC_FAILED"],
-        CANCELLED: ["CANCELLED", "EXPIRED"],
+        NEW_REQUEST:     ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
+        ALLOCATE_ROOM:   ["APPROVED_PENDING_TOKEN", "APPROVED", "KYC_PENDING", "APPROVED_KYC_PENDING", "ROOM_RESERVED"],
+        STUDENT_PAYS:    ["PAID", "CASH_PAID"],
+        AGREEMENT:       ["AGREEMENT_PENDING"],
+        PHYSICAL_VERIFY: ["MOVE_IN_SCHEDULED"],
+        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED", "VACATING", "CHECKED_OUT", "COMPLETED"],
+        REJECTED:        ["REJECTED", "KYC_FAILED"],
+        CANCELLED:       ["CANCELLED", "EXPIRED"],
     };
 
     const filteredBookings = bookings.filter(b => {
@@ -597,15 +597,15 @@ export function BookingsContainer() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                         {([
-                            ["ALL", `📋 All (${bookings.length})`],
-                            ["PENDING", `🔴 New`],
-                            ["KYC", `📝 KYC`],
-                            ["ROOM_ALLOCATED", `🛏 Room Allocated`],
-                            ["AGREEMENT", `✍️ Agreement`],
-                            ["MOVE_IN_SET", `📅 Move-In Set`],
-                            ["ACTIVE", `🏠 Active`],
-                            ["REJECTED", `❌ Rejected`],
-                            ["CANCELLED", `🚫 Cancelled`],
+                            ["ALL",             `📋 All (${bookings.length})`],
+                            ["NEW_REQUEST",     `📥 New Request`],
+                            ["ALLOCATE_ROOM",   `🛏 Allocate Room`],
+                            ["STUDENT_PAYS",    `💳 Student Pays`],
+                            ["AGREEMENT",       `✍️ Agreement Signed`],
+                            ["PHYSICAL_VERIFY", `🔍 Physical ID Verify`],
+                            ["CHECKED_IN",      `✅ Checked In`],
+                            ["REJECTED",        `❌ Rejected`],
+                            ["CANCELLED",       `🚫 Cancelled`],
                         ] as const).map(([t, label]) => (
                             <Button key={t} size="sm" onClick={() => setActiveTab(t)}
                                 className={`h-7 text-[10px] font-bold transition-all ${activeTab === t ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md" : "bg-white border hover:bg-muted text-foreground"}`}>
@@ -658,6 +658,16 @@ export function BookingsContainer() {
                                                 {(booking.status === 'REJECTED' || booking.status === 'CANCELLED') && (booking.rejectionReason || booking.cancelReason) && (
                                                     <div className="text-[9px] text-red-600 font-bold mt-1 max-w-[120px] leading-tight break-words">
                                                         Reason: {booking.rejectionReason || booking.cancelReason}
+                                                    </div>
+                                                )}
+                                                {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
+                                                    <div className="mt-1 space-y-0.5">
+                                                        {booking.paymentMethod === 'CASH' || booking.status === 'CASH_PAID'
+                                                            ? <div className="text-[9px] font-bold text-emerald-700">💵 Cash Payment Recorded</div>
+                                                            : booking.paymentId
+                                                                ? <div className="text-[9px] font-bold text-blue-700" title={booking.paymentId}>🧾 Txn: {booking.paymentId.slice(0, 14)}…</div>
+                                                                : <div className="text-[9px] font-bold text-green-700">💳 Online Payment</div>
+                                                        }
                                                     </div>
                                                 )}
                                             </td>

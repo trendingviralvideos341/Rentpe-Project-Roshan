@@ -275,7 +275,7 @@ export default function AdminBookingsPage() {
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [filterStatus, setFilterStatus] = useState("ALL");
+    const [filterStatus, setFilterStatus] = useState<"ALL" | "NEW_REQUEST" | "ALLOCATE_ROOM" | "STUDENT_PAYS" | "AGREEMENT" | "PHYSICAL_VERIFY" | "CHECKED_IN" | "REJECTED" | "CANCELLED">("ALL");
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
     const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
     const [propertyFilter, setPropertyFilter] = useState("ALL");
@@ -381,16 +381,15 @@ export default function AdminBookingsPage() {
     };
 
     const STATUS_GROUPS: Record<string, string[]> = {
-        ALL: [],
-        APPLIED: ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
-        KYC_PENDING: ["KYC_PENDING", "APPROVED_KYC_PENDING"],
-        ROOM_ALLOCATED: ["APPROVED", "ROOM_RESERVED"],
-        AGREEMENT_SIGNED: ["AGREEMENT_PENDING", "PAID", "CASH_PAID"],
-        MOVE_IN_SCHEDULED: ["MOVE_IN_SCHEDULED"],
-        APPROVED_PAYMENT_PENDING: ["APPROVED_PAYMENT_PENDING"],
-        ACTIVE: ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
-        REJECTED: ["REJECTED", "KYC_FAILED"],
-        CANCELLED: ["CANCELLED", "EXPIRED"],
+        ALL:             [],
+        NEW_REQUEST:     ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
+        ALLOCATE_ROOM:   ["APPROVED_PENDING_TOKEN", "APPROVED", "KYC_PENDING", "APPROVED_KYC_PENDING", "ROOM_RESERVED"],
+        STUDENT_PAYS:    ["PAID", "CASH_PAID"],
+        AGREEMENT:       ["AGREEMENT_PENDING"],
+        PHYSICAL_VERIFY: ["MOVE_IN_SCHEDULED"],
+        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED", "VACATING", "CHECKED_OUT", "COMPLETED"],
+        REJECTED:        ["REJECTED", "KYC_FAILED"],
+        CANCELLED:       ["CANCELLED", "EXPIRED"],
     };
 
     const filtered = bookings.filter(b => {
@@ -502,15 +501,15 @@ export default function AdminBookingsPage() {
 
                     <div className="flex gap-2 flex-wrap">
                         {([
-                            ["ALL", "📋 All"],
-                            ["APPLIED", "🔴 New"],
-                            ["KYC_PENDING", "📝 KYC"],
-                            ["ROOM_ALLOCATED", "🛏 Room Allocated"],
-                            ["AGREEMENT_SIGNED", "✍️ Agreement"],
-                            ["MOVE_IN_SCHEDULED", "📅 Move-In Set"],
-                            ["ACTIVE", "🏠 Active"],
-                            ["REJECTED", "❌ Rejected"],
-                            ["CANCELLED", "🚫 Cancelled"],
+                            ["ALL",             "📋 All"],
+                            ["NEW_REQUEST",     "📥 New Request"],
+                            ["ALLOCATE_ROOM",   "🛏 Allocate Room"],
+                            ["STUDENT_PAYS",    "💳 Student Pays"],
+                            ["AGREEMENT",       "✍️ Agreement Signed"],
+                            ["PHYSICAL_VERIFY", "🔍 Physical ID Verify"],
+                            ["CHECKED_IN",      "✅ Checked In"],
+                            ["REJECTED",        "❌ Rejected"],
+                            ["CANCELLED",       "🚫 Cancelled"],
                         ] as const).map(([t, label]) => (
                             <Button key={t} size="sm" onClick={() => setFilterStatus(t)}
                                 className={`h-7 text-[10px] font-bold transition-all ${filterStatus === t
@@ -613,6 +612,16 @@ export default function AdminBookingsPage() {
                                                             </td>
                                                             <td className="p-4">
                                                                 <StatusBadge status={booking.status} />
+                                                                {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
+                                                                    <div className="mt-1 space-y-0.5">
+                                                                        {booking.paymentMethod === 'CASH' || booking.status === 'CASH_PAID'
+                                                                            ? <div className="text-[9px] font-bold text-emerald-700">💵 Cash Payment Recorded</div>
+                                                                            : booking.paymentId
+                                                                                ? <div className="text-[9px] font-bold text-blue-700" title={booking.paymentId}>🧾 Txn: {booking.paymentId.slice(0, 14)}…</div>
+                                                                                : <div className="text-[9px] font-bold text-green-700">💳 Online Payment</div>
+                                                                        }
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="p-4">
                                                                 <div className="flex justify-end gap-1">
