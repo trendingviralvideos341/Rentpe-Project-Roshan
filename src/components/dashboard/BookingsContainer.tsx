@@ -423,7 +423,6 @@ export function BookingsContainer() {
         setCancelModal({ id: bookingId, name: guestName });
     };
     const confirmCancel = async () => {
-        if (!cancelReason.trim()) { toast.error("Please provide a cancellation reason."); return; }
         try {
             await cancelBooking(cancelModal!.id, cancelReason);
             toast.success("Booking cancelled.");
@@ -712,7 +711,7 @@ export function BookingsContainer() {
                             placeholder="Provide a reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
                         <div className="flex gap-3">
                             <Button variant="outline" className="flex-1" onClick={() => { setCancelModal(null); setCancelReason(""); }}>Back</Button>
-                            <Button variant="destructive" className="flex-1" onClick={confirmCancel}>✕ Confirm Cancel</Button>
+                            <Button variant="destructive" className="flex-1" onClick={confirmCancel} disabled={!cancelReason.trim()}>✕ Confirm Cancel</Button>
                         </div>
                     </div>
                 </div>

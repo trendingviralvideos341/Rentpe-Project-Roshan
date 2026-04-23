@@ -777,10 +777,10 @@ export async function cancelBooking(id: string, reason?: string) {
     const updated = await prisma.booking.update({
         where: { id },
         data: { 
-            status: 'REJECTED', 
+            status: 'CANCELLED', 
             rejectedAt: new Date(),
-            rejectionReason: reason || 'Cancelled by user',
-            cancelReason: reason || 'Cancelled by user' 
+            rejectionReason: reason || 'Cancelled',
+            cancelReason: reason || 'Cancelled' 
         }
     });
 

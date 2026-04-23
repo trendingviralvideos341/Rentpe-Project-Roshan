@@ -129,15 +129,18 @@ export default function StudentDashboardPage() {
     const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [selectedBooking, setSelectedBooking] = useState<any>(null);
-    const [reviewBooking, setReviewBooking] = useState<any>(null);
+    const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+    const [reviewBooking, setReviewBooking] = useState<any | null>(null);
     const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
     const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
-    const [signingBooking, setSigningBooking] = useState<any>(null);
+    const [signingBooking, setSigningBooking] = useState<any | null>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [profile, setProfile] = useState<any>(null);
     const [vacatingId, setVacatingId] = useState<string | null>(null);
     const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined);
+
+    const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -169,31 +172,25 @@ export default function StudentDashboardPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handleCancel = async (bookingId: string) => {
-        const reason = prompt("Why are you cancelling this booking?");
-        if (!reason || !reason.trim()) {
-            toast.error("Cancellation reason is required.");
-            return;
-        }
+    const handleCancel = (bookingId: string, propertyName: string) => {
+        setCancelReason("");
+        setCancelModal({ id: bookingId, name: propertyName });
+    };
 
-        toast("Cancel this booking request?", {
-            description: "This action cannot be undone.",
-            action: {
-                label: "Yes, Cancel",
-                onClick: async () => {
-                    setCancellingId(bookingId);
-                    try {
-                        await cancelBooking(bookingId, reason);
-                        toast.success("Booking cancelled successfully.");
-                        await fetchData();
-                    } catch (e: any) {
-                        toast.error(e.message || "Failed to cancel booking.");
-                    } finally {
-                        setCancellingId(null);
-                    }
-                },
-            },
-        });
+    const confirmCancelStudent = async () => {
+        if (!cancelModal) return;
+        setCancellingId(cancelModal.id);
+        try {
+            await cancelBooking(cancelModal.id, cancelReason);
+            toast.success("Booking cancelled successfully.");
+            setCancelModal(null);
+            setCancelReason("");
+            await fetchData();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to cancel booking.");
+        } finally {
+            setCancellingId(null);
+        }
     };
 
 
@@ -546,7 +543,7 @@ export default function StudentDashboardPage() {
                                                 {/* 🔴 Cancel Booking button — shown on every cancellable stage */}
                                                 {!isActive && !isVacating && !isCompleted && !isCancelled && booking.status !== 'REJECTED' && (
                                                     <button
-                                                        onClick={() => handleCancel(booking.id)}
+                                                        onClick={() => handleCancel(booking.id, booking.propertyName)}
                                                         disabled={cancellingId === booking.id}
                                                         className="h-8 px-4 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 shadow-sm disabled:opacity-50 uppercase tracking-wider">
                                                         {cancellingId === booking.id ? 'Cancelling...' : '✕ Cancel Booking'}
@@ -952,6 +949,60 @@ export default function StudentDashboardPage() {
                     />
                 )
             }
+
+            {/* ── Cancel Modal ── */}
+            {cancelModal && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 transition-all animate-in fade-in duration-300">
+                    <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-8 space-y-6 shadow-2xl animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-500">
+                        <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center shrink-0">
+                                <XCircle className="h-6 w-6 text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-black text-xl text-slate-800">Cancel Booking</h3>
+                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-0.5">Termination Request</p>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                                Are you sure you want to cancel your booking for <strong className="text-slate-900">{cancelModal.name}</strong>? This action cannot be reversed.
+                            </p>
+                            
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cancellation Reason (Mandatory)</label>
+                                <textarea 
+                                    className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-28 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 bg-slate-50/50 transition-all font-medium"
+                                    placeholder="Please explain why you're cancelling..." 
+                                    value={cancelReason} 
+                                    onChange={e => setCancelReason(e.target.value)} 
+                                />
+                                {!cancelReason.trim() && (
+                                    <p className="text-[10px] text-red-500 font-bold italic ml-1">※ Please add notes to enable cancellation</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <Button 
+                                variant="outline" 
+                                className="flex-1 h-12 rounded-2xl border-2 border-slate-100 font-black text-slate-600 hover:bg-slate-50 transition-all" 
+                                onClick={() => { setCancelModal(null); setCancelReason(""); }}
+                            >
+                                GO BACK
+                            </Button>
+                            <Button 
+                                variant="destructive" 
+                                className="flex-1 h-12 rounded-2xl font-black bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale" 
+                                onClick={confirmCancelStudent}
+                                disabled={!cancelReason.trim() || cancellingId === cancelModal.id}
+                            >
+                                {cancellingId === cancelModal.id ? "CANCELLING..." : "CONFIRM CANCEL"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
