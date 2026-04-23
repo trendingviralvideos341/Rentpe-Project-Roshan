@@ -383,12 +383,12 @@ export default function AdminBookingsPage() {
     const STATUS_GROUPS: Record<string, string[]> = {
         ALL:             [],
         NEW_REQUEST:     ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
-        ALLOCATE_ROOM:   ["APPROVED_PENDING_TOKEN", "APPROVED", "KYC_PENDING", "APPROVED_KYC_PENDING", "ROOM_RESERVED"],
+        ALLOCATE_ROOM:   ["APPROVED", "ROOM_RESERVED"],
         STUDENT_PAYS:    ["PAID", "CASH_PAID"],
         AGREEMENT:       ["AGREEMENT_PENDING"],
         PHYSICAL_VERIFY: ["MOVE_IN_SCHEDULED"],
-        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED", "VACATING", "CHECKED_OUT", "COMPLETED"],
-        REJECTED:        ["REJECTED", "KYC_FAILED"],
+        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
+        REJECTED:        ["REJECTED"],
         CANCELLED:       ["CANCELLED", "EXPIRED"],
     };
 

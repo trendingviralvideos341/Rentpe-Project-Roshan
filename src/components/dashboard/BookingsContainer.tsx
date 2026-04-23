@@ -434,12 +434,12 @@ export function BookingsContainer() {
     const STATUS_GROUPS: Record<string, string[]> = {
         ALL: [],
         NEW_REQUEST:     ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
-        ALLOCATE_ROOM:   ["APPROVED_PENDING_TOKEN", "APPROVED", "KYC_PENDING", "APPROVED_KYC_PENDING", "ROOM_RESERVED"],
+        ALLOCATE_ROOM:   ["APPROVED", "ROOM_RESERVED"],
         STUDENT_PAYS:    ["PAID", "CASH_PAID"],
         AGREEMENT:       ["AGREEMENT_PENDING"],
         PHYSICAL_VERIFY: ["MOVE_IN_SCHEDULED"],
-        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED", "VACATING", "CHECKED_OUT", "COMPLETED"],
-        REJECTED:        ["REJECTED", "KYC_FAILED"],
+        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
+        REJECTED:        ["REJECTED"],
         CANCELLED:       ["CANCELLED", "EXPIRED"],
     };
 
@@ -490,7 +490,7 @@ export function BookingsContainer() {
         );
 
         // Step 2: Approved but no room → Allocate Room
-        if (s === 'APPROVED_PENDING_TOKEN' || (s === 'APPROVED' && !hasRoom)) return (
+        if (s === 'APPROVED' && !hasRoom) return (
             <>
                 <Button size="sm" className="h-8 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={() => setAllocateBooking(booking)}>
                     <BedDouble className="w-3 h-3 mr-1" />Allocate Room
@@ -500,7 +500,7 @@ export function BookingsContainer() {
         );
 
         // Step 3: Room allocated, awaiting payment — owner can mark cash paid
-        if (hasRoom && ['APPROVED', 'KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
+        if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
             <>
                 <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
                     <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
