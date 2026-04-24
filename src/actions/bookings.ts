@@ -277,7 +277,7 @@ export async function getAdminBookings() {
         where: { deletedAt: null },
         include: { 
             user: { select: { name: true, email: true } },
-            property: { select: { foodType: true, foodPricePerMonth: true, depositMonths: true } as any }
+            property: { select: { foodType: true, foodPricePerMonth: true } as any }
         },
         orderBy: { createdAt: 'desc' }
     });
