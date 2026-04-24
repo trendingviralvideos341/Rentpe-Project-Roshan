@@ -20,6 +20,8 @@ import {
 } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
+import { RoomAllocationModal } from "@/components/dashboard/RoomAllocationModal";
+import { PhysicalKycModal } from "@/components/dashboard/PhysicalKycModal";
 import { toast } from "sonner";
 import React from "react";
 
@@ -320,6 +322,9 @@ export default function AdminBookingsPage() {
     const [rejectReason, setRejectReason] = useState("");
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
+    const [allocateBooking, setAllocateBooking] = useState<any | null>(null);
+    const [kycBooking, setKycBooking] = useState<any | null>(null);
+    const [approveModal, setApproveModal] = useState<any | null>(null);
 
     const fetchBookings = useCallback(async () => {
         setLoading(true);
@@ -339,19 +344,46 @@ export default function AdminBookingsPage() {
     }, [fetchBookings]);
 
     const handleApprove = (booking: any) => {
-        toast(`Approve booking for ${booking.guestName}?`, {
-            description: `Property: ${booking.propertyName} — Admin override.`,
-            action: {
-                label: "Approve",
-                onClick: async () => {
-                    try {
-                        await approveBooking(booking.id, {});
-                        toast.success("Booking Approved.");
-                        fetchBookings();
-                    } catch { toast.error("Approval failed."); }
-                }
+        setApproveModal(booking);
+    };
+
+    const confirmApprove = async () => {
+        if (!approveModal) return;
+        try {
+            await approveBooking(approveModal.id, {});
+            toast.success("Booking Approved. Now allocate a room.");
+            const approved = approveModal;
+            setApproveModal(null);
+            await fetchBookings();
+            setAllocateBooking({ ...approved, status: 'APPROVED' });
+        } catch { toast.error("Approval failed."); }
+    };
+
+    const handleAllocate = async (bookingId: string, allocationData: any) => {
+        const requestedOccupancy = allocateBooking?.occupancy;
+        const allocatedRoomType = allocationData.roomType;
+        try {
+            await approveBooking(bookingId, {
+                roomId: allocationData.roomId,
+                bedId: allocationData.bedId,
+                occupancy: allocationData.roomType,
+                roomAssigned: `${allocationData.roomAssigned} — Bed ${allocationData.bedNumber}`,
+                amount: allocationData.amount,
+                depositAmount: allocationData.depositAmount,
+                depositMonths: allocationData.depositMonths,
+                foodSelected: allocationData.foodSelected,
+            });
+            if (allocatedRoomType && requestedOccupancy &&
+                allocatedRoomType.toLowerCase() !== requestedOccupancy.toLowerCase()) {
+                toast.warning(`⚠️ Room type changed: Student requested "${requestedOccupancy}" but "${allocatedRoomType}" was allocated.`);
+            } else {
+                toast.success(`Room ${allocationData.roomAssigned} / Bed ${allocationData.bedNumber} allocated!`);
             }
-        });
+            setAllocateBooking(null);
+            await fetchBookings();
+        } catch {
+            toast.error("Allocation failed.");
+        }
     };
 
     const handleReject = (bookingId: string) => {
@@ -399,20 +431,18 @@ export default function AdminBookingsPage() {
         });
     };
 
-    const handleCheckIn = (bookingId: string) => {
-        toast("Confirm student check-in?", {
-            description: "This creates the Tenant record and starts billing.",
-            action: {
-                label: "Check In",
-                onClick: async () => {
-                    try {
-                        await checkInBooking(bookingId);
-                        toast.success("Student Checked-in.");
-                        fetchBookings();
-                    } catch (e: any) { toast.error(e.message || "Check-in failed."); }
-                }
-            }
-        });
+    const handleCheckIn = (booking: any) => {
+        setKycBooking(booking);
+    };
+
+    const confirmCheckIn = async () => {
+        if (!kycBooking) return;
+        try {
+            await checkInBooking(kycBooking.id);
+            toast.success("Student Checked-in.");
+            setKycBooking(null);
+            await fetchBookings();
+        } catch (e: any) { toast.error(e.message || "Check-in failed."); }
     };
 
     const STATUS_GROUPS: Record<string, string[]> = {
@@ -588,11 +618,14 @@ export default function AdminBookingsPage() {
                                             <Button size="sm" variant="destructive" className="text-xs flex-1" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
                                         </>
                                     )}
-                                    {booking.status === 'APPROVED' && (
+                                    {booking.status === 'APPROVED' && !booking.roomAssigned && (
+                                        <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-xs flex-1" onClick={() => setAllocateBooking(booking)}>🛏 Allocate Room</Button>
+                                    )}
+                                    {(booking.status === 'APPROVED' || booking.status === 'ROOM_RESERVED') && booking.roomAssigned && (
                                         <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs flex-1" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
                                     )}
-                                    {(booking.status === 'PAID' || booking.status === 'CASH_PAID') && (
-                                        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs flex-1" onClick={() => handleCheckIn(booking.id)}>🚀 Check-in</Button>
+                                    {(booking.status === 'BOOKING_CONFIRMED' || booking.status === 'MOVE_IN_SCHEDULED') && (
+                                        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs flex-1" onClick={() => handleCheckIn(booking)}>🚀 Check-in</Button>
                                     )}
                                     <Button variant="outline" size="sm" className="text-xs"
                                         onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
@@ -676,7 +709,7 @@ export default function AdminBookingsPage() {
                                                                         // Step 2: Approved but no room → Open Details to allocate
                                                                         if (s === 'APPROVED' && !hasRoom) return (
                                                                             <>
-                                                                                <Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold flex items-center gap-1" onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
+                                                                                <Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold flex items-center gap-1" onClick={() => setAllocateBooking(booking)}>
                                                                                     <BedDouble className="h-3 w-3" /> Allocate Room
                                                                                 </Button>
                                                                                 <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
@@ -776,6 +809,54 @@ export default function AdminBookingsPage() {
                                 <div className="flex gap-3">
                                     <Button variant="outline" className="flex-1" onClick={() => { setCancelModal(null); setCancelReason(""); }}>Back</Button>
                                     <Button variant="destructive" className="flex-1" onClick={confirmCancel} disabled={!cancelReason.trim()}>✕ Confirm Cancel</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Room Allocation Modal */}
+                    {allocateBooking && (
+                        <RoomAllocationModal
+                            isOpen={!!allocateBooking}
+                            onClose={() => setAllocateBooking(null)}
+                            onAllocate={data => handleAllocate(allocateBooking.id, data)}
+                            booking={{
+                                id: allocateBooking.id,
+                                propertyId: allocateBooking.propertyId,
+                                occupancy: allocateBooking.occupancy || "Double Sharing",
+                                guestName: allocateBooking.guestName,
+                            }}
+                            property={{
+                                id: allocateBooking.propertyId,
+                                depositMonths: allocateBooking.property?.depositMonths || 2,
+                                foodAvailable: allocateBooking.property?.foodType === 'OPTIONAL',
+                                foodCharge: allocateBooking.property?.foodPricePerMonth,
+                            }}
+                        />
+                    )}
+
+                    {/* Physical KYC Modal */}
+                    {kycBooking && (
+                        <PhysicalKycModal
+                            isOpen={!!kycBooking}
+                            onClose={() => setKycBooking(null)}
+                            onConfirm={confirmCheckIn}
+                            tenantName={kycBooking.guestName}
+                        />
+                    )}
+
+                    {/* Approve Confirm Modal */}
+                    {approveModal && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                            <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+                                <h3 className="font-black text-lg text-green-700">✅ Approve Booking</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Approve booking for <strong>{approveModal.guestName}</strong>?
+                                    After approval you will allocate a room.
+                                </p>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" className="flex-1" onClick={() => setApproveModal(null)}>Close</Button>
+                                    <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold" onClick={confirmApprove}>✓ Confirm Approve</Button>
                                 </div>
                             </div>
                         </div>

@@ -275,7 +275,10 @@ export async function getAdminBookings() {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
     return await prisma.booking.findMany({
         where: { deletedAt: null },
-        include: { user: { select: { name: true, email: true } } },
+        include: { 
+            user: { select: { name: true, email: true } },
+            property: { select: { foodType: true, foodPricePerMonth: true, depositMonths: true } as any }
+        },
         orderBy: { createdAt: 'desc' }
     });
 }
