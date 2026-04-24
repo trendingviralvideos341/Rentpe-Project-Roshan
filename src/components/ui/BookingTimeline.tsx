@@ -115,9 +115,9 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         <div className="w-full py-6 px-2 md:px-4">
             <div className="flex flex-col md:flex-row justify-between relative gap-6 md:gap-0">
                 {/* Connecting Lines (Desktop only) */}
-                <div className="hidden md:block absolute top-[22px] left-0 w-full h-0.5 bg-slate-200 -z-10" />
+                <div className="hidden md:block absolute top-[18px] left-0 w-full h-0.5 bg-slate-200 -z-10" />
                 <div
-                    className="hidden md:block absolute top-[22px] left-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-1000 -z-10 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+                    className="hidden md:block absolute top-[18px] left-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-1000 -z-10 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
                     style={{ width: `${(activeIndex / (TIMELINE_STEPS.length - 1)) * 100}%` }}
                 />
 
@@ -133,20 +133,20 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                         <div key={step.key} className="flex flex-row md:flex-col items-start md:items-center gap-3 md:gap-2 flex-1 relative group">
                             {/* Connector Line (Mobile only) */}
                             {index < TIMELINE_STEPS.length - 1 && (
-                                <div className="md:hidden absolute left-[22px] top-[44px] w-0.5 h-[calc(100%-20px)] bg-slate-200 -z-10" />
+                                <div className="md:hidden absolute left-[18px] top-[36px] w-0.5 h-[calc(100%-16px)] bg-slate-200 -z-10" />
                             )}
                             {index < activeIndex && (
-                                <div className="md:hidden absolute left-[22px] top-[44px] w-0.5 h-[calc(100%-20px)] bg-gradient-to-b from-indigo-600 to-purple-600 shadow-[0_0_10px_rgba(79,70,229,0.3)] -z-10" />
+                                <div className="md:hidden absolute left-[18px] top-[36px] w-0.5 h-[calc(100%-16px)] bg-gradient-to-b from-indigo-600 to-purple-600 shadow-[0_0_10px_rgba(79,70,229,0.3)] -z-10" />
                             )}
 
                             {/* Node Icon */}
                             <div className={cn(
-                                "relative w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 shrink-0",
-                                isCompleted ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200 scale-110" :
-                                isCurrent ? "bg-white border-2 border-purple-600 text-purple-600 ring-4 ring-purple-100 scale-125" :
+                                "relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 shrink-0",
+                                isCompleted ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200" :
+                                isCurrent ? "bg-white border-2 border-purple-600 text-purple-600 ring-4 ring-purple-100" :
                                 "bg-white border-2 border-dashed border-slate-300 text-slate-400"
                             )}>
-                                {isCompleted ? <Check className="w-5 h-5 stroke-[3]" /> : <Icon className="w-5 h-5" />}
+                                {isCompleted ? <Check className="w-4 h-4 stroke-[3]" /> : <Icon className="w-4 h-4" />}
 
                                 {isCurrent && (
                                     <span className="absolute inset-0 rounded-full border-2 border-purple-600 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-40" />
@@ -155,10 +155,10 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
 
                             {/* Content Card */}
                             <div className={cn(
-                                "flex flex-col gap-1 p-2 md:p-3 rounded-xl border transition-all duration-300 w-full md:max-w-[140px] md:text-center",
-                                isCurrent ? "bg-white/80 backdrop-blur-md border-purple-200 shadow-xl shadow-purple-500/10 -translate-y-1" :
+                                "flex flex-col gap-0.5 p-1.5 md:p-2 rounded-lg border transition-all duration-300 w-full md:max-w-[110px] md:text-center",
+                                isCurrent ? "bg-white border-purple-200 shadow-md shadow-purple-500/5 -translate-y-0.5" :
                                 isCompleted ? "bg-indigo-50/50 border-indigo-100" :
-                                "bg-slate-50 border-slate-100 opacity-50"
+                                "bg-slate-50 border-slate-100 opacity-60"
                             )}>
                                 <span className={cn(
                                     "text-[10px] md:text-xs font-black uppercase tracking-tight leading-tight",
@@ -168,9 +168,9 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                                 </span>
 
                                 {dateVal && (
-                                    <span className="text-[9px] md:text-[10px] font-bold text-slate-500 flex items-center md:justify-center gap-1">
-                                        <Clock className="w-2.5 h-2.5" />
-                                        {format(new Date(dateVal), "dd MMM yyyy, HH:mm")}
+                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-500 flex items-center md:justify-center gap-1">
+                                        <Calendar className="w-2 h-2" />
+                                        {format(new Date(dateVal), "dd MMM yyyy")}
                                     </span>
                                 )}
 
@@ -194,7 +194,7 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                                 {booking.cancelReason || booking.rejectionReason || (isCancelled ? 'This booking has been cancelled.' : 'Your application was unfortunately not accepted at this time.')}
                             </p>
                             <p className="text-[10px] text-red-600 italic mt-2">
-                                Dated: {format(new Date(booking.updatedAt), "dd MMM yyyy, HH:mm")}
+                                Dated: {format(new Date(booking.updatedAt), "dd MMM yyyy")}
                             </p>
                         </div>
                     </div>
