@@ -679,7 +679,7 @@ export default function AdminBookingsPage() {
                                                                                 <Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold flex items-center gap-1" onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
                                                                                     <BedDouble className="h-3 w-3" /> Allocate Room
                                                                                 </Button>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
                                                                             </>
                                                                         );
 
@@ -689,7 +689,7 @@ export default function AdminBookingsPage() {
                                                                                 <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold flex items-center gap-1" onClick={() => handleMarkCashPaid(booking.id)}>
                                                                                     <CreditCard className="h-3 w-3" /> Cash Paid
                                                                                 </Button>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
                                                                             </>
                                                                         );
 
@@ -699,7 +699,7 @@ export default function AdminBookingsPage() {
                                                                                 <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold flex items-center gap-1" onClick={() => handleCheckIn(booking.id)}>
                                                                                     <ShieldCheck className="h-3 w-3" /> Check-in
                                                                                 </Button>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
                                                                             </>
                                                                         );
 
@@ -707,7 +707,7 @@ export default function AdminBookingsPage() {
                                                                         if (['PAID', 'CASH_PAID'].includes(s)) return (
                                                                             <>
                                                                                 <span className="text-[9px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded border border-violet-100">✍️ Awaiting Signing</span>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
                                                                             </>
                                                                         );
 
@@ -752,7 +752,7 @@ export default function AdminBookingsPage() {
                                 />
                                 <div className="flex gap-3">
                                     <Button variant="outline" className="flex-1" onClick={() => { setRejectModal(null); setRejectReason(""); }}>Cancel</Button>
-                                    <Button variant="destructive" className="flex-1" onClick={confirmReject}>Confirm Reject</Button>
+                                    <Button variant="destructive" className="flex-1" onClick={confirmReject} disabled={!rejectReason.trim()}>Confirm Reject</Button>
                                 </div>
                             </div>
                         </div>
