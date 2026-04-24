@@ -4,8 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye, Search, Building2, ClipboardList } from "lucide-react";
-import { getBookings, approveBooking, markBookingPaid } from "@/actions/bookings";
+import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye, Search, Building2, ClipboardList, AlertTriangle, Phone, Shuffle } from "lucide-react";
+import { getBookings, approveBooking, markBookingPaid, updateSharingType } from "@/actions/bookings";
 import { getAvailableRooms, getBedsForRoom } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
 import { getProperties } from "@/actions/properties";
@@ -48,6 +48,54 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
     const [uploadingCount, setUploadingCount] = useState(0);
     const [previewDoc, setPreviewDoc] = useState<any>(null);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    // ── Sharing Type Edit State ──
+    const [sharingTypeModal, setSharingTypeModal] = useState(false);
+    const [newSharingType, setNewSharingType] = useState(booking.occupancy || "");
+    const [sharingRoomId, setSharingRoomId] = useState("");
+    const [sharingAmount, setSharingAmount] = useState(String(booking.amount || ""));
+    const [sharingDepositMonths, setSharingDepositMonths] = useState<1|2>(booking.depositMonths || 1);
+    const [savingSharing, setSavingSharing] = useState(false);
+    const [sharingUpdated, setSharingUpdated] = useState(!!(booking as any).originalOccupancy && (booking as any).originalOccupancy !== booking.occupancy);
+
+    const SHARING_TYPES = ["Single Sharing", "Double Sharing", "Three Sharing", "Four Sharing", "Five Sharing", "Six Sharing"];
+    const BUILDING_MGMT_PHONE = "+91 98765 43210";
+    const PG_OWNER_PHONE = "+91 91234 56789";
+
+    const filteredRoomsForSharing = rooms.filter(r => {
+        if (!r.propertyId) return true;
+        const prop = properties.find((p: any) => p.name === booking.propertyName);
+        if (prop && r.propertyId !== prop.id) return false;
+        if (newSharingType && r.type !== newSharingType) return false;
+        return r.availability > 0;
+    });
+
+    const handleSaveSharingType = async () => {
+        if (!newSharingType) { toast.error("Please select a sharing type."); return; }
+        if (!sharingRoomId) { toast.error("Please select a room for the new sharing type."); return; }
+        setSavingSharing(true);
+        try {
+            const selRoom = rooms.find(r => r.id === sharingRoomId);
+            const roomPrice = selRoom ? Number(selRoom.price) : Number(sharingAmount) || 0;
+            const depositAmt = roomPrice * sharingDepositMonths;
+            await updateSharingType(booking.id, {
+                newOccupancy: newSharingType,
+                roomId: sharingRoomId,
+                roomAssigned: selRoom ? `${selRoom.roomNumber} (${newSharingType})` : booking.roomAssigned,
+                newAmount: roomPrice,
+                depositAmount: depositAmt,
+                depositMonths: sharingDepositMonths,
+            });
+            toast.success(`Sharing type updated to ${newSharingType}! Student has been notified.`);
+            setSharingTypeModal(false);
+            setSharingUpdated(true);
+            onRefresh();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to update sharing type.");
+        } finally {
+            setSavingSharing(false);
+        }
+    };
 
     // ── Citizen mode ──
     const [citizenMode, setCitizenMode] = useState<"indian" | "international">(
@@ -287,6 +335,10 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                     <div className="flex gap-2 flex-wrap">
                         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setEditing(!editing); setShowPendingPrompt(false); }}>
                             <Edit2 className="h-3 w-3 mr-1" /> {editing ? "Cancel Edit" : "Edit Details"}
+                        </Button>
+                        {/* Change Sharing Type Button */}
+                        <Button size="sm" className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold" onClick={() => setSharingTypeModal(true)}>
+                            <Shuffle className="h-3 w-3 mr-1" /> Change Sharing Type
                         </Button>
                         {booking.status !== "PAID" && booking.status !== "CASH_PAID" && booking.paymentMethod === "CASH" && (
                             <Button size="sm" className="h-8 text-xs bg-orange-500 hover:bg-orange-600" onClick={handleCashPaid}>
@@ -941,6 +993,151 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         >
                             CLOSE PREVIEW
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Change Sharing Type Modal ── */}
+            {sharingTypeModal && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setSharingTypeModal(false)}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-lg font-black text-purple-800">🔄 Change Sharing Type</h2>
+                            <button onClick={() => setSharingTypeModal(false)} className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">✕</button>
+                        </div>
+
+                        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3">
+                            <p className="text-xs font-bold text-amber-800">⚠️ Current: <span className="font-black">{booking.occupancy}</span></p>
+                            <p className="text-[10px] text-amber-700 mt-0.5">Changing the sharing type will update the student{"'"s booking and notify them automatically.</p>
+                        </div>
+
+                        {/* Sharing type selector */}
+                        <div>
+                            <label className="text-xs font-black uppercase text-slate-500 block mb-2">New Sharing Type *</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {SHARING_TYPES.map(type => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => { setNewSharingType(type); setSharingRoomId(""); setSharingAmount(""); }}
+                                        className={`px-2 py-2.5 rounded-xl text-xs font-black border-2 transition-all ${
+                                            newSharingType === type
+                                                ? "bg-purple-600 text-white border-purple-600 ring-2 ring-purple-100 shadow-md"
+                                                : "border-slate-200 text-slate-600 hover:border-purple-300 hover:bg-purple-50"
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Room selector (mandatory) */}
+                        {newSharingType && (
+                            <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                <label className="text-xs font-black uppercase text-slate-500 block mb-2">Select Room (Mandatory) *</label>
+                                <select
+                                    className="w-full border-2 border-purple-100 rounded-xl p-2.5 text-sm bg-white focus:border-purple-400 focus:ring-0"
+                                    value={sharingRoomId}
+                                    onChange={e => {
+                                        setSharingRoomId(e.target.value);
+                                        const selRoom = rooms.find(r => r.id === e.target.value);
+                                        if (selRoom) setSharingAmount(String(selRoom.price));
+                                    }}
+                                >
+                                    <option value="">Select a room...</option>
+                                    {filteredRoomsForSharing.map(r => (
+                                        <option key={r.id} value={r.id}>
+                                            Room {r.roomNumber} — {r.type} — ₹{r.price?.toLocaleString('en-IN')}/mo ({r.availability} beds avail)
+                                        </option>
+                                    ))}
+                                </select>
+                                {filteredRoomsForSharing.length === 0 && (
+                                    <p className="text-[10px] text-amber-600 font-bold mt-1">⚠️ No {newSharingType} rooms available for this property.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Auto-populated amount */}
+                        {sharingRoomId && (() => {
+                            const selRoom = rooms.find(r => r.id === sharingRoomId);
+                            const rent = selRoom ? Number(selRoom.price) : 0;
+                            const depositAmt = rent * sharingDepositMonths;
+                            return (
+                                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3 animate-in fade-in duration-200">
+                                    <p className="text-xs font-black uppercase text-indigo-700">Payment Breakdown (Auto-calculated)</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-white border border-indigo-100 rounded-lg p-3">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Monthly Rent</p>
+                                            <p className="text-lg font-black text-indigo-900">₹{rent.toLocaleString('en-IN')}</p>
+                                        </div>
+                                        <div className="bg-white border border-indigo-100 rounded-lg p-3">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Deposit ({sharingDepositMonths}m)</p>
+                                            <p className="text-lg font-black text-emerald-700">₹{depositAmt.toLocaleString('en-IN')}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {([1, 2] as const).map(m => (
+                                            <button key={m} type="button" onClick={() => setSharingDepositMonths(m)}
+                                                className={`flex-1 py-2 rounded-xl text-xs font-black border-2 transition-all ${
+                                                    sharingDepositMonths === m
+                                                        ? "bg-indigo-600 text-white border-indigo-600"
+                                                        : "border-indigo-200 text-indigo-700 hover:border-indigo-400"
+                                                }`}>
+                                                {m}M Deposit
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between items-center bg-slate-900 text-white rounded-lg px-4 py-3">
+                                        <span className="text-sm font-black">Total Due Now</span>
+                                        <span className="text-lg font-black">₹{(rent + depositAmt).toLocaleString('en-IN')}</span>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Note shown after successful save */}
+                        <div className="bg-orange-50 border border-orange-300 rounded-xl p-3 space-y-1">
+                            <p className="text-xs font-black text-orange-800">📢 Note on Sharing Type Changes</p>
+                            <p className="text-[10px] text-orange-700">After saving, the student will be notified: "Your sharing type has been updated. If you want another sharing type, kindly contact the Building Management Team."</p>
+                            <div className="space-y-0.5 pt-1">
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-orange-900">
+                                    <Phone className="h-3 w-3" /> Contact 1 (Building Management): {BUILDING_MGMT_PHONE}
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-orange-900">
+                                    <Phone className="h-3 w-3" /> Contact 2 (PG Owner): {PG_OWNER_PHONE}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 font-black rounded-xl h-11 text-sm"
+                                onClick={handleSaveSharingType}
+                                disabled={savingSharing || !newSharingType || !sharingRoomId}
+                            >
+                                {savingSharing ? (
+                                    <><span className="animate-spin inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full" />Saving...</>
+                                ) : "✅ Save Sharing Type"}
+                            </Button>
+                            <button
+                                onClick={() => setSharingTypeModal(false)}
+                                className="px-6 py-2 text-xs font-black bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sharing type updated banner */}
+            {sharingUpdated && (
+                <div className="mx-4 mb-3 p-3 bg-orange-50 border-2 border-orange-400 rounded-xl flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="text-xs font-black text-orange-800">Sharing type was changed from {(booking as any).originalOccupancy} → {booking.occupancy}</p>
+                        <p className="text-[10px] text-orange-700">Student has been notified. If they want their original sharing type, they can contact Building Management.</p>
                     </div>
                 </div>
             )}

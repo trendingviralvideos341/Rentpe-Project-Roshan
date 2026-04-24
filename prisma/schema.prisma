@@ -242,6 +242,7 @@ model Booking {
   roomId                      String?
   propertyName                String
   occupancy                   String
+  originalOccupancy           String?
   guestName                   String
   guestEmail                  String?
   guestPhone                  String?
@@ -311,6 +312,7 @@ model Booking {
   roomChangeRequests          RoomChangeRequest[]
   maintenanceRequests         MaintenanceRequest[]
 }
+
 
 model Waitlist {
   id         String    @id @default(uuid())

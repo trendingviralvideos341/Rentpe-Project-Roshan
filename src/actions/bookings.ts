@@ -9,6 +9,40 @@ import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
 
+/**
+ * Get a single booking by ID (for payment page, student view).
+ * Returns booking with property owner info and room details.
+ */
+export async function getBookingById(id: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: {
+            property: {
+                select: {
+                    id: true,
+                    name: true,
+                    address: true,
+                    city: true,
+                    foodType: true,
+                    foodPricePerMonth: true,
+                    owner: { select: { name: true, phone: true } }
+                }
+            },
+            room: { select: { roomNumber: true, type: true, price: true, depositMonths: true } }
+        }
+    });
+
+    if (!booking) throw new Error("Booking not found");
+    // Students can only fetch their own booking; owners/admins can fetch any
+    if (session.role === 'USER' && booking.userId !== session.userId) throw new Error("Unauthorized");
+
+    return booking;
+}
+
+
 export async function createBooking(data: {
     roomId?: string,
     propertyName: string,
@@ -1248,4 +1282,76 @@ export async function completeVacate(bookingId: string) {
             rentRecords,
         }
     };
+}
+
+/**
+ * Owner/Admin: Update the sharing type of an existing booking.
+ * Saves the original occupancy for change detection, updates amount from room,
+ * and notifies the student.
+ */
+export async function updateSharingType(bookingId: string, data: {
+    newOccupancy: string;
+    roomId?: string;
+    roomAssigned?: string;
+    newAmount?: number;
+    depositAmount?: number;
+    depositMonths?: number;
+}) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) {
+        throw new Error("Unauthorized");
+    }
+
+    // Get existing booking to save original occupancy
+    const existingBooking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!existingBooking) throw new Error("Booking not found");
+
+    const originalOccupancy = (existingBooking as any).originalOccupancy || existingBooking.occupancy;
+
+    // Update booking with new sharing type
+    const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+            occupancy: data.newOccupancy,
+            originalOccupancy: originalOccupancy,
+            ...(data.roomId ? { roomId: data.roomId } : {}),
+            ...(data.roomAssigned ? { roomAssigned: data.roomAssigned } : {}),
+            ...(data.newAmount !== undefined ? { amount: data.newAmount } : {}),
+            ...(data.depositAmount !== undefined ? { depositAmount: data.depositAmount } : {}),
+            ...(data.depositMonths !== undefined ? { depositMonths: data.depositMonths } : {}),
+        } as any
+    });
+
+    // Notify student about sharing type change
+    if (existingBooking.userId) {
+        try {
+            await NotificationService.trigger({
+                bookingId,
+                userId: existingBooking.userId,
+                type: 'BOOKING',
+                category: 'ROOM_ALLOCATED',
+                message: `Your sharing type has been updated to ${data.newOccupancy} for ${existingBooking.propertyName}. If you want another sharing type, kindly contact the Building Management Team.`,
+                targetRole: 'USER',
+                isPersistent: true
+            });
+        } catch (e) {
+            console.error("Sharing type notification error:", e);
+        }
+    }
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role as string,
+        actorName: session.name || 'Owner/Admin',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Sharing type updated from ${originalOccupancy} to ${data.newOccupancy}. New amount: ₹${data.newAmount || existingBooking.amount}.`,
+        newValue: { occupancy: data.newOccupancy, amount: data.newAmount }
+    });
+
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/admin/onboarding');
+    revalidatePath('/dashboard/student');
+    return updated;
 }

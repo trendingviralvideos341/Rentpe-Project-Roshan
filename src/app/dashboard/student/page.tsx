@@ -275,7 +275,7 @@ export default function StudentDashboardPage() {
                         if (booking.status === 'AGREEMENT_PENDING')
                             return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
                         if (booking.status === 'APPROVED' && booking.roomAssigned && !booking.agreementSigned)
-                            return <AlertBanner key={`alert-pay-${booking.id}`} type="warning" message={`Room allocated at ${booking.propertyName}! Pay now to confirm your booking.`} actionLabel="Pay Now" onAction={() => document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' })} />;
+                            return <AlertBanner key={`alert-pay-${booking.id}`} type="warning" message={`Room allocated at ${booking.propertyName}! Pay now to confirm your booking.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
                         if ((booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !booking.agreementSigned)
                             return <AlertBanner key={`alert-paidsign-${booking.id}`} type="info" message={`Sign Agreement: Payment confirmed for ${booking.propertyName}. Please sign to complete.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
                         return null;
@@ -391,6 +391,83 @@ export default function StudentDashboardPage() {
 
 
 
+                                            {/* ── Room Allocation Alert Box ── */}
+                                            {(isPaymentPending || isPaid || isApproved) && booking.roomAssigned && (() => {
+                                                const origOcc = (booking as any).originalOccupancy;
+                                                const currOcc = booking.occupancy || "";
+                                                const sharingChanged = origOcc && origOcc !== currOcc;
+                                                const roomParts = (booking.roomAssigned || "").split(/[—\-–]/);
+                                                const roomNo = roomParts[0]?.trim() || booking.roomAssigned;
+                                                const bedNo = roomParts[1]?.trim() || null;
+                                                const BUILDING_MGMT_PHONE = "+91 98765 43210";
+                                                const PG_OWNER_PHONE = "+91 91234 56789";
+                                                return (
+                                                    <div className={`rounded-2xl border-2 p-4 space-y-3 ${
+                                                        sharingChanged
+                                                            ? "bg-orange-50 border-orange-400"
+                                                            : "bg-indigo-50 border-indigo-300"
+                                                    }`}>
+                                                        <div className={`flex items-center gap-2 text-sm font-black ${
+                                                            sharingChanged ? "text-orange-800" : "text-indigo-800"
+                                                        }`}>
+                                                            <BedDouble className="h-4 w-4" />
+                                                            🏠 Your Allocated Room
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {[
+                                                                ["Room Type", currOcc || "—"],
+                                                                ["Room No.", roomNo],
+                                                                ["Bed", bedNo || "—"],
+                                                            ].map(([label, val]) => (
+                                                                <div key={label} className={`rounded-xl p-3 text-center ${
+                                                                    sharingChanged ? "bg-orange-100" : "bg-white border border-indigo-100"
+                                                                }`}>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label}</p>
+                                                                    <p className={`text-sm font-black ${
+                                                                        sharingChanged ? "text-orange-900" : "text-indigo-900"
+                                                                    }`}>{val}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Sharing type changed warning */}
+                                                        {sharingChanged && (
+                                                            <div className="bg-red-50 border-2 border-red-400 rounded-xl p-3 space-y-2">
+                                                                <div className="flex items-start gap-2">
+                                                                    <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                                                    <div>
+                                                                        <p className="text-red-800 font-black text-sm">⚠️ Your Room Type Was Changed</p>
+                                                                        <p className="text-red-700 text-xs mt-0.5">
+                                                                            You applied for <strong>{origOcc}</strong> but were allocated <strong>{currOcc}</strong>.
+                                                                            If you want another sharing type, kindly contact the Building Management Team.
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-1.5 pt-2 border-t border-red-200">
+                                                                    <p className="text-[10px] font-black text-red-800 uppercase tracking-widest">Contact for sharing type change:</p>
+                                                                    <div className="flex items-center gap-2 text-xs font-bold text-red-900 bg-red-100 rounded-lg px-3 py-2">
+                                                                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                                                                        <span>Contact 1 (Building Management):</span>
+                                                                        <span className="ml-auto font-black">{BUILDING_MGMT_PHONE}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-xs font-bold text-red-900 bg-red-100 rounded-lg px-3 py-2">
+                                                                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                                                                        <span>Contact 2 (PG Owner):</span>
+                                                                        <span className="ml-auto font-black">{PG_OWNER_PHONE}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => router.back()}
+                                                                    className="flex items-center gap-2 text-xs font-black text-red-700 hover:text-red-900 transition-colors mt-1 group"
+                                                                >
+                                                                    <span className="group-hover:-translate-x-0.5 transition-transform">←</span> Go Back
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+
                                             {/* ── Dynamic Fee Breakdown (when room is allocated and payment pending) ── */}
                                             {isPaymentPending && booking.roomAssigned && (
                                                 <div className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-400 rounded-2xl p-5 space-y-4">
@@ -416,10 +493,11 @@ export default function StudentDashboardPage() {
                                                             <span>₹{(Number(booking.amount || booking.room?.price || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span>
                                                         </div>
                                                     </div>
-                                                    <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-black h-12 rounded-2xl shadow-lg shadow-indigo-200" asChild>
-                                                        <a href={`/secure/payment?id=${booking.id}&amount=${Number(booking.amount || 0) + Number(booking.depositAmount || 0)}&type=booking`}>
-                                                            💳 Pay ₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')} Online Now
-                                                        </a>
+                                                    <Button
+                                                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-black h-12 rounded-2xl shadow-lg shadow-indigo-200 active:scale-95 transition-all"
+                                                        onClick={() => router.push(`/secure/payment?id=${booking.id}`)}
+                                                    >
+                                                        💳 Pay ₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')} Online Now
                                                     </Button>
                                                     <p className="text-[10px] text-center text-indigo-500">Secured payment · Deposit refundable · No hidden fees</p>
                                                 </div>
