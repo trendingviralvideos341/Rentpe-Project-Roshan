@@ -318,7 +318,7 @@ export default function StudentDashboardPage() {
                                                         Ref: {booking.displayId} • {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                                                     </CardDescription>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="text-right space-y-1">
                                                     <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
                                                         isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
                                                         isVacating ? 'bg-orange-100 text-orange-700 border-orange-300' :
@@ -330,6 +330,20 @@ export default function StudentDashboardPage() {
                                                     }`}>
                                                         {booking.status.replace(/_/g, ' ')}
                                                     </span>
+                                                    {booking.status === 'REJECTED' && booking.rejectionReason && (
+                                                        <div className="max-w-[180px] text-right">
+                                                            <p className="text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1 leading-tight">
+                                                                ❌ Rejected: {booking.rejectionReason}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                    {booking.status === 'CANCELLED' && booking.cancelReason && (
+                                                        <div className="max-w-[180px] text-right">
+                                                            <p className="text-[9px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 leading-tight">
+                                                                🚫 Cancelled: {booking.cancelReason}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </CardHeader>
@@ -979,6 +993,11 @@ export default function StudentDashboardPage() {
                                 />
                                 {!cancelReason.trim() && (
                                     <p className="text-[10px] text-red-500 font-bold italic ml-1">※ Please add notes to enable cancellation</p>
+                                )}
+                                {cancelReason.trim() && (
+                                    <p className="text-[10px] text-amber-600 font-bold italic ml-1 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
+                                        ※ Note: This reason will be shared with the property owner and management.
+                                    </p>
                                 )}
                             </div>
                         </div>

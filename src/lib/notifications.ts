@@ -106,13 +106,18 @@ export class NotificationService {
     });
   }
 
-  static async onRoomAllocated(booking: any, roomNumber: string) {
+  static async onRoomAllocated(booking: any, roomNumber: string, requestedType?: string, allocatedType?: string, contactNumber?: string) {
+    let message = `Room ${roomNumber} has been allocated to you at ${booking.propertyName}.`;
+    if (requestedType && allocatedType && requestedType.toLowerCase() !== allocatedType.toLowerCase()) {
+      message = `Room ${roomNumber} (${allocatedType}) has been allocated to you at ${booking.propertyName}. (Note: You requested ${requestedType}. Please reach out to building management at ${contactNumber || 'property contact'} for concerns.)`;
+    }
+
     await this.trigger({
       bookingId: booking.id,
       userId: booking.userId,
       type: "BOOKING",
       category: "ROOM_ALLOCATED",
-      message: `Room ${roomNumber} has been allocated to you at ${booking.propertyName}.`,
+      message: message,
       actionUrl: "/dashboard/student",
       actionLabel: "View Room",
       emailSubject: "Room Allocated 🏠",

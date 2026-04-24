@@ -22,17 +22,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    REQUESTED:                { label: '🔴 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
-    APPLIED:                  { label: '🔴 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
+    REQUESTED:                { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
+    APPLIED:                  { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
     PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
-    APPROVED_PENDING_TOKEN:   { label: '🛏 Allocate Room',     cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    APPROVED:                 { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
-    KYC_PENDING:              { label: '📝 Awaiting Payment',  cls: 'bg-blue-100 text-blue-700 border-blue-300' },
-    APPROVED_KYC_PENDING:     { label: '📝 Awaiting Payment',  cls: 'bg-blue-100 text-blue-700 border-blue-300' },
-    KYC_FAILED:               { label: '❌ KYC Failed',         cls: 'bg-red-100 text-red-800 border-red-300' },
+    APPROVED:                 { label: '🛏 Room Allocation',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     ROOM_RESERVED:            { label: '💳 Awaiting Payment',  cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    AGREEMENT_PENDING:        { label: '✍️ Awaiting Agreement', cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    PAID:                     { label: '✅ Paid',               cls: 'bg-green-100 text-green-700 border-green-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    PAID:                     { label: '💳 Paid',              cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
     BOOKING_CONFIRMED:        { label: '✍️ Agreement Signed',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     MOVE_IN_SCHEDULED:        { label: '📅 Move-in Set',       cls: 'bg-teal-100 text-teal-700 border-teal-300' },
@@ -40,7 +36,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
     CHECKIN_CONFIRMED:        { label: '🏡 Checked In',        cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     CHECKED_OUT:              { label: '🏠 Checked Out',       cls: 'bg-slate-100 text-slate-500 border-slate-300' },
     COMPLETED:                { label: '✅ Stay Completed',    cls: 'bg-slate-100 text-slate-600 border-slate-300' },
-    REJECTED:                 { label: '❌ Rejected',           cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+    REJECTED:                 { label: '❌ Rejected',           cls: 'bg-red-50 text-red-700 border-red-200' },
     CANCELLED:                { label: '🚫 Cancelled',         cls: 'bg-slate-100 text-slate-600 border-slate-300' },
     EXPIRED:                  { label: '⏰ Expired',            cls: 'bg-gray-100 text-gray-500 border-gray-200' },
 };
@@ -375,6 +371,7 @@ export function BookingsContainer() {
         await approveBooking(bookingId, {
             roomId: allocationData.roomId,
             bedId: allocationData.bedId,
+            occupancy: allocationData.roomType,
             roomAssigned: `${allocationData.roomAssigned} — Bed ${allocationData.bedNumber}`,
             amount: allocationData.amount,
             depositAmount: allocationData.depositAmount,

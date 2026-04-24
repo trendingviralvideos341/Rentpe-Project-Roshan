@@ -383,7 +383,14 @@ export async function approveBooking(id: string, data: {
         if (booking.userId) {
             await NotificationService.onRequestAccepted(booking);
             if (data.roomAssigned) {
-                await NotificationService.onRoomAllocated(booking, data.roomAssigned);
+                const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' }, include: { owner: { select: { phone: true } } } });
+                await NotificationService.onRoomAllocated(
+                    booking,
+                    data.roomAssigned,
+                    existingBooking?.occupancy || undefined,
+                    data.occupancy,
+                    property?.owner?.phone || undefined
+                );
                 // Also trigger ONBOARDING_COMPLETED as the user has been assigned a place
                 await NotificationService.trigger({
                     bookingId: booking.id,
