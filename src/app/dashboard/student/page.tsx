@@ -274,8 +274,15 @@ export default function StudentDashboardPage() {
                             return <AlertBanner key={`alert-kycfail-${booking.id}`} type="error" message={`KYC Failed for ${booking.propertyName}. ${booking.kycNotes ? `Reason: ${booking.kycNotes}` : ''} Please re-upload your documents.`} actionLabel="Re-upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
                         if (booking.status === 'AGREEMENT_PENDING')
                             return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
-                        if (booking.status === 'APPROVED' && booking.roomAssigned && !booking.agreementSigned)
+                        if (booking.status === 'APPROVED' && booking.roomAssigned && !booking.agreementSigned) {
+                            const sharingWasChanged = !!(booking as any).originalOccupancy && (booking as any).originalOccupancy !== booking.occupancy;
+                            if (sharingWasChanged) return (
+                                <AlertBanner key={`alert-pay-${booking.id}`} type="error"
+                                    message={`⚠️ Your room type was changed from "${(booking as any).originalOccupancy}" to "${booking.occupancy}". If you want another sharing type, contact Building Management. Pay now to confirm.`}
+                                    actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />
+                            );
                             return <AlertBanner key={`alert-pay-${booking.id}`} type="warning" message={`Room allocated at ${booking.propertyName}! Pay now to confirm your booking.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
+                        }
                         if ((booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !booking.agreementSigned)
                             return <AlertBanner key={`alert-paidsign-${booking.id}`} type="info" message={`Sign Agreement: Payment confirmed for ${booking.propertyName}. Please sign to complete.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
                         return null;
@@ -396,9 +403,10 @@ export default function StudentDashboardPage() {
                                                 const origOcc = (booking as any).originalOccupancy;
                                                 const currOcc = booking.occupancy || "";
                                                 const sharingChanged = origOcc && origOcc !== currOcc;
-                                                const roomParts = (booking.roomAssigned || "").split(/[—\-–]/);
-                                                const roomNo = roomParts[0]?.trim() || booking.roomAssigned;
-                                                const bedNo = roomParts[1]?.trim() || null;
+                                                const _assigned = booking.roomAssigned || "";
+                                                const roomNo = _assigned.split(/\s*[\u2014\-]\s*/)[0]?.trim() || _assigned;
+                                                const _bedMatch = _assigned.match(/[Bb]ed\s+([^\s,]+)/);
+                                                const bedNo = _bedMatch ? _bedMatch[1] : (_assigned.includes("-") ? _assigned.split("-").pop()?.trim() || null : null);
                                                 const BUILDING_MGMT_PHONE = "+91 98765 43210";
                                                 const PG_OWNER_PHONE = "+91 91234 56789";
                                                 return (
