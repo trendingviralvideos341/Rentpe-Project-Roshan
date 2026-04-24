@@ -476,7 +476,7 @@ export function BookingsContainer() {
     const RejectCapsule = ({ bookingId }: { bookingId: string }) => (
         <button
             onClick={() => handleReject(bookingId)}
-            className="h-8 px-3 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm">
+            className="h-8 px-4 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm uppercase tracking-wide">
             ✕ Reject
         </button>
     );
@@ -489,7 +489,7 @@ export function BookingsContainer() {
         if (['REQUESTED', 'APPLIED', 'PENDING_APPROVAL'].includes(s)) return (
             <>
                 <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                <Button size="sm" variant="destructive" className="h-8 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
+                <button onClick={() => handleReject(booking.id)} className="h-8 px-4 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
             </>
         );
 
@@ -789,11 +789,14 @@ export function BookingsContainer() {
                     <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
                         <h3 className="font-black text-lg">Reject Booking</h3>
                         <p className="text-sm text-muted-foreground">The student will be notified with this reason.</p>
+                        <p className="text-[11px] text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100 italic">
+                            ※ Please note: You must add a reason in the box below to notify the student.
+                        </p>
                         <textarea className="w-full border rounded-xl p-3 text-sm resize-none h-24 focus:outline-none focus:ring-2 focus:ring-red-300"
                             placeholder="Reason for rejection..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
                         <div className="flex gap-3">
                             <Button variant="outline" className="flex-1" onClick={() => { setRejectModal(null); setRejectReason(""); }}>Cancel</Button>
-                            <Button variant="destructive" className="flex-1" onClick={confirmReject}>Confirm Reject</Button>
+                            <Button variant="destructive" className="flex-1" onClick={confirmReject} disabled={!rejectReason.trim()}>Confirm Reject</Button>
                         </div>
                     </div>
                 </div>
