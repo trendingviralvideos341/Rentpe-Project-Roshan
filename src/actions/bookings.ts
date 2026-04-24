@@ -1260,6 +1260,7 @@ export async function completeVacate(bookingId: string) {
 export async function updateSharingType(bookingId: string, data: {
     newOccupancy: string;
     roomId?: string;
+    bedId?: string;
     roomAssigned?: string;
     newAmount?: number;
     depositAmount?: number;
@@ -1276,6 +1277,23 @@ export async function updateSharingType(bookingId: string, data: {
 
     const originalOccupancy = (existingBooking as any).originalOccupancy || existingBooking.occupancy;
 
+    // ── Free the old bed (so it shows AVAILABLE in real-time) ──
+    const oldBedId = (existingBooking as any).bedId;
+    if (oldBedId) {
+        await prisma.bed.update({
+            where: { id: oldBedId },
+            data: { status: 'AVAILABLE', lockedByBookingId: null, tenantId: null }
+        }).catch(() => {}); // silently continue if bed not found
+    }
+
+    // ── Lock the new bed ──
+    if (data.bedId) {
+        await prisma.bed.update({
+            where: { id: data.bedId },
+            data: { status: 'RESERVED', lockedByBookingId: bookingId }
+        }).catch(() => {});
+    }
+
     // Update booking with new sharing type
     const updated = await prisma.booking.update({
         where: { id: bookingId },
@@ -1283,6 +1301,7 @@ export async function updateSharingType(bookingId: string, data: {
             occupancy: data.newOccupancy,
             originalOccupancy: originalOccupancy,
             ...(data.roomId ? { roomId: data.roomId } : {}),
+            ...(data.bedId ? { bedId: data.bedId } : {}),
             ...(data.roomAssigned ? { roomAssigned: data.roomAssigned } : {}),
             ...(data.newAmount !== undefined ? { amount: data.newAmount } : {}),
             ...(data.depositAmount !== undefined ? { depositAmount: data.depositAmount } : {}),

@@ -109,31 +109,62 @@ export default function NotificationBell() {
                                 No notifications yet
                             </div>
                         ) : (
-                            notifications.map((n) => (
-                                <div
-                                    key={n.id}
-                                    className={`px-4 py-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors ${!n.isRead ? 'bg-primary/5' : ''}`}
-                                    onClick={() => !n.isRead && handleMarkRead(n.id)}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.isRead ? 'bg-primary' : 'bg-transparent'}`} />
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`text-sm leading-snug ${!n.isRead ? 'font-medium' : 'text-muted-foreground'}`}>
-                                                {n.message}
-                                            </p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] text-muted-foreground">{formatTime(n.createdAt)}</span>
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase font-bold">{n.type}</span>
+                            notifications.map((n) => {
+                                // Color-code by category
+                                const isSharingChange = n.category === 'ROOM_ALLOCATED' && n.message?.toLowerCase().includes('sharing type');
+                                const isRoomAlloc = n.category === 'ROOM_ALLOCATED' && !isSharingChange;
+                                const isPayment = n.type === 'PAYMENT';
+
+                                const rowBg = !n.isRead
+                                    ? isSharingChange ? 'bg-red-50 border-l-4 border-l-red-400'
+                                    : isRoomAlloc ? 'bg-amber-50 border-l-4 border-l-amber-400'
+                                    : isPayment ? 'bg-green-50 border-l-4 border-l-green-400'
+                                    : 'bg-primary/5'
+                                    : '';
+                                const dotColor = !n.isRead
+                                    ? isSharingChange ? 'bg-red-500'
+                                    : isRoomAlloc ? 'bg-amber-500'
+                                    : isPayment ? 'bg-green-500'
+                                    : 'bg-primary'
+                                    : 'bg-transparent';
+                                const badgeCls = isSharingChange
+                                    ? 'bg-red-100 text-red-700'
+                                    : isRoomAlloc ? 'bg-amber-100 text-amber-700'
+                                    : isPayment ? 'bg-green-100 text-green-700'
+                                    : 'bg-muted text-muted-foreground';
+                                const textCls = !n.isRead
+                                    ? isSharingChange ? 'font-bold text-red-900'
+                                    : isRoomAlloc ? 'font-bold text-amber-900'
+                                    : 'font-medium'
+                                    : 'text-muted-foreground';
+
+                                return (
+                                    <div
+                                        key={n.id}
+                                        className={`px-4 py-3 border-b last:border-b-0 cursor-pointer hover:opacity-90 transition-all ${rowBg}`}
+                                        onClick={() => !n.isRead && handleMarkRead(n.id)}
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                                            <div className="flex-1 min-w-0">
+                                                {isSharingChange && (
+                                                    <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-0.5">⚠️ Sharing Type Changed</p>
+                                                )}
+                                                <p className={`text-sm leading-snug ${textCls}`}>{n.message}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[10px] text-muted-foreground">{formatTime(n.createdAt)}</span>
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${badgeCls}`}>{n.category || n.type}</span>
+                                                </div>
                                             </div>
+                                            {!n.isRead && (
+                                                <button className={`shrink-0 ${isSharingChange ? 'text-red-400 hover:text-red-600' : 'text-muted-foreground hover:text-primary'}`} title="Mark as read">
+                                                    <Check className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
                                         </div>
-                                        {!n.isRead && (
-                                            <button className="text-muted-foreground hover:text-primary shrink-0" title="Mark as read">
-                                                <Check className="h-3.5 w-3.5" />
-                                            </button>
-                                        )}
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
