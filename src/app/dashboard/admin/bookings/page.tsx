@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import {
     Users, Search, RefreshCcw, Calendar, Building2,
     CreditCard, Tag, User, Mail, Phone, Clock,
-    ChevronDown, ChevronUp, FileText, ClipboardList, CheckCircle, XCircle, AlertCircle, Eye
+    ChevronDown, ChevronUp, FileText, ClipboardList, CheckCircle, XCircle, AlertCircle, Eye,
+    BedDouble, ShieldCheck
 } from "lucide-react";
 import { 
     getAdminBookings, 
@@ -38,28 +39,61 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    REQUESTED:                { label: '🔴 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
-    APPLIED:                  { label: '🔴 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
+    REQUESTED:                { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
+    APPLIED:                  { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
     PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
-    APPROVED_PENDING_TOKEN:   { label: '💜 Token Pending',     cls: 'bg-purple-100 text-purple-700 border-purple-300' },
-    KYC_PENDING:              { label: '📝 KYC Pending',       cls: 'bg-blue-100 text-blue-700 border-blue-300' },
-    APPROVED_KYC_PENDING:     { label: '📝 KYC Pending',       cls: 'bg-blue-100 text-blue-700 border-blue-300' },
-    KYC_FAILED:               { label: '❌ KYC Failed',         cls: 'bg-red-100 text-red-800 border-red-300' },
-    APPROVED_PAYMENT_PENDING: { label: '💳 Payment Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-300' },
     APPROVED:                 { label: '🛏 Room Allocation',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     ROOM_RESERVED:            { label: '💳 Awaiting Payment',  cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',    cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    PAID:                     { label: '✅ Paid',               cls: 'bg-green-100 text-green-700 border-green-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    PAID:                     { label: '💳 Paid',              cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
+    BOOKING_CONFIRMED:        { label: '✍️ Agreement Signed',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     MOVE_IN_SCHEDULED:        { label: '📅 Move-in Set',       cls: 'bg-teal-100 text-teal-700 border-teal-300' },
     ACTIVE:                   { label: '🏠 Active Tenant',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     CHECKIN_CONFIRMED:        { label: '🏡 Checked In',        cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    BOOKING_CONFIRMED:        { label: '🏡 Confirmed',           cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    CHECKED_OUT:              { label: '🏠 Checked Out',       cls: 'bg-gray-100 text-gray-700 border-gray-300' },
-    REJECTED:                 { label: '❌ Rejected',           cls: 'bg-slate-100 text-slate-600 border-slate-300' },
-    CANCELLED:                { label: '🚫 Cancelled',         cls: 'bg-orange-100 text-orange-700 border-orange-300' },
+    CHECKED_OUT:              { label: '🏠 Checked Out',       cls: 'bg-slate-100 text-slate-500 border-slate-300' },
+    COMPLETED:                { label: '✅ Stay Completed',    cls: 'bg-slate-100 text-slate-600 border-slate-300' },
+    REJECTED:                 { label: '❌ Rejected',           cls: 'bg-red-50 text-red-700 border-red-200' },
+    CANCELLED:                { label: '🚫 Cancelled',         cls: 'bg-slate-100 text-slate-600 border-slate-300' },
     EXPIRED:                  { label: '⏰ Expired',            cls: 'bg-gray-100 text-gray-500 border-gray-200' },
 };
+
+function BookingNextStep({ booking }: { booking: any }) {
+    const s = booking.status;
+    const hasRoom = !!booking.roomAssigned;
+
+    if (['REQUESTED', 'APPLIED', 'PENDING_APPROVAL'].includes(s)) return (
+        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full border border-orange-200">
+            👆 Approve & Allocate Room
+        </span>
+    );
+    if (s === 'APPROVED' && !hasRoom) return (
+        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
+            🛏 Allocate Room
+        </span>
+    );
+    if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
+        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
+            ⏳ Awaiting Student Payment
+        </span>
+    );
+    if (['PAID', 'CASH_PAID'].includes(s)) return (
+        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
+            ✍️ Awaiting Agreement Signing
+        </span>
+    );
+    if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
+        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">
+            🔍 Verify Physical ID → Check-in
+        </span>
+    );
+    if (['ACTIVE', 'CHECKIN_CONFIRMED', 'CHECKED_OUT', 'COMPLETED'].includes(s)) return (
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
+            ✅ Managed in Tenants
+        </span>
+    );
+    return null;
+}
 
 const PAYMENT_STATUS_COLORS: Record<string, string> = {
     'UNPAID': 'text-red-600 font-bold',
@@ -578,11 +612,11 @@ export default function AdminBookingsPage() {
                                         <thead className="bg-slate-50 border-b border-slate-200">
                                             <tr className="text-[10px] font-black uppercase text-slate-500 tracking-wider text-left">
                                                 <th className="p-4">Booking ID</th>
-                                                <th className="p-4">Guest Name</th>
-                                                <th className="p-4">PG Requested</th>
-                                                <th className="p-4">Room</th>
-                                                <th className="p-4">Requested On</th>
+                                                <th className="p-4">Guest</th>
+                                                <th className="p-4">Property / Room</th>
+                                                <th className="p-4">Move-in</th>
                                                 <th className="p-4">Status</th>
+                                                <th className="p-4">Next Step</th>
                                                 <th className="p-4 text-right">Actions</th>
                                             </tr>
                                         </thead>
@@ -602,14 +636,12 @@ export default function AdminBookingsPage() {
                                                             </td>
                                                             <td className="p-4">
                                                                 <div className="font-bold text-indigo-700">{booking.propertyName}</div>
-                                                                <div className="text-[10px] text-slate-400">{booking.occupancy}</div>
+                                                                <div className="text-[10px] text-slate-400 font-bold">{booking.occupancy}</div>
+                                                                <div className="text-[10px] text-slate-400 mt-1">{booking.roomAssigned || "Not Allocated"}</div>
                                                             </td>
                                                             <td className="p-4">
-                                                                <div className="text-xs font-medium text-slate-700">{booking.roomAssigned || "Not Allocated"}</div>
-                                                                <div className="text-[10px] text-slate-400">In: {booking.onboardingDate || booking.moveInDate}</div>
-                                                            </td>
-                                                            <td className="p-4 text-xs text-muted-foreground italic">
-                                                                {new Date(booking.createdAt).toLocaleString()}
+                                                                <div className="text-xs font-bold text-slate-700">{booking.onboardingDate || "Not Set"}</div>
+                                                                <div className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">📅 {new Date(booking.createdAt).toLocaleDateString()}</div>
                                                             </td>
                                                             <td className="p-4">
                                                                 <StatusBadge status={booking.status} />
@@ -623,38 +655,64 @@ export default function AdminBookingsPage() {
                                                                         Reason: {booking.cancelReason}
                                                                     </div>
                                                                 )}
-                                                                {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
-                                                                    <div className="mt-1 space-y-0.5">
-                                                                        {booking.paymentMethod === 'CASH' || booking.status === 'CASH_PAID'
-                                                                            ? <div className="text-[9px] font-bold text-emerald-700">💵 Cash Payment Recorded</div>
-                                                                            : booking.paymentId
-                                                                                ? <div className="text-[9px] font-bold text-blue-700" title={booking.paymentId}>🧾 Txn: {booking.paymentId.slice(0, 14)}…</div>
-                                                                                : <div className="text-[9px] font-bold text-green-700">💳 Online Payment</div>
-                                                                        }
-                                                                    </div>
-                                                                )}
+                                                            </td>
+                                                            <td className="p-4">
+                                                                <BookingNextStep booking={booking} />
                                                             </td>
                                                             <td className="p-4">
                                                                 <div className="flex justify-end gap-1">
-                                                                    {(booking.status === 'APPLIED' || booking.status === 'REQUESTED') && (
-                                                                        <>
-                                                                            <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                                                                            <Button size="sm" variant="destructive" className="h-7 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
-                                                                        </>
-                                                                    )}
-                                                                    {(booking.status === 'APPROVED' || booking.status === 'ROOM_RESERVED') && (
-                                                                        <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
-                                                                    )}
-                                                                    {['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(booking.status) && (
-                                                                        <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>🚀 Check-in</Button>
-                                                                    )}
-                                                                    {!['ACTIVE', 'COMPLETED', 'CHECKED_OUT', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(booking.status) && (
-                                                                        <button
-                                                                            onClick={() => handleReject(booking.id)}
-                                                                            className="h-7 px-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 uppercase tracking-wide">
-                                                                            ✕ Reject
-                                                                        </button>
-                                                                    )}
+                                                                    {(() => {
+                                                                        const s = booking.status;
+                                                                        const hasRoom = !!booking.roomAssigned;
+
+                                                                        // Step 1: New request
+                                                                        if (['REQUESTED', 'APPLIED', 'PENDING_APPROVAL'].includes(s)) return (
+                                                                            <>
+                                                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                                                                <Button size="sm" variant="destructive" className="h-7 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
+                                                                            </>
+                                                                        );
+
+                                                                        // Step 2: Approved but no room → Open Details to allocate
+                                                                        if (s === 'APPROVED' && !hasRoom) return (
+                                                                            <>
+                                                                                <Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold flex items-center gap-1" onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
+                                                                                    <BedDouble className="h-3 w-3" /> Allocate Room
+                                                                                </Button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                            </>
+                                                                        );
+
+                                                                        // Step 3: Room allocated, awaiting payment
+                                                                        if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
+                                                                            <>
+                                                                                <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold flex items-center gap-1" onClick={() => handleMarkCashPaid(booking.id)}>
+                                                                                    <CreditCard className="h-3 w-3" /> Cash Paid
+                                                                                </Button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                            </>
+                                                                        );
+
+                                                                        // Step 4: Agreement signed
+                                                                        if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
+                                                                            <>
+                                                                                <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold flex items-center gap-1" onClick={() => handleCheckIn(booking.id)}>
+                                                                                    <ShieldCheck className="h-3 w-3" /> Check-in
+                                                                                </Button>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                            </>
+                                                                        );
+
+                                                                        // Awaiting Agreement
+                                                                        if (['PAID', 'CASH_PAID'].includes(s)) return (
+                                                                            <>
+                                                                                <span className="text-[9px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded border border-violet-100">✍️ Awaiting Signing</span>
+                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-2 text-[10px] font-bold bg-red-100 text-red-600 rounded flex items-center gap-1">✕ Reject</button>
+                                                                            </>
+                                                                        );
+
+                                                                        return null;
+                                                                    })()}
                                                                     <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-colors"
                                                                         onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
                                                                         {expandedBooking === booking.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
