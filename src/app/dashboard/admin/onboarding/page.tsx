@@ -1008,7 +1008,7 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
 
                         <div className="bg-amber-50 border border-amber-300 rounded-xl p-3">
                             <p className="text-xs font-bold text-amber-800">⚠️ Current: <span className="font-black">{booking.occupancy}</span></p>
-                            <p className="text-[10px] text-amber-700 mt-0.5">Changing the sharing type will update the student{"'"s booking and notify them automatically.</p>
+                            <p className="text-[10px] text-amber-700 mt-0.5">Changing the sharing type will update the student&apos;s booking and notify them automatically.</p>
                         </div>
 
                         {/* Sharing type selector */}

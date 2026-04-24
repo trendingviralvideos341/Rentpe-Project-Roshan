@@ -9,38 +9,6 @@ import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
 
-/**
- * Get a single booking by ID (for payment page, student view).
- * Returns booking with property owner info and room details.
- */
-export async function getBookingById(id: string) {
-    const session = await getSession();
-    if (!session) throw new Error("Unauthorized");
-
-    const booking = await prisma.booking.findUnique({
-        where: { id },
-        include: {
-            property: {
-                select: {
-                    id: true,
-                    name: true,
-                    address: true,
-                    city: true,
-                    foodType: true,
-                    foodPricePerMonth: true,
-                    owner: { select: { name: true, phone: true } }
-                }
-            },
-            room: { select: { roomNumber: true, type: true, price: true, depositMonths: true } }
-        }
-    });
-
-    if (!booking) throw new Error("Booking not found");
-    // Students can only fetch their own booking; owners/admins can fetch any
-    if (session.role === 'USER' && booking.userId !== session.userId) throw new Error("Unauthorized");
-
-    return booking;
-}
 
 
 export async function createBooking(data: {
