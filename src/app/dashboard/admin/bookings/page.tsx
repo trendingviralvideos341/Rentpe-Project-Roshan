@@ -46,7 +46,8 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
     APPROVED_KYC_PENDING:     { label: '📝 KYC Pending',       cls: 'bg-blue-100 text-blue-700 border-blue-300' },
     KYC_FAILED:               { label: '❌ KYC Failed',         cls: 'bg-red-100 text-red-800 border-red-300' },
     APPROVED_PAYMENT_PENDING: { label: '💳 Payment Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    APPROVED:                 { label: '💳 Awaiting Payment',  cls: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+    APPROVED:                 { label: '🛏 Room Allocation',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    ROOM_RESERVED:            { label: '💳 Awaiting Payment',  cls: 'bg-amber-100 text-amber-700 border-amber-300' },
     AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',    cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     PAID:                     { label: '✅ Paid',               cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
@@ -612,6 +613,16 @@ export default function AdminBookingsPage() {
                                                             </td>
                                                             <td className="p-4">
                                                                 <StatusBadge status={booking.status} />
+                                                                {booking.status === 'REJECTED' && booking.rejectionReason && (
+                                                                    <div className="text-[9px] text-red-600 font-bold mt-1 max-w-[120px] leading-tight break-words">
+                                                                        Reason: {booking.rejectionReason}
+                                                                    </div>
+                                                                )}
+                                                                {booking.status === 'CANCELLED' && booking.cancelReason && (
+                                                                    <div className="text-[9px] text-slate-500 font-bold mt-1 max-w-[120px] leading-tight break-words">
+                                                                        Reason: {booking.cancelReason}
+                                                                    </div>
+                                                                )}
                                                                 {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
                                                                     <div className="mt-1 space-y-0.5">
                                                                         {booking.paymentMethod === 'CASH' || booking.status === 'CASH_PAID'
@@ -631,17 +642,17 @@ export default function AdminBookingsPage() {
                                                                             <Button size="sm" variant="destructive" className="h-7 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>Reject</Button>
                                                                         </>
                                                                     )}
-                                                                    {booking.status === 'APPROVED' && (
+                                                                    {(booking.status === 'APPROVED' || booking.status === 'ROOM_RESERVED') && (
                                                                         <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
                                                                     )}
-                                                                    {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
+                                                                    {['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(booking.status) && (
                                                                         <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => handleCheckIn(booking.id)}>🚀 Check-in</Button>
                                                                     )}
                                                                     {!['ACTIVE', 'COMPLETED', 'CHECKED_OUT', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(booking.status) && (
                                                                         <button
-                                                                            onClick={() => handleCancel(booking.id, booking.guestName)}
+                                                                            onClick={() => handleReject(booking.id)}
                                                                             className="h-7 px-3 text-[10px] font-black bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95 uppercase tracking-wide">
-                                                                            ✕ Cancel
+                                                                            ✕ Reject
                                                                         </button>
                                                                     )}
                                                                     <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-colors"

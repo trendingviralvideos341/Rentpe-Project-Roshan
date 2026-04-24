@@ -159,9 +159,21 @@ function PaymentPortal() {
                     <p className="text-center text-sm text-muted-foreground">Booking ID: <strong>{booking.displayId}</strong></p>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="p-4 bg-muted rounded-md flex justify-between items-center">
-                        <span className="font-medium">Total Amount</span>
-                        <span className="text-xl font-bold">{booking.amount}</span>
+                    <div className="p-4 bg-muted rounded-md flex flex-col gap-1.5">
+                        <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Monthly Rent</span>
+                            <span className="font-bold">₹{Number(booking.amount || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                        {Number(booking.depositAmount) > 0 && (
+                            <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">Security Deposit</span>
+                                <span className="font-bold">₹{Number(booking.depositAmount || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between border-t pt-2 mt-1">
+                            <span className="font-bold">Total Amount</span>
+                            <span className="text-xl font-bold text-green-700">₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span>
+                        </div>
                     </div>
 
                     {/* Payment Method Tabs */}
@@ -215,7 +227,7 @@ function PaymentPortal() {
                         onClick={handlePay}
                         disabled={isPaying}
                     >
-                        {isPaying ? "Processing..." : method === "cash" ? "Confirm — I&apos;ll Pay Cash at Property" : `Pay ${booking.amount}`}
+                        {isPaying ? "Processing..." : method === "cash" ? "Confirm — I&apos;ll Pay Cash at Property" : `Pay ₹${(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}`}
                     </Button>
                     <p className="text-xs text-center text-muted-foreground">
                         {method !== "cash" ? "Transaction encrypted with 256-bit SSL security." : "Cash payments must be confirmed by the property owner."}

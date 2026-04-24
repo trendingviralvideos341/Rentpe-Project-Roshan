@@ -17,6 +17,7 @@ interface RoomAllocationModalProps {
         depositAmount: number;
         depositMonths: number;
         foodSelected: boolean;
+        roomType: string;
     }) => Promise<void>;
     booking: {
         id: string;
@@ -118,6 +119,7 @@ export function RoomAllocationModal({
                 depositAmount,
                 depositMonths,
                 foodSelected,
+                roomType: selectedRoomType,
             });
             onClose();
         } catch (e: any) {

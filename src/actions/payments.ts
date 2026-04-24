@@ -26,15 +26,17 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
         const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
         const studentFee = (settings?.feesEnabled && settings?.studentRentFeeFlat) || 0;
 
-        // Determine amount from invoice, deposit, or booking
-        let baseAmount = Number(booking.amount);
-        
+        // Determine amount from invoice, deposit, or booking (initial: rent + security deposit)
+        let baseAmount: number;
         if (extras?.invoiceId) {
             const invoice = await prisma.rentInvoice.findUnique({ where: { id: extras.invoiceId } });
-            if (invoice) baseAmount = invoice.amount;
+            baseAmount = invoice ? Number(invoice.amount) : Number(booking.amount);
         } else if (extras?.depositId) {
             const deposit = await prisma.securityDeposit.findUnique({ where: { id: extras.depositId } });
-            if (deposit) baseAmount = deposit.amount;
+            baseAmount = deposit ? Number(deposit.amount) : Number(booking.amount);
+        } else {
+            // Initial booking payment: rent + security deposit
+            baseAmount = Number(booking.amount) + Number((booking as any).depositAmount || 0);
         }
 
         const finalCharge = (baseAmount + studentFee) * 100; // in paise

@@ -60,17 +60,22 @@ function OwnerNextStep({ booking }: { booking: any }) {
             👆 Approve &amp; Allocate Room
         </span>
     );
-    if (s === 'APPROVED_PENDING_TOKEN' || (s === 'APPROVED' && !hasRoom)) return (
+    if (s === 'APPROVED' && !hasRoom) return (
         <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
             🛏 Allocate Room
         </span>
     );
-    if (hasRoom && ['APPROVED', 'KYC_PENDING', 'APPROVED_KYC_PENDING', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
+    if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
-            ⏳ Awaiting Student Payment &amp; Agreement
+            ⏳ Awaiting Student Payment
         </span>
     );
-    if (['PAID', 'CASH_PAID', 'BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
+    if (['PAID', 'CASH_PAID'].includes(s)) return (
+        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
+            ✍️ Awaiting Agreement Signing
+        </span>
+    );
+    if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
         <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">
             🔍 Verify Physical ID → Check-in
         </span>
@@ -335,6 +340,9 @@ export function BookingsContainer() {
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
 
+    // Approve Confirm Modal
+    const [approveModal, setApproveModal] = useState<any | null>(null);
+
     const fetchData = async () => {
         setLoading(true);
         try { setBookings(await getBookings()); }
@@ -346,25 +354,24 @@ export function BookingsContainer() {
 
     // ── Handlers ──────────────────────────────────────────────────
     const handleApprove = (booking: any) => {
-        // Step 1: Approve → opens Room Allocation Modal immediately
-        toast(`Approve booking for ${booking.guestName}?`, {
-            description: "After approval you will allocate a room.",
-            action: {
-                label: "Approve",
-                onClick: async () => {
-                    try {
-                        await approveBooking(booking.id, {});
-                        toast.success("Booking Approved. Now allocate a room.");
-                        await fetchData();
-                        // After approve, open the allocation modal
-                        setAllocateBooking({ ...booking, status: 'APPROVED_PENDING_TOKEN' });
-                    } catch { toast.error("Approval failed."); }
-                }
-            }
-        });
+        setApproveModal(booking);
+    };
+
+    const confirmApprove = async () => {
+        if (!approveModal) return;
+        try {
+            await approveBooking(approveModal.id, {});
+            toast.success("Booking Approved. Now allocate a room.");
+            const approved = approveModal;
+            setApproveModal(null);
+            await fetchData();
+            setAllocateBooking({ ...approved, status: 'APPROVED' });
+        } catch { toast.error("Approval failed."); }
     };
 
     const handleAllocate = async (bookingId: string, allocationData: any) => {
+        const requestedOccupancy = allocateBooking?.occupancy;
+        const allocatedRoomType = allocationData.roomType;
         await approveBooking(bookingId, {
             roomId: allocationData.roomId,
             bedId: allocationData.bedId,
@@ -374,7 +381,12 @@ export function BookingsContainer() {
             depositMonths: allocationData.depositMonths,
             foodSelected: allocationData.foodSelected,
         });
-        toast.success(`Room ${allocationData.roomAssigned} / Bed ${allocationData.bedNumber} allocated! Student will now see payment CTA.`);
+        if (allocatedRoomType && requestedOccupancy &&
+            allocatedRoomType.toLowerCase() !== requestedOccupancy.toLowerCase()) {
+            toast.warning(`⚠️ Room type changed: Student requested "${requestedOccupancy}" but "${allocatedRoomType}" was allocated. Student is notified to contact Building Management if they have concerns.`);
+        } else {
+            toast.success(`Room ${allocationData.roomAssigned} / Bed ${allocationData.bedNumber} allocated! Student will now see payment CTA.`);
+        }
         setAllocateBooking(null);
         await fetchData();
     };
@@ -463,18 +475,14 @@ export function BookingsContainer() {
         return true;
     });
 
-    // ── Cancel capsule — shown on every active (non-terminal) stage ───────
-    const CancelCapsule = ({ booking }: { booking: any }) => {
-        const terminal = ['CANCELLED', 'EXPIRED', 'REJECTED', 'COMPLETED', 'CHECKED_OUT', 'ACTIVE', 'CHECKIN_CONFIRMED'];
-        if (terminal.includes(booking.status)) return null;
-        return (
-            <button
-                onClick={() => handleCancelBooking(booking.id, booking.guestName)}
-                className="h-8 px-3 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm">
-                ✕ Cancel
-            </button>
-        );
-    };
+    // ── Reject capsule — owners/admins reject (not cancel) at any stage ───────
+    const RejectCapsule = ({ bookingId }: { bookingId: string }) => (
+        <button
+            onClick={() => handleReject(bookingId)}
+            className="h-8 px-3 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-700 text-white transition-all active:scale-95 shadow-sm">
+            ✕ Reject
+        </button>
+    );
 
     const renderActionButtons = (booking: any) => {
         const s = booking.status;
@@ -485,7 +493,6 @@ export function BookingsContainer() {
             <>
                 <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
                 <Button size="sm" variant="destructive" className="h-8 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
-                <CancelCapsule booking={booking} />
             </>
         );
 
@@ -495,9 +502,10 @@ export function BookingsContainer() {
                 <Button size="sm" className="h-8 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={() => setAllocateBooking(booking)}>
                     <BedDouble className="w-3 h-3 mr-1" />Allocate Room
                 </Button>
-                <CancelCapsule booking={booking} />
+                <RejectCapsule bookingId={booking.id} />
             </>
         );
+
 
         // Step 3: Room allocated, awaiting payment — owner can mark cash paid
         if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
@@ -505,17 +513,27 @@ export function BookingsContainer() {
                 <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
                     <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
                 </Button>
-                <CancelCapsule booking={booking} />
+                <RejectCapsule bookingId={booking.id} />
             </>
         );
 
-        // Step 4: Paid + Agreement signed → Physical KYC → Check-in
-        if (['PAID', 'CASH_PAID', 'BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
+        // Step 3.5: Payment received — awaiting student agreement signing
+        if (['PAID', 'CASH_PAID'].includes(s)) return (
+            <>
+                <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
+                    ✍️ Awaiting Agreement
+                </span>
+                <RejectCapsule bookingId={booking.id} />
+            </>
+        );
+
+        // Step 4: Agreement signed → Physical KYC → Check-in
+        if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
             <>
                 <Button size="sm" className="h-8 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}>
                     <ShieldCheck className="w-3 h-3 mr-1" />Verify ID & Check-in
                 </Button>
-                <CancelCapsule booking={booking} />
+                <RejectCapsule bookingId={booking.id} />
             </>
         );
 
@@ -655,9 +673,14 @@ export function BookingsContainer() {
                                             </td>
                                             <td className="p-4">
                                                 <StatusBadge status={booking.status} />
-                                                {(booking.status === 'REJECTED' || booking.status === 'CANCELLED') && (booking.rejectionReason || booking.cancelReason) && (
+                                                {booking.status === 'REJECTED' && booking.rejectionReason && (
                                                     <div className="text-[9px] text-red-600 font-bold mt-1 max-w-[120px] leading-tight break-words">
-                                                        Reason: {booking.rejectionReason || booking.cancelReason}
+                                                        Reason: {booking.rejectionReason}
+                                                    </div>
+                                                )}
+                                                {booking.status === 'CANCELLED' && booking.cancelReason && (
+                                                    <div className="text-[9px] text-slate-500 font-bold mt-1 max-w-[120px] leading-tight break-words">
+                                                        Reason: {booking.cancelReason}
                                                     </div>
                                                 )}
                                                 {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (
@@ -725,6 +748,23 @@ export function BookingsContainer() {
                     onConfirm={handleConfirmCheckIn}
                     tenantName={kycBooking.guestName}
                 />
+            )}
+
+            {/* ── Approve Confirm Modal ── */}
+            {approveModal && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+                        <h3 className="font-black text-lg text-green-700">✅ Approve Booking</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Approve booking for <strong>{approveModal.guestName}</strong>?
+                            After approval you will allocate a room.
+                        </p>
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => setApproveModal(null)}>Close</Button>
+                            <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold" onClick={confirmApprove}>✓ Confirm Approve</Button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* ── Cancel Modal ── */}

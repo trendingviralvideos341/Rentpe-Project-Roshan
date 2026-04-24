@@ -204,7 +204,7 @@ export async function getRoomsForAllocation(propertyId: string, roomType?: strin
     }
 
     const whereClause: any = { propertyId };
-    if (roomType) whereClause.type = roomType;
+    if (roomType) whereClause.type = { contains: roomType, mode: 'insensitive' };
 
     const rooms = await prisma.room.findMany({
         where: whereClause,
