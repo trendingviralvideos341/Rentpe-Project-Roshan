@@ -241,6 +241,7 @@ export function RoomAllocationModal({
                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                                     {beds.map(bed => {
                                         const isAvailable = bed.status === 'AVAILABLE';
+                                        const isLocked = bed.status === 'LOCKED' || bed.status === 'RESERVED';
                                         const isSelected = selectedBed?.id === bed.id;
                                         return (
                                             <button
@@ -252,13 +253,15 @@ export function RoomAllocationModal({
                                                         ? "bg-indigo-600 border-indigo-600 text-white shadow-lg"
                                                         : isAvailable
                                                         ? "border-green-300 bg-green-50 text-green-800 hover:border-indigo-400 hover:bg-indigo-50"
+                                                        : isLocked
+                                                        ? "border-amber-300 bg-amber-50 text-amber-700 cursor-not-allowed opacity-80"
                                                         : "border-red-200 bg-red-50 text-red-400 cursor-not-allowed opacity-60"
                                                 }`}
                                             >
                                                 <BedDouble className="w-3.5 h-3.5 mx-auto mb-1" />
                                                 {bed.bedNumber}
-                                                <div className="text-[8px] mt-0.5 opacity-70">
-                                                    {isAvailable ? (bed.tenant ? 'Reserved' : 'Free') : bed.status.toLowerCase()}
+                                                <div className="text-[8px] mt-0.5 opacity-80">
+                                                    {isAvailable ? 'Free' : isLocked ? 'Reserved' : 'Occupied'}
                                                 </div>
                                             </button>
                                         );

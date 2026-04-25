@@ -8,7 +8,7 @@ import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, PackageOpen, LogOut } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, PackageOpen, LogOut, X } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -138,6 +138,7 @@ export default function StudentDashboardPage() {
     const [profile, setProfile] = useState<any>(null);
     const [vacatingId, setVacatingId] = useState<string | null>(null);
     const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined);
+    const [dismissedSharingAlert, setDismissedSharingAlert] = useState<string | null>(null);
 
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
@@ -259,6 +260,21 @@ export default function StudentDashboardPage() {
                         </Card>
                     ) : (
                         <div className="space-y-4">
+                            {/* -- Sharing Type Changed Red Banner -- */}
+                            {bookings.some((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id) && bookings.filter((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id).map((b: any) => (
+                                <div key={`sharing-alert-${b.id}`} className="bg-red-50 border-2 border-red-400 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-start gap-3">
+                                        <span className="text-2xl mt-0.5">??</span>
+                                        <div>
+                                            <p className="font-black text-red-800 text-sm">Your Sharing Type Was Changed</p>
+                                            <p className="text-red-700 text-xs mt-1">You applied for <strong>{b.originalOccupancy}</strong> but management assigned <strong>{b.occupancy}</strong> at <strong>{b.propertyName}</strong>. Contact Building Management if you want a different sharing type.</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setDismissedSharingAlert(b.id)} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5" title="Dismiss">
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            ))}
                             {/* Actionable Alerts Unified Banner */}
                             {bookings.some((b: any) =>
                 b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED' ||

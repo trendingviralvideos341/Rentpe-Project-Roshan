@@ -383,29 +383,15 @@ export async function approveBooking(id: string, data: {
         newValue: { roomAssigned: data.roomAssigned, onboardingDate: data.onboardingDate }
     });
 
-    // Notify student about approval and room assignment
+    // Notify student about room assignment only (no token notification)
     try {
-        if (booking.userId) {
-            await NotificationService.onRequestAccepted(booking);
-            if (data.roomAssigned) {
-                const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' }, include: { owner: { select: { phone: true } } } });
-                await NotificationService.onRoomAllocated(
-                    booking,
-                    data.roomAssigned,
-                    existingBooking?.occupancy || undefined,
-                    data.occupancy,
-                    property?.owner?.phone || undefined
-                );
-                // Also trigger ONBOARDING_COMPLETED as the user has been assigned a place
-                await NotificationService.trigger({
-                    bookingId: booking.id,
-                    userId: booking.userId,
-                    type: 'BOOKING',
-                    category: 'ONBOARDING_COMPLETED',
-                    message: `Initial onboarding for ${booking.propertyName} is complete! Room assigned. Please proceed to payment to reserve your bed.`,
-                    targetRole: 'USER'
-                });
-            }
+        if (booking.userId && data.roomAssigned) {
+            await NotificationService.onRoomAllocated(
+                booking,
+                data.roomAssigned,
+                existingBooking?.occupancy || undefined,
+                data.occupancy,
+            );
         }
     } catch (e) {
         console.error("Approval Notification Error:", e);
