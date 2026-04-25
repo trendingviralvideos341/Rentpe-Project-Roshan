@@ -16,7 +16,7 @@ export default function NotificationBell() {
                 getNotifications(),
                 getUnreadCount()
             ]);
-            setNotifications(notifs);
+            setNotifications(notifs.filter((n: any) => n.category !== 'TOKEN' && !n.message?.toLowerCase().includes('pay token')));
             setUnreadCount(count);
         } catch (e) { }
     };

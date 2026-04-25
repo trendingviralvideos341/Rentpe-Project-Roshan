@@ -1,5 +1,8 @@
 'use server';
 
+import { unstable_noStore as noStore } from 'next/cache';
+
+
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
@@ -129,6 +132,7 @@ export async function deleteRoomByOwner(roomId: string) {
 }
 
 export async function getBedsForRoom(roomId: string) {
+    noStore();
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
         throw new Error("Unauthorized");
@@ -198,6 +202,7 @@ export async function updateRoomByOwner(roomId: string, data: {
 
 /** Get rooms for the allocation modal — filtered by type with available bed count */
 export async function getRoomsForAllocation(propertyId: string, roomType?: string) {
+    noStore();
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
         throw new Error("Unauthorized");

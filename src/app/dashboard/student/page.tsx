@@ -310,6 +310,20 @@ export default function StudentDashboardPage() {
                                 return (
                                     <Card key={booking.id} className={`${isApproved ? "border-green-400 border-2" : isPaid ? "border-blue-300 border-2" : hasPendingAmount ? "border-red-400 border-2" : isCancelled ? "border-gray-300 opacity-70" : ""}`}>
                                         <CardHeader className="pb-2">
+                                        {/* -- Sharing Type Change Inline Alert -- */}
+                                        {(() => {
+                                            const _orig = (booking as any).originalOccupancy;
+                                            if (!_orig || _orig === booking.occupancy) return null;
+                                            return (
+                                                <div className="mx-4 mt-4 rounded-xl border-2 border-red-400 bg-red-50 px-4 py-3 flex items-start gap-3">
+                                                    <span className="text-red-500 text-lg mt-0.5">??</span>
+                                                    <div className="flex-1">
+                                                        <p className="text-red-800 font-black text-sm">Your Sharing Type Was Changed</p>
+                                                        <p className="text-red-700 text-xs mt-0.5">You applied for <strong>{_orig}</strong> but management assigned <strong>{booking.occupancy}</strong>. Contact Building Management if you want a different sharing type.</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                             <div className="flex justify-between items-start flex-wrap gap-2">
                                                 <div>
                                                     <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
