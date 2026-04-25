@@ -30,6 +30,17 @@ export class NotificationService {
         actionLabel: payload.actionLabel,
       });
 
+      // Dedup: skip if same category+user notification already created in last 60 seconds
+      const recent = await (prisma.notification as any).findFirst({
+        where: {
+          userId: payload.userId,
+          category: payload.category,
+          isRead: false,
+          createdAt: { gte: new Date(Date.now() - 60000) }
+        }
+      });
+      if (recent) return recent;
+
       // 1. Create DB Notification
       const notification = await (prisma.notification as any).create({
         data: {

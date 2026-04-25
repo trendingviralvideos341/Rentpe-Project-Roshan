@@ -364,12 +364,21 @@ export async function approveBooking(id: string, data: {
         }
     }
 
-    // Lock the selected bed to this booking
+    // Free old bed if booking previously had a different bed
+    const oldBedId = (existingBooking as any)?.bedId;
+    if (oldBedId && oldBedId !== data.bedId) {
+        await prisma.bed.update({
+            where: { id: oldBedId },
+            data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, tenantId: null }
+        }).catch(() => {});
+    }
+
+    // Lock the new bed to this booking
     if (data.bedId) {
         await prisma.bed.update({
             where: { id: data.bedId },
             data: { status: 'LOCKED', lockedByBookingId: id, lockedAt: new Date() }
-        }).catch(() => {}); // Silent fail if bed not found
+        }).catch(() => {});
     }
 
     logAuditEvent({

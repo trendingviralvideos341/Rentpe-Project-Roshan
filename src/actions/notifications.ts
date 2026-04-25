@@ -7,10 +7,13 @@ export async function getNotifications(role: string = 'USER') {
     const session = await getSession();
     if (!session) return [];
 
+    const TOKEN_CATEGORIES = ['REQUEST_ACCEPTED', 'TOKEN_CASH_CONFIRMED', 'APPROVED_PENDING_TOKEN', 'ONBOARDING_COMPLETED'];
+
     return (prisma.notification as any).findMany({
         where: { 
             userId: (session as any).userId,
-            targetRole: role
+            targetRole: role,
+            category: { notIn: TOKEN_CATEGORIES }
         },
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -22,11 +25,14 @@ export async function getPersistentNotifications() {
     const session = await getSession();
     if (!session) return [];
 
+    const TOKEN_CATEGORIES = ['REQUEST_ACCEPTED', 'TOKEN_CASH_CONFIRMED', 'APPROVED_PENDING_TOKEN', 'ONBOARDING_COMPLETED'];
+
     return (prisma.notification as any).findMany({
         where: { 
             userId: (session as any).userId,
             isRead: false,
-            isPersistent: true
+            isPersistent: true,
+            category: { notIn: TOKEN_CATEGORIES }
         },
         orderBy: { createdAt: 'desc' }
     });
@@ -36,8 +42,14 @@ export async function getUnreadCount() {
     const session = await getSession();
     if (!session) return 0;
 
+    const TOKEN_CATEGORIES = ['REQUEST_ACCEPTED', 'TOKEN_CASH_CONFIRMED', 'APPROVED_PENDING_TOKEN', 'ONBOARDING_COMPLETED'];
+
     return prisma.notification.count({
-        where: { userId: (session as any).userId, isRead: false },
+        where: { 
+            userId: (session as any).userId, 
+            isRead: false,
+            category: { notIn: TOKEN_CATEGORIES } as any
+        },
     });
 }
 
