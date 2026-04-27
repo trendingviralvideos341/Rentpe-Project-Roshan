@@ -150,11 +150,14 @@ function PaymentPortal() {
     const currentOccupancy = booking.occupancy || "";
     const sharingTypeChanged = originalOccupancy && originalOccupancy !== currentOccupancy;
 
-    // Parse room info from roomAssigned string like "103 — Bed 103-A" or "103 (Three Sharing)"
+    // Parse room info from roomAssigned string like "103 — Bed 103-A"
+    // Split ONLY on em-dash or en-dash, NOT on regular hyphens (so "103-B" stays intact)
     const roomAssigned = booking.roomAssigned || "";
-    const roomParts = roomAssigned.split(/[—\-–]/);
-    const roomNo = roomParts[0]?.trim() || roomAssigned;
-    const bedNo = roomParts[1]?.trim() || null;
+    const dashIdx = roomAssigned.search(/[—–]/);
+    const roomNo = dashIdx > -1 ? roomAssigned.substring(0, dashIdx).trim() : roomAssigned.trim();
+    const afterDash = dashIdx > -1 ? roomAssigned.substring(dashIdx + 1).trim() : null;
+    // afterDash is like "Bed 103-B" — extract just the bed label
+    const bedNo = afterDash ? afterDash.replace(/^[Bb]ed\s*/i, '').trim() || afterDash : null;
 
     const totalAmount = Number(booking.amount || 0) + Number(booking.depositAmount || 0);
 

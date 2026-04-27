@@ -709,26 +709,29 @@ export async function checkInBooking(id: string) {
 }
 
 export async function getBookingById(id: string) {
-    const session = await getSession();
-    if (!session) throw new Error("Unauthorized");
+    try {
+        const session = await getSession();
+        if (!session) throw new Error("Unauthorized");
 
-    const booking = await prisma.booking.findUnique({
-        where: { id },
-        include: {
-            property: true,
-            room: {
-                include: { property: true }
-            },
-            documents: true,
+        const booking = await prisma.booking.findUnique({
+            where: { id },
+            include: {
+                property: true,
+                room: true,
+                documents: true,
+            }
+        });
+
+        if (!booking) throw new Error("Booking not found");
+        if (booking.userId !== session.userId && session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN') {
+            throw new Error("Unauthorized");
         }
-    });
 
-    if (!booking) throw new Error("Booking not found");
-    if (booking.userId !== session.userId && session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN') {
-        throw new Error("Unauthorized");
+        return booking;
+    } catch (e: any) {
+        console.error("getBookingById error:", e.message);
+        throw new Error(e.message || "Failed to load booking");
     }
-
-    return booking;
 }
 
 export async function getPendingBookingsCount() {
