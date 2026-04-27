@@ -364,11 +364,11 @@ export async function approveBooking(id: string, data: {
         }
     }
 
-    // Free old bed if booking previously had a different bed
-    const oldBedId = (existingBooking as any)?.bedId;
-    if (oldBedId && oldBedId !== data.bedId) {
+    // Free old bed — find by lockedByBookingId (Booking has no bedId field)
+    const oldBed = await prisma.bed.findFirst({ where: { lockedByBookingId: id } }).catch(() => null);
+    if (oldBed && oldBed.id !== data.bedId) {
         await prisma.bed.update({
-            where: { id: oldBedId },
+            where: { id: oldBed.id },
             data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, tenantId: null }
         }).catch(() => {});
     }
@@ -1272,13 +1272,13 @@ export async function updateSharingType(bookingId: string, data: {
 
     const originalOccupancy = (existingBooking as any).originalOccupancy || existingBooking.occupancy;
 
-    // ── Free the old bed (so it shows AVAILABLE in real-time) ──
-    const oldBedId = (existingBooking as any).bedId;
-    if (oldBedId) {
+    // ── Free the old bed — find by lockedByBookingId (Booking has no bedId field) ──
+    const oldBed = await prisma.bed.findFirst({ where: { lockedByBookingId: bookingId } }).catch(() => null);
+    if (oldBed && oldBed.id !== data.bedId) {
         await prisma.bed.update({
-            where: { id: oldBedId },
+            where: { id: oldBed.id },
             data: { status: 'AVAILABLE', lockedByBookingId: null, tenantId: null }
-        }).catch(() => {}); // silently continue if bed not found
+        }).catch(() => {});
     }
 
     // ── Lock the new bed ──

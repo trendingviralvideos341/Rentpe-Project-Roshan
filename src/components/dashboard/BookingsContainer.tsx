@@ -348,6 +348,7 @@ export function BookingsContainer() {
             await updateSharingType(bookingId, {
                 newOccupancy: allocationData.roomType,
                 roomId: allocationData.roomId,
+                bedId: allocationData.bedId,
                 roomAssigned: `${allocationData.roomAssigned} — Bed ${allocationData.bedNumber}`,
                 newAmount: allocationData.amount,
                 depositAmount: allocationData.depositAmount,
