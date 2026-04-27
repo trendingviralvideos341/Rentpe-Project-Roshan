@@ -21,6 +21,11 @@ export default function NotificationSync() {
           if (lastFetchedRef.current.includes(notification.id)) return;
           lastFetchedRef.current.push(notification.id);
 
+          // SKIP sonner toasts for room/sharing changes as they have prominent inline banners
+          if (notification.category === 'ROOM_ALLOCATED' || notification.message?.toLowerCase().includes('sharing type')) {
+            return;
+          }
+
           let metadata = { actionUrl: "/dashboard", actionLabel: "View Details" };
           try {
             if (notification.metadata) {

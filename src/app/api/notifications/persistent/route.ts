@@ -11,12 +11,15 @@ export async function GET() {
 
     const userId = (session as any).userId;
 
-    // Fetch unread persistent notifications
+    const SKIP_CATEGORIES = ['REQUEST_ACCEPTED', 'TOKEN_CASH_CONFIRMED', 'APPROVED_PENDING_TOKEN', 'ONBOARDING_COMPLETED'];
+
+    // Fetch unread persistent notifications (excluding old token categories)
     const notifications = await (prisma.notification as any).findMany({
       where: {
         userId,
         isRead: false,
         isPersistent: true,
+        category: { notIn: SKIP_CATEGORIES },
       },
       orderBy: { createdAt: "desc" },
     });
