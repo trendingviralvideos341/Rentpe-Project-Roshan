@@ -1272,36 +1272,38 @@ export async function updateSharingType(bookingId: string, data: {
 
     const originalOccupancy = (existingBooking as any).originalOccupancy || existingBooking.occupancy;
 
-    // ── Free the old bed — find by lockedByBookingId (Booking has no bedId field) ──
-    const oldBed = await prisma.bed.findFirst({ where: { lockedByBookingId: bookingId } }).catch(() => null);
-    if (oldBed && oldBed.id !== data.bedId) {
-        await prisma.bed.update({
-            where: { id: oldBed.id },
-            data: { status: 'AVAILABLE', lockedByBookingId: null, tenantId: null }
-        }).catch(() => {});
-    }
+    // ── Atomic transaction: free old bed, lock new bed, update booking ──
+    const updated = await prisma.$transaction(async (tx) => {
+        // Free the old bed inside transaction
+        const oldBed = await tx.bed.findFirst({ where: { lockedByBookingId: bookingId } });
+        if (oldBed && oldBed.id !== data.bedId) {
+            await tx.bed.update({
+                where: { id: oldBed.id },
+                data: { status: 'AVAILABLE', lockedByBookingId: null, tenantId: null }
+            });
+        }
 
-    // ── Lock the new bed ──
-    if (data.bedId) {
-        await prisma.bed.update({
-            where: { id: data.bedId },
-            data: { status: 'RESERVED', lockedByBookingId: bookingId }
-        }).catch(() => {});
-    }
+        // Lock the new bed inside transaction
+        if (data.bedId) {
+            await tx.bed.update({
+                where: { id: data.bedId },
+                data: { status: 'LOCKED', lockedByBookingId: bookingId }
+            });
+        }
 
-    // Update booking with new sharing type
-    const updated = await prisma.booking.update({
-        where: { id: bookingId },
-        data: {
-            occupancy: data.newOccupancy,
-            originalOccupancy: originalOccupancy,
-            ...(data.roomId ? { roomId: data.roomId } : {}),
-            ...(data.bedId ? { bedId: data.bedId } : {}),
-            ...(data.roomAssigned ? { roomAssigned: data.roomAssigned } : {}),
-            ...(data.newAmount !== undefined ? { amount: data.newAmount } : {}),
-            ...(data.depositAmount !== undefined ? { depositAmount: data.depositAmount } : {}),
-            ...(data.depositMonths !== undefined ? { depositMonths: data.depositMonths } : {}),
-        } as any
+        // Update booking — NOTE: Booking has NO bedId column, do NOT include it
+        return tx.booking.update({
+            where: { id: bookingId },
+            data: {
+                occupancy: data.newOccupancy,
+                originalOccupancy: originalOccupancy,
+                ...(data.roomId ? { roomId: data.roomId } : {}),
+                ...(data.roomAssigned ? { roomAssigned: data.roomAssigned } : {}),
+                ...(data.newAmount !== undefined ? { amount: data.newAmount } : {}),
+                ...(data.depositAmount !== undefined ? { depositAmount: data.depositAmount } : {}),
+                ...(data.depositMonths !== undefined ? { depositMonths: data.depositMonths } : {}),
+            } as any
+        });
     });
 
     // Notify student about sharing type change
