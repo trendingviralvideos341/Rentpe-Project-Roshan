@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getBookings, cancelBooking, signAgreement, completeVacate } from "@/actions/bookings";
+import { getPersistentNotifications, markNotificationRead } from "@/actions/notifications";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -131,7 +132,7 @@ export default function StudentDashboardPage() {
     const [error, setError] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
     const [reviewBooking, setReviewBooking] = useState<any | null>(null);
-    const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
+    const [expandedDocs, setExpandedDocs] = useState<string | null>(null);
     const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
     const [signingBooking, setSigningBooking] = useState<any | null>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -139,6 +140,7 @@ export default function StudentDashboardPage() {
     const [vacatingId, setVacatingId] = useState<string | null>(null);
     const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined);
     const [dismissedSharingAlert, setDismissedSharingAlert] = useState<string | null>(null);
+    const [roomAllocNotifs, setRoomAllocNotifs] = useState<any[]>([]);
 
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
@@ -155,14 +157,16 @@ export default function StudentDashboardPage() {
         setLoading(true);
         setError(false);
         try {
-            const [bData, pData, profData] = await Promise.all([
+            const [bData, pData, profData, notifData] = await Promise.all([
                 getBookings(),
                 getStudentPaymentHistory(),
                 getStudentProfile(),
+                getPersistentNotifications(),
             ]);
             setBookings(bData);
             setPaymentHistory(pData);
             setProfile(profData);
+            setRoomAllocNotifs((notifData as any[]).filter((n: any) => n.category === 'ROOM_ALLOCATED'));
         } catch (e) {
             console.error(e);
             setError(true);
@@ -260,17 +264,39 @@ export default function StudentDashboardPage() {
                         </Card>
                     ) : (
                         <div className="space-y-4">
-                            {/* -- Sharing Type Changed Red Banner -- */}
+                            {/* ── Sharing Type Changed Red Banner ── */}
                             {bookings.some((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id) && bookings.filter((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id).map((b: any) => (
                                 <div key={`sharing-alert-${b.id}`} className="bg-red-50 border-2 border-red-400 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
                                     <div className="flex items-start gap-3">
-                                        <span className="text-2xl mt-0.5">??</span>
+                                        <span className="text-2xl mt-0.5">⚠️</span>
                                         <div>
                                             <p className="font-black text-red-800 text-sm">Your Sharing Type Was Changed</p>
                                             <p className="text-red-700 text-xs mt-1">You applied for <strong>{b.originalOccupancy}</strong> but management assigned <strong>{b.occupancy}</strong> at <strong>{b.propertyName}</strong>. Contact Building Management if you want a different sharing type.</p>
                                         </div>
                                     </div>
                                     <button onClick={() => setDismissedSharingAlert(b.id)} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5" title="Dismiss">
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            ))}
+                            {/* ── Room/Bed Allocated or Changed Banner ── */}
+                            {roomAllocNotifs.map((n: any) => (
+                                <div key={`room-alloc-${n.id}`} className="bg-red-50 border-2 border-red-500 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-start gap-3">
+                                        <span className="text-2xl mt-0.5">🏠</span>
+                                        <div>
+                                            <p className="font-black text-red-800 text-sm">Room / Bed Update</p>
+                                            <p className="text-red-700 text-xs mt-1">{n.message}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            await markNotificationRead(n.id);
+                                            setRoomAllocNotifs(prev => prev.filter(x => x.id !== n.id));
+                                        }}
+                                        className="text-red-400 hover:text-red-600 shrink-0 mt-0.5"
+                                        title="Dismiss"
+                                    >
                                         <X className="h-5 w-5" />
                                     </button>
                                 </div>
