@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bed, Home, User, Settings, AlertTriangle, CheckCircle2, Clock, Info, Eye, EyeOff, Wifi } from "lucide-react";
+import { Bed, Home, User, Settings, AlertTriangle, CheckCircle2, Clock, Info, Eye, EyeOff, Wifi, X, Phone, IdCard, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getOwnerInventory } from "@/actions/dashboard";
 
@@ -25,31 +25,47 @@ const STATUS_ICONS: Record<string, any> = {
     MAINTENANCE: AlertTriangle,
 };
 
-const STATUS_LABEL: Record<string, string> = {
-    AVAILABLE:   "Available",
-    RESERVED:    "Occupied",
-    TEMP_LOCKED: "Occupied",
-    LOCKED:      "Occupied",
-    OCCUPIED:    "Occupied",
-    MAINTENANCE: "Maintenance",
-};
+function getStageLabel(bookingStatus?: string, tenantStatus?: string): { label: string; color: string } {
+    if (tenantStatus === 'Active')        return { label: "✅ Active Tenant",          color: "bg-emerald-100 text-emerald-700" };
+    if (tenantStatus === 'Upcoming')      return { label: "🏠 Move-In Scheduled",       color: "bg-blue-100 text-blue-700" };
+    if (tenantStatus === 'Checked Out')   return { label: "🚪 Checked Out",             color: "bg-slate-100 text-slate-600" };
+    if (tenantStatus === 'Blocked')       return { label: "🚫 Blocked / Evicted",       color: "bg-red-100 text-red-700" };
+
+    switch (bookingStatus) {
+        case 'APPLIED':
+        case 'PENDING_APPROVAL':          return { label: "📋 Application Submitted",   color: "bg-purple-100 text-purple-700" };
+        case 'APPROVED_PENDING_TOKEN':    return { label: "💳 Token Payment Pending",    color: "bg-yellow-100 text-yellow-700" };
+        case 'ROOM_RESERVED':             return { label: "🔒 Room Reserved",            color: "bg-indigo-100 text-indigo-700" };
+        case 'KYC_PENDING':
+        case 'APPROVED_KYC_PENDING':      return { label: "🪪 KYC / Verify ID Stage",   color: "bg-orange-100 text-orange-700" };
+        case 'KYC_FAILED':                return { label: "❌ KYC Failed",              color: "bg-red-100 text-red-700" };
+        case 'AGREEMENT_PENDING':         return { label: "📄 Agreement Stage",        color: "bg-blue-100 text-blue-700" };
+        case 'BOOKING_CONFIRMED':         return { label: "✍️ Agreement Signed",         color: "bg-teal-100 text-teal-700" };
+        case 'MOVE_IN_SCHEDULED':         return { label: "🏠 Move-In Scheduled",       color: "bg-cyan-100 text-cyan-700" };
+        case 'ACTIVE':                    return { label: "✅ Active Tenant",           color: "bg-emerald-100 text-emerald-700" };
+        case 'CHECKED_OUT':
+        case 'COMPLETED':                 return { label: "🚪 Checked Out",             color: "bg-slate-100 text-slate-600" };
+        case 'CANCELLED':                 return { label: "🚫 Cancelled",               color: "bg-red-100 text-red-700" };
+        case 'TEMP_LOCKED':               return { label: "⏳ Booking Initiated",       color: "bg-amber-100 text-amber-700" };
+        default:                          return { label: "—",                           color: "bg-slate-100 text-slate-500" };
+    }
+}
 
 export function InventoryGrid({ properties: initialProperties }: { properties: any[] }) {
     const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
     const [properties, setProperties] = useState<any[]>(initialProperties || []);
-    const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [pulse, setPulse] = useState(false);
+    const [selectedBed, setSelectedBed] = useState<any>(null);
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    // 10-second live polling (industry standard for property dashboards)
+    // 30-second live polling
     const refresh = useCallback(async () => {
         try {
             const fresh = await getOwnerInventory();
             setProperties(fresh);
-            setLastUpdated(new Date());
             setPulse(true);
             setTimeout(() => setPulse(false), 400);
         } catch { /* silent */ }
@@ -84,7 +100,6 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
                         To change or add beds, go to <span className="font-black underline">My Properties</span>, select the building name, go to the <span className="font-black underline">Bed tab</span> and edit there.
                     </p>
                 </div>
-                {/* Live indicator */}
                 <div className="flex items-center gap-1.5 shrink-0">
                     <span className={`h-2 w-2 rounded-full ${pulse ? 'bg-green-400 scale-125' : 'bg-green-500'} transition-all duration-300 animate-pulse`} />
                     <span className="text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-1">
@@ -124,15 +139,11 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
                                         onClick={() => toggleExpand(property.id)}
                                         className={`rounded-xl px-4 font-black text-[10px] uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 h-10 ${
                                             isExpanded
-                                            ? "bg-slate-700 hover:bg-slate-600 text-white shadow-slate-950/20"
-                                            : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/20"
+                                            ? "bg-slate-700 hover:bg-slate-600 text-white"
+                                            : "bg-indigo-600 hover:bg-indigo-700 text-white"
                                         }`}
                                     >
-                                        {isExpanded ? (
-                                            <><EyeOff className="h-3.5 w-3.5" /> Hide Bed</>
-                                        ) : (
-                                            <><Eye className="h-3.5 w-3.5" /> View Beds</>
-                                        )}
+                                        {isExpanded ? <><EyeOff className="h-3.5 w-3.5" /> Hide Bed</> : <><Eye className="h-3.5 w-3.5" /> View Beds</>}
                                     </Button>
                                     <Badge className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1 font-bold rounded-lg text-[10px] uppercase tracking-wider">
                                         {property.rooms?.length || 0} Rooms
@@ -144,7 +155,9 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
                         {isExpanded && (
                             <CardContent className="p-6 animate-in fade-in slide-in-from-top-4 duration-500">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {property.rooms && [...property.rooms].sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map((room: any) => (
+                                    {property.rooms && [...property.rooms]
+                                        .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' }))
+                                        .map((room: any) => (
                                         <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all group">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div>
@@ -163,19 +176,14 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
                                                 {room.beds?.map((bed: any) => {
                                                     const StatusIcon = STATUS_ICONS[bed.status] || Bed;
                                                     const isAvailable = bed.status === 'AVAILABLE';
-                                                    const label = STATUS_LABEL[bed.status] || bed.status;
-                                                    const tooltipText = `${label}${bed.tenant ? ` — ${bed.tenant.name} (${bed.tenant.displayId})` : ""}`;
                                                     return (
                                                         <div
                                                             key={bed.id}
-                                                            title={tooltipText}
-                                                            className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all hover:scale-105 ${STATUS_COLORS[bed.status] || "bg-slate-100 border-slate-200 text-slate-500"}`}
+                                                            onClick={() => !isAvailable && setSelectedBed({ ...bed, roomNumber: room.roomNumber })}
+                                                            className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 ${STATUS_COLORS[bed.status] || "bg-slate-100 border-slate-200 text-slate-500"} ${!isAvailable ? 'cursor-pointer' : 'cursor-default'}`}
                                                         >
                                                             <StatusIcon className="h-5 w-5" />
                                                             <span className="text-[10px] font-black uppercase tracking-widest">{bed.bedNumber}</span>
-                                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isAvailable ? 'bg-emerald-200 text-emerald-800' : 'bg-orange-200 text-orange-800'}`}>
-                                                                {label}
-                                                            </span>
                                                         </div>
                                                     );
                                                 })}
@@ -193,6 +201,113 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
                     </Card>
                 );
             })}
+
+            {/* Bed Detail Popup Modal */}
+            {selectedBed && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={() => setSelectedBed(null)}
+                >
+                    <div
+                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className={`p-5 flex items-center justify-between ${
+                            selectedBed.status === 'OCCUPIED' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                            'bg-gradient-to-r from-amber-500 to-amber-600'
+                        } text-white`}>
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                                    <Bed className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="font-black text-lg tracking-tight">Bed {selectedBed.bedNumber}</p>
+                                    <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest">Room {selectedBed.roomNumber}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedBed(null)}
+                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Stage Badge */}
+                        {(() => {
+                            const stage = getStageLabel(selectedBed.booking?.status, selectedBed.tenant?.status);
+                            return (
+                                <div className={`mx-5 mt-4 px-4 py-2.5 rounded-xl text-sm font-black text-center ${stage.color}`}>
+                                    {stage.label}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Tenant Details */}
+                        <div className="p-5 space-y-3">
+                            {selectedBed.tenant ? (
+                                <>
+                                    <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                                            <IdCard className="h-4 w-4 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tenant ID</p>
+                                            <p className="text-sm font-black text-slate-800 font-mono">{selectedBed.tenant.displayId || '—'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                            <User className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</p>
+                                            <p className="text-sm font-black text-slate-800">{selectedBed.tenant.name || '—'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                            <Phone className="h-4 w-4 text-emerald-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</p>
+                                            <p className="text-sm font-black text-slate-800">{selectedBed.tenant.phone || '—'}</p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="py-4 text-center text-slate-400 text-sm font-bold">
+                                    {selectedBed.booking ? (
+                                        <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                                                <Activity className="h-4 w-4 text-purple-600" />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Booking Ref</p>
+                                                <p className="text-sm font-black text-slate-800 font-mono">{selectedBed.booking.displayId || selectedBed.booking.id?.slice(0,8)}</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p>No tenant assigned yet</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-5 pb-5">
+                            <button
+                                onClick={() => setSelectedBed(null)}
+                                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

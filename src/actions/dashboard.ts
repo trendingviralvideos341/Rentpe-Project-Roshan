@@ -138,7 +138,10 @@ export async function getOwnerInventory() {
                         beds: {
                             include: {
                                 tenant: {
-                                    select: { id: true, name: true, displayId: true }
+                                    select: { id: true, name: true, displayId: true, phone: true, status: true }
+                                },
+                                booking: {
+                                    select: { id: true, status: true, displayId: true }
                                 }
                             }
                         }
