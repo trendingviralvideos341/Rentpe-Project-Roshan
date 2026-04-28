@@ -503,7 +503,14 @@ export async function updateBookingStatus(id: string, status: string) {
 
 export async function markBookingPaid(id: string, method: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session) throw new Error("Unauthorized");
+
+    const isStaff = session.role === 'OWNER' || session.role === 'STAFF' || session.role === 'ADMIN';
+    if (!isStaff) {
+        // Students can only mark their own booking
+        const b = await prisma.booking.findUnique({ where: { id }, select: { userId: true } });
+        if (!b || b.userId !== (session as any).userId) throw new Error("Unauthorized");
+    }
 
     // 1. Mark booking as MOVE_IN_SCHEDULED (Legacy: PAID)
     const booking = await prisma.booking.update({
