@@ -6,7 +6,8 @@ import { Lock, Banknote, Smartphone, CheckCircle, AlertTriangle, ArrowLeft, Phon
 import { useState, useEffect, Suspense } from "react";
 import { cn } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getBookingById, markBookingPaid } from "@/actions/bookings";
+import { getBookingById, markBookingPaid, registerCashIntent } from "@/actions/bookings";
+import { getCashPaymentEnabled } from "@/actions/platform";
 import { createRazorpayOrder, verifyPayment } from "@/actions/payments";
 import Script from "next/script";
 
@@ -24,13 +25,20 @@ function PaymentPortal() {
     const [loading, setLoading] = useState(true);
     const [booking, setBooking] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [allowCashPayment, setAllowCashPayment] = useState(false);
 
     useEffect(() => {
         if (!id) { router.push("/dashboard/student"); return; }
         const fetchBooking = async () => {
             try {
-                const data = await getBookingById(id);
+                const [data, cashEnabled] = await Promise.all([
+                    getBookingById(id),
+                    getCashPaymentEnabled(),
+                ]);
                 setBooking(data);
+                setAllowCashPayment(cashEnabled);
+                // Always default to online regardless of previous state
+                setMethod("online");
             } catch (err: any) {
                 setError(err.message || "Failed to load booking");
             } finally {
@@ -47,7 +55,10 @@ function PaymentPortal() {
 
         try {
             if (method === "cash") {
-                await markBookingPaid(booking.id, "CASH_PENDING");
+                // registerCashIntent keeps booking at APPROVED status.
+                // The owner must physically receive cash and click "Mark Cash Paid"
+                // in their dashboard to advance to MOVE_IN_SCHEDULED + unlock Agreement.
+                await registerCashIntent(booking.id);
                 setIsPaid(true);
                 return;
             }
@@ -278,8 +289,8 @@ function PaymentPortal() {
                             </div>
                         )}
 
-                        {/* Payment Method — 2 options only */}
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* Payment Method — show cash only if admin enabled it */}
+                        <div className={`grid gap-3 ${allowCashPayment ? 'grid-cols-2' : 'grid-cols-1'}`}>
                             <button
                                 onClick={() => setMethod("online")}
                                 className={cn(
@@ -293,19 +304,21 @@ function PaymentPortal() {
                                 <span className="text-xs font-black">Pay Online</span>
                                 <span className="text-[10px] text-slate-400 font-medium">UPI · Card · Netbanking</span>
                             </button>
-                            <button
-                                onClick={() => setMethod("cash")}
-                                className={cn(
-                                    "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
-                                    method === "cash"
-                                        ? "border-orange-400 bg-orange-50 text-orange-700 shadow-md"
-                                        : "border-slate-200 hover:bg-slate-50 text-slate-500"
-                                )}
-                            >
-                                <Banknote className="h-6 w-6" />
-                                <span className="text-xs font-black">Pay Cash</span>
-                                <span className="text-[10px] text-slate-400 font-medium">At Property</span>
-                            </button>
+                            {allowCashPayment && (
+                                <button
+                                    onClick={() => setMethod("cash")}
+                                    className={cn(
+                                        "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
+                                        method === "cash"
+                                            ? "border-orange-400 bg-orange-50 text-orange-700 shadow-md"
+                                            : "border-slate-200 hover:bg-slate-50 text-slate-500"
+                                    )}
+                                >
+                                    <Banknote className="h-6 w-6" />
+                                    <span className="text-xs font-black">Pay Cash</span>
+                                    <span className="text-[10px] text-slate-400 font-medium">At Property</span>
+                                </button>
+                            )}
                         </div>
 
                         {/* Method detail box */}

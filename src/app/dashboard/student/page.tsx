@@ -317,6 +317,11 @@ export default function StudentDashboardPage() {
                         if (booking.status === 'AGREEMENT_PENDING')
                             return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
                         if (booking.status === 'APPROVED' && booking.roomAssigned && !booking.agreementSigned) {
+                            // Cash pending — student already selected cash, show waiting message not "Pay Now"
+                            if (booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH') {
+                                return <AlertBanner key={`alert-cash-${booking.id}`} type="info"
+                                    message={`Cash payment registered for ${booking.propertyName}. Waiting for owner to confirm receipt — Agreement step unlocks after confirmation.`} />;
+                            }
                             const sharingWasChanged = !!(booking as any).originalOccupancy && (booking as any).originalOccupancy !== booking.occupancy;
                             if (sharingWasChanged) return (
                                 <AlertBanner key={`alert-pay-${booking.id}`} type="error"
@@ -334,10 +339,11 @@ export default function StudentDashboardPage() {
 
                             {bookings.map((booking: any) => {
                                 const isKycPending = booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_FAILED';
-                                // Payment pending = room allocated but student hasn't paid yet
-                                const isPaymentPending = (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING' || booking.status === 'ROOM_RESERVED') && !!booking.roomAssigned;
+                                const isCashPending = booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' && ['APPROVED', 'ROOM_RESERVED'].includes(booking.status);
+                                // Payment pending = room allocated but student hasn't paid yet (cash pending handled separately)
+                                const isPaymentPending = (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING' || booking.status === 'ROOM_RESERVED') && !!booking.roomAssigned && !isCashPending;
                                 const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
-                                const isApproved = isKycPending || isPaymentPending || isAgreementPending;
+                                const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending;
                                 const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
                                 const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !isCheckedIn;
                                 const isActive = booking.status === 'ACTIVE' || booking.status === 'CHECKED_IN' || booking.status === 'CHECKIN_CONFIRMED';
@@ -564,6 +570,24 @@ export default function StudentDashboardPage() {
                                                         💳 Pay ₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')} Online Now
                                                     </Button>
                                                     <p className="text-[10px] text-center text-indigo-500">Secured payment · Deposit refundable · No hidden fees</p>
+                                                </div>
+                                            )}
+
+                                            {/* ── Cash Pending: student registered intent, waiting for owner to confirm ── */}
+                                            {isCashPending && booking.roomAssigned && (
+                                                <div className="w-full bg-amber-50 border-2 border-amber-400 rounded-2xl p-5 space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-3 bg-amber-100 rounded-full text-2xl">💵</div>
+                                                        <div>
+                                                            <p className="text-sm font-black text-amber-800">Cash Payment Registered</p>
+                                                            <p className="text-xs text-amber-700 mt-0.5">Your booking is confirmed pending. Visit the property and hand over cash in person.</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-white border border-amber-300 rounded-xl p-3 text-xs text-amber-900 font-bold flex items-start gap-2">
+                                                        <span className="text-base mt-0.5">⏳</span>
+                                                        <span>Waiting for owner to <strong>Mark Cash Paid</strong> from their dashboard. Agreement signing &amp; further steps will unlock once confirmed.</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-center text-amber-600">Booking ID: <strong>{booking.displayId}</strong> · Payment: <strong>Cash at Property</strong></p>
                                                 </div>
                                             )}
 

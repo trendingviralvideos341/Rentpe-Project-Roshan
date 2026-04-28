@@ -735,6 +735,7 @@ model PlatformSettings {
   reservationWindowMins    Int      @default(10)
   maintenanceMode          Boolean  @default(false)
   maintenanceMessage       String?
+  allowCashPayment         Boolean  @default(false)
   updatedAt                DateTime @updatedAt
 }
 

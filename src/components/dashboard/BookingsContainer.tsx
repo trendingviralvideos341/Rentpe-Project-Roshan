@@ -62,11 +62,19 @@ function OwnerNextStep({ booking }: { booking: any }) {
             🛏 Allocate Room
         </span>
     );
-    if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
-        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
-            ⏳ Awaiting Student Payment
-        </span>
-    );
+    if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) {
+        // Student has registered cash intent — owner needs to confirm receipt
+        if (booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH') return (
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">
+                💵 Confirm Cash Payment
+            </span>
+        );
+        return (
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
+                ⏳ Awaiting Student Payment
+            </span>
+        );
+    }
     if (['PAID', 'CASH_PAID'].includes(s)) return (
         <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
             ✍️ Awaiting Agreement Signing
@@ -704,6 +712,13 @@ export function BookingsContainer() {
                                                 {booking.status === 'CANCELLED' && booking.cancelReason && (
                                                     <div className="text-[9px] text-slate-500 font-bold mt-1 max-w-[120px] leading-tight break-words">
                                                         Reason: {booking.cancelReason}
+                                                    </div>
+                                                )}
+                                                {/* Cash pending indicator (APPROVED + student registered intent) */}
+                                                {booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' &&
+                                                    !['PAID', 'CASH_PAID', 'MOVE_IN_SCHEDULED'].includes(booking.status) && (
+                                                    <div className="mt-1">
+                                                        <div className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 rounded px-1.5 py-0.5 inline-block">💵 Cash Pending</div>
                                                     </div>
                                                 )}
                                                 {(booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && (

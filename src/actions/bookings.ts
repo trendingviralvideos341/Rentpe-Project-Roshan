@@ -501,6 +501,45 @@ export async function updateBookingStatus(id: string, status: string) {
     return booking;
 }
 
+// ─── Student registers cash payment intent (does NOT advance status) ──────────
+// The booking stays in APPROVED state. The owner must separately click
+// "Mark Cash Paid" to confirm physical cash receipt, which then sets
+// status → MOVE_IN_SCHEDULED and unlocks the Agreement step for the student.
+export async function registerCashIntent(id: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const b = await prisma.booking.findUnique({ where: { id }, select: { userId: true, status: true } });
+    if (!b || b.userId !== (session as any).userId) throw new Error("Unauthorized");
+    if (!['APPROVED', 'ROOM_RESERVED'].includes(b.status)) {
+        throw new Error("Booking is not in a payable state.");
+    }
+
+    // Only record intent — do NOT change booking status to MOVE_IN_SCHEDULED
+    const booking = await prisma.booking.update({
+        where: { id },
+        data: {
+            paymentMethod: 'CASH',
+            paymentStatus: 'CASH_PENDING',
+        }
+    });
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role as string,
+        actorName: session.name || 'Student',
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: id,
+        description: `Student registered cash payment intent. Status stays APPROVED — owner must confirm cash receipt.`,
+        newValue: { paymentStatus: 'CASH_PENDING', paymentMethod: 'CASH' }
+    });
+
+    revalidatePath('/dashboard/student');
+    revalidatePath('/dashboard/owner/bookings');
+    return booking;
+}
+
 export async function markBookingPaid(id: string, method: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");

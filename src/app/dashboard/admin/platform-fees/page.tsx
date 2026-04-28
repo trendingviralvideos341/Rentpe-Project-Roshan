@@ -26,6 +26,7 @@ export default function PlatformFeesPage() {
 
     // Local editable state
     const [feesEnabled, setFeesEnabled] = useState(false);
+    const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [studentRentFeeFlat, setStudentRentFeeFlat] = useState(9);
     const [ownerRentFeeFlat, setOwnerRentFeeFlat] = useState(9);
     const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
@@ -50,6 +51,7 @@ export default function PlatformFeesPage() {
             ]);
             setSettings(s);
             setFeesEnabled(s.feesEnabled);
+            setAllowCashPayment(s.allowCashPayment ?? false);
             setStudentRentFeeFlat(s.studentRentFeeFlat);
             setOwnerRentFeeFlat(s.ownerRentFeeFlat);
             setOwnerOnboardingFeeFlat(s.ownerOnboardingFeeFlat);
@@ -68,7 +70,7 @@ export default function PlatformFeesPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updatePlatformSettings({ feesEnabled, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat });
+            await updatePlatformSettings({ feesEnabled, allowCashPayment, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat });
             await fetchAll();
             alert("✅ Platform fee settings saved successfully.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
@@ -175,6 +177,29 @@ export default function PlatformFeesPage() {
                                 >
                                     {feesEnabled ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                                     {feesEnabled ? "ON" : "OFF"}
+                                </button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Cash Payment Toggle */}
+                    <Card className={`border-2 ${allowCashPayment ? "border-orange-400 bg-orange-50" : "border-gray-200"}`}>
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">💵 During Booking Cash Payment</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        {allowCashPayment
+                                            ? "✅ ENABLED — Students see \"Pay Cash at Property\" option on payment page"
+                                            : "⭕ DISABLED — Students can only pay Online (default). Enable to allow cash at property."}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setAllowCashPayment(!allowCashPayment)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${allowCashPayment ? "bg-orange-500 text-white" : "bg-gray-200 text-gray-600"}`}
+                                >
+                                    {allowCashPayment ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                                    {allowCashPayment ? "ON" : "OFF"}
                                 </button>
                             </div>
                         </CardContent>

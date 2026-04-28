@@ -26,6 +26,7 @@ export async function updatePlatformSettings(data: {
     studentRentFeeFlat?: number;
     ownerRentFeeFlat?: number;
     ownerOnboardingFeeFlat?: number;
+    allowCashPayment?: boolean;
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -48,6 +49,14 @@ export async function updatePlatformSettings(data: {
 
     revalidatePath('/dashboard/admin/platform-fees');
     return settings;
+}
+
+// ── Public: any logged-in user can check if cash payment is enabled ────────────
+export async function getCashPaymentEnabled(): Promise<boolean> {
+    const session = await getSession();
+    if (!session) return false;
+    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    return settings?.allowCashPayment ?? false;
 }
 
 // ── Internal: calculate fees for a given amount ───────
