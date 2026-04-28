@@ -34,7 +34,7 @@ function getStageLabel(bookingStatus?: string, tenantStatus?: string): { label: 
     switch (bookingStatus) {
         case 'APPLIED':
         case 'PENDING_APPROVAL':          return { label: "📋 Application Submitted",   color: "bg-purple-100 text-purple-700" };
-        case 'APPROVED_PENDING_TOKEN':    return { label: "💳 Token Payment Pending",    color: "bg-yellow-100 text-yellow-700" };
+        case 'APPROVED_PENDING_TOKEN':    return { label: "💳 Payment Pending",           color: "bg-yellow-100 text-yellow-700" };
         case 'ROOM_RESERVED':             return { label: "🔒 Room Reserved",            color: "bg-indigo-100 text-indigo-700" };
         case 'KYC_PENDING':
         case 'APPROVED_KYC_PENDING':      return { label: "🪪 KYC / Verify ID Stage",   color: "bg-orange-100 text-orange-700" };
