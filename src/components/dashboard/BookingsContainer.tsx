@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircl
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
 import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType } from "@/actions/bookings";
+import { getCashPaymentEnabled } from "@/actions/platform";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
@@ -48,7 +49,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── Action Badge Helper ────────────────────────────────────────────────────
-function OwnerNextStep({ booking }: { booking: any }) {
+function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashPayment: boolean }) {
     const s = booking.status;
     const hasRoom = !!booking.roomAssigned;
 
@@ -63,8 +64,8 @@ function OwnerNextStep({ booking }: { booking: any }) {
         </span>
     );
     if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) {
-        // Student has registered cash intent — owner needs to confirm receipt
-        if (booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH') return (
+        // Only show cash confirmation prompt if admin has cash enabled AND student registered cash intent
+        if (allowCashPayment && booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH') return (
             <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">
                 💵 Confirm Cash Payment
             </span>
@@ -324,6 +325,7 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
 export function BookingsContainer() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"ALL" | "NEW_REQUEST" | "ALLOCATE_ROOM" | "STUDENT_PAYS" | "AGREEMENT" | "PHYSICAL_VERIFY" | "CHECKED_IN" | "REJECTED" | "CANCELLED">("ALL");
     const [search, setSearch] = useState("");
@@ -372,7 +374,11 @@ export function BookingsContainer() {
 
     const fetchData = async () => {
         setLoading(true);
-        try { setBookings(await getBookings()); }
+        try {
+            const [b, cashEnabled] = await Promise.all([getBookings(), getCashPaymentEnabled()]);
+            setBookings(b);
+            setAllowCashPayment(cashEnabled);
+        }
         catch (e) { console.error("Failed to fetch bookings:", e); }
         finally { setLoading(false); }
     };
@@ -541,9 +547,11 @@ export function BookingsContainer() {
                 <Button size="sm" className="h-8 text-[10px] bg-purple-600 hover:bg-purple-700 font-bold" onClick={() => setChangeTypeBooking(booking)}>
                     <Shuffle className="w-3 h-3 mr-1" />Change Type
                 </Button>
-                <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
-                    <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
-                </Button>
+                {allowCashPayment && (
+                    <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
+                        <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
+                    </Button>
+                )}
                 <RejectCapsule bookingId={booking.id} />
             </>
         );
@@ -715,7 +723,7 @@ export function BookingsContainer() {
                                                     </div>
                                                 )}
                                                 {/* Cash pending indicator (APPROVED + student registered intent) */}
-                                                {booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' &&
+                                                {allowCashPayment && booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' &&
                                                     !['PAID', 'CASH_PAID', 'MOVE_IN_SCHEDULED'].includes(booking.status) && (
                                                     <div className="mt-1">
                                                         <div className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 rounded px-1.5 py-0.5 inline-block">💵 Cash Pending</div>
@@ -732,7 +740,7 @@ export function BookingsContainer() {
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="p-4"><OwnerNextStep booking={booking} /></td>
+                                            <td className="p-4"><OwnerNextStep booking={booking} allowCashPayment={allowCashPayment} /></td>
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end items-center gap-2">
                                                     {renderActionButtons(booking)}
