@@ -72,8 +72,27 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(refresh, 30000);
-        return () => clearInterval(interval);
+        let interval: ReturnType<typeof setInterval> | null = null;
+
+        const start = () => {
+            if (!interval) interval = setInterval(refresh, 30000);
+        };
+        const stop = () => {
+            if (interval) { clearInterval(interval); interval = null; }
+        };
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') { refresh(); start(); }
+            else stop();
+        };
+
+        // Start polling if tab is already visible
+        if (document.visibilityState === 'visible') start();
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return () => {
+            stop();
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, [refresh]);
 
     if (!properties || properties.length === 0) {

@@ -54,8 +54,23 @@ export default function RoomAvailabilityPage() {
         if (!selectedPropertyId) return;
         setData(null);
         fetchData(selectedPropertyId);
-        const interval = setInterval(() => fetchData(selectedPropertyId), 30000);
-        return () => clearInterval(interval);
+        let interval: ReturnType<typeof setInterval> | null = null;
+
+        const start = () => { if (!interval) interval = setInterval(() => fetchData(selectedPropertyId), 30000); };
+        const stop  = () => { if (interval) { clearInterval(interval); interval = null; } };
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') { fetchData(selectedPropertyId); start(); }
+            else stop();
+        };
+
+        // Instant fetch + start polling if tab already visible
+        if (document.visibilityState === 'visible') { fetchData(selectedPropertyId); start(); }
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return () => {
+            stop();
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, [selectedPropertyId, fetchData]);
 
     if (loading) return (
