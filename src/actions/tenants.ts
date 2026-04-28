@@ -719,6 +719,8 @@ Note: ${note}
 
         revalidatePath('/dashboard/owner/tenants');
         revalidatePath('/dashboard/admin/tenants');
+        revalidatePath('/dashboard/owner');
+        revalidatePath('/dashboard/owner/availability');
         return { success: true };
     });
 }

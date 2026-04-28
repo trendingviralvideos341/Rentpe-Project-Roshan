@@ -840,6 +840,32 @@ export async function cancelBooking(id: string, reason?: string) {
         }
     });
 
+    // ✅ AUTO-RELEASE BED: Free any bed locked/reserved/occupied for this booking
+    const bedsToFree = await prisma.bed.findMany({
+        where: {
+            OR: [
+                { lockedByBookingId: id },
+                { currentBookingId: id },
+            ],
+            status: { in: ['TEMP_LOCKED', 'RESERVED', 'LOCKED', 'OCCUPIED'] }
+        }
+    });
+    for (const bed of bedsToFree) {
+        await prisma.bed.update({
+            where: { id: bed.id },
+            data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, lockExpiresAt: null, currentBookingId: null, tenantId: null }
+        }).catch(() => {});
+    }
+
+    // Also free bed via bookingId field on bed (the bedId stored in booking)
+    const bookingWithBed = await prisma.booking.findUnique({ where: { id }, select: { bedId: true } as any }).catch(() => null);
+    if (bookingWithBed && (bookingWithBed as any).bedId) {
+        await prisma.bed.update({
+            where: { id: (bookingWithBed as any).bedId },
+            data: { status: 'AVAILABLE', lockedByBookingId: null, lockedAt: null, lockExpiresAt: null, currentBookingId: null, tenantId: null }
+        }).catch(() => {});
+    }
+
     if (booking.roomId) {
         const room = await prisma.room.findUnique({ where: { id: booking.roomId } });
         if (room) await prisma.room.update({ where: { id: room.id }, data: { availability: room.availability + 1 } });
@@ -885,6 +911,8 @@ export async function cancelBooking(id: string, reason?: string) {
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/dashboard/owner');
+    revalidatePath('/dashboard/owner/availability');
     return updated;
 }
 
@@ -1274,6 +1302,8 @@ export async function completeVacate(bookingId: string) {
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/tenants');
+    revalidatePath('/dashboard/owner');
+    revalidatePath('/dashboard/owner/availability');
 
     // Return settlement data for PDF
     const rentRecords = tenant?.rentRecords || [];

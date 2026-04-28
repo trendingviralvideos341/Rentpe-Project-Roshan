@@ -1,35 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bed, Home, User, Settings, AlertTriangle, CheckCircle2, Clock, Info, Eye, EyeOff } from "lucide-react";
+import { Bed, Home, User, Settings, AlertTriangle, CheckCircle2, Clock, Info, Eye, EyeOff, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-interface InventoryGridProps {
-    properties: any[];
-}
+import { getOwnerInventory } from "@/actions/dashboard";
 
 const STATUS_COLORS: Record<string, string> = {
-    AVAILABLE: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    RESERVED: "bg-blue-100 text-blue-700 border-blue-200",
-    OCCUPIED: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    MAINTENANCE: "bg-red-100 text-red-700 border-red-200",
+    AVAILABLE:    "bg-emerald-100 text-emerald-700 border-emerald-400 ring-2 ring-emerald-300",
+    RESERVED:     "bg-amber-100 text-amber-700 border-amber-400 ring-2 ring-amber-300",
+    TEMP_LOCKED:  "bg-amber-100 text-amber-700 border-amber-400 ring-2 ring-amber-300",
+    LOCKED:       "bg-amber-100 text-amber-700 border-amber-400 ring-2 ring-amber-300",
+    OCCUPIED:     "bg-orange-100 text-orange-700 border-orange-400 ring-2 ring-orange-300",
+    MAINTENANCE:  "bg-red-100 text-red-700 border-red-300",
 };
 
 const STATUS_ICONS: Record<string, any> = {
-    AVAILABLE: CheckCircle2,
-    RESERVED: Clock,
-    OCCUPIED: User,
+    AVAILABLE:   CheckCircle2,
+    RESERVED:    Clock,
+    TEMP_LOCKED: Clock,
+    LOCKED:      Clock,
+    OCCUPIED:    User,
     MAINTENANCE: AlertTriangle,
 };
 
-export function InventoryGrid({ properties }: InventoryGridProps) {
+const STATUS_LABEL: Record<string, string> = {
+    AVAILABLE:   "Available",
+    RESERVED:    "Occupied",
+    TEMP_LOCKED: "Occupied",
+    LOCKED:      "Occupied",
+    OCCUPIED:    "Occupied",
+    MAINTENANCE: "Maintenance",
+};
+
+export function InventoryGrid({ properties: initialProperties }: { properties: any[] }) {
     const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+    const [properties, setProperties] = useState<any[]>(initialProperties || []);
+    const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+    const [pulse, setPulse] = useState(false);
 
     const toggleExpand = (id: string) => {
         setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
     };
+
+    // 10-second live polling (industry standard for property dashboards)
+    const refresh = useCallback(async () => {
+        try {
+            const fresh = await getOwnerInventory();
+            setProperties(fresh);
+            setLastUpdated(new Date());
+            setPulse(true);
+            setTimeout(() => setPulse(false), 400);
+        } catch { /* silent */ }
+    }, []);
+
+    useEffect(() => {
+        const interval = setInterval(refresh, 30000);
+        return () => clearInterval(interval);
+    }, [refresh]);
 
     if (!properties || properties.length === 0) {
         return (
@@ -49,19 +78,39 @@ export function InventoryGrid({ properties }: InventoryGridProps) {
                 <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shrink-0">
                     <Info className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="flex-1">
                     <h4 className="font-black text-indigo-900 text-sm uppercase tracking-tight">Managing Your Beds</h4>
                     <p className="text-[13px] text-indigo-700 font-medium leading-relaxed mt-1">
                         To change or add beds, go to <span className="font-black underline">My Properties</span>, select the building name, go to the <span className="font-black underline">Bed tab</span> and edit there.
                     </p>
                 </div>
+                {/* Live indicator */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`h-2 w-2 rounded-full ${pulse ? 'bg-green-400 scale-125' : 'bg-green-500'} transition-all duration-300 animate-pulse`} />
+                    <span className="text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-1">
+                        <Wifi className="h-3 w-3" /> Live
+                    </span>
+                </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-3 text-[11px] font-bold">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-300">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Available
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg border border-amber-300">
+                    <Clock className="h-3.5 w-3.5" /> Occupied / Reserved
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg border border-orange-300">
+                    <User className="h-3.5 w-3.5" /> Occupied (Active Tenant)
+                </span>
             </div>
 
             {properties.map((property) => {
                 const isExpanded = expandedIds[property.id];
                 return (
                     <Card key={property.id} className="overflow-hidden border-none shadow-lg bg-gradient-to-br from-white to-slate-50 transition-all duration-300">
-                    <CardHeader className="bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-900 text-white p-6">
+                        <CardHeader className="bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-900 text-white p-6">
                             <div className="flex justify-between items-center">
                                 <div>
                                     <CardTitle className="text-xl font-black flex items-center gap-2">
@@ -70,12 +119,12 @@ export function InventoryGrid({ properties }: InventoryGridProps) {
                                     <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">{property.city} • {property.address}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Button 
-                                        size="sm" 
+                                    <Button
+                                        size="sm"
                                         onClick={() => toggleExpand(property.id)}
                                         className={`rounded-xl px-4 font-black text-[10px] uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 h-10 ${
-                                            isExpanded 
-                                            ? "bg-slate-700 hover:bg-slate-600 text-white shadow-slate-950/20" 
+                                            isExpanded
+                                            ? "bg-slate-700 hover:bg-slate-600 text-white shadow-slate-950/20"
                                             : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/20"
                                         }`}
                                     >
@@ -91,7 +140,7 @@ export function InventoryGrid({ properties }: InventoryGridProps) {
                                 </div>
                             </div>
                         </CardHeader>
-                        
+
                         {isExpanded && (
                             <CardContent className="p-6 animate-in fade-in slide-in-from-top-4 duration-500">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -113,15 +162,20 @@ export function InventoryGrid({ properties }: InventoryGridProps) {
                                             <div className="grid grid-cols-2 gap-3">
                                                 {room.beds?.map((bed: any) => {
                                                     const StatusIcon = STATUS_ICONS[bed.status] || Bed;
-                                                    const tooltipText = `${bed.status}${bed.tenant ? ` - ${bed.tenant.name} (${bed.tenant.displayId})` : ""}`;
+                                                    const isAvailable = bed.status === 'AVAILABLE';
+                                                    const label = STATUS_LABEL[bed.status] || bed.status;
+                                                    const tooltipText = `${label}${bed.tenant ? ` — ${bed.tenant.name} (${bed.tenant.displayId})` : ""}`;
                                                     return (
-                                                        <div 
-                                                            key={bed.id} 
+                                                        <div
+                                                            key={bed.id}
                                                             title={tooltipText}
-                                                            className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 ${STATUS_COLORS[bed.status] || "bg-slate-100 border-slate-200 text-slate-500"}`}
+                                                            className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all hover:scale-105 ${STATUS_COLORS[bed.status] || "bg-slate-100 border-slate-200 text-slate-500"}`}
                                                         >
                                                             <StatusIcon className="h-5 w-5" />
                                                             <span className="text-[10px] font-black uppercase tracking-widest">{bed.bedNumber}</span>
+                                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isAvailable ? 'bg-emerald-200 text-emerald-800' : 'bg-orange-200 text-orange-800'}`}>
+                                                                {label}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
