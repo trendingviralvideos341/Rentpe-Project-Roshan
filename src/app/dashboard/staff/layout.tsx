@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getCurrentUser } from "@/actions/auth";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { redirect } from "next/navigation";
@@ -18,13 +19,15 @@ export default async function StaffLayout({
 
     return (
         <div className="flex h-screen bg-slate-50">
-            <DashboardSidebar 
-                role="staff" 
-                permissions={permissions}
-                userName={userData.name}
-                displayId={userData.displayId}
-                isStaff={true}
-            />
+            <Suspense fallback={<div className="w-64 bg-card border-r h-full hidden md:flex" />}>
+                <DashboardSidebar 
+                    role="staff" 
+                    permissions={permissions}
+                    userName={userData.name}
+                    displayId={userData.displayId}
+                    isStaff={true}
+                />
+            </Suspense>
             <div className="flex-1 flex flex-col overflow-hidden">
                 <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
                     {children}

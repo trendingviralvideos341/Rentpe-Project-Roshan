@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { getCurrentUser } from "@/actions/auth";
 
@@ -21,12 +22,14 @@ export default async function OwnerLayout({
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)]">
-            <DashboardSidebar 
-                role="owner" 
-                permissions={permissions} 
-                isStaff={isStaff} 
-                displayId={user?.displayId} 
-            />
+            <Suspense fallback={<div className="w-64 bg-card border-r h-full hidden md:flex" />}>
+                <DashboardSidebar 
+                    role="owner" 
+                    permissions={permissions} 
+                    isStaff={isStaff} 
+                    displayId={user?.displayId} 
+                />
+            </Suspense>
             <main className="flex-1 p-4 md:p-8 bg-[#f8faff] bg-[radial-gradient(at_0%_0%,rgba(199,210,254,0.4)_0,transparent_50%),radial-gradient(at_100%_100%,rgba(221,214,254,0.4)_0,transparent_50%)] selection:bg-purple-100 min-h-screen relative overflow-hidden">
                 <div className="relative z-10 animate-in fade-in slide-in-from-bottom-2 duration-700">
                     {children}
