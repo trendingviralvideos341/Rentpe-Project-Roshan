@@ -43,7 +43,16 @@ export async function getSavedProperties() {
         where: { userId: (session as any).userId, status: 'ACTIVE' },
         include: {
             property: {
-                include: { rooms: { select: { price: true, type: true, availability: true } } }
+                include: {
+                    rooms: {
+                        select: {
+                            price: true,
+                            type: true,
+                            availability: true,
+                            beds: { select: { status: true } }
+                        }
+                    }
+                }
             }
         },
         orderBy: { createdAt: 'desc' }
@@ -51,7 +60,12 @@ export async function getSavedProperties() {
 
     return saved.map((s: any) => {
         const prices = s.property.rooms.map((r: any) => r.price).filter(Boolean);
-        const available = s.property.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
+        const available = s.property.rooms.reduce((sum: number, r: any) => {
+            const bedCount = Array.isArray(r.beds)
+                ? r.beds.filter((b: any) => b.status === 'AVAILABLE').length
+                : (r.availability || 0);
+            return sum + bedCount;
+        }, 0);
         return {
             ...s,
             property: {

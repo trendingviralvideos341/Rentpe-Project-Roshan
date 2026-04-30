@@ -33,7 +33,14 @@ export async function searchProperties(query?: string, filters?: {
         const properties = await prisma.property.findMany({
             where,
             include: {
-                rooms: { select: { price: true, type: true, availability: true } },
+                rooms: {
+                    select: {
+                        price: true,
+                        type: true,
+                        availability: true,
+                        beds: { select: { status: true } }
+                    }
+                },
                 _count: { select: { reviews: true } }
             }
         }) as (Property & { rooms: any[], _count: { reviews: number } })[];
@@ -46,7 +53,13 @@ export async function searchProperties(query?: string, filters?: {
                 const prices = p.rooms.map((r: any) => r.price).filter(Boolean);
                 const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
                 const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-                const totalAvailable = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
+                // Count real-time AVAILABLE beds from the Bed table (not the stale room.availability integer)
+                const totalAvailable = p.rooms.reduce((sum: number, r: any) => {
+                    const bedCount = Array.isArray(r.beds)
+                        ? r.beds.filter((b: any) => b.status === 'AVAILABLE').length
+                        : (r.availability || 0);
+                    return sum + bedCount;
+                }, 0);
 
                 // For APPROVED properties, show ALL uploaded photos (no verification gating)
                 // Verification gating is for the admin review step, not for public visibility

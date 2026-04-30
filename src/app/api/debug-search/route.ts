@@ -6,13 +6,26 @@ export async function GET() {
         // 1. Get ALL properties with their room data
         const allProperties = await prisma.property.findMany({
             include: {
-                rooms: { select: { id: true, price: true, availability: true, status: true } }
+                rooms: {
+                    select: {
+                        id: true,
+                        price: true,
+                        availability: true,
+                        status: true,
+                        beds: { select: { status: true } }
+                    }
+                }
             },
             orderBy: { createdAt: "desc" }
         });
 
         const report = allProperties.map((p: any) => {
-            const totalAvailableBeds = p.rooms.reduce((sum: number, r: any) => sum + (r.availability || 0), 0);
+            const totalAvailableBeds = p.rooms.reduce((sum: number, r: any) => {
+                const bedCount = Array.isArray(r.beds)
+                    ? r.beds.filter((b: any) => b.status === 'AVAILABLE').length
+                    : (r.availability || 0);
+                return sum + bedCount;
+            }, 0);
             let verifiedDocs: string[] = [];
             try { verifiedDocs = JSON.parse(p.verifiedDocs || "[]"); } catch { }
             let buildingPhotos: string[] = [];
@@ -36,6 +49,7 @@ export async function GET() {
                 rooms: p.rooms.map((r: any) => ({
                     price: r.price,
                     availability: r.availability,
+                    realTimeAvailability: Array.isArray(r.beds) ? r.beds.filter((b: any) => b.status === 'AVAILABLE').length : r.availability,
                     status: r.status
                 }))
             };

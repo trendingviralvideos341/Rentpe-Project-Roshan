@@ -42,12 +42,13 @@ export async function getRoomsAction(propertyId?: string) {
 }
 
 export async function getAvailableRooms(propertyId?: string) {
+    noStore();
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
         throw new Error("Unauthorized");
     }
 
-    const where: any = { availability: { gt: 0 } };
+    const where: any = {};
     if (propertyId) {
         where.propertyId = propertyId;
     } else if (session.role === 'OWNER' || session.role === 'STAFF') {
@@ -67,10 +68,22 @@ export async function getAvailableRooms(propertyId?: string) {
         }
     }
 
-    return prisma.room.findMany({
+    const rooms = await prisma.room.findMany({
         where,
-        select: { id: true, roomNumber: true, type: true, price: true, propertyId: true, availability: true }
+        include: {
+            beds: { select: { status: true } }
+        }
     });
+
+    // Map to include real-time availability and filter only those with beds available
+    return rooms.map(r => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        type: r.type,
+        price: r.price,
+        propertyId: r.propertyId,
+        availability: r.beds.filter(b => b.status === 'AVAILABLE').length,
+    })).filter(r => r.availability > 0);
 }
 
 export async function deleteRoomByOwner(roomId: string) {

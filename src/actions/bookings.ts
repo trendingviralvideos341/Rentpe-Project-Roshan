@@ -349,20 +349,28 @@ export async function approveBooking(id: string, data: {
     // Handle bed availability changes if the room assignment has changed
     if (existingBooking && data.roomId !== existingBooking.roomId) {
         if (existingBooking.roomId) {
-            const oldRoom = await prisma.room.findUnique({ where: { id: existingBooking.roomId } });
+            const oldRoom = await prisma.room.findUnique({ 
+                where: { id: existingBooking.roomId },
+                include: { beds: { select: { status: true } } }
+            });
             if (oldRoom) {
+                const realAvail = oldRoom.beds.filter(b => b.status === 'AVAILABLE').length;
                 await prisma.room.update({
                     where: { id: oldRoom.id },
-                    data: { availability: oldRoom.availability + 1 }
+                    data: { availability: realAvail }
                 });
             }
         }
         if (data.roomId) {
-            const newRoom = await prisma.room.findUnique({ where: { id: data.roomId } });
-            if (newRoom && newRoom.availability > 0) {
+            const newRoom = await prisma.room.findUnique({ 
+                where: { id: data.roomId },
+                include: { beds: { select: { status: true } } }
+            });
+            if (newRoom) {
+                const realAvail = newRoom.beds.filter(b => b.status === 'AVAILABLE').length;
                 await prisma.room.update({
                     where: { id: newRoom.id },
-                    data: { availability: newRoom.availability - 1 }
+                    data: { availability: realAvail }
                 });
             }
         }
@@ -445,11 +453,15 @@ export async function rejectBooking(id: string, reason?: string) {
 
     // Return bed if room was assigned
     if (existingBooking && existingBooking.roomId) {
-        const room = await prisma.room.findUnique({ where: { id: existingBooking.roomId } });
+        const room = await prisma.room.findUnique({ 
+            where: { id: existingBooking.roomId },
+            include: { beds: { select: { status: true } } }
+        });
         if (room) {
+            const realAvail = room.beds.filter(b => b.status === 'AVAILABLE').length;
             await prisma.room.update({
                 where: { id: room.id },
-                data: { availability: room.availability + 1 }
+                data: { availability: realAvail }
             });
         }
     }
