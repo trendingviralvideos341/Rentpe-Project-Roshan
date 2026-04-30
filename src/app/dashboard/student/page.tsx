@@ -327,12 +327,14 @@ export default function StudentDashboardPage() {
                             {/* ── Bookings List ── */}
                             {bookings.map((booking: any) => {
                                 const isKycPending = booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_FAILED';
-                                const isCashPending = booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' && ['APPROVED', 'ROOM_RESERVED'].includes(booking.status);
+                                const isCashPending = booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' && booking.status === 'APPROVED';
                                 const isTokenPending = booking.status === 'APPROVED_PENDING_TOKEN';
+                                const isTokenPaid = booking.status === 'ROOM_RESERVED'; // token paid, next = sign agreement
                                 const isFinalPaymentPending = booking.status === 'MOVE_IN_SCHEDULED';
-                                const isPaymentPending = isTokenPending || isFinalPaymentPending || (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING' || booking.status === 'ROOM_RESERVED') && !!booking.roomAssigned && !isCashPending;
+                                // ROOM_RESERVED is NOT payment pending — token is done, next step is agreement
+                                const isPaymentPending = isTokenPending || isFinalPaymentPending || (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING') && !!booking.roomAssigned && !isCashPending;
                                 const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
-                                const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending || isTokenPending;
+                                const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending || isTokenPending || isTokenPaid;
                                 const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
                                 const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') && !isCheckedIn;
                                 const isActive = booking.status === 'ACTIVE' || booking.status === 'CHECKED_IN' || booking.status === 'CHECKIN_CONFIRMED';
@@ -373,7 +375,10 @@ export default function StudentDashboardPage() {
                                                 <span className="text-sm font-medium">Stage:</span>
                                                 {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>}
                                                 {isKycPending && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">📝 KYC Verification</span>}
-                                                {isPaymentPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
+                                                {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🔐 Token Payment Pending</span>}
+                                                {isTokenPaid && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Sign Agreement</span>}
+                                                {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
+                                                {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Agreement Sent — Awaiting Owner</span>}
                                                 {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Sign Agreement</span>}
                                                 {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>}
                                                 {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>}
@@ -390,6 +395,51 @@ export default function StudentDashboardPage() {
                                                         <span className="text-sm font-black text-slate-900">₹1,000</span>
                                                     </div>
                                                     <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}&type=token`)}>💳 Pay ₹1,000 Token Now</Button>
+                                                </div>
+                                            )}
+
+                                            {/* Token Paid — Receipt + Sign Agreement CTA */}
+                                            {isTokenPaid && (
+                                                <div className="space-y-3">
+                                                    {/* Token Receipt Download */}
+                                                    <div className="w-full bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-4 flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-sm font-black text-green-800">✅ Token Payment Confirmed</p>
+                                                            <p className="text-xs text-green-700 mt-0.5">₹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
+                                                        </div>
+                                                        <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-100 font-black text-xs" onClick={() => {
+                                                            generateInvoicePDF({
+                                                                invoiceId: `TOKEN-${booking.displayId}`,
+                                                                date: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
+                                                                description: `Token Payment — Bed Reservation at ${booking.propertyName}`,
+                                                                month: new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+                                                                amount: 1000,
+                                                                tenantName: booking.guestName,
+                                                                paymentMethod: booking.paymentMethod || 'Online',
+                                                            });
+                                                        }}>
+                                                            <Download className="h-3 w-3 mr-1" /> Receipt
+                                                        </Button>
+                                                    </div>
+                                                    {/* Sign Agreement — Blinking CTA */}
+                                                    {!booking.agreementSigned && (
+                                                        <div className="w-full bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-500 rounded-2xl p-5 space-y-3 animate-pulse">
+                                                            <div className="flex items-center gap-2 text-sm font-black text-red-800">
+                                                                <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping mr-1"></span>
+                                                                ✍️ Sign Your Rental Agreement
+                                                            </div>
+                                                            <p className="text-xs text-red-700 font-medium">Token paid! Your bed is reserved. Sign the rental agreement to proceed to physical verification.</p>
+                                                            <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-black h-12 rounded-2xl" onClick={() => setSigningBooking(booking)}>
+                                                                ✍️ Sign Agreement Now
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                    {booking.agreementSigned && (
+                                                        <div className="w-full bg-purple-50 border-2 border-purple-300 rounded-2xl p-4">
+                                                            <p className="text-sm font-black text-purple-800">✍️ Agreement Signed — Waiting for Owner Countersignature</p>
+                                                            <p className="text-xs text-purple-600 mt-1">Owner will verify your ID physically. Then final payment will activate your stay.</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -414,7 +464,7 @@ export default function StudentDashboardPage() {
                                                 </div>
                                             )}
 
-                                            {/* Legacy/Generic Payment */}
+                                            {/* Legacy/Generic Payment — only for APPROVED with room (not ROOM_RESERVED) */}
                                             {isPaymentPending && !isTokenPending && !isFinalPaymentPending && booking.roomAssigned && (
                                                 <div className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 space-y-4">
                                                     <p className="text-sm font-black text-slate-800">💳 Payment Due</p>

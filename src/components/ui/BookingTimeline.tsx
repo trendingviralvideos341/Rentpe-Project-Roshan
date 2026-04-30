@@ -62,28 +62,26 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
     const getActiveIndex = (status: string) => {
         // Step 0 — Application
         if (status === 'APPLIED' || status === 'PENDING_APPROVAL' || status === 'REQUESTED') return 0;
-        
-        // Step 1 — Room Allocated / Pay Token
+
+        // Step 1 — Room Allocated / Awaiting Token
         if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 1;
-        
-        // Step 2 — Token Paid / Bed Reserved
-        if (
-            status === 'ROOM_RESERVED' ||
-            status === 'KYC_PENDING' ||
-            status === 'APPROVED_KYC_PENDING' ||
-            status === 'KYC_FAILED' ||
-            status === 'AGREEMENT_PENDING'
-        ) return 2;
-        
-        // Step 3 — Agreement Signed
+
+        // Step 2 — Token Paid (current step is token, mark it current while token pending)
+        // Once token is paid (ROOM_RESERVED), token step is DONE → advance to step 3
+        if (status === 'KYC_PENDING' || status === 'APPROVED_KYC_PENDING' || status === 'KYC_FAILED') return 2;
+
+        // Step 3 — Agreement (token paid → sign agreement is next)
+        if (status === 'ROOM_RESERVED' || status === 'AGREEMENT_PENDING') return 3;
+
+        // Step 3 — Agreement Signed / Confirmed
         if (status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 3;
-        
-        // Step 4 — Move-in Ready (Physical check-in done, waiting for final payment)
+
+        // Step 4 — Move-in Ready (Physical ID verified, final payment pending)
         if (status === 'MOVE_IN_SCHEDULED') return 4;
-        
-        // Step 5 — Active
+
+        // Step 5 — Active Tenant
         if (status === 'ACTIVE' || status === 'CHECKED_IN' || status === 'CHECKIN_CONFIRMED') return 5;
-        
+
         return 0;
     };
 
