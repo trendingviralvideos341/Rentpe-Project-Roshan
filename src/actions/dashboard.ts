@@ -130,6 +130,7 @@ export async function getOwnerInventory() {
 
         const userId = session.userId;
 
+        // Fetch properties with rooms and beds (no booking relation on Bed in schema)
         const properties = await prisma.property.findMany({
             where: { ownerId: userId },
             include: {
@@ -139,9 +140,6 @@ export async function getOwnerInventory() {
                             include: {
                                 tenant: {
                                     select: { id: true, name: true, displayId: true, phone: true, status: true }
-                                },
-                                booking: {
-                                    select: { id: true, status: true, displayId: true }
                                 }
                             }
                         }
@@ -151,7 +149,39 @@ export async function getOwnerInventory() {
             orderBy: { updatedAt: 'desc' }
         });
 
-        return properties;
+        // Collect all currentBookingIds from beds that have one
+        const bookingIds = new Set<string>();
+        for (const prop of properties) {
+            for (const room of prop.rooms) {
+                for (const bed of room.beds) {
+                    if (bed.currentBookingId) bookingIds.add(bed.currentBookingId);
+                }
+            }
+        }
+
+        // Batch-fetch bookings for those IDs
+        const bookingsMap = new Map<string, { id: string; status: string; displayId: string }>();
+        if (bookingIds.size > 0) {
+            const bookings = await prisma.booking.findMany({
+                where: { id: { in: Array.from(bookingIds) } },
+                select: { id: true, status: true, displayId: true }
+            });
+            for (const b of bookings) bookingsMap.set(b.id, b);
+        }
+
+        // Attach booking data to each bed
+        const enrichedProperties = properties.map(prop => ({
+            ...prop,
+            rooms: prop.rooms.map(room => ({
+                ...room,
+                beds: room.beds.map(bed => ({
+                    ...bed,
+                    booking: bed.currentBookingId ? bookingsMap.get(bed.currentBookingId) ?? null : null
+                }))
+            }))
+        }));
+
+        return enrichedProperties;
     } catch (e) {
         console.error("getOwnerInventory Error:", e);
         return [];
