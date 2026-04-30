@@ -222,111 +222,185 @@ export function InventoryGrid({ properties: initialProperties }: { properties: a
             })}
 
             {/* Bed Detail Popup Modal */}
-            {selectedBed && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-                    onClick={() => setSelectedBed(null)}
-                >
+            {selectedBed && (() => {
+                const bk = selectedBed.booking;
+                const tn = selectedBed.tenant;
+                const isTerminal = bk && ['CANCELLED', 'REJECTED', 'COMPLETED', 'CHECKED_OUT'].includes(bk.status);
+                const isActive = bk && !isTerminal;
+                const stage = getStageLabel(bk?.status, tn?.status);
+
+                return (
                     <div
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
-                        onClick={e => e.stopPropagation()}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                        onClick={() => setSelectedBed(null)}
                     >
-                        {/* Modal Header */}
-                        <div className={`p-5 flex items-center justify-between ${
-                            selectedBed.status === 'OCCUPIED' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
-                            'bg-gradient-to-r from-amber-500 to-amber-600'
-                        } text-white`}>
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                                    <Bed className="h-5 w-5" />
+                        <div
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className={`p-5 flex items-center justify-between ${
+                                tn?.status === 'ACTIVE'  ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                                isTerminal              ? 'bg-gradient-to-r from-slate-500 to-slate-600' :
+                                isActive                ? 'bg-gradient-to-r from-amber-500 to-amber-600' :
+                                                          'bg-gradient-to-r from-slate-400 to-slate-500'
+                            } text-white`}>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                                        <Bed className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-lg tracking-tight">Bed {selectedBed.bedNumber}</p>
+                                        <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest">Room {selectedBed.roomNumber}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-black text-lg tracking-tight">Bed {selectedBed.bedNumber}</p>
-                                    <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest">Room {selectedBed.roomNumber}</p>
-                                </div>
+                                <button
+                                    onClick={() => setSelectedBed(null)}
+                                    className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setSelectedBed(null)}
-                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
 
-                        {/* Stage Badge */}
-                        {(() => {
-                            const stage = getStageLabel(selectedBed.booking?.status, selectedBed.tenant?.status);
-                            return (
-                                <div className={`mx-5 mt-4 px-4 py-2.5 rounded-xl text-sm font-black text-center ${stage.color}`}>
-                                    {stage.label}
-                                </div>
-                            );
-                        })()}
+                            {/* Stage Badge */}
+                            <div className={`mx-5 mt-4 px-4 py-2.5 rounded-xl text-sm font-black text-center ${stage.color}`}>
+                                {stage.label}
+                            </div>
 
-                        {/* Tenant Details */}
-                        <div className="p-5 space-y-3">
-                            {selectedBed.tenant ? (
-                                <>
-                                    <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                                            <IdCard className="h-4 w-4 text-indigo-600" />
+                            {/* Content */}
+                            <div className="p-5 space-y-3">
+                                {tn ? (
+                                    /* ── Active tenant ─────────────────────── */
+                                    <>
+                                        <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                                                <IdCard className="h-4 w-4 text-indigo-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tenant ID</p>
+                                                <p className="text-sm font-black text-slate-800 font-mono">{tn.displayId || '—'}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tenant ID</p>
-                                            <p className="text-sm font-black text-slate-800 font-mono">{selectedBed.tenant.displayId || '—'}</p>
+                                        <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                                <User className="h-4 w-4 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</p>
+                                                <p className="text-sm font-black text-slate-800">{tn.name || '—'}</p>
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                                            <User className="h-4 w-4 text-blue-600" />
+                                        <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                                <Phone className="h-4 w-4 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</p>
+                                                <p className="text-sm font-black text-slate-800">{tn.phone || '—'}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</p>
-                                            <p className="text-sm font-black text-slate-800">{selectedBed.tenant.name || '—'}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                                            <Phone className="h-4 w-4 text-emerald-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</p>
-                                            <p className="text-sm font-black text-slate-800">{selectedBed.tenant.phone || '—'}</p>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="py-4 text-center text-slate-400 text-sm font-bold">
-                                    {selectedBed.booking ? (
+                                    </>
+                                ) : bk ? (
+                                    /* ── Booking exists (active or terminal) ── */
+                                    <>
+                                        {/* Booking Ref */}
                                         <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                                             <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
                                                 <Activity className="h-4 w-4 text-purple-600" />
                                             </div>
-                                            <div className="text-left">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Booking Ref</p>
-                                                <p className="text-sm font-black text-slate-800 font-mono">{selectedBed.booking.displayId || selectedBed.booking.id?.slice(0,8)}</p>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                    {isTerminal ? 'Last Booking Ref' : 'Booking Ref'}
+                                                </p>
+                                                <p className="text-sm font-black text-slate-800 font-mono">{bk.displayId}</p>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <p>No tenant assigned yet</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
 
-                        <div className="px-5 pb-5">
-                            <button
-                                onClick={() => setSelectedBed(null)}
-                                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors"
-                            >
-                                Close
-                            </button>
+                                        {/* Guest Name */}
+                                        {bk.guestName && (
+                                            <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                                    <User className="h-4 w-4 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        {isTerminal ? 'Was Assigned To' : 'Guest Name'}
+                                                    </p>
+                                                    <p className="text-sm font-black text-slate-800">{bk.guestName}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Phone */}
+                                        {bk.guestPhone && (
+                                            <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                                    <Phone className="h-4 w-4 text-emerald-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</p>
+                                                    <p className="text-sm font-black text-slate-800">{bk.guestPhone}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Move-in date (only for active bookings) */}
+                                        {!isTerminal && bk.moveInDate && (
+                                            <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div className="h-8 w-8 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
+                                                    <Clock className="h-4 w-4 text-cyan-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Move-in Date</p>
+                                                    <p className="text-sm font-black text-slate-800">{bk.moveInDate}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Terminal state — show reason */}
+                                        {isTerminal && (
+                                            <div className={`p-3.5 rounded-xl border ${
+                                                bk.status === 'COMPLETED' || bk.status === 'CHECKED_OUT'
+                                                    ? 'bg-slate-50 border-slate-200'
+                                                    : 'bg-red-50 border-red-200'
+                                            }`}>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    {bk.status === 'COMPLETED'   ? '✅ What Happened' :
+                                                     bk.status === 'CHECKED_OUT' ? '🚪 What Happened' :
+                                                     bk.status === 'CANCELLED'   ? '🚫 Cancellation Reason' :
+                                                                                   '❌ Rejection Reason'}
+                                                </p>
+                                                <p className="text-sm font-bold text-slate-700">
+                                                    {bk.status === 'COMPLETED'   ? 'Tenant completed stay and checked out.' :
+                                                     bk.status === 'CHECKED_OUT' ? 'Tenant has checked out.' :
+                                                     bk.cancelReason || bk.rejectionReason || 'No reason provided.'}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    /* ── Truly free bed ─────────────────────── */
+                                    <div className="py-6 text-center text-slate-400">
+                                        <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-emerald-400" />
+                                        <p className="text-sm font-bold">This bed is available</p>
+                                        <p className="text-[11px] text-slate-400 mt-1">No current or past bookings</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="px-5 pb-5">
+                                <button
+                                    onClick={() => setSelectedBed(null)}
+                                    className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
+

@@ -149,35 +149,54 @@ export async function getOwnerInventory() {
             orderBy: { updatedAt: 'desc' }
         });
 
-        // Collect all currentBookingIds from beds that have one
+        // Collect booking IDs from BOTH currentBookingId AND lockedByBookingId
+        // (TEMP_LOCKED/LOCKED beds use lockedByBookingId; RESERVED beds use currentBookingId)
         const bookingIds = new Set<string>();
         for (const prop of properties) {
             for (const room of prop.rooms) {
                 for (const bed of room.beds) {
                     if (bed.currentBookingId) bookingIds.add(bed.currentBookingId);
+                    if (bed.lockedByBookingId) bookingIds.add(bed.lockedByBookingId);
                 }
             }
         }
 
-        // Batch-fetch bookings for those IDs
-        const bookingsMap = new Map<string, { id: string; status: string; displayId: string }>();
+        // Batch-fetch bookings — including full guest info for the popup display
+        const bookingsMap = new Map<string, {
+            id: string; status: string; displayId: string;
+            guestName: string; guestPhone: string | null; guestEmail: string | null;
+            moveInDate: string; cancelReason: string | null; rejectionReason: string | null;
+        }>();
         if (bookingIds.size > 0) {
             const bookings = await prisma.booking.findMany({
                 where: { id: { in: Array.from(bookingIds) } },
-                select: { id: true, status: true, displayId: true }
+                select: {
+                    id: true,
+                    status: true,
+                    displayId: true,
+                    guestName: true,
+                    guestPhone: true,
+                    guestEmail: true,
+                    moveInDate: true,
+                    cancelReason: true,
+                    rejectionReason: true,
+                }
             });
             for (const b of bookings) bookingsMap.set(b.id, b);
         }
 
-        // Attach booking data to each bed
+        // Attach booking data to each bed — prefer currentBookingId, fall back to lockedByBookingId
         const enrichedProperties = properties.map(prop => ({
             ...prop,
             rooms: prop.rooms.map(room => ({
                 ...room,
-                beds: room.beds.map(bed => ({
-                    ...bed,
-                    booking: bed.currentBookingId ? bookingsMap.get(bed.currentBookingId) ?? null : null
-                }))
+                beds: room.beds.map(bed => {
+                    const bookingId = bed.currentBookingId || bed.lockedByBookingId;
+                    return {
+                        ...bed,
+                        booking: bookingId ? (bookingsMap.get(bookingId) ?? null) : null
+                    };
+                })
             }))
         }));
 
