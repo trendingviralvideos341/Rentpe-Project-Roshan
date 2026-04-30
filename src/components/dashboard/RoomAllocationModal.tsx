@@ -39,15 +39,35 @@ const ROOM_TYPE_OPTIONS = [
     "Double Sharing",
     "Three Sharing",
     "Four Sharing",
+    "Five Sharing",
+    "Six Sharing",
     "Studio",
 ];
+
+// Normalize any occupancy format to match ROOM_TYPE_OPTIONS
+function normalizeOccupancy(occupancy: string): string {
+    if (!occupancy) return "Double Sharing";
+    const o = occupancy.toLowerCase().trim();
+    if (o.includes("single") || o === "1" || o === "1 sharing") return "Single Sharing";
+    if (o.includes("double") || o === "2" || o === "2 sharing") return "Double Sharing";
+    if (o.includes("three") || o.includes("triple") || o === "3" || o === "3 sharing") return "Three Sharing";
+    if (o.includes("four") || o === "4" || o === "4 sharing") return "Four Sharing";
+    if (o.includes("five") || o === "5" || o === "5 sharing") return "Five Sharing";
+    if (o.includes("six") || o === "6" || o === "6 sharing") return "Six Sharing";
+    if (o.includes("studio")) return "Studio";
+    // If it already matches one of the options, return as-is
+    const match = ROOM_TYPE_OPTIONS.find(opt => opt.toLowerCase() === o);
+    if (match) return match;
+    return "Double Sharing";
+}
 
 export function RoomAllocationModal({
     isOpen, onClose, onAllocate, booking, property
 }: RoomAllocationModalProps) {
+    const requestedType = normalizeOccupancy(booking.occupancy);
     const [rooms, setRooms] = useState<any[]>([]);
     const [beds, setBeds] = useState<any[]>([]);
-    const [selectedRoomType, setSelectedRoomType] = useState(booking.occupancy || "Double Sharing");
+    const [selectedRoomType, setSelectedRoomType] = useState(requestedType);
     const [selectedRoom, setSelectedRoom] = useState<any>(null);
     const [selectedBed, setSelectedBed] = useState<any>(null);
     const [foodSelected, setFoodSelected] = useState(false);
@@ -64,12 +84,14 @@ export function RoomAllocationModal({
 
     useEffect(() => {
         if (isOpen) {
+            const type = normalizeOccupancy(booking.occupancy);
+            setSelectedRoomType(type);
             setSelectedRoom(null);
             setSelectedBed(null);
             setBeds([]);
-            fetchRooms(selectedRoomType);
+            fetchRooms(type);
         }
-    }, [isOpen]);
+    }, [isOpen, booking.occupancy]);
 
     const fetchRooms = async (roomType: string) => {
         setLoading(true);
@@ -167,7 +189,7 @@ export function RoomAllocationModal({
                             </select>
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">Requested: <strong>{booking.occupancy}</strong></p>
+                        <p className="text-[10px] text-slate-400 mt-1">Requested: <strong className="text-indigo-600">{requestedType}</strong></p>
                     </div>
 
                     {/* Rooms List */}

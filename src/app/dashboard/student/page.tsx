@@ -33,6 +33,20 @@ const TYPE_LABELS: Record<string, string> = {
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
+// Formats any occupancy string to "Three Sharing (3)" style
+function formatOccupancy(occupancy: string): string {
+    if (!occupancy) return '';
+    const o = occupancy.toLowerCase().trim();
+    if (o.includes('single') || o === '1' || o === '1 sharing') return 'Single Sharing (1)';
+    if (o.includes('double') || o === '2' || o === '2 sharing') return 'Double Sharing (2)';
+    if (o.includes('three') || o.includes('triple') || o === '3' || o === '3 sharing') return 'Three Sharing (3)';
+    if (o.includes('four') || o === '4' || o === '4 sharing') return 'Four Sharing (4)';
+    if (o.includes('five') || o === '5' || o === '5 sharing') return 'Five Sharing (5)';
+    if (o.includes('six') || o === '6' || o === '6 sharing') return 'Six Sharing (6)';
+    if (o.includes('studio')) return 'Studio';
+    return occupancy;
+}
+
 // ── Alert Banner ──
 function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' | 'warning' | 'info'; message: string; actionLabel?: string; onAction?: () => void }) {
     const bgColor = type === 'error' ? 'bg-red-50 border-red-200' : type === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
@@ -337,7 +351,14 @@ export default function StudentDashboardPage() {
                                                     <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1"><Building2 className="h-3 w-3" /> Property</div>
                                                     <CardTitle className="flex items-center gap-2">{booking.propertyName}</CardTitle>
                                                     <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-2"><User className="h-3 w-3" /> Guest: <span className="text-foreground font-bold">{booking.guestName}</span></div>
-                                                    <CardDescription className="mt-1">Ref: {booking.displayId} • {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}</CardDescription>
+                                                    <CardDescription className="mt-1">
+                                                        Ref: {booking.displayId} • {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                                                        {booking.occupancy && (
+                                                            <span className="ml-2 inline-flex items-center gap-1 bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                                                🛏️ {formatOccupancy(booking.occupancy)}
+                                                            </span>
+                                                        )}
+                                                    </CardDescription>
                                                 </div>
                                                 <div className="text-right">
                                                     <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : isVacating ? 'bg-orange-100 text-orange-700 border-orange-300' : isCompleted ? 'bg-slate-100 text-slate-600 border-slate-300' : isCancelled ? 'bg-gray-100 text-gray-500 border-gray-300' : isPaid ? 'bg-blue-100 text-blue-700 border-blue-300' : isApproved ? 'bg-violet-100 text-violet-700 border-violet-300' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>
