@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType } from "@/actions/bookings";
+import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate } from "@/actions/bookings";
 import { getCashPaymentEnabled } from "@/actions/platform";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
@@ -27,13 +27,14 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
     REQUESTED:                { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
     APPLIED:                  { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
     PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
-    APPROVED:                 { label: '🛏 Room Allocation',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    ROOM_RESERVED:            { label: '💳 Awaiting Payment',  cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    APPROVED:                 { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    APPROVED_PENDING_TOKEN:   { label: '🔐 Awaiting Token',    cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    ROOM_RESERVED:            { label: '🏠 Room Reserved',     cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Owner Must Sign',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     PAID:                     { label: '💳 Paid',              cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
-    BOOKING_CONFIRMED:        { label: '✍️ Agreement Signed',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    MOVE_IN_SCHEDULED:        { label: '📅 Move-in Set',       cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    BOOKING_CONFIRMED:        { label: '📋 Both Signed',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    MOVE_IN_SCHEDULED:        { label: '💳 Final Payment Due', cls: 'bg-blue-100 text-blue-700 border-blue-300' },
     ACTIVE:                   { label: '🏠 Active Tenant',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     CHECKIN_CONFIRMED:        { label: '🏡 Checked In',        cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     CHECKED_OUT:              { label: '🏠 Checked Out',       cls: 'bg-slate-100 text-slate-500 border-slate-300' },
@@ -63,27 +64,36 @@ function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashP
             🛏 Allocate Room
         </span>
     );
-    if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) {
-        // Only show cash confirmation prompt if admin has cash enabled AND student registered cash intent
+    if (s === 'APPROVED_PENDING_TOKEN') return (
+        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">
+            ⏳ Awaiting ₹1,000 Token from Student
+        </span>
+    );
+    if (s === 'ROOM_RESERVED') return (
+        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">
+            ✍️ Awaiting Student Agreement Signature
+        </span>
+    );
+    if (hasRoom && ['APPROVED', 'AGREEMENT_PENDING'].includes(s) && s !== 'APPROVED_PENDING_TOKEN') {
         if (allowCashPayment && booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH') return (
             <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">
-                💵 Confirm Cash Payment
-            </span>
-        );
-        return (
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
-                ⏳ Awaiting Student Payment
+                💵 Confirm Cash Token Payment
             </span>
         );
     }
-    if (['PAID', 'CASH_PAID'].includes(s)) return (
+    if (s === 'AGREEMENT_PENDING') return (
         <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
-            ✍️ Awaiting Agreement Signing
+            ✍️ Countersign Agreement (You)
         </span>
     );
-    if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
-        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">
-            🔍 Verify Physical ID → Check-in
+    if (s === 'BOOKING_CONFIRMED') return (
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
+            🔍 Physical ID Verify → Check-in
+        </span>
+    );
+    if (s === 'MOVE_IN_SCHEDULED') return (
+        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
+            ⏳ Awaiting Student Final Payment
         </span>
     );
     if (['ACTIVE', 'CHECKIN_CONFIRMED', 'CHECKED_OUT', 'COMPLETED'].includes(s)) return (
@@ -479,14 +489,14 @@ export function BookingsContainer() {
     // ── Filtering ─────────────────────────────────────────────────
     const STATUS_GROUPS: Record<string, string[]> = {
         ALL: [],
-        NEW_REQUEST:     ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
-        ALLOCATE_ROOM:   ["APPROVED", "ROOM_RESERVED"],
-        STUDENT_PAYS:    ["PAID", "CASH_PAID"],
-        AGREEMENT:       ["AGREEMENT_PENDING"],
-        PHYSICAL_VERIFY: ["MOVE_IN_SCHEDULED"],
-        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
-        REJECTED:        ["REJECTED"],
-        CANCELLED:       ["CANCELLED", "EXPIRED"],
+        NEW_REQUEST:     ['APPLIED', 'REQUESTED', 'PENDING_APPROVAL'],
+        ALLOCATE_ROOM:   ['APPROVED', 'APPROVED_PENDING_TOKEN', 'ROOM_RESERVED'],
+        STUDENT_PAYS:    ['PAID', 'CASH_PAID'],
+        AGREEMENT:       ['AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
+        PHYSICAL_VERIFY: ['MOVE_IN_SCHEDULED'],
+        CHECKED_IN:      ['ACTIVE', 'CHECKIN_CONFIRMED'],
+        REJECTED:        ['REJECTED'],
+        CANCELLED:       ['CANCELLED', 'EXPIRED'],
     };
 
     const filteredBookings = bookings.filter(b => {
@@ -541,37 +551,64 @@ export function BookingsContainer() {
         );
 
 
-        // Step 3: Room allocated, awaiting payment — owner can mark cash paid or change sharing type
-        if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
+        // Step 3: Bed allocated, awaiting student ₹1000 token
+        if (s === 'APPROVED_PENDING_TOKEN') return (
             <>
-                <Button size="sm" className="h-8 text-[10px] bg-purple-600 hover:bg-purple-700 font-bold" onClick={() => setChangeTypeBooking(booking)}>
-                    <Shuffle className="w-3 h-3 mr-1" />Change Type
-                </Button>
-                {allowCashPayment && (
-                    <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
-                        <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
-                    </Button>
-                )}
-                <RejectCapsule bookingId={booking.id} />
-            </>
-        );
-
-        // Step 3.5: Payment received — awaiting student agreement signing
-        if (['PAID', 'CASH_PAID'].includes(s)) return (
-            <>
-                <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
-                    ✍️ Awaiting Agreement
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-300">
+                    ⏳ Awaiting ₹1,000 Token
                 </span>
                 <RejectCapsule bookingId={booking.id} />
             </>
         );
 
-        // Step 4: Agreement signed → Physical KYC → Check-in
-        if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
+        // Step 4: Token paid, student must sign agreement
+        if (s === 'ROOM_RESERVED') return (
+            <>
+                <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-200">
+                    ✍️ Student Signing Agreement
+                </span>
+                <RejectCapsule bookingId={booking.id} />
+            </>
+        );
+
+        // Step 5: Student signed → Owner must countersign (Indian law: both parties must sign)
+        if (s === 'AGREEMENT_PENDING') return (
+            <>
+                <Button size="sm" className="h-8 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold"
+                    onClick={async () => {
+                        try {
+                            await ownerCounterSignAgreement(booking.id);
+                            toast.success('✅ Agreement countersigned! Both parties have now signed.');
+                            fetchData();
+                        } catch (e: any) { toast.error(e.message || 'Failed to countersign.'); }
+                    }}>
+                    <ShieldCheck className="w-3 h-3 mr-1" />Countersign Agreement
+                </Button>
+                <RejectCapsule bookingId={booking.id} />
+            </>
+        );
+
+        // Step 6: Both signed → Physical ID check
+        if (s === 'BOOKING_CONFIRMED') return (
             <>
                 <Button size="sm" className="h-8 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}>
-                    <ShieldCheck className="w-3 h-3 mr-1" />Verify ID & Check-in
+                    <ShieldCheck className="w-3 h-3 mr-1" />Physical Check-in
                 </Button>
+                <RejectCapsule bookingId={booking.id} />
+            </>
+        );
+
+        // Step 7: Physical check done → awaiting student's final payment
+        if (s === 'MOVE_IN_SCHEDULED') return (
+            <>
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200">
+                    💳 Awaiting Final Payment
+                </span>
+                {allowCashPayment && (
+                    <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
+                        <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
+                    </Button>
+                )}
                 <RejectCapsule bookingId={booking.id} />
             </>
         );
@@ -598,19 +635,21 @@ export function BookingsContainer() {
                 <p className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-2">📋 Onboarding Flow</p>
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-600">
                     {[
-                        { icon: "📥", label: "New Request" },
+                        { icon: "📥", label: "Request" },
                         { icon: "→", label: "" },
                         { icon: "✅", label: "Approve" },
                         { icon: "→", label: "" },
-                        { icon: "🛏", label: "Allocate Room" },
+                        { icon: "🛏", label: "Allocate" },
                         { icon: "→", label: "" },
-                        { icon: "💳", label: "Student Pays Online / Cash" },
+                        { icon: "⏳", label: "Token" },
                         { icon: "→", label: "" },
-                        { icon: "✍️", label: "Agreement Signed" },
+                        { icon: "✍️", label: "Agreement" },
                         { icon: "→", label: "" },
-                        { icon: "🔍", label: "Physical ID Verify" },
+                        { icon: "🔍", label: "ID Verify" },
                         { icon: "→", label: "" },
-                        { icon: "🏠", label: "Active Tenant" },
+                        { icon: "💳", label: "Final Payment" },
+                        { icon: "→", label: "" },
+                        { icon: "🏠", label: "Active" },
                     ].map((s, i) => s.label ? (
                         <span key={i} className="bg-white border border-indigo-200 px-2 py-1 rounded-full">{s.icon} {s.label}</span>
                     ) : (
@@ -654,16 +693,16 @@ export function BookingsContainer() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                         {([
-                            ["ALL",             `📋 All (${bookings.length})`],
-                            ["NEW_REQUEST",     `📥 New Request`],
-                            ["ALLOCATE_ROOM",   `🛏 Allocate Room`],
-                            ["STUDENT_PAYS",    `💳 Student Pays`],
-                            ["AGREEMENT",       `✍️ Agreement Signed`],
-                            ["PHYSICAL_VERIFY", `🔍 Physical ID Verify`],
-                            ["CHECKED_IN",      `✅ Checked In`],
-                            ["REJECTED",        `❌ Rejected`],
-                            ["CANCELLED",       `🚫 Cancelled`],
-                        ] as const).map(([t, label]) => (
+                            ['ALL',             `📋 All (${bookings.length})`] as const,
+                            ['NEW_REQUEST',     `📥 New Request`] as const,
+                            ['ALLOCATE_ROOM',   `🛏 Room Allocated`] as const,
+                            ['STUDENT_PAYS',    `💳 Token & Payment`] as const,
+                            ['AGREEMENT',       `✍️ Agreement`] as const,
+                            ['PHYSICAL_VERIFY', `🔍 Physical Verify`] as const,
+                            ['CHECKED_IN',      `✅ Checked In`] as const,
+                            ['REJECTED',        `❌ Rejected`] as const,
+                            ['CANCELLED',       `🚫 Cancelled`] as const,
+                        ]).map(([t, label]) => (
                             <Button key={t} size="sm" onClick={() => setActiveTab(t)}
                                 className={`h-7 text-[10px] font-bold transition-all ${activeTab === t ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md" : "bg-white border hover:bg-muted text-foreground"}`}>
                                 {label}

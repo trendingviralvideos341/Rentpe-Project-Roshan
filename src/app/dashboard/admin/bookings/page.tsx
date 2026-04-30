@@ -17,7 +17,8 @@ import {
     markBookingPaid, 
     checkInBooking,
     cancelBooking,
-    updateSharingType
+    updateSharingType,
+    ownerCounterSignAgreement
 } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
@@ -45,13 +46,14 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
     REQUESTED:                { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
     APPLIED:                  { label: '📥 New Request',       cls: 'bg-red-100 text-red-700 border-red-300' },
     PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
-    APPROVED:                 { label: '🛏 Room Allocation',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
-    ROOM_RESERVED:            { label: '💳 Awaiting Payment',  cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    AGREEMENT_PENDING:        { label: '✍️ Sign Agreement',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    APPROVED:                 { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
+    APPROVED_PENDING_TOKEN:   { label: '🔐 Awaiting Token',    cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+    ROOM_RESERVED:            { label: '🏠 Room Reserved',     cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Owner Must Sign',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     PAID:                     { label: '💳 Paid',              cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
-    BOOKING_CONFIRMED:        { label: '✍️ Agreement Signed',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-    MOVE_IN_SCHEDULED:        { label: '📅 Move-in Set',       cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    BOOKING_CONFIRMED:        { label: '📋 Both Signed',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    MOVE_IN_SCHEDULED:        { label: '💳 Final Payment Due', cls: 'bg-blue-100 text-blue-700 border-blue-300' },
     ACTIVE:                   { label: '🏠 Active Tenant',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     CHECKIN_CONFIRMED:        { label: '🏡 Checked In',        cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
     CHECKED_OUT:              { label: '🏠 Checked Out',       cls: 'bg-slate-100 text-slate-500 border-slate-300' },
@@ -66,34 +68,28 @@ function BookingNextStep({ booking }: { booking: any }) {
     const hasRoom = !!booking.roomAssigned;
 
     if (['REQUESTED', 'APPLIED', 'PENDING_APPROVAL'].includes(s)) return (
-        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full border border-orange-200">
-            👆 Approve & Allocate Room
-        </span>
+        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full border border-orange-200">👆 Approve &amp; Allocate Room</span>
     );
     if (s === 'APPROVED' && !hasRoom) return (
-        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
-            🛏 Allocate Room
-        </span>
+        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">🛏 Allocate Room</span>
     );
-    if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
-        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
-            ⏳ Awaiting Student Payment
-        </span>
+    if (s === 'APPROVED_PENDING_TOKEN') return (
+        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">⏳ Awaiting ₹1,000 Token</span>
     );
-    if (['PAID', 'CASH_PAID'].includes(s)) return (
-        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">
-            ✍️ Awaiting Agreement Signing
-        </span>
+    if (s === 'ROOM_RESERVED') return (
+        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">✍️ Student Signs Agreement</span>
     );
-    if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
-        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">
-            🔍 Verify Physical ID → Check-in
-        </span>
+    if (s === 'AGREEMENT_PENDING') return (
+        <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">✍️ Countersign Agreement (Owner)</span>
+    );
+    if (s === 'BOOKING_CONFIRMED') return (
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">🔍 Physical ID Verify → Check-in</span>
+    );
+    if (s === 'MOVE_IN_SCHEDULED') return (
+        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">⏳ Awaiting Student Final Payment</span>
     );
     if (['ACTIVE', 'CHECKIN_CONFIRMED', 'CHECKED_OUT', 'COMPLETED'].includes(s)) return (
-        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
-            ✅ Managed in Tenants
-        </span>
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">✅ Managed in Tenants</span>
     );
     return null;
 }
@@ -468,14 +464,14 @@ export default function AdminBookingsPage() {
 
     const STATUS_GROUPS: Record<string, string[]> = {
         ALL:             [],
-        NEW_REQUEST:     ["APPLIED", "REQUESTED", "PENDING_APPROVAL"],
-        ALLOCATE_ROOM:   ["APPROVED", "ROOM_RESERVED"],
-        STUDENT_PAYS:    ["PAID", "CASH_PAID"],
-        AGREEMENT:       ["AGREEMENT_PENDING"],
-        PHYSICAL_VERIFY: ["MOVE_IN_SCHEDULED"],
-        CHECKED_IN:      ["ACTIVE", "CHECKIN_CONFIRMED", "BOOKING_CONFIRMED"],
-        REJECTED:        ["REJECTED"],
-        CANCELLED:       ["CANCELLED", "EXPIRED"],
+        NEW_REQUEST:     ['APPLIED', 'REQUESTED', 'PENDING_APPROVAL'],
+        ALLOCATE_ROOM:   ['APPROVED', 'APPROVED_PENDING_TOKEN', 'ROOM_RESERVED'],
+        STUDENT_PAYS:    ['PAID', 'CASH_PAID'],
+        AGREEMENT:       ['AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
+        PHYSICAL_VERIFY: ['MOVE_IN_SCHEDULED'],
+        CHECKED_IN:      ['ACTIVE', 'CHECKIN_CONFIRMED'],
+        REJECTED:        ['REJECTED'],
+        CANCELLED:       ['CANCELLED', 'EXPIRED'],
     };
 
     const filtered = bookings.filter(b => {
@@ -633,21 +629,39 @@ export default function AdminBookingsPage() {
                                     <p>📧 {booking.guestEmail}</p>
                                 </div>
                                 <div className="flex gap-2 flex-wrap pt-1">
-                                    {(booking.status === 'APPLIED' || booking.status === 'REQUESTED') && (
-                                        <>
-                                            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs flex-1" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                                            <Button size="sm" variant="destructive" className="text-xs flex-1" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
-                                        </>
-                                    )}
+                                    {/* Step 1: New request */}
+                                    {['APPLIED','REQUESTED','PENDING_APPROVAL'].includes(booking.status) && (<>
+                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs flex-1" onClick={() => handleApprove(booking)}>✓ Approve</Button>
+                                        <Button size="sm" variant="destructive" className="text-xs flex-1" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
+                                    </>)}
+                                    {/* Step 2: Approved, no room */}
                                     {booking.status === 'APPROVED' && !booking.roomAssigned && (
                                         <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-xs flex-1" onClick={() => setAllocateBooking(booking)}>🛏 Allocate Room</Button>
                                     )}
-                                    {(booking.status === 'APPROVED' || booking.status === 'ROOM_RESERVED') && booking.roomAssigned && (
-                                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs flex-1" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
+                                    {/* Step 3: Token awaited */}
+                                    {booking.status === 'APPROVED_PENDING_TOKEN' && (
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">⏳ Awaiting ₹1,000 Token</span>
                                     )}
-                                    {(booking.status === 'BOOKING_CONFIRMED' || booking.status === 'MOVE_IN_SCHEDULED') && (
-                                        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs flex-1" onClick={() => handleCheckIn(booking)}>🚀 Check-in</Button>
+                                    {/* Step 4: Student signing agreement */}
+                                    {booking.status === 'ROOM_RESERVED' && (
+                                        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded border border-teal-200">✍️ Student Signing Agreement</span>
                                     )}
+                                    {/* Step 5: Owner countersign */}
+                                    {booking.status === 'AGREEMENT_PENDING' && (
+                                        <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-xs flex-1"
+                                            onClick={async () => { try { await ownerCounterSignAgreement(booking.id); toast.success('Agreement countersigned!'); fetchBookings(); } catch(e:any){ toast.error(e.message||'Failed'); } }}>
+                                            ✍️ Countersign
+                                        </Button>
+                                    )}
+                                    {/* Step 6: Physical check-in */}
+                                    {booking.status === 'BOOKING_CONFIRMED' && (
+                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs flex-1" onClick={() => handleCheckIn(booking)}>🔍 Physical Check-in</Button>
+                                    )}
+                                    {/* Step 7: Awaiting final payment */}
+                                    {booking.status === 'MOVE_IN_SCHEDULED' && (<>
+                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span>
+                                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
+                                    </>)}
                                     <Button variant="outline" size="sm" className="text-xs"
                                         onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
                                         {expandedBooking === booking.id ? "▲ Hide" : "▼ Details"}
@@ -718,55 +732,23 @@ export default function AdminBookingsPage() {
                                                                     {(() => {
                                                                         const s = booking.status;
                                                                         const hasRoom = !!booking.roomAssigned;
+                                                                        const RejectBtn = () => <button onClick={() => handleReject(booking.id)} className="h-7 px-3 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full transition-all active:scale-95">✕</button>;
 
-                                                                        // Step 1: New request
-                                                                        if (['REQUESTED', 'APPLIED', 'PENDING_APPROVAL'].includes(s)) return (
-                                                                            <>
-                                                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button>
-                                                                                <Button size="sm" variant="destructive" className="h-7 text-[10px] font-bold" onClick={() => handleReject(booking.id)}>✕ Reject</Button>
-                                                                            </>
-                                                                        );
+                                                                        if (['REQUESTED','APPLIED','PENDING_APPROVAL'].includes(s)) return (<><Button size="sm" className="bg-green-600 hover:bg-green-700 h-7 text-[10px] font-bold" onClick={() => handleApprove(booking)}>✓ Approve</Button><RejectBtn /></>);
 
-                                                                        // Step 2: Approved but no room → Open Details to allocate
-                                                                        if (s === 'APPROVED' && !hasRoom) return (
-                                                                            <>
-                                                                                <Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold flex items-center gap-1" onClick={() => setAllocateBooking(booking)}>
-                                                                                    <BedDouble className="h-3 w-3" /> Allocate Room
-                                                                                </Button>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
-                                                                            </>
-                                                                        );
+                                                                        if (s === 'APPROVED' && !hasRoom) return (<><Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={() => setAllocateBooking(booking)}><BedDouble className="h-3 w-3 mr-1" />Allocate</Button><RejectBtn /></>);
 
-                                                                        // Step 3: Room allocated, awaiting payment
-                                                                        if (hasRoom && ['APPROVED', 'ROOM_RESERVED', 'AGREEMENT_PENDING'].includes(s)) return (
-                                                                            <>
-                                                                                <Button size="sm" className="h-7 text-[10px] bg-purple-600 hover:bg-purple-700 font-bold flex items-center gap-1" onClick={() => setChangeTypeBooking(booking)}>
-                                                                                    <Shuffle className="h-3 w-3" /> Change Type
-                                                                                </Button>
-                                                                                <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold flex items-center gap-1" onClick={() => handleMarkCashPaid(booking.id)}>
-                                                                                    <CreditCard className="h-3 w-3" /> Cash Paid
-                                                                                </Button>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
-                                                                            </>
-                                                                        );
+                                                                        if (s === 'APPROVED_PENDING_TOKEN') return (<><span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">⏳ Awaiting Token</span><RejectBtn /></>);
 
-                                                                        // Step 4: Agreement signed
-                                                                        if (['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED'].includes(s)) return (
-                                                                            <>
-                                                                                <Button size="sm" className="h-7 text-[10px] bg-indigo-600 hover:bg-indigo-700 font-bold flex items-center gap-1" onClick={() => handleCheckIn(booking.id)}>
-                                                                                    <ShieldCheck className="h-3 w-3" /> Check-in
-                                                                                </Button>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
-                                                                            </>
-                                                                        );
+                                                                        if (s === 'ROOM_RESERVED') return (<><span className="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded border border-teal-200">✍️ Student Signing</span><RejectBtn /></>);
 
-                                                                        // Awaiting Agreement
-                                                                        if (['PAID', 'CASH_PAID'].includes(s)) return (
-                                                                            <>
-                                                                                <span className="text-[9px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded border border-violet-100">✍️ Awaiting Signing</span>
-                                                                                <button onClick={() => handleReject(booking.id)} className="h-7 px-4 text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center gap-1 transition-all active:scale-95 uppercase tracking-wide">✕ Reject</button>
-                                                                            </>
-                                                                        );
+                                                                        if (s === 'AGREEMENT_PENDING') return (<><Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={async () => { try { await ownerCounterSignAgreement(booking.id); toast.success('Agreement countersigned!'); fetchBookings(); } catch(e:any){toast.error(e.message||'Failed');} }}><ShieldCheck className="h-3 w-3 mr-1" />Countersign</Button><RejectBtn /></>);
+
+                                                                        if (s === 'BOOKING_CONFIRMED') return (<><Button size="sm" className="h-7 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}><ShieldCheck className="h-3 w-3 mr-1" />Physical Check-in</Button><RejectBtn /></>);
+
+                                                                        if (s === 'MOVE_IN_SCHEDULED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span><Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button><RejectBtn /></>);
+
+                                                                        if (hasRoom && ['APPROVED'].includes(s)) return (<><Button size="sm" className="h-7 text-[10px] bg-purple-600 hover:bg-purple-700 font-bold" onClick={() => setChangeTypeBooking(booking)}><Shuffle className="h-3 w-3 mr-1" />Change Type</Button><RejectBtn /></>);
 
                                                                         return null;
                                                                     })()}

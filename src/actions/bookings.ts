@@ -313,10 +313,14 @@ export async function approveBooking(id: string, data: {
 
     const existingBooking = await prisma.booking.findUnique({ where: { id } });
 
+    // When a bed is allocated (bedId present) → advance to APPROVED_PENDING_TOKEN
+    // so student knows to pay ₹1,000 token. Otherwise just APPROVED (room not yet set).
+    const newStatus = data.bedId ? 'APPROVED_PENDING_TOKEN' : 'APPROVED';
+
     const booking = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'APPROVED',
+            status: newStatus,
             approvedAt: new Date(),
             roomId: data.roomId,
             amount: data.amount,
@@ -392,7 +396,7 @@ export async function approveBooking(id: string, data: {
         newValue: { roomAssigned: data.roomAssigned, onboardingDate: data.onboardingDate }
     });
 
-    // Notify student about room assignment only (no token notification)
+    // Notify student — if bed allocated, prompt token payment; else just room allocation notice
     try {
         if (booking.userId && data.roomAssigned) {
             await NotificationService.onRoomAllocated(
@@ -401,6 +405,18 @@ export async function approveBooking(id: string, data: {
                 existingBooking?.occupancy || undefined,
                 data.occupancy,
             );
+        }
+        // Extra: token payment prompt notification when bed is allocated
+        if (booking.userId && data.bedId) {
+            await NotificationService.trigger({
+                bookingId: booking.id,
+                userId: booking.userId,
+                type: 'BOOKING',
+                category: 'TOKEN_PAYMENT_REQUIRED',
+                message: `Your bed at ${booking.propertyName} has been reserved! Pay ₹1,000 token now to lock it. This amount is NON-REFUNDABLE.`,
+                targetRole: 'USER',
+                isPersistent: true,
+            } as any);
         }
     } catch (e) {
         console.error("Approval Notification Error:", e);
@@ -540,27 +556,37 @@ export async function registerCashIntent(id: string) {
     return booking;
 }
 
-export async function markBookingPaid(id: string, method: string) {
+export async function markBookingPaid(id: string, method: string, paymentId?: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
     const isStaff = session.role === 'OWNER' || session.role === 'STAFF' || session.role === 'ADMIN';
     if (!isStaff) {
-        // Students can only mark their own booking
         const b = await prisma.booking.findUnique({ where: { id }, select: { userId: true } });
         if (!b || b.userId !== (session as any).userId) throw new Error("Unauthorized");
     }
 
-    // 1. Mark booking as MOVE_IN_SCHEDULED (Legacy: PAID)
+    // Fetch booking before update (need roomId, bedId for activation)
+    const existingB = await prisma.booking.findUnique({
+        where: { id },
+        include: { documents: true }
+    });
+    if (!existingB) throw new Error('Booking not found');
+
+    // Determine if this is final joining payment (MOVE_IN_SCHEDULED) → auto-activate
+    const isFinalPayment = existingB.status === 'MOVE_IN_SCHEDULED';
+
     const booking = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'MOVE_IN_SCHEDULED',
+            status: isFinalPayment ? 'ACTIVE' : 'MOVE_IN_SCHEDULED',
             moveInScheduled: new Date(),
             paymentStatus: 'PAID',
             paymentMethod: method,
             paidAt: new Date(),
-        }
+            ...(paymentId ? { paymentId } : {}),
+            ...(isFinalPayment ? { activeAt: new Date() } : {}),
+        } as any
     });
 
     logAuditEvent({
@@ -570,26 +596,92 @@ export async function markBookingPaid(id: string, method: string) {
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
-        description: `Payment received via ${method}. Status moved to MOVE_IN_SCHEDULED.`,
-        newValue: { status: 'MOVE_IN_SCHEDULED', paymentMethod: method }
+        description: `Final payment received via ${method}. ${isFinalPayment ? 'Tenant auto-activated.' : 'Status moved to MOVE_IN_SCHEDULED.'}`,
+        newValue: { status: booking.status, paymentMethod: method }
     });
 
+    // Auto-activate tenant when final joining payment is received
+    if (isFinalPayment && existingB.roomId) {
+        try {
+            const room = await prisma.room.findUnique({
+                where: { id: existingB.roomId },
+                include: { property: true }
+            });
+            if (room) {
+                const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+                const studentUser = await prisma.user.findUnique({
+                    where: { id: existingB.userId },
+                    select: { id: true, displayId: true }
+                });
+                if (studentUser) {
+                    const tenancy = await prisma.$transaction(async (tx) => {
+                        const tenancyCount = await tx.tenancy.count({ where: { userId: studentUser.id } });
+                        const tenancyNumber = tenancyCount + 1;
+                        const displayId = tenancyNumber === 1
+                            ? (studentUser.displayId ?? `REN-USER-${studentUser.id.slice(0, 8).toUpperCase()}`)
+                            : `${studentUser.displayId ?? `REN-USER-${studentUser.id.slice(0, 8).toUpperCase()}`}-T${tenancyNumber}`;
+                        return await tx.tenancy.create({ data: { userId: studentUser.id, propertyId: room.propertyId, tenancyNumber, displayId } });
+                    }, { isolationLevel: 'Serializable' });
+
+                    const tenant = await prisma.tenant.create({
+                        data: {
+                            displayId: tenancy.displayId,
+                            studentId: existingB.userId,
+                            name: existingB.guestName,
+                            phone: existingB.guestPhone || '',
+                            email: existingB.guestEmail || null,
+                            address: existingB.guestAddress || null,
+                            city: existingB.guestCity || null,
+                            pincode: existingB.guestPincode || null,
+                            country: existingB.guestCountry || 'India',
+                            occupationType: existingB.occupationType || null,
+                            occupationDetail: existingB.occupationDetail || null,
+                            propertyId: room.propertyId,
+                            roomId: existingB.roomId!,
+                            bedId: (existingB as any).bedId || null,
+                            roomNumber: room.roomNumber,
+                            roomType: room.type,
+                            rent: existingB.amount,
+                            startDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                            status: 'ACTIVE',
+                        }
+                    });
+                    await prisma.booking.update({ where: { id }, data: { tenantId: tenant.id } });
+                    const bookingBedId = (existingB as any).bedId;
+                    if (bookingBedId) {
+                        await prisma.bed.update({
+                            where: { id: bookingBedId },
+                            data: { status: 'OCCUPIED', tenantId: tenant.id, lockedByBookingId: null, lockedAt: null }
+                        }).catch(() => {});
+                    }
+                    await prisma.rentRecord.create({
+                        data: { tenantId: tenant.id, month: currentMonth, amount: existingB.amount, paid: true,
+                            paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
+                    });
+                }
+            }
+        } catch (e) { console.error('Auto-activate tenant error:', e); }
+    }
+
     revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/owner/tenants');
     revalidatePath('/dashboard/student');
 
-    // Notify about payment
     try {
         const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' } });
         if (property) {
             await NotificationService.onPaymentCompleted(booking, booking.amount, property.ownerId);
         }
-    } catch (e) {
-        console.error("Manual Payment Notification Error:", e);
-    }
+    } catch (e) { console.error('Payment Notification Error:', e); }
 
     return booking;
 }
 
+/**
+ * Owner Physical Check-in: confirms they have physically verified the tenant's original ID.
+ * This advances to MOVE_IN_SCHEDULED and sends student the final payment notification.
+ * Tenant record is created automatically when student pays (markBookingPaid).
+ */
 export async function checkInBooking(id: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
@@ -601,30 +693,53 @@ export async function checkInBooking(id: string) {
     });
 
     if (!booking) throw new Error("Booking not found");
-    if (booking.status !== 'MOVE_IN_SCHEDULED' && booking.status !== 'PAID' && booking.status !== 'CASH_PAID') {
-        throw new Error("Booking must be paid and move-in scheduled before check-in.");
+
+    // Accept BOOKING_CONFIRMED (both signed, physical check pending) or legacy paid statuses
+    const validStatuses = ['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'];
+    if (!validStatuses.includes(booking.status)) {
+        throw new Error("Booking must have agreement signed by both parties before physical check-in.");
     }
 
-    // 2. Check documents (Industry Standard: All mandatory docs MUST be verified)
-    const verifiedDocs = booking.documents.filter(d => d.status === 'VERIFIED');
-    if (verifiedDocs.length < 2) {
-        throw new Error("KYC Incomplete: At least ID and Address Proof must be verified before check-in.");
-    }
+    // NOTE: Document upload step removed — owner physically verifies ID via PhysicalKycModal.
+    // No digital doc check required here.
 
     // 3. Check Agreement
     if (!booking.agreementSigned) {
         throw new Error("Agreement Pending: Digital agreement must be signed by the student before check-in.");
     }
 
-    // 4. Update booking status to CHECKED_IN
+    // 4. If already MOVE_IN_SCHEDULED or paid, this is a legacy flow — keep advancing to ACTIVE
+    // If BOOKING_CONFIRMED → advance to MOVE_IN_SCHEDULED and notify student to pay final amount
+    const isLegacyFinalCheckin = ['MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'].includes(booking.status);
+    const newStatus = isLegacyFinalCheckin ? 'ACTIVE' : 'MOVE_IN_SCHEDULED';
+
     const updatedBooking = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'ACTIVE',
-            activeAt: new Date(),
+            status: newStatus,
+            ...(newStatus === 'ACTIVE' ? { activeAt: new Date() } : {}),
             onboardingDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-        }
+        } as any
     });
+
+    // If physical check-in done (BOOKING_CONFIRMED → MOVE_IN_SCHEDULED): notify student to pay
+    if (!isLegacyFinalCheckin && booking.userId) {
+        const tokenAmt = (booking as any).tokenAmount || 1000;
+        const rent = Number(booking.amount || 0);
+        const deposit = Number((booking as any).depositAmount || 0);
+        const finalAmt = rent + deposit - tokenAmt;
+        try {
+            await NotificationService.trigger({
+                bookingId: booking.id,
+                userId: booking.userId,
+                type: 'BOOKING',
+                category: 'FINAL_PAYMENT_REQUIRED',
+                message: `Your ID has been physically verified at ${booking.propertyName}! Pay the joining amount of ₹${finalAmt.toLocaleString('en-IN')} (₹${tokenAmt.toLocaleString('en-IN')} token already deducted) to complete check-in.`,
+                targetRole: 'USER',
+                isPersistent: true,
+            } as any);
+        } catch (e) { console.error('Physical check-in notification error:', e); }
+    }
 
     // 5. Create Tenant record
     const room = await prisma.room.findUnique({
@@ -924,10 +1039,11 @@ export async function signAgreement(id: string, agreementMeta?: { agreementText?
     if (!booking) throw new Error("Booking not found");
     if (booking.userId !== session.userId) throw new Error("Unauthorized to sign this agreement");
 
+    // Student signed → AGREEMENT_PENDING (awaiting owner countersignature per Indian rental law)
     const updated = await prisma.booking.update({
         where: { id },
         data: {
-            status: 'BOOKING_CONFIRMED',
+            status: 'AGREEMENT_PENDING',
             agreementSigned: true,
             agreementSignedAt: new Date(),
             ...(agreementMeta?.agreementText ? { agreementText: agreementMeta.agreementText } as any : {}),
@@ -1049,7 +1165,7 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
 /** Owner marks token as cash paid */
 export async function markTokenCashPaid(bookingId: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const reservationExpiry = new Date();
     reservationExpiry.setDate(reservationExpiry.getDate() + 7);
@@ -1090,7 +1206,7 @@ export async function markTokenCashPaid(bookingId: string) {
 /** Owner/Admin verifies all KYC → moves to AGREEMENT_PENDING */
 export async function verifyKycAndProceed(bookingId: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const updated = await prisma.booking.update({
         where: { id: bookingId },
@@ -1120,7 +1236,7 @@ export async function verifyKycAndProceed(bookingId: string) {
 /** Owner/Admin marks KYC as failed */
 export async function markKycFailed(bookingId: string, reason: string) {
     const session = await getSession();
-    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
     const updated = await prisma.booking.update({
         where: { id: bookingId },
@@ -1155,7 +1271,108 @@ export async function markKycFailed(bookingId: string, reason: string) {
     return updated;
 }
 
+/** 
+ * Owner/Admin countersigns the rental agreement.
+ * Per Indian rental law, BOTH parties must sign for the agreement to be legally valid.
+ * Student signs first (→ AGREEMENT_PENDING), then owner countersigns (→ BOOKING_CONFIRMED).
+ */
+export async function ownerCounterSignAgreement(bookingId: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error('Unauthorized');
 
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking) throw new Error('Booking not found');
+    if (booking.status !== 'AGREEMENT_PENDING') throw new Error('Booking is not awaiting owner countersignature');
+
+    const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+            status: 'BOOKING_CONFIRMED',
+            ownerAgreementSignedAt: new Date(),
+        } as any
+    });
+
+    // Notify student that agreement is fully executed
+    if (booking.userId) {
+        await NotificationService.trigger({
+            bookingId: booking.id,
+            userId: booking.userId,
+            type: 'BOOKING',
+            category: 'AGREEMENT_COUNTERSIGNED',
+            message: `Great news! Your rental agreement for ${booking.propertyName} has been signed by both parties. Your move-in date is confirmed. The owner will schedule your physical ID check shortly.`,
+            targetRole: 'USER',
+            isPersistent: true,
+        } as any).catch(() => {});
+    }
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: session.name || 'Owner',
+        actionType: 'APPROVE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Owner/Admin countersigned rental agreement. Agreement now fully executed by both parties.`,
+    });
+
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/admin/bookings');
+    revalidatePath('/dashboard/student');
+    return updated;
+}
+
+/**
+ * Either the student or owner/admin can update the move-in date.
+ * Notifies the other party about the change.
+ */
+export async function updateMoveInDate(bookingId: string, newDate: string) {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking) throw new Error('Booking not found');
+
+    const isStudent = booking.userId === session.userId;
+    const isOwnerOrAdmin = session.role === 'OWNER' || session.role === 'STAFF' || session.role === 'ADMIN';
+    if (!isStudent && !isOwnerOrAdmin) throw new Error('Unauthorized');
+
+    const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: { onboardingDate: newDate } as any
+    });
+
+    // Notify the other party about date change
+    try {
+        if (isStudent && booking.propertyId) {
+            const property = await prisma.property.findUnique({ where: { id: booking.propertyId }, select: { ownerId: true, name: true } });
+            if (property) {
+                await NotificationService.trigger({
+                    bookingId: booking.id,
+                    userId: property.ownerId,
+                    type: 'BOOKING',
+                    category: 'MOVE_IN_DATE_CHANGED',
+                    message: `Tenant ${booking.guestName} changed their move-in date to ${newDate} for ${property.name}.`,
+                    targetRole: 'OWNER',
+                } as any);
+            }
+        } else if (isOwnerOrAdmin && booking.userId) {
+            await NotificationService.trigger({
+                bookingId: booking.id,
+                userId: booking.userId,
+                type: 'BOOKING',
+                category: 'MOVE_IN_DATE_CHANGED',
+                message: `Your move-in date for ${booking.propertyName} has been updated to ${newDate} by the owner.`,
+                targetRole: 'USER',
+                isPersistent: true,
+            } as any);
+        }
+    } catch (e) { console.error('Move-in date notification error:', e); }
+
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/admin/bookings');
+    revalidatePath('/dashboard/student');
+    return updated;
+}
 
 /** Add student to waitlist */
 export async function addToWaitlist(data: { propertyId: string; roomType?: string; guestName: string; guestPhone?: string; guestEmail?: string; moveInDate?: string; }) {

@@ -6,7 +6,7 @@ import { Lock, Banknote, Smartphone, CheckCircle, AlertTriangle, ArrowLeft, Phon
 import { useState, useEffect, Suspense } from "react";
 import { cn } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getBookingById, markBookingPaid, registerCashIntent } from "@/actions/bookings";
+import { getBookingById, markBookingPaid, registerCashIntent, payTokenAmount } from "@/actions/bookings";
 import { getCashPaymentEnabled } from "@/actions/platform";
 import { createRazorpayOrder, verifyPayment } from "@/actions/payments";
 import Script from "next/script";
@@ -18,6 +18,8 @@ function PaymentPortal() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
+    const paymentType = searchParams.get("type"); // "token" | null
+    const isToken = paymentType === "token";
 
     const [method, setMethod] = useState<"online" | "cash">("online");
     const [isPaying, setIsPaying] = useState(false);
@@ -54,16 +56,53 @@ function PaymentPortal() {
         setError(null);
 
         try {
+            if (isToken) {
+                // Token payment: ₹1,000 non-refundable via Razorpay or registered intent
+                if (method === "cash") {
+                    // Cash token: owner will manually confirm in dashboard
+                    await registerCashIntent(booking.id);
+                    setIsPaid(true);
+                    return;
+                }
+                // Online token payment
+                const order = await createRazorpayOrder(booking.id);
+                if (order.isDummyRoute || !(window as any).Razorpay) {
+                    await payTokenAmount(booking.id, 'ONLINE', 'pay_tok_sim_' + Math.random().toString(36).slice(2));
+                    setIsPaid(true);
+                    return;
+                }
+                const options = {
+                    key: order.key,
+                    amount: 100000, // ₹1,000 in paise
+                    currency: 'INR',
+                    name: 'RentPe',
+                    description: `Non-Refundable Reservation Token — ${booking.propertyName}`,
+                    order_id: order.id,
+                    handler: async (response: any) => {
+                        try {
+                            await verifyPayment(response);
+                            await payTokenAmount(booking.id, 'ONLINE', response.razorpay_payment_id);
+                            setIsPaid(true);
+                        } catch { setError('Token payment verification failed. Contact support.'); setIsPaying(false); }
+                    },
+                    prefill: { name: booking.guestName, email: booking.guestEmail || 'user@example.com', contact: booking.guestPhone || '' },
+                    theme: { color: '#f59e0b' },
+                    modal: { ondismiss: () => setIsPaying(false) }
+                };
+                const rzp = new (window as any).Razorpay(options);
+                rzp.on('payment.failed', (resp: any) => { setError(`Payment failed: ${resp.error?.description || 'Unknown error'}`); setIsPaying(false); });
+                rzp.open();
+                return;
+            }
+
             if (method === "cash") {
-                // registerCashIntent keeps booking at APPROVED status.
-                // The owner must physically receive cash and click "Mark Cash Paid"
-                // in their dashboard to advance to MOVE_IN_SCHEDULED + unlock Agreement.
+                // Final joining amount cash: register intent, owner confirms
                 await registerCashIntent(booking.id);
                 setIsPaid(true);
                 return;
             }
 
-            // Online: Razorpay handles UPI / Card / Netbanking inside its modal
+            // Final joining amount online via Razorpay
             const order = await createRazorpayOrder(booking.id);
 
             if (order.isDummyRoute || !(window as any).Razorpay) {
@@ -83,12 +122,12 @@ function PaymentPortal() {
                 amount: order.amount,
                 currency: order.currency,
                 name: "RentPe",
-                description: `Booking payment for ${booking.propertyName}`,
+                description: `Final Joining Amount — ${booking.propertyName}`,
                 order_id: order.id,
                 handler: async function (response: any) {
                     try {
                         await verifyPayment(response);
-                        await markBookingPaid(booking.id, "ONLINE");
+                        await markBookingPaid(booking.id, "ONLINE", response.razorpay_payment_id);
                         setIsPaid(true);
                     } catch {
                         setError("Payment verification failed. Please contact support.");
@@ -158,7 +197,12 @@ function PaymentPortal() {
     const afterDash = dashIdx > -1 ? roomAssigned.substring(dashIdx + 1).trim() : null;
     const bedNo = afterDash ? afterDash.replace(/^[Bb]ed\s*/i, '').trim() || afterDash : null;
 
-    const totalAmount = Number(booking.amount || 0) + Number((booking as any).depositAmount || 0);
+    const TOKEN_AMOUNT = 1000;
+    const rentAmount  = Number(booking.amount || 0);
+    const depositAmount = Number((booking as any).depositAmount || 0);
+    const subtotal = rentAmount + depositAmount;
+    // Final payment deducts the ₹1,000 token already paid
+    const totalAmount = isToken ? TOKEN_AMOUNT : Math.max(0, subtotal - TOKEN_AMOUNT);
 
     if (isPaid) {
         const isCash = method === "cash";
@@ -192,12 +236,21 @@ function PaymentPortal() {
                             </>
                         ) : (
                             <>
-                                <h2 className="text-2xl font-black text-green-700">Payment Successful! 🎉</h2>
-                                <p className="text-slate-600">Payment for <strong>{booking.propertyName}</strong> confirmed.</p>
-                                <div className="bg-green-50 border border-green-300 p-4 rounded-xl text-sm text-green-800">
-                                    <p className="font-black">✅ Booking Confirmed!</p>
-                                    <p>Your bed is reserved. Management will contact you for check-in.</p>
-                                </div>
+                                <h2 className="text-2xl font-black text-green-700">
+                                    {isToken ? '🔐 Token Secured!' : 'Payment Successful! 🎉'}
+                                </h2>
+                                {isToken ? (
+                                    <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-xl text-sm text-amber-800 space-y-2">
+                                        <p className="font-black">✅ ₹1,000 Non-Refundable Token Paid</p>
+                                        <p>Your bed is now <strong>LOCKED</strong> for you. The token amount is non-refundable as per the reservation agreement.</p>
+                                        <p className="text-xs text-amber-600">RentPe is a technology mediator. Token goes to the property owner.</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-green-50 border border-green-300 p-4 rounded-xl text-sm text-green-800">
+                                        <p className="font-black">✅ Joining Amount Paid!</p>
+                                        <p>Your check-in is confirmed. Management will contact you shortly.</p>
+                                    </div>
+                                )}
                                 <p className="text-sm text-slate-500">Booking ID: <strong>{booking.displayId}</strong></p>
                             </>
                         )}
@@ -226,7 +279,9 @@ function PaymentPortal() {
                                 <Lock className="h-8 w-8 text-indigo-600" />
                             </div>
                         </div>
-                        <CardTitle className="text-2xl font-black text-center">Complete Payment</CardTitle>
+                        <CardTitle className="text-2xl font-black text-center">
+                            {isToken ? '🔐 Reserve Your Bed' : '💳 Final Joining Payment'}
+                        </CardTitle>
                         <CardDescription className="text-center font-medium">
                             PG: <strong>{booking.propertyName}</strong> • {booking.occupancy}
                         </CardDescription>
@@ -263,20 +318,48 @@ function PaymentPortal() {
                             </div>
                         )}
 
+                        {/* Non-refundable banner for token payment */}
+                        {isToken && (
+                            <div className="bg-red-50 border-2 border-red-400 rounded-xl p-3 space-y-1">
+                                <p className="text-red-800 font-black text-sm">⚠️ This payment is NON-REFUNDABLE</p>
+                                <p className="text-red-700 text-xs">By paying ₹1,000, you are reserving this bed exclusively. This token amount cannot be refunded under any circumstances.</p>
+                                <p className="text-red-600 text-xs">RentPe is a technology mediator only. Token amount goes directly to the property owner.</p>
+                            </div>
+                        )}
+
                         {/* Payment Breakdown */}
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600">Monthly Rent</span>
-                                <span className="font-black text-slate-800">₹{Number(booking.amount || 0).toLocaleString('en-IN')}</span>
-                            </div>
-                            {Number((booking as any).depositAmount) > 0 && (
+                            {isToken ? (
+                                // Token payment: simple ₹1,000 row
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm text-emerald-700">Security Deposit ({(booking as any).depositMonths || 2}m)</span>
-                                    <span className="font-black text-emerald-700">₹{Number((booking as any).depositAmount || 0).toLocaleString('en-IN')}</span>
+                                    <span className="text-sm font-bold text-slate-700">🔐 Reservation Token</span>
+                                    <span className="font-black text-amber-700">₹1,000</span>
                                 </div>
+                            ) : (
+                                // Final joining amount: show breakdown with ₹1,000 deduction
+                                <>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-slate-600">Monthly Rent</span>
+                                        <span className="font-black text-slate-800">₹{rentAmount.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    {depositAmount > 0 && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-emerald-700">Security Deposit ({(booking as any).depositMonths || 2}m)</span>
+                                            <span className="font-black text-emerald-700">₹{depositAmount.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                                        <span className="text-sm text-slate-500">Subtotal</span>
+                                        <span className="font-bold text-slate-600">₹{subtotal.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-green-700">Token Advance Paid ✅</span>
+                                        <span className="font-black text-green-700">− ₹1,000</span>
+                                    </div>
+                                </>
                             )}
                             <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
-                                <span className="font-black text-slate-800">Total Payable</span>
+                                <span className="font-black text-slate-800">{isToken ? 'Token Amount' : 'Amount Payable Now'}</span>
                                 <span className="text-xl font-black text-indigo-700">₹{totalAmount.toLocaleString('en-IN')}</span>
                             </div>
                         </div>

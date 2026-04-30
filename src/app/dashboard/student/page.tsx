@@ -301,51 +301,53 @@ export default function StudentDashboardPage() {
                                     </button>
                                 </div>
                             ))}
-                            {/* Actionable Alerts Unified Banner */}
-                            {bookings.some((b: any) =>
-                b.status === 'KYC_PENDING' || b.status === 'APPROVED_KYC_PENDING' || b.status === 'KYC_FAILED' ||
-                b.status === 'AGREEMENT_PENDING' ||
-                (b.status === 'APPROVED' && !!b.roomAssigned && !b.agreementSigned) ||
-                ((b.status === 'PAID' || b.status === 'CASH_PAID' || b.status === 'MOVE_IN_SCHEDULED') && !b.agreementSigned)
-            ) && (
-                <div className="space-y-3 mb-6">
-                    {bookings.map((booking: any) => {
-                        if (booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING')
-                            return <AlertBanner key={`alert-kyc-${booking.id}`} type="warning" message={`Upload KYC documents for ${booking.propertyName} to proceed.`} actionLabel="Upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
-                        if (booking.status === 'KYC_FAILED')
-                            return <AlertBanner key={`alert-kycfail-${booking.id}`} type="error" message={`KYC Failed for ${booking.propertyName}. ${booking.kycNotes ? `Reason: ${booking.kycNotes}` : ''} Please re-upload your documents.`} actionLabel="Re-upload" onAction={() => { setExpandedDocs(booking.id); document.getElementById(`booking-${booking.id}`)?.scrollIntoView({ behavior: 'smooth' }); }} />;
-                        if (booking.status === 'AGREEMENT_PENDING')
-                            return <AlertBanner key={`alert-agre-${booking.id}`} type="info" message={`Please sign your rental agreement for ${booking.propertyName} to confirm your booking.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
-                        if (booking.status === 'APPROVED' && booking.roomAssigned && !booking.agreementSigned) {
-                            // Cash pending — student already selected cash, show waiting message not "Pay Now"
-                            if (booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH') {
-                                return <AlertBanner key={`alert-cash-${booking.id}`} type="info"
-                                    message={`Cash payment registered for ${booking.propertyName}. Waiting for owner to confirm receipt — Agreement step unlocks after confirmation.`} />;
-                            }
-                            const sharingWasChanged = !!(booking as any).originalOccupancy && (booking as any).originalOccupancy !== booking.occupancy;
-                            if (sharingWasChanged) return (
-                                <AlertBanner key={`alert-pay-${booking.id}`} type="error"
-                                    message={`⚠️ Your room type was changed from "${(booking as any).originalOccupancy}" to "${booking.occupancy}". If you want another sharing type, contact Building Management. Pay now to confirm.`}
-                                    actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />
-                            );
-                            return <AlertBanner key={`alert-pay-${booking.id}`} type="warning" message={`Room allocated at ${booking.propertyName}! Pay now to confirm your booking.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
-                        }
-                        if ((booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !booking.agreementSigned)
-                            return <AlertBanner key={`alert-paidsign-${booking.id}`} type="info" message={`Sign Agreement: Payment confirmed for ${booking.propertyName}. Please sign to complete.`} actionLabel="Sign Now" onAction={() => setSigningBooking(booking)} />;
-                        return null;
-                    })}
-                </div>
-            )}
+
+                            {/* ── Lifecycle Action Banners ── */}
+                            {bookings.some((b: any) => [
+                                'APPROVED_PENDING_TOKEN','ROOM_RESERVED','AGREEMENT_PENDING',
+                                'BOOKING_CONFIRMED','MOVE_IN_SCHEDULED','KYC_PENDING',
+                                'APPROVED_KYC_PENDING','KYC_FAILED'
+                            ].includes(b.status)) && (
+                                <div className="space-y-3 mb-4">
+                                    {bookings.map((booking: any) => {
+                                        if (booking.status === 'APPROVED_PENDING_TOKEN')
+                                            return <AlertBanner key={`alert-token-${booking.id}`} type="warning"
+                                                message={`🔐 Pay ₹1,000 token to reserve your bed at ${booking.propertyName}. This is NON-REFUNDABLE and locks your bed.`}
+                                                actionLabel="Pay ₹1,000 Token" onAction={() => router.push(`/secure/payment?id=${booking.id}&type=token`)} />;
+                                        if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
+                                            return <AlertBanner key={`alert-sign-${booking.id}`} type="info"
+                                                message={`Token paid! Please sign your rental agreement for ${booking.propertyName}.`}
+                                                actionLabel="Sign Agreement" onAction={() => setSigningBooking(booking)} />;
+                                        if (booking.status === 'AGREEMENT_PENDING')
+                                            return <AlertBanner key={`alert-agr-${booking.id}`} type="info"
+                                                message={`Agreement signed ✅ Waiting for the owner to countersign (required by Indian rental law). You’ll be notified once done.`} />;
+                                        if (booking.status === 'BOOKING_CONFIRMED')
+                                            return <AlertBanner key={`alert-conf-${booking.id}`} type="info"
+                                                message={`📋 Both parties have signed the agreement! The owner will verify your ID physically and confirm move-in shortly.`} />;
+                                        if (booking.status === 'MOVE_IN_SCHEDULED') {
+                                            const finalAmt = Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - Number((booking as any).tokenAmount || 1000));
+                                            return <AlertBanner key={`alert-final-${booking.id}`} type="warning"
+                                                message={`Physical check-in verified! Pay joining amount ₹${finalAmt.toLocaleString('en-IN')} (₹1,000 token already deducted) to complete check-in at ${booking.propertyName}.`}
+                                                actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
+                                        }
+                                        if (booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING')
+                                            return <AlertBanner key={`alert-kyc-${booking.id}`} type="warning" message={`Upload KYC documents for ${booking.propertyName} to proceed.`} actionLabel="Upload" onAction={() => { setExpandedDocs(booking.id); }} />;
+                                        if (booking.status === 'KYC_FAILED')
+                                            return <AlertBanner key={`alert-kycfail-${booking.id}`} type="error" message={`KYC Failed for ${booking.propertyName}. Reason: ${booking.kycNotes || ''}. Please re-upload.`} actionLabel="Re-upload" onAction={() => setExpandedDocs(booking.id)} />;
+                                        return null;
+                                    })}
+                                </div>
+                            )}
 
                             {bookings.map((booking: any) => {
                                 const isKycPending = booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_FAILED';
                                 const isCashPending = booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' && ['APPROVED', 'ROOM_RESERVED'].includes(booking.status);
-                                // Payment pending = room allocated but student hasn't paid yet (cash pending handled separately)
-                                const isPaymentPending = (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING' || booking.status === 'ROOM_RESERVED') && !!booking.roomAssigned && !isCashPending;
+                                // Payment pending = token pending OR legacy payment pending
+                                const isPaymentPending = (booking.status === 'APPROVED_PENDING_TOKEN' || booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING' || booking.status === 'ROOM_RESERVED') && !!booking.roomAssigned && !isCashPending;
                                 const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
-                                const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending;
-                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'BOOKING_CONFIRMED' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
-                                const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED') && !isCheckedIn;
+                                const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending || booking.status === 'APPROVED_PENDING_TOKEN';
+                                const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
+                                const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') && !isCheckedIn;
                                 const isActive = booking.status === 'ACTIVE' || booking.status === 'CHECKED_IN' || booking.status === 'CHECKIN_CONFIRMED';
                                 const isVacating = booking.status === 'VACATING';
                                 const isCompleted = booking.status === 'COMPLETED' || booking.status === 'CHECKED_OUT';
