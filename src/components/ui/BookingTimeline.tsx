@@ -17,38 +17,31 @@ const TIMELINE_STEPS = [
         dateField: 'appliedAt',
     },
     {
-        key: 'APPROVED',
-        label: 'Owner Approved',
-        icon: Check,
-        description: 'Owner has reviewed and approved your application.',
-        dateField: 'approvedAt',
-    },
-    {
         key: 'ROOM_ALLOCATED',
         label: 'Room Allocated',
         icon: BedDouble,
-        description: 'Your room and bed have been assigned.',
+        description: 'Owner has approved and assigned your room. Pay token to reserve.',
         dateField: 'approvedAt',
     },
     {
-        key: 'PAYMENT_DONE',
-        label: 'Payment Done',
+        key: 'TOKEN_PAID',
+        label: 'Token Paid',
         icon: CreditCard,
-        description: 'Rent, deposit & commissions paid successfully.',
+        description: '₹1,000 token paid. Your bed is now reserved.',
         dateField: 'paidAt',
     },
     {
         key: 'AGREEMENT_SIGNED',
         label: 'Agreement Signed',
         icon: ScrollText,
-        description: 'Digital rental agreement signed & verified.',
+        description: 'Digital rental agreement signed by both parties.',
         dateField: 'agreementSignedAt',
     },
     {
-        key: 'MOVE_IN_SCHEDULED',
-        label: 'Move-in Scheduled',
+        key: 'MOVE_IN_READY',
+        label: 'Move-in Ready',
         icon: Calendar,
-        description: 'Your move-in date has been confirmed.',
+        description: 'Physical ID verified. Pay balance to activate stay.',
         dateField: 'moveInScheduled',
     },
     {
@@ -57,20 +50,6 @@ const TIMELINE_STEPS = [
         icon: Home,
         description: "You're officially a resident. Welcome home!",
         dateField: 'activeAt',
-    },
-    {
-        key: 'VACATING',
-        label: 'Vacating',
-        icon: PackageOpen,
-        description: 'Move-out process initiated. Please complete the checkout.',
-        dateField: 'vacatingAt',
-    },
-    {
-        key: 'COMPLETED',
-        label: 'Stay Completed',
-        icon: GraduationCap,
-        description: 'Your tenancy has been completed successfully.',
-        dateField: 'completedAt',
     },
 ];
 
@@ -83,29 +62,28 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
     const getActiveIndex = (status: string) => {
         // Step 0 — Application
         if (status === 'APPLIED' || status === 'PENDING_APPROVAL' || status === 'REQUESTED') return 0;
-        // Step 1 — Owner Approved (no room yet)
-        if (status === 'APPROVED_PENDING_TOKEN') return 1;
-        // Step 2 — Room Allocated / KYC stage
+        
+        // Step 1 — Room Allocated / Pay Token
+        if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 1;
+        
+        // Step 2 — Token Paid / Bed Reserved
         if (
-            status === 'APPROVED' ||
             status === 'ROOM_RESERVED' ||
             status === 'KYC_PENDING' ||
             status === 'APPROVED_KYC_PENDING' ||
             status === 'KYC_FAILED' ||
             status === 'AGREEMENT_PENDING'
         ) return 2;
-        // Step 3 — Payment
-        if (status === 'PAID' || status === 'CASH_PAID') return 3;
-        // Step 4 — Agreement Signed
-        if (status === 'BOOKING_CONFIRMED') return 4;
-        // Step 5 — Move-in Scheduled
-        if (status === 'MOVE_IN_SCHEDULED') return 5;
-        // Step 6 — Active
-        if (status === 'ACTIVE' || status === 'CHECKED_IN') return 6;
-        // Step 7 — Vacating
-        if (status === 'VACATING') return 7;
-        // Step 8 — Completed
-        if (status === 'COMPLETED' || status === 'CHECKED_OUT') return 8;
+        
+        // Step 3 — Agreement Signed
+        if (status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 3;
+        
+        // Step 4 — Move-in Ready (Physical check-in done, waiting for final payment)
+        if (status === 'MOVE_IN_SCHEDULED') return 4;
+        
+        // Step 5 — Active
+        if (status === 'ACTIVE' || status === 'CHECKED_IN' || status === 'CHECKIN_CONFIRMED') return 5;
+        
         return 0;
     };
 
