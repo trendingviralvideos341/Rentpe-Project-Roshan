@@ -185,12 +185,55 @@ export async function getOwnerInventory() {
             for (const b of bookings) bookingsMap.set(b.id, b);
         }
 
-        // Attach booking data to each bed — prefer currentBookingId, fall back to lockedByBookingId
+        // Terminal booking statuses — bed MUST be AVAILABLE when booking is in any of these
+        const TERMINAL = new Set(['CANCELLED', 'REJECTED', 'COMPLETED', 'CHECKED_OUT', 'VACATED']);
+        const STALE_STATUSES = ['RESERVED', 'LOCKED', 'TEMP_LOCKED', 'OCCUPIED'];
+
+        // Detect stale beds: booking is terminal but bed is still locked/reserved/occupied
+        const staleBedIds: string[] = [];
+        for (const prop of properties) {
+            for (const room of prop.rooms) {
+                for (const bed of room.beds) {
+                    if (!STALE_STATUSES.includes(bed.status)) continue;
+                    const bookingId = bed.currentBookingId || bed.lockedByBookingId;
+                    const booking = bookingId ? bookingsMap.get(bookingId) : undefined;
+                    const isTerminalBooking = booking && TERMINAL.has(booking.status);
+                    // OCCUPIED with no tenant linked = ghost bed, also heal it
+                    const isGhostOccupied = bed.status === 'OCCUPIED' && !bed.tenantId;
+                    if (isTerminalBooking || isGhostOccupied) {
+                        staleBedIds.push(bed.id);
+                    }
+                }
+            }
+        }
+
+        // Auto-heal stale beds in DB — fire-and-forget, doesn't block UI response
+        if (staleBedIds.length > 0) {
+            prisma.bed.updateMany({
+                where: { id: { in: staleBedIds } },
+                data: {
+                    status: 'AVAILABLE',
+                    lockedByBookingId: null,
+                    lockedAt: null,
+                    lockExpiresAt: null,
+                    currentBookingId: null,
+                    tenantId: null,
+                }
+            }).catch((e: any) => console.error('Auto-heal stale beds failed:', e));
+        }
+
+        const staleBedSet = new Set(staleBedIds);
+
+        // Attach booking data to each bed — healed beds return as green AVAILABLE immediately
         const enrichedProperties = properties.map(prop => ({
             ...prop,
             rooms: prop.rooms.map(room => ({
                 ...room,
                 beds: room.beds.map(bed => {
+                    // Stale/ghost bed → force green in UI right now
+                    if (staleBedSet.has(bed.id)) {
+                        return { ...bed, status: 'AVAILABLE', currentBookingId: null, lockedByBookingId: null, tenantId: null, tenant: null, booking: null };
+                    }
                     const bookingId = bed.currentBookingId || bed.lockedByBookingId;
                     return {
                         ...bed,
