@@ -1043,27 +1043,57 @@ export async function cancelBooking(id: string, reason?: string) {
     return updated;
 }
 
-export async function signAgreement(id: string, agreementMeta?: { agreementText?: string; agreementId?: string; agreementPdfUrl?: string }) {
+export async function signAgreement(id: string, agreementMeta?: {
+    agreementText?: string;
+    agreementId?: string;
+    agreementPdfUrl?: string;
+    signedIp?: string;
+    signedDevice?: string;
+}) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    const booking = await prisma.booking.findUnique({ where: { id }, include: { user: true } });
+    const booking = await prisma.booking.findUnique({
+        where: { id },
+        include: { user: { select: { name: true, email: true } } }
+    });
     if (!booking) throw new Error("Booking not found");
     if (booking.userId !== session.userId) throw new Error("Unauthorized to sign this agreement");
+    if (booking.agreementSigned) throw new Error("Agreement has already been signed.");
 
-    // Student signed → AGREEMENT_PENDING (awaiting owner countersignature per Indian rental law)
+    // ─── Capture IP from Next.js request headers (real business practice) ────
+    let realIp = agreementMeta?.signedIp || 'unknown';
+    try {
+        const { headers } = await import('next/headers');
+        const headersList = await headers();
+        realIp = headersList.get('x-forwarded-for')?.split(',')[0]?.trim()
+            || headersList.get('x-real-ip')
+            || agreementMeta?.signedIp
+            || 'unknown';
+    } catch { /* headers() only available in App Router context */ }
+
+    const agreementId = agreementMeta?.agreementId || `AGT-${booking.displayId}-${Date.now()}`;
+    const signedAt = new Date();
+    const AGREEMENT_VERSION = 'v1.0-2026'; // Bump when agreement terms change
+
+    // ─── Store full audit trail in DB ────────────────────────────────────────
+    // This is what holds up in court: WHO signed, WHAT they signed, WHEN, WHERE, on WHAT device.
     const updated = await prisma.booking.update({
         where: { id },
         data: {
             status: 'AGREEMENT_PENDING',
             agreementSigned: true,
-            agreementSignedAt: new Date(),
-            ...(agreementMeta?.agreementText ? { agreementText: agreementMeta.agreementText } as any : {}),
-            ...(agreementMeta?.agreementId ? { agreementId: agreementMeta.agreementId } as any : {}),
-            ...(agreementMeta?.agreementPdfUrl ? { agreementPdfUrl: agreementMeta.agreementPdfUrl } as any : {}),
-        }
+            agreementSignedAt: signedAt,
+            agreementId,
+            agreementVersion: AGREEMENT_VERSION,
+            agreementSignedIp: realIp,
+            agreementSignedDevice: agreementMeta?.signedDevice || 'unknown',
+            ...(agreementMeta?.agreementText ? { agreementText: agreementMeta.agreementText } : {}),
+            ...(agreementMeta?.agreementPdfUrl ? { agreementPdfUrl: agreementMeta.agreementPdfUrl } : {}),
+        } as any
     });
 
+    // ─── Notify owner to countersign ─────────────────────────────────────────
     if (booking.propertyId) {
         const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
         if (property) {
@@ -1071,6 +1101,99 @@ export async function signAgreement(id: string, agreementMeta?: { agreementText?
         }
     }
 
+    // ─── Send legal confirmation email to student ─────────────────────────────
+    // Real businesses send this immediately — it is the tenant's copy of the signed agreement.
+    try {
+        const tenantEmail = booking.user?.email || booking.guestEmail;
+        if (tenantEmail) {
+            const { sendEmail } = await import('@/lib/email');
+            await sendEmail({
+                to: tenantEmail,
+                subject: `✍️ Agreement Signed — ${booking.propertyName} [${agreementId}]`,
+                html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f8fafc;margin:0;padding:32px 16px;">
+  <div style="max-width:580px;margin:0 auto;">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:20px;font-weight:900;letter-spacing:-0.5px;">RentPe</h1>
+      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:13px;">Digital Agreement — Official Copy</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:32px;">
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:14px 16px;margin-bottom:24px;text-align:center;">
+        <span style="font-size:20px;">✅</span>
+        <p style="color:#065f46;font-weight:800;font-size:15px;margin:4px 0 0;">Agreement Successfully Signed</p>
+        <p style="color:#047857;font-size:12px;margin:2px 0 0;">Your digital signature is legally binding under the Information Technology Act, 2000</p>
+      </div>
+
+      <p style="color:#334155;font-size:15px;margin:0 0 6px;">Hi <strong>${booking.guestName}</strong>,</p>
+      <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0 0 24px;">
+        Your rental agreement for <strong>${booking.propertyName}</strong> has been signed. 
+        The owner will now countersign. You will be notified once both parties have signed.
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+        <div style="background:#1e1b4b;padding:10px 16px;">
+          <span style="color:#a5b4fc;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;">Agreement Record</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;width:40%;">Agreement ID</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:900;font-family:monospace;">${agreementId}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">Property</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:700;">${booking.propertyName}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">Room Allocated</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:700;">${booking.roomAssigned || 'Pending'}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">Signed By</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:700;">${booking.guestName}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">Signed At</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:700;">${signedAt.toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'medium', timeZone: 'Asia/Kolkata' })} IST</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">IP Address</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:700;font-family:monospace;">${realIp}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">Agreement Version</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:700;">${AGREEMENT_VERSION}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;margin-bottom:24px;">
+        <p style="color:#92400e;font-size:13px;font-weight:700;margin:0 0 4px;">⏳ Next Step — Owner Countersignature</p>
+        <p style="color:#b45309;font-size:12px;margin:0;line-height:1.5;">
+          Your agreement is under review. The property owner must countersign to make it fully active. 
+          You will receive another email and an in-app notification when this is done.
+        </p>
+      </div>
+
+      <p style="color:#94a3b8;font-size:11px;line-height:1.6;margin:0;">
+        Keep this email as your official record. If you did not perform this action, contact us immediately at 
+        <a href="mailto:support@rentpe.in" style="color:#6366f1;">support@rentpe.in</a> with reference: <strong>${agreementId}</strong>
+      </p>
+    </div>
+    <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:16px;">
+      © ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd. · Bangalore, Karnataka, India
+    </p>
+  </div>
+</body>
+</html>`
+            });
+        }
+    } catch (e) {
+        console.error('Agreement confirmation email failed:', e);
+    }
+
+    // ─── Immutable audit log — legally admissible record ─────────────────────
     logAuditEvent({
         actorId: session.userId,
         actorRole: session.role || 'USER',
@@ -1078,13 +1201,15 @@ export async function signAgreement(id: string, agreementMeta?: { agreementText?
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
-        description: `Digital agreement signed by ${booking.guestName}. AgreementId: ${agreementMeta?.agreementId || 'N/A'}.`,
+        description: `DIGITAL AGREEMENT SIGNED. Tenant: ${booking.guestName} | AgreementId: ${agreementId} | Version: ${AGREEMENT_VERSION} | IP: ${realIp} | Device: ${agreementMeta?.signedDevice || 'unknown'} | SignedAt: ${signedAt.toISOString()}`,
+        newValue: { agreementId, version: AGREEMENT_VERSION, ip: realIp, signedAt: signedAt.toISOString() }
     });
 
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
     return updated;
 }
+
 
 export async function getStudentPendingActionsCount() {
     const session = await getSession();

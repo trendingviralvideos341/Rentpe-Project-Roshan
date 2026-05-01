@@ -15,7 +15,7 @@ import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { generateInvoicePDF } from "@/utils/invoiceGenerator";
+import { generateInvoicePDF, downloadTokenReceipt, downloadAgreementCopy, downloadFinalPaymentReceipt } from "@/utils/invoiceGenerator";
 import { BookingTimeline } from "@/components/ui/BookingTimeline";
 import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
 import { PropertyAgreementModal } from "@/components/booking/PropertyAgreementModal";
@@ -408,17 +408,19 @@ export default function StudentDashboardPage() {
                                                             <p className="text-xs text-green-700 mt-0.5">₹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
                                                         </div>
                                                         <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-100 font-black text-xs" onClick={() => {
-                                                            generateInvoicePDF({
-                                                                invoiceId: `TOKEN-${booking.displayId}`,
-                                                                date: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
-                                                                description: `Token Payment — Bed Reservation at ${booking.propertyName}`,
-                                                                month: new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
-                                                                amount: 1000,
+                                                            downloadTokenReceipt({
+                                                                bookingDisplayId: booking.displayId,
                                                                 tenantName: booking.guestName,
+                                                                tenantEmail: booking.guestEmail || undefined,
+                                                                propertyName: booking.propertyName,
+                                                                roomAssigned: booking.roomAssigned || '—',
+                                                                tokenAmount: 1000,
+                                                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                                                 paymentMethod: booking.paymentMethod || 'Online',
+                                                                paymentId: booking.paymentId || undefined,
                                                             });
                                                         }}>
-                                                            <Download className="h-3 w-3 mr-1" /> Receipt
+                                                            <Download className="h-3 w-3 mr-1" /> Token Receipt
                                                         </Button>
                                                     </div>
                                                     {/* Sign Agreement — Blinking CTA */}
@@ -435,9 +437,36 @@ export default function StudentDashboardPage() {
                                                         </div>
                                                     )}
                                                     {booking.agreementSigned && (
-                                                        <div className="w-full bg-purple-50 border-2 border-purple-300 rounded-2xl p-4">
-                                                            <p className="text-sm font-black text-purple-800">✍️ Agreement Signed — Waiting for Owner Countersignature</p>
-                                                            <p className="text-xs text-purple-600 mt-1">Owner will verify your ID physically. Then final payment will activate your stay.</p>
+                                                        <div className="w-full bg-purple-50 border-2 border-purple-300 rounded-2xl p-4 space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-sm font-black text-purple-800">✍️ Agreement Signed</p>
+                                                                    <p className="text-xs text-purple-600 mt-0.5">Waiting for owner countersignature. ID verification next.</p>
+                                                                </div>
+                                                                <Button size="sm" variant="outline" className="border-purple-400 text-purple-700 hover:bg-purple-100 font-black text-xs shrink-0" onClick={() => {
+                                                                    downloadAgreementCopy({
+                                                                        agreementId: booking.agreementId || `AGT-${booking.displayId}`,
+                                                                        bookingDisplayId: booking.displayId,
+                                                                        tenantName: booking.guestName,
+                                                                        tenantEmail: booking.guestEmail || undefined,
+                                                                        propertyName: booking.propertyName,
+                                                                        propertyAddress: booking.propertyAddress || '',
+                                                                        propertyCity: booking.propertyCity || '',
+                                                                        roomAssigned: booking.roomAssigned || '—',
+                                                                        occupancy: booking.occupancy || '',
+                                                                        monthlyRent: Number(booking.amount || 0),
+                                                                        depositAmount: Number(booking.depositAmount || 0),
+                                                                        depositMonths: Number(booking.depositMonths || 1),
+                                                                        moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                                                        signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
+                                                                        signedIp: booking.agreementSignedIp || undefined,
+                                                                        signedDevice: booking.agreementSignedDevice || undefined,
+                                                                        agreementVersion: booking.agreementVersion || 'v1.0-2026',
+                                                                    });
+                                                                }}>
+                                                                    <Download className="h-3 w-3 mr-1" /> Agreement
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -497,6 +526,50 @@ export default function StudentDashboardPage() {
                                             <div className="flex flex-wrap items-center gap-2 pt-2">
                                                 {(isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
                                                     <Button variant="outline" size="sm" className="text-xs h-8 rounded-full" onClick={() => setSelectedBooking(booking)}><FileText className="h-3.5 w-3.5 mr-1" /> Rent Receipt</Button>
+                                                )}
+                                                {/* Agreement download — always available once signed */}
+                                                {booking.agreementSigned && !isTokenPaid && (
+                                                    <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => {
+                                                        downloadAgreementCopy({
+                                                            agreementId: booking.agreementId || `AGT-${booking.displayId}`,
+                                                            bookingDisplayId: booking.displayId,
+                                                            tenantName: booking.guestName,
+                                                            tenantEmail: booking.guestEmail || undefined,
+                                                            propertyName: booking.propertyName,
+                                                            propertyAddress: booking.propertyAddress || '',
+                                                            propertyCity: booking.propertyCity || '',
+                                                            roomAssigned: booking.roomAssigned || '—',
+                                                            occupancy: booking.occupancy || '',
+                                                            monthlyRent: Number(booking.amount || 0),
+                                                            depositAmount: Number(booking.depositAmount || 0),
+                                                            depositMonths: Number(booking.depositMonths || 1),
+                                                            moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                                            signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
+                                                            signedIp: booking.agreementSignedIp || undefined,
+                                                            signedDevice: booking.agreementSignedDevice || undefined,
+                                                            agreementVersion: booking.agreementVersion || 'v1.0-2026',
+                                                        });
+                                                    }}><Download className="h-3.5 w-3.5 mr-1" /> Agreement</Button>
+                                                )}
+                                                {/* Final payment receipt — once active */}
+                                                {(isActive || isCheckedIn || isCompleted) && booking.paidAt && (
+                                                    <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-indigo-300 text-indigo-700 hover:bg-indigo-50" onClick={() => {
+                                                        downloadFinalPaymentReceipt({
+                                                            bookingDisplayId: booking.displayId,
+                                                            tenantName: booking.guestName,
+                                                            tenantEmail: booking.guestEmail || undefined,
+                                                            propertyName: booking.propertyName,
+                                                            roomAssigned: booking.roomAssigned || '—',
+                                                            monthlyRent: Number(booking.amount || 0),
+                                                            depositAmount: Number(booking.depositAmount || 0),
+                                                            depositMonths: Number(booking.depositMonths || 1),
+                                                            tokenAlreadyPaid: 1000,
+                                                            finalAmountPaid: Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000),
+                                                            paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
+                                                            paymentMethod: booking.paymentMethod || 'Online',
+                                                            paymentId: booking.paymentId || undefined,
+                                                        });
+                                                    }}><Download className="h-3.5 w-3.5 mr-1" /> Payment Receipt</Button>
                                                 )}
                                                 {(isAgreementPending || (isPaid && !booking.agreementSigned)) && (
                                                     <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>✍️ Sign Agreement</Button>
@@ -581,7 +654,7 @@ export default function StudentDashboardPage() {
             {/* Models */}
             {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
             {selectedBooking && <RentReceipt booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
-            <PropertyAgreementModal isOpen={!!signingBooking} onClose={() => setSigningBooking(null)} onAccept={async () => { const toastId = toast.loading("Signing..."); try { await signAgreement(signingBooking.id, { agreementId: `AGT-${Date.now()}` }); toast.success("Signed! 🎉", { id: toastId }); await fetchData(); setSigningBooking(null); } catch (e: any) { toast.error(e.message, { id: toastId }); } }} property={{ id: signingBooking?.id || '', name: signingBooking?.propertyName || '', address: signingBooking?.propertyAddress || '', city: signingBooking?.propertyCity || '' }} room={{ roomNumber: signingBooking?.roomAssigned || '', type: signingBooking?.occupancy || 'SINGLE', price: Number(signingBooking?.amount || 0), depositMonths: Number(signingBooking?.depositMonths || 2) }} tenant={{ name: signingBooking?.guestName || '' }} moveInDate={signingBooking?.onboardingDate || ''} depositAmount={Number(signingBooking?.depositAmount || 0)} platformFee={0} />
+            <PropertyAgreementModal isOpen={!!signingBooking} onClose={() => setSigningBooking(null)} onAccept={async (deviceInfo) => { const toastId = toast.loading("Signing..."); try { await signAgreement(signingBooking.id, { agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`, signedDevice: deviceInfo.userAgent }); toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId }); await fetchData(); setSigningBooking(null); } catch (e: any) { toast.error(e.message, { id: toastId }); } }} property={{ id: signingBooking?.id || '', name: signingBooking?.propertyName || '', address: signingBooking?.propertyAddress || '', city: signingBooking?.propertyCity || '' }} room={{ roomNumber: signingBooking?.roomAssigned || '', type: signingBooking?.occupancy || 'SINGLE', price: Number(signingBooking?.amount || 0), depositMonths: Number(signingBooking?.depositMonths || 2) }} tenant={{ name: signingBooking?.guestName || '' }} moveInDate={signingBooking?.onboardingDate || ''} depositAmount={Number(signingBooking?.depositAmount || 0)} platformFee={0} />
 
             {/* Cancel Modal */}
             {cancelModal && (

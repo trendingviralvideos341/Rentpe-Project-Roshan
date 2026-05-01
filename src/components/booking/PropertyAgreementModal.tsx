@@ -8,7 +8,7 @@ import { CheckCircle, ScrollText, AlertTriangle, MapPin, BedDouble, Calendar, Sh
 interface PropertyAgreementModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAccept: () => void;
+    onAccept: (deviceInfo: { userAgent: string }) => Promise<void>;
     property: {
         id: string;
         name: string;
@@ -61,7 +61,9 @@ export function PropertyAgreementModal({
     const handleAccept = async () => {
         setSigning(true);
         try {
-            await onAccept();
+            // Capture device fingerprint at the exact moment of signing
+            const deviceInfo = { userAgent: navigator.userAgent };
+            await onAccept(deviceInfo);
         } finally {
             setSigning(false);
         }
