@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, Clock, Info, History, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { User, Calendar, Home, ArrowRightLeft, CheckCircle2, Clock, Info, History, ArrowUp, ArrowDown, Loader2, Shield, FileText, AlertTriangle } from "lucide-react";
 import { getTenantsByCategory, confirmMoveIn, confirmMoveOut, approveMoveOutRequest } from "@/actions/tenants";
+import { countersignAgreement } from "@/actions/bookings";
 import { getTenantMovementLog } from "@/actions/ownerRentCollection";
 import { toast } from "sonner";
 
@@ -14,16 +15,18 @@ interface TenantLifecycleManagerProps {
 }
 
 const CATEGORIES = [
-    { id: 'UPCOMING', label: 'Arrivals',   icon: Calendar,       bg: 'bg-blue-50',   text: 'text-blue-700' },
-    { id: 'ACTIVE',   label: 'In-House',   icon: User,           bg: 'bg-indigo-50', text: 'text-indigo-700' },
-    { id: 'MOVE_OUT', label: 'Move-Out',   icon: ArrowRightLeft, bg: 'bg-amber-50',  text: 'text-amber-700' },
-    { id: 'PAST',     label: 'Past Stays', icon: Clock,          bg: 'bg-slate-50',  text: 'text-slate-600' },
-    { id: 'LOG',      label: 'History',    icon: History,        bg: 'bg-purple-50', text: 'text-purple-700' },
+    { id: 'AGREEMENTS', label: 'Sign Agreements', icon: Shield,        bg: 'bg-violet-50',  text: 'text-violet-700' },
+    { id: 'UPCOMING',   label: 'Arrivals',        icon: Calendar,       bg: 'bg-blue-50',    text: 'text-blue-700' },
+    { id: 'ACTIVE',     label: 'In-House',        icon: User,           bg: 'bg-indigo-50',  text: 'text-indigo-700' },
+    { id: 'MOVE_OUT',   label: 'Move-Out',        icon: ArrowRightLeft, bg: 'bg-amber-50',   text: 'text-amber-700' },
+    { id: 'PAST',       label: 'Past Stays',      icon: Clock,          bg: 'bg-slate-50',   text: 'text-slate-600' },
+    { id: 'LOG',        label: 'History',         icon: History,        bg: 'bg-purple-50',  text: 'text-purple-700' },
 ] as const;
 
 export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps) {
-    const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]['id']>('ACTIVE');
+    const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]['id']>('AGREEMENTS');
     const [tenants, setTenants] = useState<any[]>([]);
+    const [pendingAgreements, setPendingAgreements] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -36,10 +39,17 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
         if (activeCategory === 'LOG') return;
         setLoading(true);
         try {
-            const data = await getTenantsByCategory(ownerId, activeCategory as Exclude<typeof activeCategory, 'LOG'>);
-            setTenants(data);
+            if (activeCategory === 'AGREEMENTS') {
+                // Fetch bookings where tenant signed but owner hasn't countersigned yet
+                const { getPendingCountersignBookings } = await import('@/actions/bookings');
+                const data = await getPendingCountersignBookings();
+                setPendingAgreements(data);
+            } else {
+                const data = await getTenantsByCategory(ownerId, activeCategory as Exclude<typeof activeCategory, 'LOG' | 'AGREEMENTS'>);
+                setTenants(data);
+            }
         } catch (e) {
-            toast.error("Failed to load tenants");
+            toast.error("Failed to load data");
         } finally {
             setLoading(false);
         }
@@ -62,6 +72,27 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                         fetchData();
                     } catch (e: any) {
                         toast.error(e.message || "Action failed");
+                    } finally {
+                        setProcessingId(null);
+                    }
+                },
+            },
+        });
+    };
+
+    const handleCountersign = (bookingId: string, tenantName: string) => {
+        toast(`Countersign agreement for ${tenantName}?`, {
+            description: 'Your name will be recorded as the authorized signatory. This is legally binding.',
+            action: {
+                label: 'Countersign Now',
+                onClick: async () => {
+                    setProcessingId(bookingId);
+                    try {
+                        const result = await countersignAgreement(bookingId);
+                        toast.success(`✅ Agreement countersigned by ${result.countersignedBy}`);
+                        fetchData();
+                    } catch (e: any) {
+                        toast.error(e.message || 'Countersign failed');
                     } finally {
                         setProcessingId(null);
                     }
@@ -135,6 +166,58 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                     <div className="min-h-[400px]">
                         {activeCategory === 'LOG' ? (
                             <TenantLogInline ownerId={ownerId} />
+                        ) : activeCategory === 'AGREEMENTS' ? (
+                            loading ? (
+                                <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">Loading agreements...</div>
+                            ) : pendingAgreements.length === 0 ? (
+                                <div className="py-16 text-center flex flex-col items-center gap-3">
+                                    <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                                    </div>
+                                    <p className="text-slate-400 text-sm font-medium">No pending agreements — all up to date!</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-100">
+                                    {/* Blinking banner */}
+                                    <div className="px-6 py-3 bg-violet-50 border-b border-violet-100 flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-violet-500 animate-ping inline-block"></span>
+                                        <p className="text-xs font-black text-violet-700">{pendingAgreements.length} agreement{pendingAgreements.length > 1 ? 's' : ''} awaiting your countersignature</p>
+                                    </div>
+                                    {pendingAgreements.map((b: any) => (
+                                        <div key={b.id} className="px-6 py-4 flex items-start justify-between gap-4 hover:bg-slate-50 transition-colors">
+                                            <div className="flex items-start gap-4">
+                                                <div className="h-11 w-11 rounded-xl bg-violet-100 flex items-center justify-center font-black text-violet-700 text-base shrink-0">
+                                                    {b.guestName?.charAt(0)?.toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-slate-900 text-sm">{b.guestName}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase">{b.displayId}</p>
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{b.propertyName}</span>
+                                                        <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-bold">{b.roomAssigned || 'Room TBD'}</span>
+                                                        <span className="text-[10px] bg-violet-50 text-violet-600 px-2 py-0.5 rounded font-bold">
+                                                            Signed: {b.agreementSignedAt ? new Date(b.agreementSignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400 mt-1 font-mono">Ref: {b.agreementId || b.displayId}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-2 shrink-0 items-end">
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-violet-600 hover:bg-violet-700 text-white font-black h-9 px-4 text-[11px] shadow-md shadow-violet-200"
+                                                    disabled={processingId === b.id}
+                                                    onClick={() => handleCountersign(b.id, b.guestName)}
+                                                >
+                                                    <Shield className="h-3.5 w-3.5 mr-1.5" />
+                                                    {processingId === b.id ? 'Signing...' : 'Countersign'}
+                                                </Button>
+                                                <p className="text-[9px] text-slate-400 font-bold text-right">Your name will be recorded</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
                         ) : loading ? (
                             <div className="p-20 text-center animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">
                                 Loading stays...

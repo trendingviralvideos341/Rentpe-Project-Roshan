@@ -276,6 +276,9 @@ model Booking {
   agreementSignedIp           String?
   agreementSignedDevice       String?
   agreementVersion            String?          @default("v1.0-2026")
+  ownerCountersigned          Boolean          @default(false)
+  ownerCountersignedAt        DateTime?
+  ownerCountersignedBy        String?
   tenantId                    String?          @unique
   tokenAmount                 Float?           @default(1000)
   tokenPaidAt                 DateTime?

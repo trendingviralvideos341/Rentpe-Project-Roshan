@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Plus, X, AlertTriangle, ShieldCheck, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera, CheckCircle } from "lucide-react";
+import { Eye, Plus, X, AlertTriangle, ShieldCheck, Shield, Info, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
@@ -1486,6 +1486,25 @@ export default function AddPropertyPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 space-y-6 bg-emerald-50/10">
+                        {/* Authorized Signatory Clause */}
+                        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 space-y-3 shadow-sm mb-6">
+                            <div className="flex items-center gap-2 text-blue-700">
+                                <Shield className="h-5 w-5" />
+                                <span className="text-[12px] font-black uppercase tracking-wider">Authorized Signatory & Digital Agreement</span>
+                            </div>
+                            <p className="text-[11px] text-slate-700 font-medium leading-relaxed">
+                                By registering this property, you acknowledge that the <strong>Property Owner</strong> or 
+                                any <strong>Authorized Staff Manager</strong> assigned to this property has the legal 
+                                authority to countersign rental agreements on your behalf. All digital signatures 
+                                performed through the RentPe dashboard are legally binding under the 
+                                Information Technology Act, 2000 and the Model Tenancy Act.
+                            </p>
+                            <div className="flex items-center gap-2 py-1.5 px-3 bg-blue-100/50 rounded-lg border border-blue-200 w-fit">
+                                <Info className="h-3.5 w-3.5 text-blue-600" />
+                                <span className="text-[9px] font-black text-blue-700 uppercase tracking-tight">Legally Binding Digital Signature Policy</span>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* General Terms Card */}
                             <div className="space-y-3">

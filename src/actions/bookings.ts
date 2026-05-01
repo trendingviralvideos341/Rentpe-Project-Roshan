@@ -1210,6 +1210,144 @@ export async function signAgreement(id: string, agreementMeta?: {
     return updated;
 }
 
+// ─── COUNTERSIGN AGREEMENT (Owner / Staff Manager) ───────────────────────────
+export async function countersignAgreement(bookingId: string) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
+        throw new Error("Unauthorized — only Owner or Staff Manager can countersign.");
+    }
+
+    const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: { user: { select: { name: true, email: true } } }
+    });
+    if (!booking) throw new Error("Booking not found.");
+    if (!booking.agreementSigned) throw new Error("Tenant has not signed the agreement yet.");
+    if ((booking as any).ownerCountersigned) throw new Error("Already countersigned.");
+
+    const roleLabel = session.role === 'STAFF' ? 'Staff Manager' : 'Property Owner';
+    const countersignerName = session.name || roleLabel;
+    const countersignedAt = new Date();
+
+    await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+            status: 'MOVE_IN_SCHEDULED',
+            ownerCountersigned: true,
+            ownerCountersignedAt: countersignedAt,
+            ownerCountersignedBy: `${countersignerName} (${roleLabel})`,
+        } as any
+    });
+
+    // Notify tenant in-app
+    try {
+        await NotificationService.createNotification({
+            userId: booking.userId,
+            type: 'BOOKING_UPDATE',
+            title: '🎉 Agreement Fully Executed!',
+            message: `Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Move-in is now confirmed!`,
+            bookingId: booking.id,
+        });
+    } catch (e) { console.error('Notification failed:', e); }
+
+    // Send email to tenant
+    try {
+        const tenantEmail = booking.user?.email || booking.guestEmail;
+        if (tenantEmail) {
+            await sendEmail({
+                to: tenantEmail,
+                subject: `✅ Agreement Fully Executed — ${booking.propertyName} [${booking.agreementId}]`,
+                html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,sans-serif;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;">
+    <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:20px;font-weight:900;">RentPe</h1>
+      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">Rental Agreement — Fully Executed</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:28px;">
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:14px;margin-bottom:20px;text-align:center;">
+        <p style="color:#065f46;font-weight:800;font-size:15px;margin:0;">✅ Both Parties Have Signed</p>
+        <p style="color:#047857;font-size:12px;margin:4px 0 0;">This agreement is legally binding under IT Act 2000</p>
+      </div>
+      <p style="color:#334155;font-size:14px;">Hi <strong>${booking.guestName}</strong>,</p>
+      <p style="color:#64748b;font-size:14px;line-height:1.6;">Your rental agreement for <strong>${booking.propertyName}</strong> has been countersigned by <strong>${countersignerName} (${roleLabel})</strong>. Your stay is confirmed.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+        <tr style="background:#1e1b4b;"><td colspan="2" style="padding:10px 16px;color:#a5b4fc;font-size:10px;font-weight:900;letter-spacing:.1em;">AUDIT TRAIL</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Agreement ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;">${booking.agreementId}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;background:#f8fafc;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Tenant Signed</td><td style="padding:10px 16px;font-weight:700;">${booking.guestName}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned By</td><td style="padding:10px 16px;font-weight:700;">${countersignerName} (${roleLabel})</td></tr>
+        <tr><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned At</td><td style="padding:10px 16px;font-weight:700;">${countersignedAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td></tr>
+      </table>
+      <p style="color:#94a3b8;font-size:11px;margin-top:16px;">Ref: <strong>${booking.agreementId}</strong> · Keep this for your records.</p>
+    </div>
+  </div>
+</body></html>`
+            });
+        }
+    } catch (e) { console.error('Countersign email failed:', e); }
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role || 'OWNER',
+        actorName: countersignerName,
+        actionType: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `AGREEMENT COUNTERSIGNED by ${countersignerName} (${roleLabel}). Booking: ${booking.displayId} | AgreementId: ${booking.agreementId} | At: ${countersignedAt.toISOString()}`,
+        newValue: { countersignedBy: countersignerName, role: roleLabel, countersignedAt: countersignedAt.toISOString() }
+    });
+
+    revalidatePath('/dashboard/owner');
+    revalidatePath('/dashboard/staff');
+    revalidatePath('/dashboard/student');
+    return { success: true, countersignedBy: `${countersignerName} (${roleLabel})` };
+}
+
+// ─── Get bookings awaiting Owner/Staff countersignature ──────────────────────
+export async function getPendingCountersignBookings() {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
+        throw new Error("Unauthorized");
+    }
+
+    // Resolve which properties this owner/staff has access to
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { employeeProfile: true }
+    });
+
+    let propertyIds: string[] = [];
+    if (user?.employeeProfile) {
+        const assignments = await prisma.employeePropertyAssignment.findMany({
+            where: { employeeId: user.employeeProfile.id },
+            select: { propertyId: true }
+        });
+        propertyIds = assignments.map(a => a.propertyId);
+    } else {
+        const properties = await prisma.property.findMany({
+            where: { ownerId: user?.parentOwnerId || session.userId },
+            select: { id: true }
+        });
+        propertyIds = properties.map(p => p.id);
+    }
+
+    return await prisma.booking.findMany({
+        where: {
+            propertyId: { in: propertyIds },
+            agreementSigned: true,
+            ownerCountersigned: false,
+        },
+        orderBy: { agreementSignedAt: 'asc' },
+        select: {
+            id: true, displayId: true, guestName: true, guestEmail: true,
+            propertyName: true, roomAssigned: true, occupancy: true,
+            amount: true, depositAmount: true, agreementId: true,
+            agreementSignedAt: true, agreementSignedIp: true,
+            agreementSignedDevice: true, agreementVersion: true,
+            onboardingDate: true, status: true,
+        }
+    });
+}
 
 export async function getStudentPendingActionsCount() {
     const session = await getSession();
