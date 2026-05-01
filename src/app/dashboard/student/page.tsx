@@ -15,10 +15,11 @@ import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { generateInvoicePDF, downloadTokenReceipt, downloadAgreementCopy, downloadFinalPaymentReceipt } from "@/utils/invoiceGenerator";
+import { generateInvoicePDF } from "@/utils/invoiceGenerator";
 import { BookingTimeline } from "@/components/ui/BookingTimeline";
 import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
 import { PropertyAgreementModal } from "@/components/booking/PropertyAgreementModal";
+import { DocumentViewerModal, type DocumentViewerDoc } from "@/components/booking/DocumentViewerModal";
 import { BookingFeeBreakdown } from "@/components/booking/BookingFeeBreakdown";
 import { toast } from "sonner";
 import { getStudentProfile, updateStudentProfile } from "@/actions/student";
@@ -152,6 +153,7 @@ export default function StudentDashboardPage() {
     const [upgradeRequest, setUpgradeRequest] = useState<any | null | undefined>(undefined);
     const [dismissedSharingAlert, setDismissedSharingAlert] = useState<string | null>(null);
     const [roomAllocNotifs, setRoomAllocNotifs] = useState<any[]>([]);
+    const [viewingDoc, setViewingDoc] = useState<DocumentViewerDoc | null>(null);
 
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
@@ -401,14 +403,14 @@ export default function StudentDashboardPage() {
                                             {/* Token Paid — Receipt + Sign Agreement CTA */}
                                             {isTokenPaid && (
                                                 <div className="space-y-3">
-                                                    {/* Token Receipt Download */}
+                                                    {/* Token Receipt — View button */}
                                                     <div className="w-full bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-4 flex items-center justify-between">
                                                         <div>
                                                             <p className="text-sm font-black text-green-800">✅ Token Payment Confirmed</p>
                                                             <p className="text-xs text-green-700 mt-0.5">₹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
                                                         </div>
                                                         <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-100 font-black text-xs" onClick={() => {
-                                                            downloadTokenReceipt({
+                                                            setViewingDoc({ type: 'token', data: {
                                                                 bookingDisplayId: booking.displayId,
                                                                 tenantName: booking.guestName,
                                                                 tenantEmail: booking.guestEmail || undefined,
@@ -418,12 +420,12 @@ export default function StudentDashboardPage() {
                                                                 paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                                                 paymentMethod: booking.paymentMethod || 'Online',
                                                                 paymentId: booking.paymentId || undefined,
-                                                            });
+                                                            }});
                                                         }}>
-                                                            <Download className="h-3 w-3 mr-1" /> Token Receipt
+                                                            <FileText className="h-3 w-3 mr-1" /> View Receipt
                                                         </Button>
                                                     </div>
-                                                    {/* Sign Agreement — Blinking CTA */}
+                                                    {/* Sign Agreement CTA — only shown if NOT yet signed */}
                                                     {!booking.agreementSigned && (
                                                         <div className="w-full bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-500 rounded-2xl p-5 space-y-3 animate-pulse">
                                                             <div className="flex items-center gap-2 text-sm font-black text-red-800">
@@ -436,6 +438,7 @@ export default function StudentDashboardPage() {
                                                             </Button>
                                                         </div>
                                                     )}
+                                                    {/* Agreement already signed — show view button */}
                                                     {booking.agreementSigned && (
                                                         <div className="w-full bg-purple-50 border-2 border-purple-300 rounded-2xl p-4 space-y-3">
                                                             <div className="flex items-center justify-between">
@@ -444,7 +447,7 @@ export default function StudentDashboardPage() {
                                                                     <p className="text-xs text-purple-600 mt-0.5">Waiting for owner countersignature. ID verification next.</p>
                                                                 </div>
                                                                 <Button size="sm" variant="outline" className="border-purple-400 text-purple-700 hover:bg-purple-100 font-black text-xs shrink-0" onClick={() => {
-                                                                    downloadAgreementCopy({
+                                                                    setViewingDoc({ type: 'agreement', data: {
                                                                         agreementId: booking.agreementId || `AGT-${booking.displayId}`,
                                                                         bookingDisplayId: booking.displayId,
                                                                         tenantName: booking.guestName,
@@ -462,9 +465,9 @@ export default function StudentDashboardPage() {
                                                                         signedIp: booking.agreementSignedIp || undefined,
                                                                         signedDevice: booking.agreementSignedDevice || undefined,
                                                                         agreementVersion: booking.agreementVersion || 'v1.0-2026',
-                                                                    });
+                                                                    }});
                                                                 }}>
-                                                                    <Download className="h-3 w-3 mr-1" /> Agreement
+                                                                    <FileText className="h-3 w-3 mr-1" /> View Agreement
                                                                 </Button>
                                                             </div>
                                                         </div>
@@ -527,10 +530,10 @@ export default function StudentDashboardPage() {
                                                 {(isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
                                                     <Button variant="outline" size="sm" className="text-xs h-8 rounded-full" onClick={() => setSelectedBooking(booking)}><FileText className="h-3.5 w-3.5 mr-1" /> Rent Receipt</Button>
                                                 )}
-                                                {/* Agreement download — always available once signed */}
+                                                {/* Agreement — view once signed, shown in all non-token-paid stages */}
                                                 {booking.agreementSigned && !isTokenPaid && (
                                                     <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => {
-                                                        downloadAgreementCopy({
+                                                        setViewingDoc({ type: 'agreement', data: {
                                                             agreementId: booking.agreementId || `AGT-${booking.displayId}`,
                                                             bookingDisplayId: booking.displayId,
                                                             tenantName: booking.guestName,
@@ -548,13 +551,13 @@ export default function StudentDashboardPage() {
                                                             signedIp: booking.agreementSignedIp || undefined,
                                                             signedDevice: booking.agreementSignedDevice || undefined,
                                                             agreementVersion: booking.agreementVersion || 'v1.0-2026',
-                                                        });
-                                                    }}><Download className="h-3.5 w-3.5 mr-1" /> Agreement</Button>
+                                                        }});
+                                                    }}><FileText className="h-3.5 w-3.5 mr-1" /> View Agreement</Button>
                                                 )}
-                                                {/* Final payment receipt — once active */}
+                                                {/* Final payment receipt — view once active */}
                                                 {(isActive || isCheckedIn || isCompleted) && booking.paidAt && (
                                                     <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-indigo-300 text-indigo-700 hover:bg-indigo-50" onClick={() => {
-                                                        downloadFinalPaymentReceipt({
+                                                        setViewingDoc({ type: 'payment', data: {
                                                             bookingDisplayId: booking.displayId,
                                                             tenantName: booking.guestName,
                                                             tenantEmail: booking.guestEmail || undefined,
@@ -568,10 +571,11 @@ export default function StudentDashboardPage() {
                                                             paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                                             paymentMethod: booking.paymentMethod || 'Online',
                                                             paymentId: booking.paymentId || undefined,
-                                                        });
-                                                    }}><Download className="h-3.5 w-3.5 mr-1" /> Payment Receipt</Button>
+                                                        }});
+                                                    }}><FileText className="h-3.5 w-3.5 mr-1" /> Payment Receipt</Button>
                                                 )}
-                                                {(isAgreementPending || (isPaid && !booking.agreementSigned)) && (
+                                                {/* Sign Agreement — ONLY if not yet signed */}
+                                                {!booking.agreementSigned && (isAgreementPending || (isPaid && !booking.agreementSigned)) && (
                                                     <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>✍️ Sign Agreement</Button>
                                                 )}
                                                 {isActive && !isVacating && (
@@ -652,8 +656,9 @@ export default function StudentDashboardPage() {
             </Tabs>
 
             {/* Models */}
-            {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
+                        {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
             {selectedBooking && <RentReceipt booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
+            <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
             <PropertyAgreementModal isOpen={!!signingBooking} onClose={() => setSigningBooking(null)} onAccept={async (deviceInfo) => { const toastId = toast.loading("Signing..."); try { await signAgreement(signingBooking.id, { agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`, signedDevice: deviceInfo.userAgent }); toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId }); await fetchData(); setSigningBooking(null); } catch (e: any) { toast.error(e.message, { id: toastId }); } }} property={{ id: signingBooking?.id || '', name: signingBooking?.propertyName || '', address: signingBooking?.propertyAddress || '', city: signingBooking?.propertyCity || '' }} room={{ roomNumber: signingBooking?.roomAssigned || '', type: signingBooking?.occupancy || 'SINGLE', price: Number(signingBooking?.amount || 0), depositMonths: Number(signingBooking?.depositMonths || 2) }} tenant={{ name: signingBooking?.guestName || '' }} moveInDate={signingBooking?.onboardingDate || ''} depositAmount={Number(signingBooking?.depositAmount || 0)} platformFee={0} />
 
             {/* Cancel Modal */}
