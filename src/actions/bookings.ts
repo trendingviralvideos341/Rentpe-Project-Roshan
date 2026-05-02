@@ -1241,12 +1241,14 @@ export async function countersignAgreement(bookingId: string) {
 
     // Notify tenant in-app
     try {
-        await NotificationService.createNotification({
-            userId: booking.userId,
-            type: 'BOOKING_UPDATE',
-            title: '🎉 Agreement Fully Executed!',
-            message: `Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Move-in is now confirmed!`,
+        await NotificationService.trigger({
             bookingId: booking.id,
+            userId: booking.userId,
+            type: 'BOOKING',
+            category: 'AGREEMENT_COUNTERSIGNED',
+            message: `🎉 Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Move-in is now confirmed!`,
+            targetRole: 'USER',
+            isPersistent: true,
         });
     } catch (e) { console.error('Notification failed:', e); }
 
