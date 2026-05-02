@@ -486,7 +486,9 @@ export default function StudentDashboardPage() {
                                                         const balance = Math.max(0, rent + deposit - 1000);
                                                         return (
                                                             <div className="space-y-2 text-sm bg-white/60 rounded-xl p-4 border border-indigo-200">
-                                                                <div className="flex justify-between"><span>Rent + Deposit</span><span>₹{(rent + deposit).toLocaleString('en-IN')}</span></div>
+                                                                <div className="flex justify-between text-slate-600"><span>Monthly Rent</span><span>₹{rent.toLocaleString('en-IN')}</span></div>
+                                                                <div className="flex justify-between text-slate-600"><span>Security Deposit</span><span>₹{deposit.toLocaleString('en-IN')}</span></div>
+                                                                <div className="flex justify-between pt-1 border-t border-dashed border-indigo-200 font-bold text-slate-800"><span>Subtotal</span><span>₹{(rent + deposit).toLocaleString('en-IN')}</span></div>
                                                                 <div className="flex justify-between text-orange-600 font-bold"><span>Token Paid Already</span><span>- ₹1,000</span></div>
                                                                 <div className="flex justify-between pt-2 border-t font-black text-indigo-900"><span>Joining Balance</span><span>₹{balance.toLocaleString('en-IN')}</span></div>
                                                                 <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay ₹{balance.toLocaleString('en-IN')} Now</Button>
