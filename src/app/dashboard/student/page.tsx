@@ -9,7 +9,7 @@ import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, PackageOpen, LogOut, X } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -178,7 +178,7 @@ function BookingCard({
                         <CardTitle className="flex items-center gap-2">{booking.propertyName}</CardTitle>
                         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mt-2"><User className="h-3 w-3" /> Guest: <span className="text-foreground font-bold">{booking.guestName}</span></div>
                         <CardDescription className="mt-1">
-                            Ref: {booking.displayId} â€¢ {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                            Ref: {booking.displayId} &bull; {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                             {booking.occupancy && (
                                 <span className="ml-2 inline-flex items-center gap-1 bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-black px-2 py-0.5 rounded-full">
                                     ðŸ›ï¸ {formatOccupancy(booking.occupancy)}
@@ -389,9 +389,7 @@ function BookingCard({
                     {!booking.agreementSigned && (isAgreementPending || (isPaid && !booking.agreementSigned)) && (
                         <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>âœï¸ Sign Agreement</Button>
                     )}
-                    {isActive && !isVacating && (
-                        <Button size="sm" variant="outline" className="text-xs border-amber-400 text-amber-700 rounded-full" onClick={() => { const r = prompt('Reason for vacating:'); if (r) import('@/actions/vacatingNotice').then(({ fileVacatingNotice }) => { const dt = new Date(); dt.setDate(dt.getDate() + 30); fileVacatingNotice({ bookingId: booking.id, plannedMoveOut: dt.toISOString().split('T')[0], reason: r }).then(() => { fetchData(); toast.success('Notice submitted!'); }); }); }}><PackageOpen className="h-3.5 w-3.5 mr-1" /> File Vacating Notice</Button>
-                    )}
+
                     {!isActive && !isVacating && !isCompleted && !isCancelled && booking.status !== 'REJECTED' && (
                         <button onClick={() => handleCancel(booking.id, booking.propertyName)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : 'âœ• Cancel'}</button>
                     )}
