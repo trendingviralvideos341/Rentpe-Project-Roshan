@@ -495,15 +495,14 @@ export function BookingsContainer() {
         STUDENT_PAYS:    ['PAID', 'CASH_PAID'],
         AGREEMENT:       ['AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
         PHYSICAL_VERIFY: ['MOVE_IN_SCHEDULED'],
-        CHECKED_IN:      ['ACTIVE', 'CHECKIN_CONFIRMED'],
         REJECTED:        ['REJECTED'],
         CANCELLED:       ['CANCELLED', 'EXPIRED'],
     };
 
     const filteredBookings = bookings.filter(b => {
         // Active tenants are managed in the "Active Tenants" sidebar — hide them from
-        // the main onboarding/bookings view UNLESS the user explicitly clicks the "Active Tenants" tab.
-        if (activeTab !== 'CHECKED_IN' && ACTIVE_STATUSES.includes(b.status)) return false;
+        // the main onboarding/bookings view.
+        if (ACTIVE_STATUSES.includes(b.status)) return false;
 
         const matchesSearch =
             (b.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -704,7 +703,6 @@ export function BookingsContainer() {
                             ['STUDENT_PAYS',    `💳 Token & Payment`] as const,
                             ['AGREEMENT',       `✍️ Agreement`] as const,
                             ['PHYSICAL_VERIFY', `🔍 Physical Verify`] as const,
-                            ['CHECKED_IN',      `🏠 Active Tenants (${bookings.filter(b => ['ACTIVE','CHECKIN_CONFIRMED'].includes(b.status)).length})`] as const,
                             ['REJECTED',        `❌ Rejected`] as const,
                             ['CANCELLED',       `🚫 Cancelled`] as const,
                         ]).map(([t, label]) => (

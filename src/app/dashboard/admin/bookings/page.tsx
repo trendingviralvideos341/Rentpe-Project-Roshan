@@ -469,7 +469,6 @@ export default function AdminBookingsPage() {
         STUDENT_PAYS:    ['PAID', 'CASH_PAID'],
         AGREEMENT:       ['AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
         PHYSICAL_VERIFY: ['MOVE_IN_SCHEDULED'],
-        CHECKED_IN:      ['ACTIVE', 'CHECKIN_CONFIRMED'],
         REJECTED:        ['REJECTED'],
         CANCELLED:       ['CANCELLED', 'EXPIRED'],
     };
@@ -481,7 +480,9 @@ export default function AdminBookingsPage() {
             (b.propertyName || "").toLowerCase().includes(search.toLowerCase());
 
         const group = STATUS_GROUPS[filterStatus];
-        const matchesStatus = filterStatus === "ALL" || (group && group.includes(b.status));
+        const matchesStatus = filterStatus === "ALL" 
+            ? !['ACTIVE', 'CHECKIN_CONFIRMED'].includes(b.status)
+            : (group && group.includes(b.status));
         
         // Date Logic
         if (dateFilter !== "ALL") {
@@ -589,7 +590,6 @@ export default function AdminBookingsPage() {
                             ["STUDENT_PAYS",    "💳 Student Pays"],
                             ["AGREEMENT",       "✍️ Agreement Signed"],
                             ["PHYSICAL_VERIFY", "🔍 Physical ID Verify"],
-                            ["CHECKED_IN",      "✅ Checked In"],
                             ["REJECTED",        "❌ Rejected"],
                             ["CANCELLED",       "🚫 Cancelled"],
                         ] as const).map(([t, label]) => (

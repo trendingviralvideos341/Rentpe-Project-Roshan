@@ -109,7 +109,7 @@ export default function TenantsPage() {
 
         const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
         return matchSearch && matchType && matchProperty && matchPayment;
-    });
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const unpaidCount = tenants.filter(t => {
         const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);

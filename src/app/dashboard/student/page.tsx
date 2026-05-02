@@ -48,7 +48,7 @@ function formatOccupancy(occupancy: string): string {
     return occupancy;
 }
 
-// â”€â”€ Alert Banner â”€â”€
+// ── Alert Banner ──
 function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' | 'warning' | 'info'; message: string; actionLabel?: string; onAction?: () => void }) {
     const bgColor = type === 'error' ? 'bg-red-50 border-red-200' : type === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
     const textColor = type === 'error' ? 'text-red-800' : type === 'warning' ? 'text-amber-800' : 'text-blue-800';
@@ -108,14 +108,14 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
         <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-xs font-black text-orange-700">ðŸ½ Food Service (Optional)</p>
+                    <p className="text-xs font-black text-orange-700">🍴 Food Service (Optional)</p>
                     <p className="text-[10px] text-orange-600">
-                        â‚¹{booking.property?.foodPricePerMonth?.toLocaleString()}/month
+                        ₹{booking.property?.foodPricePerMonth?.toLocaleString()}/month
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${foodEnabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {foodEnabled ? 'âœ… Active' : 'ðŸš« Inactive'}
+                        {foodEnabled ? '✅ Active' : '🚫 Inactive'}
                     </span>
                     <button
                         type="button"
@@ -129,7 +129,7 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
             </div>
             {lastChanged && (
                 <p className="text-[10px] text-orange-600 italic font-bold animate-in fade-in duration-300">
-                    âœ… Change saved! Effective from: {lastChanged}
+                    ✅ Change saved! Effective from: {lastChanged}
                 </p>
             )}
             <p className="text-[10px] text-slate-400">Changes apply from the 1st of next month.</p>
@@ -137,7 +137,7 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
     );
 }
 
-// â”€â”€ Booking Card Component â”€â”€
+// ── Booking Card Component ──
 function BookingCard({ 
     booking, 
     router, 
@@ -181,7 +181,7 @@ function BookingCard({
                             Ref: {booking.displayId} &bull; {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                             {booking.occupancy && (
                                 <span className="ml-2 inline-flex items-center gap-1 bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-black px-2 py-0.5 rounded-full">
-                                    ðŸ›ï¸ {formatOccupancy(booking.occupancy)}
+                                    🛏️ {formatOccupancy(booking.occupancy)}
                                 </span>
                             )}
                         </CardDescription>
@@ -194,30 +194,30 @@ function BookingCard({
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* â”€â”€ Status Badge â”€â”€ */}
+                {/* ── Status Badge ── */}
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">Stage:</span>
-                    {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">â³ Waiting for Approval</span>}
-                    {isKycPending && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">ðŸ“ KYC Verification</span>}
-                    {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">ðŸ” Token Payment Pending</span>}
-                    {isTokenPaid && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">âœ… Token Paid â€” Sign Agreement</span>}
-                    {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">ðŸ’³ Payment Pending</span>}
-                    {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">â³ Agreement Sent â€” Awaiting Owner</span>}
-                    {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">âœï¸ Sign Agreement</span>}
-                    {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">ðŸ“… Ready for Move-in</span>}
-                    {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">ðŸ  Checked-in & Active</span>}
+                    {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>}
+                    {isKycPending && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">🆔 KYC Verification</span>}
+                    {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🔒 Token Payment Pending</span>}
+                    {isTokenPaid && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Sign Agreement</span>}
+                    {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
+                    {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Agreement Sent — Awaiting Owner</span>}
+                    {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Sign Agreement</span>}
+                    {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>}
+                    {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>}
                 </div>
 
-                {/* â”€â”€ Payment Cards â”€â”€ */}
+                {/* ── Payment Cards ── */}
                 {isTokenPending && booking.roomAssigned && (
                     <div className="w-full bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-orange-400 rounded-2xl p-5 space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-black text-orange-800"><Lock className="h-4 w-4" /> ðŸ” Pay Token to Reserve Bed</div>
-                        <p className="text-xs text-orange-700 font-medium">Room <strong>{booking.roomAssigned}</strong> allocated! Pay â‚¹1,000 token to lock your bed.</p>
+                        <div className="flex items-center gap-2 text-sm font-black text-orange-800"><Lock className="h-4 w-4" /> 🔒 Pay Token to Reserve Bed</div>
+                        <p className="text-xs text-orange-700 font-medium">Room <strong>{booking.roomAssigned}</strong> allocated! Pay ₹1,000 token to lock your bed.</p>
                         <div className="bg-white/80 rounded-xl p-3 border border-orange-200 flex justify-between items-center">
                             <span className="text-xs font-bold text-slate-600">Token Amount</span>
-                            <span className="text-sm font-black text-slate-900">â‚¹1,000</span>
+                            <span className="text-sm font-black text-slate-900">₹1,000</span>
                         </div>
-                        <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}&type=token`)}>ðŸ’³ Pay â‚¹1,000 Token Now</Button>
+                        <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}&type=token`)}>💳 Pay ₹1,000 Token Now</Button>
                     </div>
                 )}
 
@@ -225,8 +225,8 @@ function BookingCard({
                     <div className="space-y-3">
                         <div className="w-full bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-black text-green-800">âœ… Token Payment Confirmed</p>
-                                <p className="text-xs text-green-700 mt-0.5">â‚¹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
+                                <p className="text-sm font-black text-green-800">✅ Token Payment Confirmed</p>
+                                <p className="text-xs text-green-700 mt-0.5">₹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
                             </div>
                             <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-100 font-black text-xs" onClick={() => {
                                 setViewingDoc({ type: 'token', data: {
@@ -234,9 +234,9 @@ function BookingCard({
                                     tenantName: booking.guestName,
                                     tenantEmail: booking.guestEmail || undefined,
                                     propertyName: booking.propertyName,
-                                    roomAssigned: booking.roomAssigned || 'â€”',
+                                    roomAssigned: booking.roomAssigned || '—',
                                     tokenAmount: 1000,
-                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                     paymentMethod: booking.paymentMethod || 'Online',
                                     paymentId: booking.paymentId || undefined,
                                 }});
@@ -248,11 +248,11 @@ function BookingCard({
                             <div className="w-full bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-500 rounded-2xl p-5 space-y-3 animate-pulse">
                                 <div className="flex items-center gap-2 text-sm font-black text-red-800">
                                     <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping mr-1"></span>
-                                    âœï¸ Sign Your Rental Agreement
+                                    ✍️ Sign Your Rental Agreement
                                 </div>
                                 <p className="text-xs text-red-700 font-medium">Token paid! Your bed is reserved. Sign the rental agreement to proceed to physical verification.</p>
                                 <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-black h-12 rounded-2xl" onClick={() => setSigningBooking(booking)}>
-                                    âœï¸ Sign Agreement Now
+                                    ✍️ Sign Agreement Now
                                 </Button>
                             </div>
                         )}
@@ -260,7 +260,7 @@ function BookingCard({
                             <div className="w-full bg-purple-50 border-2 border-purple-300 rounded-2xl p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-black text-purple-800">âœï¸ Agreement Signed</p>
+                                        <p className="text-sm font-black text-purple-800">✍️ Agreement Signed</p>
                                         <p className="text-xs text-purple-600 mt-0.5">Waiting for owner countersignature. ID verification next.</p>
                                     </div>
                                     <Button size="sm" variant="outline" className="border-purple-400 text-purple-700 hover:bg-purple-100 font-black text-xs shrink-0" onClick={() => {
@@ -272,13 +272,13 @@ function BookingCard({
                                             propertyName: booking.propertyName,
                                             propertyAddress: booking.propertyAddress || '',
                                             propertyCity: booking.propertyCity || '',
-                                            roomAssigned: booking.roomAssigned || 'â€”',
+                                            roomAssigned: booking.roomAssigned || '—',
                                             occupancy: booking.occupancy || '',
                                             monthlyRent: Number(booking.amount || 0),
                                             depositAmount: Number(booking.depositAmount || 0),
                                             depositMonths: Number(booking.depositMonths || 1),
-                                            moveInDate: booking.onboardingDate || booking.moveInDate || 'â€”',
-                                            signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'â€”',
+                                            moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                            signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
                                             signedIp: booking.agreementSignedIp || undefined,
                                             signedDevice: booking.agreementSignedDevice || undefined,
                                             agreementVersion: booking.agreementVersion || 'v1.0-2026',
@@ -302,12 +302,12 @@ function BookingCard({
                             const balance = Math.max(0, rent + deposit - 1000);
                             return (
                                 <div className="space-y-2 text-sm bg-white/60 rounded-xl p-4 border border-indigo-200">
-                                    <div className="flex justify-between text-slate-600"><span>Monthly Rent</span><span>â‚¹{rent.toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between text-slate-600"><span>Security Deposit</span><span>â‚¹{deposit.toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between pt-1 border-t border-dashed border-indigo-200 font-bold text-slate-800"><span>Subtotal</span><span>â‚¹{(rent + deposit).toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between text-orange-600 font-bold"><span>Token Paid Already</span><span>- â‚¹1,000</span></div>
-                                    <div className="flex justify-between pt-2 border-t font-black text-indigo-900"><span>Joining Balance</span><span>â‚¹{balance.toLocaleString('en-IN')}</span></div>
-                                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>ðŸ’³ Pay â‚¹{balance.toLocaleString('en-IN')} Now</Button>
+                                    <div className="flex justify-between text-slate-600"><span>Monthly Rent</span><span>₹{rent.toLocaleString('en-IN')}</span></div>
+                                    <div className="flex justify-between text-slate-600"><span>Security Deposit</span><span>₹{deposit.toLocaleString('en-IN')}</span></div>
+                                    <div className="flex justify-between pt-1 border-t border-dashed border-indigo-200 font-bold text-slate-800"><span>Subtotal</span><span>₹{(rent + deposit).toLocaleString('en-IN')}</span></div>
+                                    <div className="flex justify-between text-orange-600 font-bold"><span>Token Paid Already</span><span>- ₹1,000</span></div>
+                                    <div className="flex justify-between pt-2 border-t font-black text-indigo-900"><span>Joining Balance</span><span>₹{balance.toLocaleString('en-IN')}</span></div>
+                                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay ₹{balance.toLocaleString('en-IN')} Now</Button>
                                 </div>
                             );
                         })()}
@@ -316,19 +316,19 @@ function BookingCard({
 
                 {isPaymentPending && !isTokenPending && !isFinalPaymentPending && booking.roomAssigned && (
                     <div className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 space-y-4">
-                        <p className="text-sm font-black text-slate-800">ðŸ’³ Payment Due</p>
-                        <div className="flex justify-between font-bold"><span>Total Amount</span><span>â‚¹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span></div>
-                        <Button className="w-full bg-slate-900 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>ðŸ’³ Pay Now</Button>
+                        <p className="text-sm font-black text-slate-800">💳 Payment Due</p>
+                        <div className="flex justify-between font-bold"><span>Total Amount</span><span>₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span></div>
+                        <Button className="w-full bg-slate-900 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay Now</Button>
                     </div>
                 )}
 
                 {(isPaymentPending || isPaid || isApproved) && booking.roomAssigned && (
                     <div className="rounded-2xl border-2 p-4 bg-indigo-50 border-indigo-300 space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-black text-indigo-800"><BedDouble className="h-4 w-4" /> ðŸ  Allocated Room</div>
+                        <div className="flex items-center gap-2 text-sm font-black text-indigo-800"><BedDouble className="h-4 w-4" /> 🏠 Allocated Room</div>
                         <div className="grid grid-cols-3 gap-2">
                             <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Room No.</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.split('-')[0]}</p></div>
                             <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Type</p><p className="text-sm font-black text-indigo-900">{booking.occupancy}</p></div>
-                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Bed</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.includes('Bed') ? booking.roomAssigned.split('Bed')[1] : 'â€”'}</p></div>
+                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Bed</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.includes('Bed') ? booking.roomAssigned.split('Bed')[1] : '—'}</p></div>
                         </div>
                     </div>
                 )}
@@ -354,13 +354,13 @@ function BookingCard({
                                 propertyName: booking.propertyName,
                                 propertyAddress: booking.propertyAddress || '',
                                 propertyCity: booking.propertyCity || '',
-                                roomAssigned: booking.roomAssigned || 'â€”',
+                                roomAssigned: booking.roomAssigned || '—',
                                 occupancy: booking.occupancy || '',
                                 monthlyRent: Number(booking.amount || 0),
                                 depositAmount: Number(booking.depositAmount || 0),
                                 depositMonths: Number(booking.depositMonths || 1),
-                                moveInDate: booking.onboardingDate || booking.moveInDate || 'â€”',
-                                signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'â€”',
+                                moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
                                 signedIp: booking.agreementSignedIp || undefined,
                                 signedDevice: booking.agreementSignedDevice || undefined,
                                 agreementVersion: booking.agreementVersion || 'v1.0-2026',
@@ -374,24 +374,24 @@ function BookingCard({
                                 tenantName: booking.guestName,
                                 tenantEmail: booking.guestEmail || undefined,
                                 propertyName: booking.propertyName,
-                                roomAssigned: booking.roomAssigned || 'â€”',
+                                roomAssigned: booking.roomAssigned || '—',
                                 monthlyRent: Number(booking.amount || 0),
                                 depositAmount: Number(booking.depositAmount || 0),
                                 depositMonths: Number(booking.depositMonths || 1),
                                 tokenAlreadyPaid: 1000,
                                 finalAmountPaid: Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000),
-                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                 paymentMethod: booking.paymentMethod || 'Online',
                                 paymentId: booking.paymentId || undefined,
                             }});
                         }}><FileText className="h-3.5 w-3.5 mr-1" /> Payment Receipt</Button>
                     )}
                     {!booking.agreementSigned && (isAgreementPending || (isPaid && !booking.agreementSigned)) && (
-                        <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>âœï¸ Sign Agreement</Button>
+                        <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>✍️ Sign Agreement</Button>
                     )}
 
                     {!isActive && !isVacating && !isCompleted && !isCancelled && booking.status !== 'REJECTED' && (
-                        <button onClick={() => handleCancel(booking.id, booking.propertyName)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : 'âœ• Cancel'}</button>
+                        <button onClick={() => handleCancel(booking.id, booking.propertyName)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : '✖ Cancel'}</button>
                     )}
                 </div>
 
@@ -428,9 +428,21 @@ export default function StudentDashboardPage() {
 
     const searchParams = useSearchParams();
     const router = useRouter();
-    const activeTab = searchParams.get('tab') || 'bookings';
+    const [activeTab, setActiveTab] = useState('bookings');
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) {
+            setActiveTab(tab);
+        } else if (bookings.some((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status))) {
+            setActiveTab('active-stay');
+        } else {
+            setActiveTab('bookings');
+        }
+    }, [searchParams, bookings]);
 
     const onTabChange = (value: string) => {
+        setActiveTab(value);
         router.push(`/dashboard/student?tab=${value}`);
     };
 
@@ -519,6 +531,11 @@ export default function StudentDashboardPage() {
 
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
                 <TabsList className="flex flex-wrap md:flex-nowrap w-full mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner h-auto">
+                    {bookings.some((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status)) && (
+                        <TabsTrigger value="active-stay" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
+                            <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
+                        </TabsTrigger>
+                    )}
                     <TabsTrigger value="bookings" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
                         <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> My Bookings
                     </TabsTrigger>
@@ -530,10 +547,41 @@ export default function StudentDashboardPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="bookings" className="space-y-6">
+                <TabsContent value="active-stay" className="space-y-6">
                     {(() => {
                         const activeStay = bookings.find((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
-                        const otherBookings = bookings.filter((b: any) => !['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
+                        if (!activeStay) return <div className="p-8 text-center text-muted-foreground">No active stay found.</div>;
+                        return (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 px-1">
+                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">My Active Stay</h2>
+                                </div>
+                                <BookingCard 
+                                    booking={activeStay} 
+                                    isActiveStay={true}
+                                    router={router}
+                                    fetchData={fetchData}
+                                    setSigningBooking={setSigningBooking}
+                                    setSelectedBooking={setSelectedBooking}
+                                    setViewingDoc={setViewingDoc}
+                                    setExpandedDocs={setExpandedDocs}
+                                    expandedDocs={expandedDocs}
+                                    setDismissedSharingAlert={setDismissedSharingAlert}
+                                    dismissedSharingAlert={dismissedSharingAlert}
+                                    handleCancel={handleCancel}
+                                    cancellingId={cancellingId}
+                                />
+                            </div>
+                        );
+                    })()}
+                </TabsContent>
+
+                <TabsContent value="bookings" className="space-y-6">
+                    {(() => {
+                        const otherBookings = bookings
+                            .filter((b: any) => !['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status))
+                            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
                         return (
                             <div className="space-y-6">
@@ -573,7 +621,7 @@ export default function StudentDashboardPage() {
                                     ))}
 
                                     {/* Lifecycle Action Banners */}
-                                    {bookings.map((booking: any) => {
+                                    {otherBookings.map((booking: any) => {
                                         if (booking.status === 'APPROVED_PENDING_TOKEN')
                                             return <AlertBanner key={`alert-token-${booking.id}`} type="warning" message={`🔐 Pay ₹1,000 token to reserve your bed at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => router.push(`/secure/payment?id=${booking.id}&type=token`)} />;
                                         if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
@@ -588,35 +636,10 @@ export default function StudentDashboardPage() {
                                     })}
                                 </div>
 
-                                {/* â”€â”€ Active Stay Section â”€â”€ */}
-                                {activeStay && (
+                                {/* ── Onboarding / Other Bookings ── */}
+                                {otherBookings.length > 0 ? (
                                     <div className="space-y-4">
-                                        <div className="flex items-center gap-2 px-1">
-                                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">My Active Stay</h2>
-                                        </div>
-                                        <BookingCard 
-                                            booking={activeStay} 
-                                            isActiveStay={true}
-                                            router={router}
-                                            fetchData={fetchData}
-                                            setSigningBooking={setSigningBooking}
-                                            setSelectedBooking={setSelectedBooking}
-                                            setViewingDoc={setViewingDoc}
-                                            setExpandedDocs={setExpandedDocs}
-                                            expandedDocs={expandedDocs}
-                                            setDismissedSharingAlert={setDismissedSharingAlert}
-                                            dismissedSharingAlert={dismissedSharingAlert}
-                                            handleCancel={handleCancel}
-                                            cancellingId={cancellingId}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* â”€â”€ Onboarding / Other Bookings â”€â”€ */}
-                                {otherBookings.length > 0 && (
-                                    <div className="space-y-4">
-                                        {activeStay && <h2 className="text-sm font-black uppercase tracking-widest text-slate-500 px-1 mt-8">Onboarding & Other Bookings</h2>}
+                                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-500 px-1">Onboarding & Other Bookings</h2>
                                         {otherBookings.map((booking: any) => (
                                             <BookingCard 
                                                 key={booking.id} 
@@ -635,14 +658,16 @@ export default function StudentDashboardPage() {
                                             />
                                         ))}
                                     </div>
-                                )}
-
-                                {bookings.length === 0 && (
+                                ) : (
                                     <Card>
-                                        <CardContent className="p-8 text-center">
-                                            <p className="text-muted-foreground mr-6">Discover verified student housing across India with RentPe.</p>
-                                            <Button className="mt-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold" asChild>
-                                                <Link href="/search">ðŸ” Find PG</Link>
+                                        <CardContent className="p-12 text-center space-y-4">
+                                            <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">🔎</div>
+                                            <div className="space-y-1">
+                                                <p className="font-bold text-slate-800">No active or pending bookings</p>
+                                                <p className="text-sm text-muted-foreground">Discover verified student housing across India with RentPe.</p>
+                                            </div>
+                                            <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold" asChild>
+                                                <Link href="/search">Find PG</Link>
                                             </Button>
                                         </CardContent>
                                     </Card>
@@ -664,7 +689,7 @@ export default function StudentDashboardPage() {
                                             <TableCell className="font-medium">{new Date(p.date).toLocaleDateString('en-IN')}</TableCell>
                                             <TableCell>{p.description}</TableCell>
                                             <TableCell><span className="text-[10px] bg-muted px-2 py-1 rounded font-medium uppercase tracking-wider">{p.type.replace('_', ' ')}</span></TableCell>
-                                            <TableCell className="text-right font-bold">â‚¹{p.amount.toLocaleString('en-IN')}</TableCell>
+                                            <TableCell className="text-right font-bold">₹{p.amount.toLocaleString('en-IN')}</TableCell>
                                             <TableCell className="text-center"><span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded">PAID</span>{p.status === 'PAID' && <Button variant="ghost" size="sm" className="mt-1 h-6 text-[10px] text-blue-600" onClick={() => handleDownloadReceipt(p)}><Download className="h-3 w-3 mr-1" /> Receipt</Button>}</TableCell>
                                         </TableRow>
                                     ))}
