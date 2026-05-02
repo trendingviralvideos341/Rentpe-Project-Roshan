@@ -25,11 +25,11 @@ import { toast } from "sonner";
 import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
 
-const TYPE_LABELS: Record<string, string> = {
-    ID_PROOF: "ðŸªª ID Proof",
-    ADDRESS_PROOF: "ðŸ  Address Proof",
-    COLLEGE_COMPANY: "ðŸŽ“ College / Company Letter",
-    SELFIE: "ðŸ“¸ Current Selfie",
+const TYPE_LABELS: Record<string, any> = {
+    ID_PROOF: "🆔 ID Proof",
+    ADDRESS_PROOF: "🏠 Address Proof",
+    COLLEGE_COMPANY: "🎓 College / Company Letter",
+    SELFIE: "📸 Current Selfie",
 };
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -74,7 +74,7 @@ function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' |
     );
 }
 
-// â”€â”€ Section 6A & 7A â€” Food Management (Student) â”€â”€
+// ── Section 6A & 7A — Food Management (Student) ──
 function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
     const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
     const [changing, setChanging] = useState(false);
@@ -83,7 +83,7 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
     const handleToggle = async () => {
         const newVal = !foodEnabled;
         const label = newVal ? 'enable' : 'disable';
-        toast(`${label === 'enable' ? 'ðŸ½ Enable' : 'ðŸš« Disable'} food service?`, {
+        toast(`${label === 'enable' ? '🍴 Enable' : '🚫 Disable'} food service?`, {
             description: 'Change takes effect from the 1st of next month.',
             action: {
                 label: 'Confirm',
@@ -704,7 +704,7 @@ export default function StudentDashboardPage() {
                         <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-8">
                             <div className="flex items-center gap-6">
                                 <div className="h-20 w-20 rounded-2xl bg-white/20 flex items-center justify-center border-2 border-white/30 text-white"><User className="h-10 w-10" /></div>
-                                <div><CardTitle className="text-3xl font-black">{profile?.name || "Verified Resident"}</CardTitle><CardDescription className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">{profile?.displayId} â€¢ Verified Resident</CardDescription></div>
+                                <div><CardTitle className="text-3xl font-black">{profile?.name || "Verified Resident"}</CardTitle><CardDescription className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">{profile?.displayId} • Verified Resident</CardDescription></div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
@@ -737,7 +737,7 @@ export default function StudentDashboardPage() {
                         {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
             {selectedBooking && <RentReceipt booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
             <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
-            <PropertyAgreementModal isOpen={!!signingBooking} onClose={() => setSigningBooking(null)} onAccept={async (deviceInfo) => { const toastId = toast.loading("Signing..."); try { await signAgreement(signingBooking.id, { agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`, signedDevice: deviceInfo.userAgent }); toast.success("Agreement signed! ðŸŽ‰ Owner will now countersign.", { id: toastId }); await fetchData(); setSigningBooking(null); } catch (e: any) { toast.error(e.message, { id: toastId }); } }} property={{ id: signingBooking?.id || '', name: signingBooking?.propertyName || '', address: signingBooking?.propertyAddress || '', city: signingBooking?.propertyCity || '' }} room={{ roomNumber: signingBooking?.roomAssigned || '', type: signingBooking?.occupancy || 'SINGLE', price: Number(signingBooking?.amount || 0), depositMonths: Number(signingBooking?.depositMonths || 2) }} tenant={{ name: signingBooking?.guestName || '' }} moveInDate={signingBooking?.onboardingDate || ''} depositAmount={Number(signingBooking?.depositAmount || 0)} platformFee={0} />
+            <PropertyAgreementModal isOpen={!!signingBooking} onClose={() => setSigningBooking(null)} onAccept={async (deviceInfo) => { const toastId = toast.loading("Signing..."); try { await signAgreement(signingBooking.id, { agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`, signedDevice: deviceInfo.userAgent }); toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId }); await fetchData(); setSigningBooking(null); } catch (e: any) { toast.error(e.message, { id: toastId }); } }} property={{ id: signingBooking?.id || '', name: signingBooking?.propertyName || '', address: signingBooking?.propertyAddress || '', city: signingBooking?.propertyCity || '' }} room={{ roomNumber: signingBooking?.roomAssigned || '', type: signingBooking?.occupancy || 'SINGLE', price: Number(signingBooking?.amount || 0), depositMonths: Number(signingBooking?.depositMonths || 2) }} tenant={{ name: signingBooking?.guestName || '' }} moveInDate={signingBooking?.onboardingDate || ''} depositAmount={Number(signingBooking?.depositAmount || 0)} platformFee={0} />
 
             {/* Cancel Modal */}
             {cancelModal && (
