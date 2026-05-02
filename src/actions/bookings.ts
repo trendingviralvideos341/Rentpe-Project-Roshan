@@ -1565,8 +1565,10 @@ export async function ownerCounterSignAgreement(bookingId: string) {
         where: { id: bookingId },
         data: {
             status: 'BOOKING_CONFIRMED',
-            ownerAgreementSignedAt: new Date(),
-        } as any
+            ownerCountersigned: true,
+            ownerCountersignedAt: new Date(),
+            ownerCountersignedBy: `${session.name || 'Property Owner'} (Property Owner)`,
+        }
     });
 
     // Notify student that agreement is fully executed
