@@ -539,6 +539,57 @@ export default function StudentDashboardPage() {
 
                         return (
                             <div className="space-y-6">
+                                {/* ── Banners & Alerts Section ── */}
+                                <div className="space-y-3">
+                                    {/* Sharing Change Alerts */}
+                                    {bookings.some((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id) && 
+                                        bookings.filter((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id).map((b: any) => (
+                                        <div key={`sharing-alert-${b.id}`} className="bg-red-50 border-2 border-red-400 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-2xl mt-0.5">⚠️</span>
+                                                <div>
+                                                    <p className="font-black text-red-800 text-sm">Your Sharing Type Was Changed</p>
+                                                    <p className="text-red-700 text-xs mt-1">You applied for <strong>{b.originalOccupancy}</strong> but management assigned <strong>{b.occupancy}</strong> at <strong>{b.propertyName}</strong>.</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setDismissedSharingAlert(b.id)} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5">
+                                                <X className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    {/* Room Allocation Notifications */}
+                                    {roomAllocNotifs.map((n: any) => (
+                                        <div key={`room-alloc-${n.id}`} className="bg-red-50 border-2 border-red-500 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-2xl mt-0.5">🏠</span>
+                                                <div>
+                                                    <p className="font-black text-red-800 text-sm">Room / Bed Update</p>
+                                                    <p className="text-red-700 text-xs mt-1">{n.message}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={async () => { await markNotificationRead(n.id); setRoomAllocNotifs(prev => prev.filter(x => x.id !== n.id)); }} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5">
+                                                <X className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    {/* Lifecycle Action Banners */}
+                                    {bookings.map((booking: any) => {
+                                        if (booking.status === 'APPROVED_PENDING_TOKEN')
+                                            return <AlertBanner key={`alert-token-${booking.id}`} type="warning" message={`🔐 Pay ₹1,000 token to reserve your bed at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => router.push(`/secure/payment?id=${booking.id}&type=token`)} />;
+                                        if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
+                                            return <AlertBanner key={`alert-sign-${booking.id}`} type="info" message={`Token paid! Please sign your rental agreement for ${booking.propertyName}.`} actionLabel="Sign Agreement" onAction={() => setSigningBooking(booking)} />;
+                                        if (booking.status === 'AGREEMENT_PENDING')
+                                            return <AlertBanner key={`alert-agr-${booking.id}`} type="info" message={`Agreement signed ✅ Waiting for owner countersign.`} />;
+                                        if (booking.status === 'MOVE_IN_SCHEDULED') {
+                                            const finalAmt = Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000);
+                                            return <AlertBanner key={`alert-final-${booking.id}`} type="warning" message={`Physical check-in verified! Pay joining balance ₹${finalAmt.toLocaleString('en-IN')} to activate stay.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
+                                        }
+                                        return null;
+                                    })}
+                                </div>
+
                                 {/* â”€â”€ Active Stay Section â”€â”€ */}
                                 {activeStay && (
                                     <div className="space-y-4">
