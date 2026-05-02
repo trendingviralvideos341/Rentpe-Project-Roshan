@@ -47,7 +47,7 @@ export async function getTenants() {
                 }
             }
         },
-        orderBy: { name: 'asc' }
+        orderBy: { createdAt: 'desc' }
     });
 
     // Attach action notes for each tenant

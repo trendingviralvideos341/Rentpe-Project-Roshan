@@ -487,6 +487,7 @@ export function BookingsContainer() {
     };
 
     // ── Filtering ─────────────────────────────────────────────────
+    const ACTIVE_STATUSES = ['ACTIVE', 'CHECKIN_CONFIRMED'];
     const STATUS_GROUPS: Record<string, string[]> = {
         ALL: [],
         NEW_REQUEST:     ['APPLIED', 'REQUESTED', 'PENDING_APPROVAL'],
@@ -500,6 +501,10 @@ export function BookingsContainer() {
     };
 
     const filteredBookings = bookings.filter(b => {
+        // Active tenants are managed in the "Active Tenants" sidebar — hide them from
+        // the main onboarding/bookings view UNLESS the user explicitly clicks the "Active Tenants" tab.
+        if (activeTab !== 'CHECKED_IN' && ACTIVE_STATUSES.includes(b.status)) return false;
+
         const matchesSearch =
             (b.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
             (b.displayId || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -693,17 +698,17 @@ export function BookingsContainer() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                         {([
-                            ['ALL',             `📋 All (${bookings.length})`] as const,
+                            ['ALL',             `📋 All (${bookings.filter(b => !['ACTIVE','CHECKIN_CONFIRMED'].includes(b.status)).length})`] as const,
                             ['NEW_REQUEST',     `📥 New Request`] as const,
                             ['ALLOCATE_ROOM',   `🛏 Room Allocated`] as const,
                             ['STUDENT_PAYS',    `💳 Token & Payment`] as const,
                             ['AGREEMENT',       `✍️ Agreement`] as const,
                             ['PHYSICAL_VERIFY', `🔍 Physical Verify`] as const,
-                            ['CHECKED_IN',      `✅ Checked In`] as const,
+                            ['CHECKED_IN',      `🏠 Active Tenants (${bookings.filter(b => ['ACTIVE','CHECKIN_CONFIRMED'].includes(b.status)).length})`] as const,
                             ['REJECTED',        `❌ Rejected`] as const,
                             ['CANCELLED',       `🚫 Cancelled`] as const,
                         ]).map(([t, label]) => (
-                            <Button key={t} size="sm" onClick={() => setActiveTab(t)}
+                            <Button key={t} size="sm" onClick={() => setActiveTab(t as any)}
                                 className={`h-7 text-[10px] font-bold transition-all ${activeTab === t ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md" : "bg-white border hover:bg-muted text-foreground"}`}>
                                 {label}
                             </Button>

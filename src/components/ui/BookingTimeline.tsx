@@ -99,8 +99,12 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
 
                 {/* Timeline Steps */}
                 {TIMELINE_STEPS.map((step, index) => {
-                    const isCompleted = index < activeIndex || (currentStatus === 'COMPLETED' && index === TIMELINE_STEPS.length - 1);
-                    const isCurrent = index === activeIndex && !isFailed;
+                                // For ACTIVE/CHECKED_IN/CHECKIN_CONFIRMED — all steps including the final one are done ✅
+                    const isFullyActive = ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(currentStatus);
+                    const isCompleted = index < activeIndex
+                        || (currentStatus === 'COMPLETED' && index === TIMELINE_STEPS.length - 1)
+                        || (isFullyActive && index === TIMELINE_STEPS.length - 1);
+                    const isCurrent = index === activeIndex && !isFailed && !isFullyActive;
                     const isUpcoming = index > activeIndex;
                     const Icon = step.icon;
                     const dateVal = booking[step.dateField] || (index === 0 ? booking.createdAt : null);
