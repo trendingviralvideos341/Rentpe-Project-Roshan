@@ -34,7 +34,7 @@ const TIMELINE_STEPS = [
         key: 'PHYSICAL_KYC',
         label: 'Physical KYC',
         icon: ScanFace,
-        description: 'Visit the property with your original ID for physical verification.',
+        description: 'Owner verifies your ID physically at the property.',
         dateField: 'physicalVerifiedAt',
     },
     {
@@ -73,19 +73,19 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         // Step 1 — Room Allocated done → Step 2 (Token Paid) is next
         if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 2;
 
-        // Step 2 — KYC states still at token step
+        // Step 2 — Token step
         if (status === 'KYC_PENDING' || status === 'APPROVED_KYC_PENDING' || status === 'KYC_FAILED') return 2;
 
-        // Step 3 — Token paid, now Physical KYC is next
+        // Step 3 — Token paid → Physical KYC is next
         if (status === 'ROOM_RESERVED') return 3;
 
         // Step 4 — Physical verified → sign agreement
         if (status === 'PHYSICAL_VERIFIED' || status === 'AGREEMENT_PENDING') return 4;
 
-        // Step 4 — Agreement Signed / Confirmed (agreement done, awaiting move-in)
+        // Step 4 — Agreement done, move-in is next
         if (status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 4;
 
-        // Step 5 — Move-in Ready (final payment pending)
+        // Step 5 — Move-in Ready
         if (status === 'MOVE_IN_SCHEDULED') return 5;
 
         // Step 6 — Active Tenant
