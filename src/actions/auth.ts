@@ -81,7 +81,7 @@ export async function signup(formData: FormData) {
         const isOwner = roleUp === "OWNER";
         const isStudent = roleUp === "USER";
 
-        const displayId = await generateSequentialId(role === 'OWNER' ? 'OWNER' : 'USER');
+        const displayId = await generateMasterId(roleUp);
 
         // OTP was verified above — email ownership is already proven.
         // No secondary email-link verification needed.
