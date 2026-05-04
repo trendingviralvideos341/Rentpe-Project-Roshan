@@ -28,6 +28,7 @@ function PaymentPortal() {
     const [booking, setBooking] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
+    const [countdown, setCountdown] = useState(5);
 
     useEffect(() => {
         if (!id) { router.push("/dashboard/student"); return; }
@@ -49,6 +50,14 @@ function PaymentPortal() {
         };
         fetchBooking();
     }, [id, router]);
+
+    // Auto-redirect countdown after payment success
+    useEffect(() => {
+        if (!isPaid) return;
+        if (countdown <= 0) { router.push("/dashboard/student"); return; }
+        const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [isPaid, countdown, router]);
 
     const handlePay = async () => {
         if (!booking) return;
@@ -254,6 +263,21 @@ function PaymentPortal() {
                                 <p className="text-sm text-slate-500">Booking ID: <strong>{booking.displayId}</strong></p>
                             </>
                         )}
+                        {/* Auto-redirect countdown */}
+                        <div className="flex items-center justify-center gap-2 py-2">
+                            <div className="relative w-10 h-10 flex items-center justify-center">
+                                <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                                    <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" strokeWidth="3"
+                                        strokeDasharray={`${(countdown / 5) * 100} 100`}
+                                        strokeLinecap="round"
+                                        style={{ transition: 'stroke-dasharray 1s linear' }}
+                                    />
+                                </svg>
+                                <span className="text-sm font-black text-indigo-700 relative z-10">{countdown}</span>
+                            </div>
+                            <p className="text-sm font-bold text-slate-500">Redirecting to dashboard in <strong className="text-indigo-600">{countdown}s</strong>…</p>
+                        </div>
                         <Button className="w-full h-12 font-black rounded-xl bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white shadow-lg" onClick={() => router.push("/dashboard/student")}>
                             Go to My Dashboard
                         </Button>

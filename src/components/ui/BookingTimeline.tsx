@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, AlertCircle, Clock, Calendar, Home, GraduationCap, ClipboardList, ShieldCheck, PackageOpen, CreditCard, ScrollText, BedDouble } from "lucide-react";
+import { Check, AlertCircle, Clock, Calendar, Home, GraduationCap, ClipboardList, ShieldCheck, PackageOpen, CreditCard, ScrollText, BedDouble, ScanFace } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,13 @@ const TIMELINE_STEPS = [
         icon: CreditCard,
         description: '₹1,000 token paid. Your bed is now reserved.',
         dateField: 'paidAt',
+    },
+    {
+        key: 'PHYSICAL_KYC',
+        label: 'Physical KYC',
+        icon: ScanFace,
+        description: 'Visit the property with your original ID for physical verification.',
+        dateField: 'physicalVerifiedAt',
     },
     {
         key: 'AGREEMENT_SIGNED',
@@ -63,24 +70,26 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         // Step 0 — Application
         if (status === 'APPLIED' || status === 'PENDING_APPROVAL' || status === 'REQUESTED') return 0;
 
-        // Step 1 — Room Allocated (completed) → Step 2 (Token Paid) is the next action
-        // APPROVED_PENDING_TOKEN means room is allocated, now token payment is required
+        // Step 1 — Room Allocated done → Step 2 (Token Paid) is next
         if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 2;
 
-        // Step 2 — KYC states (token step is current)
+        // Step 2 — KYC states still at token step
         if (status === 'KYC_PENDING' || status === 'APPROVED_KYC_PENDING' || status === 'KYC_FAILED') return 2;
 
-        // Step 3 — Agreement (token paid → sign agreement is next)
-        if (status === 'ROOM_RESERVED' || status === 'AGREEMENT_PENDING') return 3;
+        // Step 3 — Token paid, now Physical KYC is next
+        if (status === 'ROOM_RESERVED') return 3;
 
-        // Step 3 — Agreement Signed / Confirmed
-        if (status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 3;
+        // Step 4 — Physical verified → sign agreement
+        if (status === 'PHYSICAL_VERIFIED' || status === 'AGREEMENT_PENDING') return 4;
 
-        // Step 4 — Move-in Ready (Physical ID verified, final payment pending)
-        if (status === 'MOVE_IN_SCHEDULED') return 4;
+        // Step 4 — Agreement Signed / Confirmed (agreement done, awaiting move-in)
+        if (status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 4;
 
-        // Step 5 — Active Tenant
-        if (status === 'ACTIVE' || status === 'CHECKED_IN' || status === 'CHECKIN_CONFIRMED') return 5;
+        // Step 5 — Move-in Ready (final payment pending)
+        if (status === 'MOVE_IN_SCHEDULED') return 5;
+
+        // Step 6 — Active Tenant
+        if (status === 'ACTIVE' || status === 'CHECKED_IN' || status === 'CHECKIN_CONFIRMED') return 6;
 
         return 0;
     };
