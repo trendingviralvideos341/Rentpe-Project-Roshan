@@ -176,9 +176,9 @@ export default function SignupPage() {
                         </div>
                         <CardTitle className="text-2xl font-bold text-green-700">Registration Successful!</CardTitle>
                         <CardDescription className="text-lg">
-                            Welcome to RentPe, <strong>{firstName}</strong>! Your account has been created successfully.
+                            Welcome to RentPe, <strong>{firstName}</strong>! Your account is verified and ready to use.
                         </CardDescription>
-                        <p className="text-muted-foreground">Redirecting you to the login page...</p>
+                        <p className="text-muted-foreground">Redirecting you to login...</p>
                         <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
                     </div>
                 </Card>

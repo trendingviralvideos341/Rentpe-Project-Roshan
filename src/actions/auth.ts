@@ -82,17 +82,18 @@ export async function signup(formData: FormData) {
         const isStudent = roleUp === "USER";
 
         const displayId = await generateSequentialId(role === 'OWNER' ? 'OWNER' : 'USER');
-        const emailVerificationToken = crypto.randomBytes(32).toString('hex');
 
+        // OTP was verified above — email ownership is already proven.
+        // No secondary email-link verification needed.
         const user = await prisma.user.create({
             data: {
                 name,
                 email,
                 passwordHash: hashedPassword,
                 phone,
-                phoneVerified: true, // They verified OTP in Signup UI
-                emailVerified: false,
-                emailVerificationToken,
+                phoneVerified: true,
+                emailVerified: true,          // ✅ OTP = email verification
+                emailVerificationToken: null, // Not needed
                 role: roleUp,
                 // Strict role separation: Owners get ONLY OWNER, Students get ONLY USER
                 // Dual-role is only granted manually by Admin
@@ -101,7 +102,7 @@ export async function signup(formData: FormData) {
                 isStudent,
                 isOwner,
                 displayId,
-                status: 'PENDING_VERIFICATION',
+                status: 'ACTIVE',             // ✅ Active immediately after OTP
                 applicationId: displayId,
                 // Legal compliance: T&C acceptance (DPDP Act 2023, MTA 2021, Consumer Protection Act 2019)
                 termsAccepted: true,
@@ -122,14 +123,14 @@ export async function signup(formData: FormData) {
             newValue: { marketingAgreed, dataSharingAgreed }
         });
 
-        // Send Verification Email instead of Welcome Email initially
+        // Send Welcome Email (account is already verified via OTP)
         sendEmail({
             to: email,
-            subject: 'Verify your RentPe account 🛡️',
-            html: EmailVerificationTemplate(name, emailVerificationToken),
-        }).catch(err => console.error('Failed to send verification email:', err));
+            subject: 'Welcome to RentPe! 🚀',
+            html: WelcomeTemplate(name),
+        }).catch(err => console.error('Failed to send welcome email:', err));
 
-        return { success: true, message: "Signup successful! Please check your email to verify your account." };
+        return { success: true, message: "Account created successfully! You can now log in." };
 
     } catch (e) {
         console.error("Signup Error:", e);
