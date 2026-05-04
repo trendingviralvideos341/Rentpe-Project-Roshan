@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
-import { generateSequentialId } from "@/lib/ids";
+import { generateSequentialId, generateMasterId } from "@/lib/ids";
 import { NotificationService } from "@/lib/notifications";
 import { Session, UserRole } from '@/types/auth';
 import crypto from 'crypto';
