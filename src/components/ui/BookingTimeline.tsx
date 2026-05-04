@@ -63,11 +63,11 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         // Step 0 — Application
         if (status === 'APPLIED' || status === 'PENDING_APPROVAL' || status === 'REQUESTED') return 0;
 
-        // Step 1 — Room Allocated / Awaiting Token
-        if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 1;
+        // Step 1 — Room Allocated (completed) → Step 2 (Token Paid) is the next action
+        // APPROVED_PENDING_TOKEN means room is allocated, now token payment is required
+        if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 2;
 
-        // Step 2 — Token Paid (current step is token, mark it current while token pending)
-        // Once token is paid (ROOM_RESERVED), token step is DONE → advance to step 3
+        // Step 2 — KYC states (token step is current)
         if (status === 'KYC_PENDING' || status === 'APPROVED_KYC_PENDING' || status === 'KYC_FAILED') return 2;
 
         // Step 3 — Agreement (token paid → sign agreement is next)
