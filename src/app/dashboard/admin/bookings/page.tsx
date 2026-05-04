@@ -48,8 +48,9 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
     PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
     APPROVED:                 { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
     APPROVED_PENDING_TOKEN:   { label: '🔐 Awaiting Token',    cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    ROOM_RESERVED:            { label: '🏠 Room Reserved',     cls: 'bg-teal-100 text-teal-700 border-teal-300' },
-    AGREEMENT_PENDING:        { label: '✍️ Owner Must Sign',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    ROOM_RESERVED:            { label: '🏠 Token Paid',        cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    PHYSICAL_VERIFIED:        { label: '🪪 ID Verified',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Student Signed',    cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     PAID:                     { label: '💳 Paid',              cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
     BOOKING_CONFIRMED:        { label: '📋 Both Signed',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
@@ -77,13 +78,16 @@ function BookingNextStep({ booking }: { booking: any }) {
         <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">⏳ Awaiting ₹1,000 Token</span>
     );
     if (s === 'ROOM_RESERVED') return (
-        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">✍️ Student Signs Agreement</span>
+        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">🔍 Physical Check-in → Tenant ID</span>
+    );
+    if (s === 'PHYSICAL_VERIFIED') return (
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">✍️ Awaiting Student Agreement</span>
     );
     if (s === 'AGREEMENT_PENDING') return (
         <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full border border-violet-200">✍️ Countersign Agreement (Owner)</span>
     );
     if (s === 'BOOKING_CONFIRMED') return (
-        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">🔍 Physical ID Verify → Check-in</span>
+        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">💳 Awaiting Student Final Payment</span>
     );
     if (s === 'MOVE_IN_SCHEDULED') return (
         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-200">⏳ Awaiting Student Final Payment</span>
@@ -189,6 +193,34 @@ function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboardin
                                             <div className="text-sm font-medium">{value}</div>
                                         </div>
                                     ))}
+                                </div>
+                                {/* ── Permanent Legal IDs ── */}
+                                <div className="bg-indigo-950 rounded-xl p-3 mt-2">
+                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">🔒 Permanent Legal Identifiers</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
+                                            <p className="text-[9px] text-indigo-400 font-bold uppercase mb-0.5">Booking ID</p>
+                                            <p className="text-[11px] font-black text-white font-mono">{booking.displayId}</p>
+                                        </div>
+                                        {booking.tenantDisplayId && (
+                                            <div className="bg-emerald-900/60 rounded-lg p-2 border border-emerald-600/40">
+                                                <p className="text-[9px] text-emerald-400 font-bold uppercase mb-0.5">Tenant ID</p>
+                                                <p className="text-[11px] font-black text-emerald-300 font-mono">{booking.tenantDisplayId}</p>
+                                            </div>
+                                        )}
+                                        {booking.userDisplayId && (
+                                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
+                                                <p className="text-[9px] text-indigo-400 font-bold uppercase mb-0.5">User ID</p>
+                                                <p className="text-[11px] font-black text-white font-mono">{booking.userDisplayId}</p>
+                                            </div>
+                                        )}
+                                        {booking.propertyDisplayId && (
+                                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
+                                                <p className="text-[9px] text-indigo-400 font-bold uppercase mb-0.5">PG / Property ID</p>
+                                                <p className="text-[11px] font-black text-white font-mono">{booking.propertyDisplayId}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -456,10 +488,13 @@ export default function AdminBookingsPage() {
         if (!kycBooking) return;
         try {
             await checkInBooking(kycBooking.id);
-            toast.success("Student Checked-in.");
+            const isNewFlow = kycBooking.status === 'ROOM_RESERVED';
+            toast.success(isNewFlow
+                ? '✅ Physical KYC done! Tenant ID assigned. Student will sign agreement next.'
+                : '✅ Student Checked-in! Tenancy is now ACTIVE.');
             setKycBooking(null);
             await fetchBookings();
-        } catch (e: any) { toast.error(e.message || "Check-in failed."); }
+        } catch (e: any) { toast.error(e.message || 'Check-in failed.'); }
     };
 
     const STATUS_GROUPS: Record<string, string[]> = {
@@ -467,7 +502,7 @@ export default function AdminBookingsPage() {
         NEW_REQUEST:     ['APPLIED', 'REQUESTED', 'PENDING_APPROVAL'],
         ALLOCATE_ROOM:   ['APPROVED', 'APPROVED_PENDING_TOKEN', 'ROOM_RESERVED'],
         STUDENT_PAYS:    ['PAID', 'CASH_PAID'],
-        AGREEMENT:       ['AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
+        AGREEMENT:       ['PHYSICAL_VERIFIED', 'AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
         PHYSICAL_VERIFY: ['MOVE_IN_SCHEDULED'],
         REJECTED:        ['REJECTED'],
         CANCELLED:       ['CANCELLED', 'EXPIRED'],
@@ -642,9 +677,13 @@ export default function AdminBookingsPage() {
                                     {booking.status === 'APPROVED_PENDING_TOKEN' && (
                                         <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">⏳ Awaiting ₹1,000 Token</span>
                                     )}
-                                    {/* Step 4: Student signing agreement */}
+                                    {/* Step 4: NEW FLOW — Token paid → Physical Check-in → Tenant ID assigned */}
                                     {booking.status === 'ROOM_RESERVED' && (
-                                        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded border border-teal-200">✍️ Student Signing Agreement</span>
+                                        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-xs flex-1" onClick={() => handleCheckIn(booking)}>🔍 Physical Check-in</Button>
+                                    )}
+                                    {/* Step 5: PHYSICAL_VERIFIED — awaiting student agreement signature */}
+                                    {booking.status === 'PHYSICAL_VERIFIED' && (
+                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">✍️ Awaiting Student Agreement</span>
                                     )}
                                     {/* Step 5: Owner countersign */}
                                     {booking.status === 'AGREEMENT_PENDING' && (
@@ -740,11 +779,13 @@ export default function AdminBookingsPage() {
 
                                                                         if (s === 'APPROVED_PENDING_TOKEN') return (<><span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">⏳ Awaiting Token</span><RejectBtn /></>);
 
-                                                                        if (s === 'ROOM_RESERVED') return (<><span className="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded border border-teal-200">✍️ Student Signing</span><RejectBtn /></>);
+                                                                        if (s === 'ROOM_RESERVED') return (<><Button size="sm" className="h-7 text-[10px] bg-teal-600 hover:bg-teal-700 font-bold" onClick={() => handleCheckIn(booking)}><ShieldCheck className="h-3 w-3 mr-1" />Physical Check-in</Button><RejectBtn /></>);
+
+                                                                        if (s === 'PHYSICAL_VERIFIED') return (<><span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">✍️ Awaiting Student Agreement</span><RejectBtn /></>);
 
                                                                         if (s === 'AGREEMENT_PENDING') return (<><Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={async () => { try { await ownerCounterSignAgreement(booking.id); toast.success('Agreement countersigned!'); fetchBookings(); } catch(e:any){toast.error(e.message||'Failed');} }}><ShieldCheck className="h-3 w-3 mr-1" />Countersign</Button><RejectBtn /></>);
 
-                                                                        if (s === 'BOOKING_CONFIRMED') return (<><Button size="sm" className="h-7 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}><ShieldCheck className="h-3 w-3 mr-1" />Physical Check-in</Button><RejectBtn /></>);
+                                                                        if (s === 'BOOKING_CONFIRMED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span><Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button><RejectBtn /></>);
 
                                                                         if (s === 'MOVE_IN_SCHEDULED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span><Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button><RejectBtn /></>);
 

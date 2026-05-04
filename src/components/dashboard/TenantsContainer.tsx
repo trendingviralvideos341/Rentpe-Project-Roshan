@@ -136,7 +136,8 @@ export function TenantsContainer() {
 
         const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
             t.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
-            t.displayId.toLowerCase().includes(search.toLowerCase());
+            (t.displayId || '').toLowerCase().includes(search.toLowerCase()) ||
+            (t.booking?.displayId || '').toLowerCase().includes(search.toLowerCase());
 
         const matchType = filterType === "ALL" || t.roomType === filterType;
         const matchProperty = filterProperty === "ALL" || t.property?.name === filterProperty;
@@ -254,6 +255,17 @@ export function TenantsContainer() {
                                 <p>🛏 {t.roomNumber} ({t.roomType})</p>
                                 <p>💰 ₹{t.rentAmount}/month</p>
                                 <p>📅 Move-in: {t.moveInDate}</p>
+                                {/* Permanent ID badges — industry standard for ops transparency */}
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                    <span className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full font-mono">
+                                        🔖 Tenant: {t.displayId}
+                                    </span>
+                                    {t.booking?.displayId && (
+                                        <span className="inline-flex items-center gap-1 bg-violet-50 border border-violet-200 text-violet-700 text-[9px] font-black px-2 py-0.5 rounded-full font-mono">
+                                            📋 Booking: {t.booking.displayId}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             {!isBlocked && !isCheckedOut && (
                                 <div className="flex gap-2 flex-wrap">
@@ -308,12 +320,13 @@ export function TenantsContainer() {
                             <thead className="bg-muted border-b">
                                 <tr>
                                     <th className="p-4 text-left font-medium">Tenant ID</th>
-                                    <th className="p-4 text-left font-medium">Name &amp; PG</th>
+                                    <th className="p-4 text-left font-medium">Booking ID</th>
+                                    <th className="p-4 text-left font-medium">Name & PG</th>
                                     <th className="p-4 text-left font-medium">Room</th>
                                     <th className="p-4 text-left font-medium">Start Date</th>
                                     <th className="p-4 text-left font-medium">Monthly Rent</th>
                                     <th className="p-4 text-left font-medium">{currentMonth} Status</th>
-                                    <th className="p-4 text-left font-medium">Status &amp; History</th>
+                                    <th className="p-4 text-left font-medium">Status & History</th>
                                     <th className="p-4 text-left font-medium">Actions</th>
                                 </tr>
                             </thead>
@@ -328,7 +341,20 @@ export function TenantsContainer() {
                                     return (
                                         <Fragment key={t.id}>
                                         <tr className={`border-b hover:bg-muted/5 ${isCheckedOut ? "bg-slate-50 opacity-80" : isBlocked ? "bg-red-50" : ""}`}>
-                                            <td className="p-4 font-mono text-xs text-purple-700 font-bold">{t.displayId}</td>
+                                            <td className="p-4">
+                                                <div className="font-mono text-xs text-purple-700 font-black">{t.displayId}</div>
+                                                <div className="text-[9px] text-slate-400 font-mono mt-0.5">Tenant ID</div>
+                                            </td>
+                                            <td className="p-4">
+                                                {t.booking?.displayId ? (
+                                                    <div>
+                                                        <div className="font-mono text-xs text-indigo-700 font-black">{t.booking.displayId}</div>
+                                                        <div className="text-[9px] text-slate-400 font-mono mt-0.5">Booking ID</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] text-slate-400">—</span>
+                                                )}
+                                            </td>
                                                 <td className="p-4">
                                                     <div className={`font-medium ${isCheckedOut ? "text-slate-500 italic" : isBlocked ? "text-red-500" : ""}`}>{t.name}</div>
                                                     <div className="text-[10px] text-indigo-600 font-bold uppercase">{t.property?.name || "Unknown PG"}</div>

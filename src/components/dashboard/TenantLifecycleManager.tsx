@@ -250,7 +250,12 @@ export function TenantLifecycleManager({ ownerId }: TenantLifecycleManagerProps)
                                                     </div>
                                                     <div>
                                                         <p className="font-black text-slate-800 text-sm leading-none">{tenant.name}</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">{tenant.displayId}</p>
+                                                        <div className="flex gap-1.5 mt-1">
+                                                            <span className="text-[9px] text-slate-400 font-bold uppercase border border-slate-200 px-1 rounded">{tenant.displayId}</span>
+                                                            {tenant.booking?.displayId && (
+                                                                <span className="text-[9px] text-indigo-400 font-bold uppercase border border-indigo-100 px-1 rounded">Ref: {tenant.booking.displayId}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </TableCell>

@@ -50,10 +50,12 @@ export type BookingStatus =
     | 'PENDING_APPROVAL' 
     | 'APPROVED_PENDING_TOKEN' 
     | 'ROOM_RESERVED' 
+    | 'PHYSICAL_VERIFIED'       // ← Tenant physically checked-in & ID verified; Tenant ID assigned
     | 'KYC_PENDING' 
     | 'KYC_REJECTED' 
-    | 'AGREEMENT_PENDING' 
-    | 'BOOKING_CONFIRMED' 
+    | 'AGREEMENT_PENDING'       // ← Student signed agreement with Tenant ID visible
+    | 'BOOKING_CONFIRMED'       // ← Owner countersigned; both parties executed
+    | 'ACTIVE'                  // ← Final payment done; resident is live
     | 'CHECKED_IN' 
     | 'PAID' 
     | 'CASH_PAID' 
@@ -62,7 +64,7 @@ export type BookingStatus =
 
 export interface Booking {
     id: string;
-    displayId: string;
+    displayId: string;          // REN-BOOK-2026-XXXX — permanent booking reference
     userId: string;
     propertyId?: string | null;
     roomId?: string | null;
@@ -77,6 +79,7 @@ export interface Booking {
     amount: number;
     roomAssigned?: string | null;
     agreementSigned: boolean;
+    tenantId?: string | null;   // Links to Tenant record (set after physical check-in)
     createdAt: Date;
     updatedAt: Date;
 }

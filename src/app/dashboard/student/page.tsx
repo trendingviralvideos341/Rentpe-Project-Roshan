@@ -156,11 +156,12 @@ function BookingCard({
     const isKycPending = booking.status === 'KYC_PENDING' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_FAILED';
     const isCashPending = booking.paymentStatus === 'CASH_PENDING' && booking.paymentMethod === 'CASH' && booking.status === 'APPROVED';
     const isTokenPending = booking.status === 'APPROVED_PENDING_TOKEN';
-    const isTokenPaid = booking.status === 'ROOM_RESERVED'; 
+    const isTokenPaid = booking.status === 'ROOM_RESERVED';
+    const isPhysicalVerified = booking.status === 'PHYSICAL_VERIFIED'; // NEW: KYC done, Tenant ID assigned, ready to sign agreement
     const isFinalPaymentPending = booking.status === 'MOVE_IN_SCHEDULED';
     const isPaymentPending = isTokenPending || isFinalPaymentPending || (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING') && !!booking.roomAssigned && !isCashPending;
     const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
-    const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending || isTokenPending || isTokenPaid;
+    const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending || isTokenPending || isTokenPaid || isPhysicalVerified;
     const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
     const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') && !isCheckedIn;
     const isActive = booking.status === 'ACTIVE' || booking.status === 'CHECKED_IN' || booking.status === 'CHECKIN_CONFIRMED';
@@ -168,6 +169,9 @@ function BookingCard({
     const isCompleted = booking.status === 'COMPLETED' || booking.status === 'CHECKED_OUT';
     const isCancelled = booking.status === 'CANCELLED' || booking.status === 'EXPIRED';
     const hasPendingAmount = (isPaid || isPaymentPending) && booking.pendingAmount && parseFloat(booking.pendingAmount) > 0;
+    // tenantId is populated on the booking after physical check-in
+    const tenantDisplayId = booking.tenantDisplayId || booking.tenant?.displayId || null;
+    const userDisplayId = booking.userDisplayId || null;
 
     return (
         <Card key={booking.id} className={`${isActiveStay ? "border-emerald-500 border-2 shadow-lg shadow-emerald-100/50" : isApproved ? "border-green-400 border-2" : isPaid ? "border-blue-300 border-2" : hasPendingAmount ? "border-red-400 border-2" : isCancelled ? "border-gray-300 opacity-70" : ""}`}>
@@ -200,13 +204,29 @@ function BookingCard({
                     {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>}
                     {isKycPending && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">🆔 KYC Verification</span>}
                     {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🔒 Token Payment Pending</span>}
-                    {isTokenPaid && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Sign Agreement</span>}
+                    {isTokenPaid && !isPhysicalVerified && <span className="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Awaiting Physical KYC</span>}
+                    {isPhysicalVerified && <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🆔 ID Verified — Sign Agreement Now</span>}
                     {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
-                    {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Agreement Sent — Awaiting Owner</span>}
+                    {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Signed — Awaiting Owner Countersign</span>}
                     {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Sign Agreement</span>}
                     {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>}
                     {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>}
                 </div>
+                {/* ── Permanent ID Badges (show after physical KYC and beyond) ── */}
+                {(isPhysicalVerified || isAgreementPending || isPaid || isCheckedIn || isActive || isCompleted) && (tenantDisplayId || booking.displayId) && (
+                    <div className="flex flex-wrap gap-2">
+                        {booking.displayId && (
+                            <span className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full font-mono">
+                                🔖 Booking: {booking.displayId}
+                            </span>
+                        )}
+                        {tenantDisplayId && (
+                            <span className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-full font-mono">
+                                🪪 Tenant ID: {tenantDisplayId}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* ── Payment Cards ── */}
                 {isTokenPending && booking.roomAssigned && (
@@ -244,14 +264,34 @@ function BookingCard({
                                 <FileText className="h-3 w-3 mr-1" /> View Receipt
                             </Button>
                         </div>
-                        {!booking.agreementSigned && (
-                            <div className="w-full bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-500 rounded-2xl p-5 space-y-3 animate-pulse">
-                                <div className="flex items-center gap-2 text-sm font-black text-red-800">
-                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping mr-1"></span>
+                        {/* NEW FLOW: ROOM_RESERVED → show awaiting physical KYC (not sign agreement yet) */}
+                        {!booking.tenantId && isTokenPaid && (
+                            <div className="w-full bg-gradient-to-br from-teal-50 to-cyan-50 border-2 border-teal-400 rounded-2xl p-5 space-y-3">
+                                <div className="flex items-center gap-2 text-sm font-black text-teal-800">
+                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping mr-1"></span>
+                                    🔍 Physical ID Verification Pending
+                                </div>
+                                <p className="text-xs text-teal-700 font-medium">Token paid! Your bed is reserved. The property manager will physically verify your ID. Once verified, you can sign the rental agreement.</p>
+                                <div className="bg-teal-100/60 rounded-xl p-3 text-[11px] text-teal-800 font-bold border border-teal-200">
+                                    📌 Visit <strong>{booking.propertyName}</strong> with your original Aadhaar/Passport for KYC verification.
+                                </div>
+                            </div>
+                        )}
+                        {/* NEW FLOW: PHYSICAL_VERIFIED — Tenant ID assigned, prompt to sign agreement */}
+                        {isPhysicalVerified && !booking.agreementSigned && (
+                            <div className="w-full bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-500 rounded-2xl p-5 space-y-3 animate-pulse">
+                                <div className="flex items-center gap-2 text-sm font-black text-emerald-800">
+                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping mr-1"></span>
                                     ✍️ Sign Your Rental Agreement
                                 </div>
-                                <p className="text-xs text-red-700 font-medium">Token paid! Your bed is reserved. Sign the rental agreement to proceed to physical verification.</p>
-                                <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-black h-12 rounded-2xl" onClick={() => setSigningBooking(booking)}>
+                                <p className="text-xs text-emerald-700 font-medium">Your identity has been physically verified! Your Tenant ID is now assigned. Sign the rental agreement to complete onboarding.</p>
+                                {tenantDisplayId && (
+                                    <div className="flex items-center gap-2 bg-white/80 border border-emerald-200 rounded-xl p-3">
+                                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Your Tenant ID:</span>
+                                        <span className="font-mono font-black text-emerald-900 text-sm">{tenantDisplayId}</span>
+                                    </div>
+                                )}
+                                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black h-12 rounded-2xl" onClick={() => setSigningBooking(booking)}>
                                     ✍️ Sign Agreement Now
                                 </Button>
                             </div>
@@ -261,7 +301,7 @@ function BookingCard({
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm font-black text-purple-800">✍️ Agreement Signed</p>
-                                        <p className="text-xs text-purple-600 mt-0.5">Waiting for owner countersignature. ID verification next.</p>
+                                        <p className="text-xs text-purple-600 mt-0.5">Waiting for owner countersignature.</p>
                                     </div>
                                     <Button size="sm" variant="outline" className="border-purple-400 text-purple-700 hover:bg-purple-100 font-black text-xs shrink-0" onClick={() => {
                                         setViewingDoc({ type: 'agreement', data: {
@@ -737,7 +777,45 @@ export default function StudentDashboardPage() {
                         {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
             {selectedBooking && <RentReceipt booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
             <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
-            <PropertyAgreementModal isOpen={!!signingBooking} onClose={() => setSigningBooking(null)} onAccept={async (deviceInfo) => { const toastId = toast.loading("Signing..."); try { await signAgreement(signingBooking.id, { agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`, signedDevice: deviceInfo.userAgent }); toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId }); await fetchData(); setSigningBooking(null); } catch (e: any) { toast.error(e.message, { id: toastId }); } }} property={{ id: signingBooking?.id || '', name: signingBooking?.propertyName || '', address: signingBooking?.propertyAddress || '', city: signingBooking?.propertyCity || '' }} room={{ roomNumber: signingBooking?.roomAssigned || '', type: signingBooking?.occupancy || 'SINGLE', price: Number(signingBooking?.amount || 0), depositMonths: Number(signingBooking?.depositMonths || 2) }} tenant={{ name: signingBooking?.guestName || '' }} moveInDate={signingBooking?.onboardingDate || ''} depositAmount={Number(signingBooking?.depositAmount || 0)} platformFee={0} />
+            <PropertyAgreementModal
+                isOpen={!!signingBooking}
+                onClose={() => setSigningBooking(null)}
+                onAccept={async (deviceInfo) => {
+                    const toastId = toast.loading("Signing...");
+                    try {
+                        await signAgreement(signingBooking.id, {
+                            agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`,
+                            signedDevice: deviceInfo.userAgent
+                        });
+                        toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId });
+                        await fetchData();
+                        setSigningBooking(null);
+                    } catch (e: any) { toast.error(e.message, { id: toastId }); }
+                }}
+                property={{
+                    id: signingBooking?.propertyId || signingBooking?.id || '',
+                    name: signingBooking?.propertyName || '',
+                    address: signingBooking?.propertyAddress || '',
+                    city: signingBooking?.propertyCity || '',
+                    displayId: signingBooking?.propertyDisplayId || null,
+                }}
+                room={{
+                    roomNumber: signingBooking?.roomAssigned || '',
+                    type: signingBooking?.occupancy || 'SINGLE',
+                    price: Number(signingBooking?.amount || 0),
+                    depositMonths: Number(signingBooking?.depositMonths || 2)
+                }}
+                tenant={{
+                    name: signingBooking?.guestName || '',
+                    email: signingBooking?.guestEmail || undefined,
+                    userId: signingBooking?.userDisplayId || profile?.displayId || null,
+                    tenantId: signingBooking?.tenantDisplayId || signingBooking?.tenant?.displayId || null,
+                }}
+                moveInDate={signingBooking?.onboardingDate || signingBooking?.moveInDate || ''}
+                depositAmount={Number(signingBooking?.depositAmount || 0)}
+                platformFee={0}
+                bookingDisplayId={signingBooking?.displayId || null}
+            />
 
             {/* Cancel Modal */}
             {cancelModal && (

@@ -227,10 +227,16 @@ export async function getBookings() {
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    user: { select: { name: true, email: true } },
-                    property: { select: { foodType: true, foodPricePerMonth: true } as any }
+                    user: { select: { name: true, email: true, displayId: true } },
+                    property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
+                    tenant: { select: { id: true, displayId: true } },
                 }
-            });
+            }).then(bookings => bookings.map(b => ({
+                ...b,
+                tenantDisplayId: (b as any).tenant?.displayId || null,
+                userDisplayId: (b as any).user?.displayId || null,
+                propertyDisplayId: (b as any).property?.displayId || null,
+            })));
         } else {
             const bookings = await prisma.booking.findMany({
                 where: { userId },
@@ -250,14 +256,18 @@ export async function getBookings() {
                             owner: { select: { name: true, email: true, phone: true } }
                         }
                     },
-                    user: { select: { name: true, email: true } }
+                    user: { select: { name: true, email: true, displayId: true } },
+                    tenant: { select: { id: true, displayId: true } },
                 }
             });
 
             return bookings.map((b) => {
                 return {
                     ...b,
-                    tenantId: b.tenantId || null, // Direct link from schema
+                    tenantId: b.tenantId || null,
+                    tenantDisplayId: (b as any).tenant?.displayId || null,
+                    userDisplayId: (b as any).user?.displayId || null,
+                    propertyDisplayId: b.property?.displayId || null,
                     ownerName: b.property?.owner?.name || null,
                     ownerEmail: b.property?.owner?.email || null,
                     ownerPhone: b.property?.owner?.phone || null,
@@ -581,12 +591,12 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
     // Fetch booking before update (need roomId, bedId for activation)
     const existingB = await prisma.booking.findUnique({
         where: { id },
-        include: { documents: true }
+        include: { documents: true, tenant: true }
     });
     if (!existingB) throw new Error('Booking not found');
 
-    // Determine if this is final joining payment (MOVE_IN_SCHEDULED) → auto-activate
-    const isFinalPayment = existingB.status === 'MOVE_IN_SCHEDULED';
+    // Determine if this is final joining payment (MOVE_IN_SCHEDULED or BOOKING_CONFIRMED) → auto-activate
+    const isFinalPayment = existingB.status === 'MOVE_IN_SCHEDULED' || existingB.status === 'BOOKING_CONFIRMED';
 
     const booking = await prisma.booking.update({
         where: { id },
@@ -635,39 +645,51 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                         return await tx.tenancy.create({ data: { userId: studentUser.id, propertyId: room.propertyId, tenancyNumber, displayId } });
                     }, { isolationLevel: 'Serializable' });
 
-                    const tenant = await prisma.tenant.create({
-                        data: {
-                            displayId: tenancy.displayId,
-                            studentId: existingB.userId,
-                            name: existingB.guestName,
-                            phone: existingB.guestPhone || '',
-                            email: existingB.guestEmail || null,
-                            address: existingB.guestAddress || null,
-                            city: existingB.guestCity || null,
-                            pincode: existingB.guestPincode || null,
-                            country: existingB.guestCountry || 'India',
-                            occupationType: existingB.occupationType || null,
-                            occupationDetail: existingB.occupationDetail || null,
-                            propertyId: room.propertyId,
-                            roomId: existingB.roomId!,
-                            bedId: (existingB as any).bedId || null,
-                            roomNumber: room.roomNumber,
-                            roomType: room.type,
-                            rent: existingB.amount,
-                            startDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                            status: 'ACTIVE',
-                        }
-                    });
-                    await prisma.booking.update({ where: { id }, data: { tenantId: tenant.id } });
+                    let tenantId = existingB.tenantId;
+
+                    if (!tenantId) {
+                        const tenant = await prisma.tenant.create({
+                            data: {
+                                displayId: tenancy.displayId,
+                                studentId: existingB.userId,
+                                name: existingB.guestName,
+                                phone: existingB.guestPhone || '',
+                                email: existingB.guestEmail || null,
+                                address: existingB.guestAddress || null,
+                                city: existingB.guestCity || null,
+                                pincode: existingB.guestPincode || null,
+                                country: existingB.guestCountry || 'India',
+                                occupationType: existingB.occupationType || null,
+                                occupationDetail: existingB.occupationDetail || null,
+                                propertyId: room.propertyId,
+                                roomId: existingB.roomId!,
+                                bedId: (existingB as any).bedId || null,
+                                roomNumber: room.roomNumber,
+                                roomType: room.type,
+                                rent: existingB.amount,
+                                startDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                                status: 'ACTIVE',
+                            }
+                        });
+                        tenantId = tenant.id;
+                        await prisma.booking.update({ where: { id }, data: { tenantId: tenant.id } });
+                    } else {
+                        // NEW FLOW path: Tenant already exists (created during physical KYC)
+                        await prisma.tenant.update({
+                            where: { id: tenantId },
+                            data: { status: 'ACTIVE' }
+                        });
+                    }
+
                     const bookingBedId = (existingB as any).bedId;
                     if (bookingBedId) {
                         await prisma.bed.update({
                             where: { id: bookingBedId },
-                            data: { status: 'OCCUPIED', tenantId: tenant.id, lockedByBookingId: null, lockedAt: null }
+                            data: { status: 'OCCUPIED', tenantId: tenantId, lockedByBookingId: null, lockedAt: null }
                         }).catch(() => {});
                     }
                     await prisma.rentRecord.create({
-                        data: { tenantId: tenant.id, month: currentMonth, amount: existingB.amount, paid: true,
+                        data: { tenantId: tenantId!, month: currentMonth, amount: existingB.amount, paid: true,
                             paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
                     });
                 }
@@ -690,40 +712,46 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
 }
 
 /**
- * Owner Physical Check-in: confirms they have physically verified the tenant's original ID.
- * This advances to MOVE_IN_SCHEDULED and sends student the final payment notification.
- * Tenant record is created automatically when student pays (markBookingPaid).
+ * ─── Physical Check-in (Industry Standard: Zolo/Stanza/NestAway pattern) ────
+ *
+ * NEW FLOW (v2):  ROOM_RESERVED → [Physical KYC] → PHYSICAL_VERIFIED → Agreement → ACTIVE
+ * LEGACY FLOW:    BOOKING_CONFIRMED → MOVE_IN_SCHEDULED → ACTIVE (backward compat)
+ *
+ * At physical check-in:
+ *  1. Owner physically verifies original Aadhaar/passport/company ID in-person.
+ *  2. A permanent TENANT-ID (REN-USER-XXXX) is atomically generated and stored.
+ *  3. Booking transitions to PHYSICAL_VERIFIED.
+ *  4. Student is prompted to sign the agreement — which now shows their Tenant ID.
+ *
+ * Security: Serializable transaction prevents duplicate Tenant records even under
+ * concurrent requests (bounty-hunter level race-condition protection).
  */
 export async function checkInBooking(id: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-    // 1. Fetch booking
-    const booking = await prisma.booking.findUnique({
-        where: { id },
-        include: { documents: true }
-    });
-
+    const booking = await prisma.booking.findUnique({ where: { id }, include: { documents: true } });
     if (!booking) throw new Error("Booking not found");
 
-    // Accept BOOKING_CONFIRMED (both signed, physical check pending) or legacy paid statuses
-    const validStatuses = ['BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'];
-    if (!validStatuses.includes(booking.status)) {
-        throw new Error("Booking must have agreement signed by both parties before physical check-in.");
+    // ── Determine flow path ────────────────────────────────────────────────────
+    const isNewFlow     = booking.status === 'ROOM_RESERVED';   // Physical KYC BEFORE agreement
+    const isLegacyFinal = ['MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'].includes(booking.status);
+    const isLegacyPost  = booking.status === 'BOOKING_CONFIRMED'; // Physical KYC AFTER agreement (old flow)
+
+    if (!isNewFlow && !isLegacyFinal && !isLegacyPost) {
+        throw new Error(`Invalid booking status for physical check-in: ${booking.status}. Expected ROOM_RESERVED (new flow) or BOOKING_CONFIRMED/MOVE_IN_SCHEDULED (legacy).`);
     }
 
-    // NOTE: Document upload step removed — owner physically verifies ID via PhysicalKycModal.
-    // No digital doc check required here.
-
-    // 3. Check Agreement
-    if (!booking.agreementSigned) {
-        throw new Error("Agreement Pending: Digital agreement must be signed by the student before check-in.");
+    // In legacy flow, agreement must already be signed
+    if ((isLegacyPost || isLegacyFinal) && !booking.agreementSigned) {
+        throw new Error("Agreement must be signed by the student before physical check-in.");
     }
 
-    // 4. If already MOVE_IN_SCHEDULED or paid, this is a legacy flow — keep advancing to ACTIVE
-    // If BOOKING_CONFIRMED → advance to MOVE_IN_SCHEDULED and notify student to pay final amount
-    const isLegacyFinalCheckin = ['MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'].includes(booking.status);
-    const newStatus = isLegacyFinalCheckin ? 'ACTIVE' : 'MOVE_IN_SCHEDULED';
+    // ── Determine next status ──────────────────────────────────────────────────
+    // NEW:    ROOM_RESERVED  → PHYSICAL_VERIFIED  (then student signs agreement)
+    // LEGACY: BOOKING_CONFIRMED → MOVE_IN_SCHEDULED (then student pays final)
+    // LEGACY: MOVE_IN_SCHEDULED/PAID → ACTIVE
+    const newStatus = isNewFlow ? 'PHYSICAL_VERIFIED' : isLegacyFinal ? 'ACTIVE' : 'MOVE_IN_SCHEDULED';
 
     const updatedBooking = await prisma.booking.update({
         where: { id },
@@ -734,8 +762,22 @@ export async function checkInBooking(id: string) {
         } as any
     });
 
-    // If physical check-in done (BOOKING_CONFIRMED → MOVE_IN_SCHEDULED): notify student to pay
-    if (!isLegacyFinalCheckin && booking.userId) {
+    // ── Notifications ──────────────────────────────────────────────────────────
+    if (isNewFlow && booking.userId) {
+        // NEW FLOW: Notify student that physical KYC done → sign agreement now
+        try {
+            await NotificationService.trigger({
+                bookingId: booking.id,
+                userId: booking.userId,
+                type: 'BOOKING',
+                category: 'CHECKIN_CONFIRMED',
+                message: `✅ Your identity has been physically verified at ${booking.propertyName}! Your Tenant ID is now assigned. Please sign your digital rental agreement to proceed.`,
+                targetRole: 'USER',
+                isPersistent: true,
+            } as any);
+        } catch (e) { console.error('Physical KYC notification error:', e); }
+    } else if (isLegacyPost && booking.userId) {
+        // LEGACY FLOW: Notify student to pay final amount
         const tokenAmt = (booking as any).tokenAmount || 1000;
         const rent = Number(booking.amount || 0);
         const deposit = Number((booking as any).depositAmount || 0);
@@ -753,67 +795,57 @@ export async function checkInBooking(id: string) {
         } catch (e) { console.error('Physical check-in notification error:', e); }
     }
 
-    // 5. Create Tenant record
-    const room = await prisma.room.findUnique({
-        where: { id: booking.roomId! },
+    // ── Tenant Record Creation ─────────────────────────────────────────────────
+    // NEW FLOW:    Create Tenant NOW (at physical check-in, before agreement).
+    //             Status = 'Upcoming' (not yet fully onboarded).
+    // LEGACY FLOW: Create Tenant if not already created (BOOKING_CONFIRMED path).
+    // Skip if tenant already linked to this booking.
+    const alreadyHasTenant = !!(booking as any).tenantId;
+
+    const room = booking.roomId ? await prisma.room.findUnique({
+        where: { id: booking.roomId },
         include: { property: true }
-    });
+    }) : null;
 
-    if (room) {
-        const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-
-        // === UNIFIED IDENTITY: One Passport for Life ===
-        // Inherit the student's REN-USER-XXXX display ID.
-        // Tenancy is created atomically with Serializable isolation —
-        // tenancyNumber is the DB-level guard against race conditions.
+    if (room && !alreadyHasTenant) {
         const studentUser = await prisma.user.findUnique({
             where: { id: booking.userId },
             select: { id: true, displayId: true }
         });
-
         const user = studentUser!;
 
-        // ─── Atomic Tenancy Creation ───────────────────────────────────────
+        // ── Atomic Tenancy + Tenant creation (Serializable — race-condition proof) ──
         const tenancy = await prisma.$transaction(async (tx) => {
-            // Count inside transaction — atomic, no race condition
-            const tenancyCount = await tx.tenancy.count({
-                where: { userId: user.id }
-            });
-
+            const tenancyCount = await tx.tenancy.count({ where: { userId: user.id } });
             const tenancyNumber = tenancyCount + 1;
-
-            const displayId = tenancyNumber === 1
-                ? (user.displayId ?? `REN-USER-${user.id.slice(0, 8).toUpperCase()}`)
-                : `${user.displayId ?? `REN-USER-${user.id.slice(0, 8).toUpperCase()}`}-T${tenancyNumber}`;
-
+            const baseId = user.displayId ?? `REN-USER-${user.id.slice(0, 8).toUpperCase()}`;
+            // e.g. REN-USER-AA3C9D68  (first stay)  |  REN-USER-AA3C9D68-T2  (second stay)
+            const displayId = tenancyNumber === 1 ? baseId : `${baseId}-T${tenancyNumber}`;
             return await tx.tenancy.create({
-                data: {
-                    userId: user.id,
-                    propertyId: room.propertyId,
-                    tenancyNumber,   // @@unique([userId, tenancyNumber]) is the final DB guard
-                    displayId,
-                }
+                data: { userId: user.id, propertyId: room.propertyId, tenancyNumber, displayId }
             });
-        }, {
-            isolationLevel: 'Serializable',
-        });
+        }, { isolationLevel: 'Serializable' });
 
-        // Derive tenantDisplayId from the created Tenancy record
         const tenantDisplayId = tenancy.displayId;
+
+        // Tenant status: 'Upcoming' for new flow (agreement not yet signed), 'ACTIVE' for legacy
+        const tenantStatus = isNewFlow ? 'Upcoming' : 'ACTIVE';
 
         const tenant = await prisma.tenant.create({
             data: {
                 displayId: tenantDisplayId,
+                applicationId: tenantDisplayId,
+                bookingId: booking.id,
                 studentId: booking.userId,
                 name: booking.guestName,
                 phone: booking.guestPhone || '',
                 email: booking.guestEmail || null,
-                address: booking.guestAddress || null,
-                city: booking.guestCity || null,
-                pincode: booking.guestPincode || null,
-                country: booking.guestCountry || 'India',
-                occupationType: booking.occupationType || null,
-                occupationDetail: booking.occupationDetail || null,
+                address: (booking as any).guestAddress || null,
+                city: (booking as any).guestCity || null,
+                pincode: (booking as any).guestPincode || null,
+                country: (booking as any).guestCountry || 'India',
+                occupationType: (booking as any).occupationType || null,
+                occupationDetail: (booking as any).occupationDetail || null,
                 propertyId: room.propertyId,
                 roomId: booking.roomId!,
                 bedId: (booking as any).bedId || null,
@@ -821,46 +853,53 @@ export async function checkInBooking(id: string) {
                 roomType: room.type,
                 rent: booking.amount,
                 startDate: updatedBooking.onboardingDate || new Date().toLocaleDateString('en-IN'),
-                status: 'ACTIVE',
+                status: tenantStatus,
             }
         });
 
-        // Link Tenant back to Booking
+        // Link Tenant back to Booking (critical: this is how agreement modal finds the Tenant ID)
         await prisma.booking.update({
             where: { id: booking.id },
             data: { tenantId: tenant.id }
         });
 
-        // Mark the assigned bed as OCCUPIED and link to tenant
+        // Mark bed as RESERVED (not OCCUPIED yet — tenant hasn't moved in for new flow)
         const bookingBedId = (booking as any).bedId;
         if (bookingBedId) {
             await prisma.bed.update({
                 where: { id: bookingBedId },
-                data: { status: 'OCCUPIED', tenantId: tenant.id, lockedByBookingId: null, lockedAt: null }
+                data: {
+                    status: isNewFlow ? 'RESERVED' : 'OCCUPIED',
+                    tenantId: tenant.id,
+                    lockedByBookingId: null,
+                    lockedAt: null
+                }
             }).catch(() => {});
         }
 
-        // 6. Create initial rent record
-        await prisma.rentRecord.create({
-            data: {
-                tenantId: tenant.id,
-                month: currentMonth,
-                amount: booking.amount,
-                paid: true,
-                paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-            }
-        });
+        // For legacy flow only: create initial rent record immediately
+        if (!isNewFlow) {
+            const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+            await prisma.rentRecord.create({
+                data: {
+                    tenantId: tenant.id,
+                    month: currentMonth,
+                    amount: booking.amount,
+                    paid: true,
+                    paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                }
+            });
+        }
 
-        // 7. Log check-in
         logAuditEvent({
             actorId: session.userId,
             actorRole: session.role as string,
             actorName: session.name || 'Owner/Admin',
-            actionType: 'UPDATE',
-            entityType: 'USER', // Tenant/User level
+            actionType: 'CREATE',
+            entityType: 'TENANT',
             entityId: tenant.id,
-            description: `Tenant ${booking.guestName} formally checked-in from booking ${booking.displayId}`,
-            newValue: tenant
+            description: `[PHYSICAL-KYC] Tenant ID ${tenantDisplayId} assigned to ${booking.guestName} (Booking: ${booking.displayId}). Flow: ${isNewFlow ? 'NEW (KYC-before-agreement)' : 'LEGACY'}. Status: ${tenantStatus}.`,
+            newValue: { tenantDisplayId, bookingDisplayId: booking.displayId, flow: isNewFlow ? 'NEW' : 'LEGACY' }
         });
     }
 
@@ -1055,11 +1094,31 @@ export async function signAgreement(id: string, agreementMeta?: {
 
     const booking = await prisma.booking.findUnique({
         where: { id },
-        include: { user: { select: { name: true, email: true } } }
+        include: {
+            user: { select: { name: true, email: true, displayId: true } },
+            tenant: { select: { id: true, displayId: true } },
+            property: { select: { id: true, displayId: true, name: true } },
+        }
     });
     if (!booking) throw new Error("Booking not found");
     if (booking.userId !== session.userId) throw new Error("Unauthorized to sign this agreement");
     if (booking.agreementSigned) throw new Error("Agreement has already been signed.");
+
+    // ── New flow guard: agreement must come AFTER physical check-in ───────────
+    // PHYSICAL_VERIFIED = KYC done, Tenant ID assigned, ready to sign.
+    // ROOM_RESERVED = token paid but KYC not done yet (should not be able to sign).
+    const newFlowStatuses = ['PHYSICAL_VERIFIED'];
+    const legacyFlowStatuses = ['ROOM_RESERVED', 'KYC_PENDING', 'AGREEMENT_PENDING', 'BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'];
+    if (![...newFlowStatuses, ...legacyFlowStatuses].includes(booking.status)) {
+        throw new Error(`Cannot sign agreement at this stage (status: ${booking.status}).`);
+    }
+    if (booking.status === 'ROOM_RESERVED') {
+        // Soft check: if status is ROOM_RESERVED but no tenantId, physical KYC hasn't happened yet
+        if (!(booking as any).tenantId) {
+            throw new Error("Physical verification required before signing the agreement. Please contact the property manager.");
+        }
+    }
+
 
     // ─── Capture IP from Next.js request headers (real business practice) ────
     let realIp = agreementMeta?.signedIp || 'unknown';
@@ -1141,6 +1200,22 @@ export async function signAgreement(id: string, agreementMeta?: {
             <td style="padding:12px 16px;color:#94a3b8;font-weight:700;width:40%;">Agreement ID</td>
             <td style="padding:12px 16px;color:#1e293b;font-weight:900;font-family:monospace;">${agreementId}</td>
           </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;background:#f0f4ff;">
+            <td style="padding:12px 16px;color:#4338ca;font-weight:700;">Booking ID</td>
+            <td style="padding:12px 16px;color:#1e1b4b;font-weight:900;font-family:monospace;">${booking.displayId}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:12px 16px;color:#4338ca;font-weight:700;">Permanent User ID</td>
+            <td style="padding:12px 16px;color:#1e1b4b;font-weight:900;font-family:monospace;">${(booking as any).user?.displayId || 'N/A'}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;background:#f0f4ff;">
+            <td style="padding:12px 16px;color:#4338ca;font-weight:700;">Tenant ID</td>
+            <td style="padding:12px 16px;color:#1e1b4b;font-weight:900;font-family:monospace;">${(booking as any).tenant?.displayId || 'Assigned post-verification'}</td>
+          </tr>
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">PG / Property ID</td>
+            <td style="padding:12px 16px;color:#1e293b;font-weight:900;font-family:monospace;">${(booking as any).property?.displayId || booking.propertyId || 'N/A'}</td>
+          </tr>
           <tr style="border-bottom:1px solid #e2e8f0;background:#f8fafc;">
             <td style="padding:12px 16px;color:#94a3b8;font-weight:700;">Property</td>
             <td style="padding:12px 16px;color:#1e293b;font-weight:700;">${booking.propertyName}</td>
@@ -1219,7 +1294,11 @@ export async function countersignAgreement(bookingId: string) {
 
     const booking = await prisma.booking.findUnique({
         where: { id: bookingId },
-        include: { user: { select: { name: true, email: true } } }
+        include: {
+            user: { select: { name: true, email: true, displayId: true } },
+            tenant: { select: { id: true, displayId: true } },
+            property: { select: { id: true, displayId: true, name: true } },
+        }
     });
     if (!booking) throw new Error("Booking not found.");
     if (!booking.agreementSigned) throw new Error("Tenant has not signed the agreement yet.");
@@ -1229,15 +1308,24 @@ export async function countersignAgreement(bookingId: string) {
     const countersignerName = session.name || roleLabel;
     const countersignedAt = new Date();
 
+    // ── NEW FLOW: If physical KYC happened before agreement (PHYSICAL_VERIFIED path),
+    //    countersigning moves to BOOKING_CONFIRMED (student pays final joining amount).
+    // ── LEGACY FLOW: Was AGREEMENT_PENDING → MOVE_IN_SCHEDULED → ACTIVE.
+    //    Keep backward compat: if already AGREEMENT_PENDING, use BOOKING_CONFIRMED.
+    const newStatus = 'BOOKING_CONFIRMED';
+
     await prisma.booking.update({
         where: { id: bookingId },
         data: {
-            status: 'MOVE_IN_SCHEDULED',
+            status: newStatus,
             ownerCountersigned: true,
             ownerCountersignedAt: countersignedAt,
             ownerCountersignedBy: `${countersignerName} (${roleLabel})`,
         } as any
     });
+
+    // Tenant remains in 'Upcoming' status until final payment is received (auto-activated in markBookingPaid)
+    // or manually activated via confirmMoveIn.
 
     // Notify tenant in-app
     try {
@@ -1246,7 +1334,7 @@ export async function countersignAgreement(bookingId: string) {
             userId: booking.userId,
             type: 'BOOKING',
             category: 'AGREEMENT_COUNTERSIGNED',
-            message: `🎉 Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Move-in is now confirmed!`,
+            message: `🎉 Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Pay the joining balance to activate your stay!`,
             targetRole: 'USER',
             isPersistent: true,
         });
@@ -1274,8 +1362,12 @@ export async function countersignAgreement(bookingId: string) {
       <p style="color:#334155;font-size:14px;">Hi <strong>${booking.guestName}</strong>,</p>
       <p style="color:#64748b;font-size:14px;line-height:1.6;">Your rental agreement for <strong>${booking.propertyName}</strong> has been countersigned by <strong>${countersignerName} (${roleLabel})</strong>. Your stay is confirmed.</p>
       <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
-        <tr style="background:#1e1b4b;"><td colspan="2" style="padding:10px 16px;color:#a5b4fc;font-size:10px;font-weight:900;letter-spacing:.1em;">AUDIT TRAIL</td></tr>
+        <tr style="background:#1e1b4b;"><td colspan="2" style="padding:10px 16px;color:#a5b4fc;font-size:10px;font-weight:900;letter-spacing:.1em;">AUDIT TRAIL & PERMANENT IDs</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Agreement ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;">${booking.agreementId}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;background:#f0f4ff;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Booking ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${booking.displayId}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Permanent User ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${(booking as any).user?.displayId || 'N/A'}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;background:#f0f4ff;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Tenant ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${(booking as any).tenant?.displayId || 'N/A'}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">PG / Property ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;">${(booking as any).property?.displayId || booking.propertyId || 'N/A'}</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;background:#f8fafc;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Tenant Signed</td><td style="padding:10px 16px;font-weight:700;">${booking.guestName}</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned By</td><td style="padding:10px 16px;font-weight:700;">${countersignerName} (${roleLabel})</td></tr>
         <tr><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned At</td><td style="padding:10px 16px;font-weight:700;">${countersignedAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td></tr>

@@ -29,8 +29,9 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
     PENDING_APPROVAL:         { label: '⏳ Pending Approval',  cls: 'bg-gray-100 text-gray-700 border-gray-300' },
     APPROVED:                 { label: '✅ Approved',           cls: 'bg-green-100 text-green-700 border-green-300' },
     APPROVED_PENDING_TOKEN:   { label: '🔐 Awaiting Token',    cls: 'bg-amber-100 text-amber-700 border-amber-300' },
-    ROOM_RESERVED:            { label: '🏠 Room Reserved',     cls: 'bg-teal-100 text-teal-700 border-teal-300' },
-    AGREEMENT_PENDING:        { label: '✍️ Owner Must Sign',   cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+    ROOM_RESERVED:            { label: '🏠 Token Paid',        cls: 'bg-teal-100 text-teal-700 border-teal-300' },
+    PHYSICAL_VERIFIED:        { label: '🪪 ID Verified',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+    AGREEMENT_PENDING:        { label: '✍️ Student Signed',    cls: 'bg-violet-100 text-violet-700 border-violet-300' },
     PAID:                     { label: '💳 Paid',              cls: 'bg-green-100 text-green-700 border-green-300' },
     CASH_PAID:                { label: '💵 Cash Paid',         cls: 'bg-green-100 text-green-700 border-green-300' },
     BOOKING_CONFIRMED:        { label: '📋 Both Signed',       cls: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
@@ -71,6 +72,11 @@ function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashP
     );
     if (s === 'ROOM_RESERVED') return (
         <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-200">
+            🔍 Physical ID Verify → Check-in
+        </span>
+    );
+    if (s === 'PHYSICAL_VERIFIED') return (
+        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
             ✍️ Awaiting Student Agreement Signature
         </span>
     );
@@ -88,7 +94,7 @@ function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashP
     );
     if (s === 'BOOKING_CONFIRMED') return (
         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
-            🔍 Physical ID Verify → Check-in
+            💳 Awaiting Student Final Payment
         </span>
     );
     if (s === 'MOVE_IN_SCHEDULED') return (
@@ -459,7 +465,10 @@ export function BookingsContainer() {
     const handleConfirmCheckIn = async () => {
         if (!kycBooking) return;
         await checkInBooking(kycBooking.id);
-        toast.success("✅ Student Checked-in! Tenancy is now ACTIVE. Room moved to Active Tenants.");
+        const isNewFlow = kycBooking.status === 'ROOM_RESERVED';
+        toast.success(isNewFlow
+            ? '✅ Physical KYC done! Tenant ID assigned. Student will sign agreement next.'
+            : '✅ Student Checked-in! Tenancy is now ACTIVE.');
         setKycBooking(null);
         await fetchData();
     };
@@ -493,7 +502,7 @@ export function BookingsContainer() {
         NEW_REQUEST:     ['APPLIED', 'REQUESTED', 'PENDING_APPROVAL'],
         ALLOCATE_ROOM:   ['APPROVED', 'APPROVED_PENDING_TOKEN', 'ROOM_RESERVED'],
         STUDENT_PAYS:    ['PAID', 'CASH_PAID'],
-        AGREEMENT:       ['AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
+        AGREEMENT:       ['PHYSICAL_VERIFIED', 'AGREEMENT_PENDING', 'BOOKING_CONFIRMED'],
         PHYSICAL_VERIFY: ['MOVE_IN_SCHEDULED'],
         REJECTED:        ['REJECTED'],
         CANCELLED:       ['CANCELLED', 'EXPIRED'],
@@ -565,17 +574,27 @@ export function BookingsContainer() {
             </>
         );
 
-        // Step 4: Token paid, student must sign agreement
+        // Step 4: Token paid → Physical KYC (NEW FLOW: physical check-in BEFORE agreement)
         if (s === 'ROOM_RESERVED') return (
             <>
-                <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-200">
-                    ✍️ Student Signing Agreement
+                <Button size="sm" className="h-8 text-[10px] bg-teal-600 hover:bg-teal-700 font-bold" onClick={() => handleCheckIn(booking)}>
+                    <ShieldCheck className="w-3 h-3 mr-1" />Physical Check-in
+                </Button>
+                <RejectCapsule bookingId={booking.id} />
+            </>
+        );
+
+        // Step 5: Physical KYC done → Awaiting student agreement signature
+        if (s === 'PHYSICAL_VERIFIED') return (
+            <>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                    ✍️ Awaiting Student Agreement
                 </span>
                 <RejectCapsule bookingId={booking.id} />
             </>
         );
 
-        // Step 5: Student signed → Owner must countersign (Indian law: both parties must sign)
+        // Step 6: Student signed → Owner must countersign
         if (s === 'AGREEMENT_PENDING') return (
             <>
                 <Button size="sm" className="h-8 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold"
@@ -592,17 +611,22 @@ export function BookingsContainer() {
             </>
         );
 
-        // Step 6: Both signed → Physical ID check
+        // Step 7: Both signed → final payment (BOOKING_CONFIRMED is now the final step before ACTIVE)
         if (s === 'BOOKING_CONFIRMED') return (
             <>
-                <Button size="sm" className="h-8 text-[10px] bg-green-600 hover:bg-green-700 font-bold" onClick={() => handleCheckIn(booking)}>
-                    <ShieldCheck className="w-3 h-3 mr-1" />Physical Check-in
-                </Button>
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200">
+                    💳 Awaiting Student Final Payment
+                </span>
+                {allowCashPayment && (
+                    <Button size="sm" className="h-8 text-[10px] bg-amber-600 hover:bg-amber-700 font-bold" onClick={() => handleMarkCashPaid(booking.id)}>
+                        <CreditCard className="w-3 h-3 mr-1" />Mark Cash Paid
+                    </Button>
+                )}
                 <RejectCapsule bookingId={booking.id} />
             </>
         );
 
-        // Step 7: Physical check done → awaiting student's final payment
+        // Legacy Step: MOVE_IN_SCHEDULED → final payment
         if (s === 'MOVE_IN_SCHEDULED') return (
             <>
                 <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200">
@@ -634,9 +658,9 @@ export function BookingsContainer() {
                 </Button>
             </div>
 
-            {/* ── Onboarding Flow Banner ── */}
+                {/* ── Onboarding Flow Banner ── */}
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-4">
-                <p className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-2">📋 Onboarding Flow</p>
+                <p className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-2">📋 Onboarding Flow (Industry Standard)</p>
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-600">
                     {[
                         { icon: "📥", label: "Request" },
@@ -647,9 +671,9 @@ export function BookingsContainer() {
                         { icon: "→", label: "" },
                         { icon: "⏳", label: "Token" },
                         { icon: "→", label: "" },
-                        { icon: "✍️", label: "Agreement" },
+                        { icon: "🔍", label: "Physical KYC" },
                         { icon: "→", label: "" },
-                        { icon: "🔍", label: "ID Verify" },
+                        { icon: "✍️", label: "Agreement" },
                         { icon: "→", label: "" },
                         { icon: "💳", label: "Final Payment" },
                         { icon: "→", label: "" },

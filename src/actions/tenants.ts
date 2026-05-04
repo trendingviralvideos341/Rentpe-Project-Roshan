@@ -39,11 +39,14 @@ export async function getTenants() {
     const tenants = await prisma.tenant.findMany({
         where: whereClause,
         include: {
-            property: { select: { name: true } },
+            property: { select: { name: true, displayId: true } },
             rentRecords: { orderBy: { createdAt: 'desc' } },
             booking: {
-                include: {
-                    moveInChecklist: true
+                select: {
+                    id: true,
+                    displayId: true,    // Booking ID e.g. REN-BOOK-2026-0001
+                    status: true,
+                    moveInChecklist: true,
                 }
             }
         },
@@ -179,11 +182,11 @@ export async function confirmMoveIn(tenantId: string) {
             });
         }
 
-        // 3. Update Booking status
+        // 3. Update Booking status to ACTIVE
         if (tenant.bookingId) {
             await tx.booking.update({
                 where: { id: tenant.bookingId },
-                data: { status: 'CHECKIN_CONFIRMED' }
+                data: { status: 'ACTIVE' }
             });
         }
 
@@ -761,7 +764,10 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
 
     return await prisma.tenant.findMany({
         where: { propertyId: { in: pIds }, status: { in: statusFilter } },
-        include: { property: { select: { name: true } } },
+        include: { 
+            property: { select: { name: true } },
+            booking: { select: { displayId: true } }
+        },
         orderBy: { createdAt: 'desc' }
     });
 }

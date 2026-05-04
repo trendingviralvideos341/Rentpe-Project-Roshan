@@ -17,6 +17,7 @@ interface PropertyAgreementModalProps {
         noticePeriod?: number | null;
         cancellationPolicy?: string | null;
         refundPolicy?: string | null;
+        displayId?: string | null;   // PG ID e.g. APP-RP-2026-0001
     };
     room: {
         roomNumber: string;
@@ -27,15 +28,18 @@ interface PropertyAgreementModalProps {
     tenant: {
         name: string;
         email?: string;
+        userId?: string | null;       // Permanent User ID e.g. REN-USER-XXXX
+        tenantId?: string | null;     // Tenant ID e.g. REN-USER-XXXX (set after physical KYC)
     };
     moveInDate: string;
     depositAmount: number;
     platformFee: number;
+    bookingDisplayId?: string | null; // Booking ID e.g. REN-BOOK-2026-0001
 }
 
 export function PropertyAgreementModal({
     isOpen, onClose, onAccept,
-    property, room, tenant, moveInDate, depositAmount, platformFee
+    property, room, tenant, moveInDate, depositAmount, platformFee, bookingDisplayId
 }: PropertyAgreementModalProps) {
     const [scrolledToBottom, setScrolledToBottom] = useState(false);
     const [accepted, setAccepted] = useState(false);
@@ -138,6 +142,39 @@ export function PropertyAgreementModal({
                     onScroll={handleScroll}
                     className="flex-1 overflow-y-auto bg-white px-6 py-5 space-y-5 text-xs text-slate-600 leading-relaxed"
                 >
+                    {/* ── Identity Panel (Zolo/Stanza-style: all IDs visible before signing) ── */}
+                    {(tenant.userId || tenant.tenantId || bookingDisplayId || property.displayId) && (
+                        <div className="bg-indigo-950 border border-indigo-700/50 rounded-xl p-3.5 mb-1">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2.5">📋 Permanent Legal Identifiers — Keep This Safe</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {bookingDisplayId && (
+                                    <div className="bg-indigo-900/60 rounded-lg p-2.5 border border-indigo-600/30">
+                                        <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">Booking ID</p>
+                                        <p className="text-[11px] font-black text-white font-mono">{bookingDisplayId}</p>
+                                    </div>
+                                )}
+                                {tenant.userId && (
+                                    <div className="bg-indigo-900/60 rounded-lg p-2.5 border border-indigo-600/30">
+                                        <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">User ID (Permanent)</p>
+                                        <p className="text-[11px] font-black text-white font-mono">{tenant.userId}</p>
+                                    </div>
+                                )}
+                                {tenant.tenantId && (
+                                    <div className="bg-emerald-900/60 rounded-lg p-2.5 border border-emerald-600/40">
+                                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">Tenant ID ✓ KYC Verified</p>
+                                        <p className="text-[11px] font-black text-emerald-300 font-mono">{tenant.tenantId}</p>
+                                    </div>
+                                )}
+                                {property.displayId && (
+                                    <div className="bg-indigo-900/60 rounded-lg p-2.5 border border-indigo-600/30">
+                                        <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">PG / Property ID</p>
+                                        <p className="text-[11px] font-black text-white font-mono">{property.displayId}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Title */}
                     <div className="text-center space-y-1.5 pb-4 border-b-2 border-dashed border-slate-200">
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Accommodation Occupancy Agreement</h3>
