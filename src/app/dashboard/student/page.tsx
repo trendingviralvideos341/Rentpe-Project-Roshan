@@ -365,9 +365,10 @@ function BookingCard({
                 {(isPaymentPending || isPaid || isApproved) && booking.roomAssigned && (
                     <div className="rounded-2xl border-2 p-4 bg-indigo-50 border-indigo-300 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-black text-indigo-800"><BedDouble className="h-4 w-4" /> 🏠 Allocated Room</div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Room No.</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.split(' — ')[0].trim()}</p></div>
                             <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Type</p><p className="text-sm font-black text-indigo-900">{booking.occupancy}</p></div>
+                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Bed</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.includes(' — ') ? booking.roomAssigned.split(' — ')[1]?.replace('Bed ', '').trim() : '—'}</p></div>
                         </div>
                     </div>
                 )}
