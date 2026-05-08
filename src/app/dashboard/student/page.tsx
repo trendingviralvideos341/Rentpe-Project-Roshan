@@ -158,12 +158,12 @@ function BookingCard({
     const isTokenPending = booking.status === 'APPROVED_PENDING_TOKEN';
     const isTokenPaid = booking.status === 'ROOM_RESERVED';
     const isPhysicalVerified = booking.status === 'PHYSICAL_VERIFIED'; // NEW: KYC done, Tenant ID assigned, ready to sign agreement
-    const isFinalPaymentPending = booking.status === 'MOVE_IN_SCHEDULED';
-    const isPaymentPending = isTokenPending || isFinalPaymentPending || (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING') && !!booking.roomAssigned && !isCashPending;
+    const isFinalPaymentPending = booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED';
+    const isPaymentPending = isTokenPending || (booking.status === 'APPROVED' || booking.status === 'APPROVED_KYC_PENDING' || booking.status === 'KYC_PENDING') && !!booking.roomAssigned && !isCashPending;
     const isAgreementPending = booking.status === 'AGREEMENT_PENDING';
     const isApproved = isKycPending || isPaymentPending || isAgreementPending || isCashPending || isTokenPending || isTokenPaid || isPhysicalVerified;
     const isCheckedIn = booking.status === 'CHECKED_IN' || booking.status === 'ACTIVE' || booking.status === 'CHECKIN_CONFIRMED';
-    const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID' || booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') && !isCheckedIn;
+    const isPaid = (booking.status === 'PAID' || booking.status === 'CASH_PAID') && !isCheckedIn;
     const isActive = booking.status === 'ACTIVE' || booking.status === 'CHECKED_IN' || booking.status === 'CHECKIN_CONFIRMED';
     const isVacating = booking.status === 'VACATING';
     const isCompleted = booking.status === 'COMPLETED' || booking.status === 'CHECKED_OUT';
@@ -208,12 +208,13 @@ function BookingCard({
                     {isPhysicalVerified && <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🆔 ID Verified — Sign Agreement Now</span>}
                     {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
                     {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Signed — Awaiting Owner Countersign</span>}
+                    {isFinalPaymentPending && <span className="bg-red-100 text-red-800 text-xs font-black px-2 py-1 rounded animate-pulse">🔴 Final Payment Due — Pay Now</span>}
                     {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Sign Agreement</span>}
                     {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>}
                     {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>}
                 </div>
                 {/* ── Permanent ID Badges (show after physical KYC and beyond) ── */}
-                {(isPhysicalVerified || isAgreementPending || isPaid || isCheckedIn || isActive || isCompleted) && (tenantDisplayId || booking.displayId) && (
+                {(isPhysicalVerified || isAgreementPending || isFinalPaymentPending || isPaid || isCheckedIn || isActive || isCompleted) && (tenantDisplayId || booking.displayId) && (
                     <div className="flex flex-wrap gap-2">
                         {booking.displayId && (
                             <span className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full font-mono">
@@ -336,21 +337,36 @@ function BookingCard({
                 )}
 
                 {isFinalPaymentPending && (
-                    <div className="w-full bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-400 rounded-2xl p-5 space-y-4">
-                        <p className="text-sm font-black text-indigo-800">Complete Your Joining Payment</p>
-                        <p className="text-xs text-indigo-600 font-medium">Physical ID verified! Pay balance to activate stay at <strong>{booking.propertyName}</strong>.</p>
+                    <div className="w-full bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 border-2 border-red-400 rounded-2xl p-5 space-y-4 animate-[pulse_1.5s_ease-in-out_infinite]">
+                        <div className="flex items-center gap-2">
+                            <span className="inline-block w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
+                            <p className="text-sm font-black text-red-800">🔴 Final Payment Due — Action Required</p>
+                        </div>
+                        <p className="text-xs text-red-700 font-medium">Agreement confirmed! Pay the joining balance to activate your stay at <strong>{booking.propertyName}</strong>.</p>
+                        {/* Physical presence notice */}
+                        <div className="bg-white border-2 border-orange-400 rounded-xl p-3 space-y-1">
+                            <p className="text-[11px] font-black text-orange-800 uppercase tracking-wider">📍 Important — Physical Presence Required</p>
+                            <p className="text-[11px] text-orange-700 font-medium leading-relaxed">
+                                To complete your joining, you must be <strong>physically present at the PG address</strong> when making this payment. Our staff will verify your identity on-site.
+                                This step prevents fraud and ensures your booking is secure.
+                            </p>
+                            {booking.propertyAddress && (
+                                <p className="text-[11px] font-bold text-orange-900 mt-1">📌 Address: {booking.propertyAddress}{booking.propertyCity ? `, ${booking.propertyCity}` : ''}</p>
+                            )}
+                        </div>
                         {(() => {
                             const rent = Number(booking.amount || 0);
                             const deposit = Number(booking.depositAmount || 0);
                             const balance = Math.max(0, rent + deposit - 1000);
                             return (
-                                <div className="space-y-2 text-sm bg-white/60 rounded-xl p-4 border border-indigo-200">
+                                <div className="space-y-2 text-sm bg-white/80 rounded-xl p-4 border border-red-200">
                                     <div className="flex justify-between text-slate-600"><span>Monthly Rent</span><span>₹{rent.toLocaleString('en-IN')}</span></div>
                                     <div className="flex justify-between text-slate-600"><span>Security Deposit</span><span>₹{deposit.toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between pt-1 border-t border-dashed border-indigo-200 font-bold text-slate-800"><span>Subtotal</span><span>₹{(rent + deposit).toLocaleString('en-IN')}</span></div>
+                                    <div className="flex justify-between pt-1 border-t border-dashed border-red-200 font-bold text-slate-800"><span>Subtotal</span><span>₹{(rent + deposit).toLocaleString('en-IN')}</span></div>
                                     <div className="flex justify-between text-orange-600 font-bold"><span>Token Paid Already</span><span>- ₹1,000</span></div>
-                                    <div className="flex justify-between pt-2 border-t font-black text-indigo-900"><span>Joining Balance</span><span>₹{balance.toLocaleString('en-IN')}</span></div>
-                                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay ₹{balance.toLocaleString('en-IN')} Now</Button>
+                                    <div className="flex justify-between pt-2 border-t font-black text-red-900 text-base"><span>💰 Balance Due</span><span>₹{balance.toLocaleString('en-IN')}</span></div>
+                                    <Button className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white font-black h-12 rounded-2xl text-base shadow-lg shadow-red-300/50" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay ₹{balance.toLocaleString('en-IN')} Now</Button>
+                                    <p className="text-[10px] text-center text-slate-400 pt-1">⚠️ Visit {booking.propertyName} in person to complete check-in</p>
                                 </div>
                             );
                         })()}
@@ -691,9 +707,9 @@ export default function StudentDashboardPage() {
                                             return <AlertBanner key={`alert-sign-${booking.id}`} type="info" message={`Token paid! Please sign your rental agreement for ${booking.propertyName}.`} actionLabel="Sign Agreement" onAction={() => setSigningBooking(booking)} />;
                                         if (booking.status === 'AGREEMENT_PENDING')
                                             return null;
-                                        if (booking.status === 'MOVE_IN_SCHEDULED') {
+                                        if (booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') {
                                             const finalAmt = Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000);
-                                            return <AlertBanner key={`alert-final-${booking.id}`} type="warning" message={`Physical check-in verified! Pay joining balance ₹${finalAmt.toLocaleString('en-IN')} to activate stay.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
+                                            return <AlertBanner key={`alert-final-${booking.id}`} type="error" message={`🔴 Final Payment Due ₹${finalAmt.toLocaleString('en-IN')} — Visit ${booking.propertyName} in person to pay and complete check-in.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
                                         }
                                         return null;
                                     })}

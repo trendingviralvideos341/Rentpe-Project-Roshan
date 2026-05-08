@@ -20,6 +20,7 @@ import {
     updateSharingType,
     ownerCounterSignAgreement
 } from "@/actions/bookings";
+import { getCashPaymentEnabled } from "@/actions/platform";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { RoomAllocationModal } from "@/components/dashboard/RoomAllocationModal";
@@ -340,6 +341,7 @@ export default function AdminBookingsPage() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [search, setSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState<"ALL" | "NEW_REQUEST" | "ALLOCATE_ROOM" | "STUDENT_PAYS" | "AGREEMENT" | "PHYSICAL_VERIFY" | "CHECKED_IN" | "REJECTED" | "CANCELLED">("ALL");
     const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
@@ -379,9 +381,10 @@ export default function AdminBookingsPage() {
     const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            const [bookingData, roomData] = await Promise.all([getAdminBookings(), getAvailableRooms()]);
+            const [bookingData, roomData, cashEnabled] = await Promise.all([getAdminBookings(), getAvailableRooms(), getCashPaymentEnabled()]);
             setBookings(bookingData);
             setRooms(roomData);
+            setAllowCashPayment(cashEnabled);
         } catch (e) {
             console.error(e);
         } finally {
@@ -698,8 +701,8 @@ export default function AdminBookingsPage() {
                                     )}
                                     {/* Step 7: Awaiting final payment */}
                                     {booking.status === 'MOVE_IN_SCHEDULED' && (<>
-                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span>
-                                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>
+                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 animate-pulse">💳 Awaiting Final Payment</span>
+                                        {allowCashPayment && <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-xs" onClick={() => handleMarkCashPaid(booking.id)}>💵 Cash Paid</Button>}
                                     </>)}
                                     <Button variant="outline" size="sm" className="text-xs"
                                         onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}>
@@ -785,9 +788,9 @@ export default function AdminBookingsPage() {
 
                                                                         if (s === 'AGREEMENT_PENDING') return (<><Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={async () => { try { await ownerCounterSignAgreement(booking.id); toast.success('Agreement countersigned!'); fetchBookings(); } catch(e:any){toast.error(e.message||'Failed');} }}><ShieldCheck className="h-3 w-3 mr-1" />Countersign</Button><RejectBtn /></>);
 
-                                                                        if (s === 'BOOKING_CONFIRMED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span><Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button><RejectBtn /></>);
+                                                                        if (s === 'BOOKING_CONFIRMED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 animate-pulse">💳 Awaiting Final Payment</span>{allowCashPayment && <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button>}<RejectBtn /></>);
 
-                                                                        if (s === 'MOVE_IN_SCHEDULED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">💳 Awaiting Final Payment</span><Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button><RejectBtn /></>);
+                                                                        if (s === 'MOVE_IN_SCHEDULED') return (<><span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 animate-pulse">💳 Awaiting Final Payment</span>{allowCashPayment && <Button size="sm" className="h-7 text-[10px] bg-orange-500 hover:bg-orange-600 font-bold" onClick={() => handleMarkCashPaid(booking.id)}><CreditCard className="h-3 w-3 mr-1" />Cash Paid</Button>}<RejectBtn /></>);
 
                                                                         if (hasRoom && ['APPROVED'].includes(s)) return (<><Button size="sm" className="h-7 text-[10px] bg-purple-600 hover:bg-purple-700 font-bold" onClick={() => setChangeTypeBooking(booking)}><Shuffle className="h-3 w-3 mr-1" />Change Type</Button><RejectBtn /></>);
 
