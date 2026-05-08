@@ -4,14 +4,56 @@ import { useEffect, useState, useTransition } from 'react';
 import { getOwnerRentCollection, sendRentReminder, markInvoiceAsCashPaid } from '@/actions/ownerRentCollection';
 import { toast } from 'sonner';
 import {
-    IndianRupee, Clock, CheckCircle2, AlertCircle, Loader2, MessageCircle,
-    FileText, Search, Globe, Banknote, XCircle, TrendingUp, History,
-    ChevronDown, ChevronUp, X, RefreshCw
+    IndianRupee, AlertCircle, Loader2, MessageCircle,
+    FileText, Search, Globe, Banknote, XCircle, History,
+    ChevronDown, ChevronUp, X, RefreshCw, Download, Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 
 type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'UNPAID';
+
+// ── Receipt Preview Modal ──────────────────────────────────────────
+function ReceiptModal({ invoiceId, receiptNo, onClose }: { invoiceId: string; receiptNo: string; onClose: () => void }) {
+    const previewUrl = `/api/receipts/${invoiceId}`;
+    const downloadUrl = `/api/receipts/${invoiceId}?download=1`;
+    return (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-4 py-3 bg-indigo-700 text-white shrink-0">
+                <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-indigo-200" />
+                    <span className="font-black text-sm">Receipt Preview</span>
+                    <span className="text-indigo-300 text-xs font-mono">#{receiptNo}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <a
+                        href={downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-lg transition-colors"
+                    >
+                        <Download className="w-3.5 h-3.5" /> Download PDF
+                    </a>
+                    <button
+                        onClick={onClose}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-lg transition-colors"
+                    >
+                        <X className="w-3.5 h-3.5" /> Close
+                    </button>
+                </div>
+            </div>
+            {/* PDF Viewer */}
+            <div className="flex-1 overflow-hidden bg-slate-800">
+                <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    title={`Receipt ${receiptNo}`}
+                />
+            </div>
+        </div>
+    );
+}
 
 function getCurrentMonth() {
     const n = new Date();
@@ -150,6 +192,7 @@ export function RentCollectionContainer() {
     const [propertyFilter, setPropertyFilter] = useState('ALL');
     const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
     const [cashModal, setCashModal] = useState<any>(null);
+    const [receiptModal, setReceiptModal] = useState<{ id: string; receiptNo: string } | null>(null);
     const [isPending, startTransition] = useTransition();
     const [sendingId, setSendingId] = useState<string | null>(null);
 
@@ -410,11 +453,12 @@ export function RentCollectionContainer() {
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         {isPaid ? (
-                                                            <a href={`/api/receipts/${inv.id}`} target="_blank" rel="noopener noreferrer">
-                                                                <button className="px-2.5 py-1.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded-lg flex items-center gap-1 hover:bg-slate-200">
-                                                                    <FileText className="w-3 h-3" /> Receipt
-                                                                </button>
-                                                            </a>
+                                                            <button
+                                                                onClick={() => setReceiptModal({ id: inv.id, receiptNo: inv.displayId || inv.id.slice(0, 8).toUpperCase() })}
+                                                                className="px-2.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black rounded-lg flex items-center gap-1 hover:bg-indigo-100 transition-colors"
+                                                            >
+                                                                <Eye className="w-3 h-3" /> Receipt
+                                                            </button>
                                                         ) : (
                                                             <>
                                                                 <button onClick={() => setCashModal(inv)}
@@ -475,10 +519,12 @@ export function RentCollectionContainer() {
                                             </div>
                                         )}
                                         {isPaid && (
-                                            <a href={`/api/receipts/${inv.id}`} target="_blank" rel="noopener noreferrer"
-                                                className="block w-full py-2 text-center bg-slate-100 text-slate-600 text-xs font-black rounded-xl">
-                                                📄 Download Receipt
-                                            </a>
+                                            <button
+                                                onClick={() => setReceiptModal({ id: inv.id, receiptNo: inv.displayId || inv.id.slice(0, 8).toUpperCase() })}
+                                                className="w-full py-2 text-center bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 hover:bg-indigo-100"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" /> View Receipt
+                                            </button>
                                         )}
                                     </div>
                                 );
@@ -494,6 +540,15 @@ export function RentCollectionContainer() {
                     inv={cashModal}
                     onClose={() => setCashModal(null)}
                     onConfirm={handleCashPaid}
+                />
+            )}
+
+            {/* Receipt Preview Modal */}
+            {receiptModal && (
+                <ReceiptModal
+                    invoiceId={receiptModal.id}
+                    receiptNo={receiptModal.receiptNo}
+                    onClose={() => setReceiptModal(null)}
                 />
             )}
         </div>
