@@ -363,3 +363,57 @@ export async function getInvoiceById(invoiceId: string) {
 
     return invoice;
 }
+
+/** Get invoice data for receipt preview modal — returns flat, serializable object */
+export async function getInvoiceForReceipt(invoiceId: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+    const userId = (session as any).userId;
+    const role = (session as any).role;
+
+    const invoice = await prisma.rentInvoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+            billingProfile: { include: { tenant: true } },
+            booking: { include: { property: true, room: true, user: { select: { name: true, email: true, displayId: true } } } },
+            payments: { where: { status: 'VERIFIED' }, orderBy: { date: 'desc' }, take: 1 }
+        }
+    });
+
+    if (!invoice) throw new Error("Invoice not found");
+    if (role === 'USER' && invoice.booking?.userId !== userId) throw new Error("Unauthorized");
+
+    const tenant = invoice.billingProfile?.tenant;
+    const booking = invoice.booking;
+    const property = booking?.property;
+    const payment = invoice.payments[0];
+
+    return {
+        id: invoice.id,
+        displayId: invoice.displayId || `INV-${invoiceId.slice(0, 8).toUpperCase()}`,
+        month: invoice.month || '',
+        billingMonth: invoice.billingMonth || '',
+        status: invoice.status,
+        rentAmount: Number(invoice.rentAmount),
+        foodAmount: Number(invoice.foodAmount || 0),
+        creditApplied: Number((invoice as any).creditApplied || 0),
+        amount: Number(invoice.amount),
+        paidAmount: Number(invoice.paidAmount),
+        dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+        paidAt: invoice.paidAt ? new Date(invoice.paidAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+        paymentMethod: invoice.paymentMethod || payment?.method || 'Online',
+        paymentRef: (payment as any)?.razorpayId || (invoice as any).confirmedByName || '—',
+        // Tenant
+        tenantName: tenant?.name || booking?.user?.name || '—',
+        tenantEmail: tenant?.email || booking?.user?.email || '—',
+        tenantDisplayId: tenant?.displayId || booking?.user?.displayId || '—',
+        tenantRoom: tenant?.roomNumber || booking?.roomAssigned || booking?.room?.roomNumber || '—',
+        tenantRoomType: tenant?.roomType || '',
+        stayFrom: tenant?.startDate || '—',
+        // Property
+        propertyName: booking?.propertyName || property?.name || '—',
+        propertyAddress: property?.address || '—',
+        propertyCity: property?.city || '',
+        propertyGst: (property as any)?.gstNumber || null,
+    };
+}

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useCallback } from 'react';
 import { getOwnerRentCollection, sendRentReminder, markInvoiceAsCashPaid } from '@/actions/ownerRentCollection';
+import { getInvoiceForReceipt } from '@/actions/payments';
 import { toast } from 'sonner';
 import {
     IndianRupee, AlertCircle, Loader2, MessageCircle,
@@ -13,43 +14,150 @@ import { Button } from '@/components/ui/button';
 
 type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'UNPAID';
 
-// ── Receipt Preview Modal ──────────────────────────────────────────
-function ReceiptModal({ invoiceId, receiptNo, onClose }: { invoiceId: string; receiptNo: string; onClose: () => void }) {
-    const previewUrl = `/api/receipts/${invoiceId}`;
+
+// ── Receipt Preview Modal (HTML inline — no iframe) ────────────────
+type InvoiceData = Awaited<ReturnType<typeof getInvoiceForReceipt>>;
+
+function inr(n: number) {
+    return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () => void }) {
+    const [data, setData] = useState<InvoiceData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        getInvoiceForReceipt(invoiceId)
+            .then(setData)
+            .catch(e => setError(e.message || 'Failed to load receipt'))
+            .finally(() => setLoading(false));
+    }, [invoiceId]);
+
     const downloadUrl = `/api/receipts/${invoiceId}?download=1`;
+
     return (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col">
-            {/* Top bar */}
-            <div className="flex items-center justify-between px-4 py-3 bg-indigo-700 text-white shrink-0">
-                <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-indigo-200" />
-                    <span className="font-black text-sm">Receipt Preview</span>
-                    <span className="text-indigo-300 text-xs font-mono">#{receiptNo}</span>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+
+                {/* Modal top bar */}
+                <div className="flex items-center justify-between px-5 py-3.5 bg-indigo-700 text-white shrink-0">
+                    <div className="flex items-center gap-2">
+                        <FileText className="w-4.5 h-4.5 text-indigo-200" />
+                        <span className="font-black text-sm">Rent Receipt</span>
+                        {data && <span className="text-indigo-300 text-xs font-mono">#{data.displayId}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <a
+                            href={downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-lg transition-colors"
+                        >
+                            <Download className="w-3.5 h-3.5" /> Download PDF
+                        </a>
+                        <button
+                            onClick={onClose}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-lg transition-colors"
+                        >
+                            <X className="w-3.5 h-3.5" /> Close
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <a
-                        href={downloadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-lg transition-colors"
-                    >
-                        <Download className="w-3.5 h-3.5" /> Download PDF
-                    </a>
-                    <button
-                        onClick={onClose}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-lg transition-colors"
-                    >
-                        <X className="w-3.5 h-3.5" /> Close
-                    </button>
+
+                {/* Body */}
+                <div className="overflow-y-auto flex-1">
+                    {loading && (
+                        <div className="flex items-center justify-center py-20">
+                            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                        </div>
+                    )}
+                    {error && (
+                        <div className="flex items-center justify-center py-20 text-red-500 font-bold text-sm">{error}</div>
+                    )}
+                    {data && !loading && (
+                        <div className="p-6 space-y-5 font-sans text-slate-800">
+
+                            {/* Header band */}
+                            <div className="rounded-xl overflow-hidden">
+                                <div className="bg-gradient-to-r from-indigo-700 to-violet-600 px-6 py-5 flex items-start justify-between">
+                                    <div>
+                                        <p className="text-white text-xl font-black tracking-tight">RentPe</p>
+                                        <p className="text-indigo-200 text-xs mt-0.5">Verified PGs &amp; Hostels</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-white text-base font-black tracking-widest uppercase">Rent Receipt</p>
+                                        <p className="text-indigo-200 text-xs font-mono mt-0.5">#{data.displayId}</p>
+                                        <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider">
+                                            ✓ PAID
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tenant + Property cards */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Tenant Details</p>
+                                    <p className="font-black text-slate-900 text-sm">{data.tenantName}</p>
+                                    <p className="text-[10px] font-mono text-indigo-600 mt-0.5">{data.tenantDisplayId}</p>
+                                    <p className="text-[11px] text-slate-500 mt-1">{data.tenantEmail}</p>
+                                    <p className="text-[11px] text-slate-500">Room: {data.tenantRoom}{data.tenantRoomType ? ` · ${data.tenantRoomType}` : ''}</p>
+                                    <p className="text-[11px] text-slate-500">Stay from: {data.stayFrom}</p>
+                                </div>
+                                <div className="border border-indigo-100 rounded-xl p-4 bg-indigo-50">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Property Details</p>
+                                    <p className="font-black text-slate-900 text-sm">{data.propertyName}</p>
+                                    <p className="text-[11px] text-slate-500 mt-1">{data.propertyAddress}</p>
+                                    <p className="text-[11px] text-slate-500">{data.propertyCity}</p>
+                                    {data.propertyGst && <p className="text-[10px] font-mono text-slate-500 mt-1">GSTIN: {data.propertyGst}</p>}
+                                </div>
+                            </div>
+
+                            {/* Payment summary table */}
+                            <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                <div className="bg-indigo-700 px-4 py-2.5">
+                                    <p className="text-white text-[10px] font-black uppercase tracking-widest">Payment Summary</p>
+                                </div>
+                                <table className="w-full text-sm">
+                                    <tbody>
+                                        {[
+                                            { label: 'Period / Month',  value: data.month,           bold: false },
+                                            { label: 'Invoice No.',     value: data.displayId,        bold: false, mono: true },
+                                            { label: 'Tenant ID',       value: data.tenantDisplayId,  bold: false, mono: true },
+                                            { label: 'Rent Amount',     value: inr(data.rentAmount),  bold: false },
+                                            ...(data.foodAmount > 0 ? [{ label: 'Food Charges', value: inr(data.foodAmount), bold: false }] : []),
+                                            ...(data.creditApplied > 0 ? [{ label: 'Credit Applied', value: `- ${inr(data.creditApplied)}`, bold: false }] : []),
+                                            { label: 'Total Amount',    value: inr(data.amount),      bold: true, highlight: true },
+                                            { label: 'Due Date',        value: data.dueDate,          bold: false },
+                                            { label: 'Paid On',         value: data.paidAt,           bold: false },
+                                            { label: 'Payment Method',  value: data.paymentMethod,    bold: false },
+                                            { label: 'Payment Ref',     value: data.paymentRef,       bold: false, mono: true },
+                                        ].map((row: any, i) => (
+                                            <tr key={i} className={`border-b border-slate-100 ${row.highlight ? 'bg-indigo-50' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}`}>
+                                                <td className={`px-4 py-2.5 text-xs ${row.bold ? 'font-black text-indigo-700' : 'text-slate-500'}`}>
+                                                    {row.label}
+                                                </td>
+                                                <td className={`px-4 py-2.5 text-right text-xs ${row.bold ? 'font-black text-slate-900 text-sm' : row.mono ? 'font-mono text-slate-700' : 'text-slate-800 font-medium'}`}>
+                                                    {row.value}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Footer note */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center">
+                                <p className="text-[10px] text-slate-400 italic">
+                                    This is a computer-generated receipt and does not require a physical signature.
+                                </p>
+                                <p className="text-[10px] text-indigo-500 font-bold mt-0.5">rentpe.in</p>
+                            </div>
+
+                        </div>
+                    )}
                 </div>
-            </div>
-            {/* PDF Viewer */}
-            <div className="flex-1 overflow-hidden bg-slate-800">
-                <iframe
-                    src={previewUrl}
-                    className="w-full h-full border-0"
-                    title={`Receipt ${receiptNo}`}
-                />
             </div>
         </div>
     );
@@ -192,7 +300,7 @@ export function RentCollectionContainer() {
     const [propertyFilter, setPropertyFilter] = useState('ALL');
     const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
     const [cashModal, setCashModal] = useState<any>(null);
-    const [receiptModal, setReceiptModal] = useState<{ id: string; receiptNo: string } | null>(null);
+    const [receiptModal, setReceiptModal] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
     const [sendingId, setSendingId] = useState<string | null>(null);
 
@@ -454,7 +562,7 @@ export function RentCollectionContainer() {
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         {isPaid ? (
                                                             <button
-                                                                onClick={() => setReceiptModal({ id: inv.id, receiptNo: inv.displayId || inv.id.slice(0, 8).toUpperCase() })}
+                                                                onClick={() => setReceiptModal(inv.id)}
                                                                 className="px-2.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black rounded-lg flex items-center gap-1 hover:bg-indigo-100 transition-colors"
                                                             >
                                                                 <Eye className="w-3 h-3" /> Receipt
@@ -520,7 +628,7 @@ export function RentCollectionContainer() {
                                         )}
                                         {isPaid && (
                                             <button
-                                                onClick={() => setReceiptModal({ id: inv.id, receiptNo: inv.displayId || inv.id.slice(0, 8).toUpperCase() })}
+                                                onClick={() => setReceiptModal(inv.id)}
                                                 className="w-full py-2 text-center bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 hover:bg-indigo-100"
                                             >
                                                 <Eye className="w-3.5 h-3.5" /> View Receipt
@@ -546,8 +654,7 @@ export function RentCollectionContainer() {
             {/* Receipt Preview Modal */}
             {receiptModal && (
                 <ReceiptModal
-                    invoiceId={receiptModal.id}
-                    receiptNo={receiptModal.receiptNo}
+                    invoiceId={receiptModal}
                     onClose={() => setReceiptModal(null)}
                 />
             )}
