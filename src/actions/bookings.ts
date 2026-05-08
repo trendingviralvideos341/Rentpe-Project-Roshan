@@ -695,6 +695,76 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                         data: { tenantId: tenantId!, month: currentMonth, amount: existingB.amount, paid: true,
                             paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
                     });
+
+                    // ── AUTO-SETUP: BillingProfile + SecurityDeposit + First-Month Invoice ──
+                    // When student pays joining (rent + deposit), auto-generate the billing
+                    // records so the owner sees it in Rent & Payments immediately.
+                    try {
+                        const depositAmt = Number((existingB as any).depositAmount || existingB.amount);
+                        const rentAmt = Number(existingB.amount);
+                        const anchorDay = new Date().getUTCDate();
+                        const now = new Date();
+                        const billingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                        const monthLabel = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
+                        // 1. BillingProfile (idempotent)
+                        let profile = await (prisma as any).billingProfile.findUnique({ where: { tenantId: tenantId! } }).catch(() => null);
+                        if (!profile) {
+                            profile = await (prisma as any).billingProfile.create({
+                                data: {
+                                    tenantId: tenantId!,
+                                    propertyId: room.propertyId,
+                                    roomId: existingB.roomId!,
+                                    bedId: (existingB as any).bedId || null,
+                                    monthlyRent: rentAmt,
+                                    securityDeposit: depositAmt,
+                                    billingDay: anchorDay,
+                                    billingAnchorDay: anchorDay,
+                                    status: 'ACTIVE',
+                                }
+                            });
+                        }
+
+                        // 2. SecurityDeposit marked PAID
+                        const existingDeposit = await (prisma as any).securityDeposit.findUnique({ where: { billingProfileId: profile.id } }).catch(() => null);
+                        if (!existingDeposit) {
+                            await (prisma as any).securityDeposit.create({
+                                data: { billingProfileId: profile.id, tenantId: tenantId!, amount: depositAmt, status: 'PAID', paidAt: new Date() }
+                            });
+                        } else if (existingDeposit.status !== 'PAID') {
+                            await (prisma as any).securityDeposit.update({ where: { id: existingDeposit.id }, data: { status: 'PAID', paidAt: new Date() } });
+                        }
+
+                        // 3. First-month RentInvoice marked PAID (idempotent)
+                        const existingInvoice = await (prisma as any).rentInvoice.findFirst({ where: { tenantId: tenantId!, billingMonth } }).catch(() => null);
+                        if (!existingInvoice) {
+                            const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + 5);
+                            const invDisplayId = `INV-${Math.floor(Math.random() * 900000) + 100000}`;
+                            await (prisma as any).rentInvoice.create({
+                                data: {
+                                    displayId: invDisplayId,
+                                    billingProfileId: profile.id,
+                                    tenantId: tenantId!,
+                                    propertyId: room.propertyId,
+                                    bookingId: id,
+                                    month: monthLabel,
+                                    billingMonth,
+                                    rentAmount: rentAmt,
+                                    foodAmount: 0,
+                                    amount: rentAmt,
+                                    dueDate,
+                                    status: 'PAID',
+                                    paidAmount: rentAmt,
+                                    paidRentAmount: rentAmt,
+                                    paidAt: new Date(),
+                                    paymentMethod: method,
+                                    confirmedBy: 'SYSTEM',
+                                    confirmedByName: 'Auto — Joining Payment',
+                                    lockedAt: new Date(),
+                                }
+                            });
+                        }
+                    } catch (billingErr) { console.error('Auto-billing setup error (non-fatal):', billingErr); }
                 }
             }
         } catch (e) { console.error('Auto-activate tenant error:', e); }
