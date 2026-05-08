@@ -664,6 +664,8 @@ export default function StudentDashboardPage() {
                                     {otherBookings.map((booking: any) => {
                                         if (booking.status === 'APPROVED_PENDING_TOKEN')
                                             return <AlertBanner key={`alert-token-${booking.id}`} type="warning" message={`🔐 Pay ₹1,000 token to reserve your bed at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => router.push(`/secure/payment?id=${booking.id}&type=token`)} />;
+                                        if (booking.status === 'PHYSICAL_VERIFIED' && !booking.agreementSigned)
+                                            return <AlertBanner key={`alert-phys-${booking.id}`} type="info" message={`🆔 ID verified at ${booking.propertyName}! Your Tenant ID is assigned — sign your rental agreement now.`} actionLabel="Sign Agreement Now" onAction={() => setSigningBooking(booking)} />;
                                         if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
                                             return <AlertBanner key={`alert-sign-${booking.id}`} type="info" message={`Token paid! Please sign your rental agreement for ${booking.propertyName}.`} actionLabel="Sign Agreement" onAction={() => setSigningBooking(booking)} />;
                                         if (booking.status === 'AGREEMENT_PENDING')

@@ -79,11 +79,12 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
         // Step 3 — Token paid → Physical KYC is next
         if (status === 'ROOM_RESERVED') return 3;
 
-        // Step 4 — Physical verified → sign agreement
-        if (status === 'PHYSICAL_VERIFIED' || status === 'AGREEMENT_PENDING') return 4;
+        // Step 4 — Physical verified → sign agreement is next action
+        if (status === 'PHYSICAL_VERIFIED') return 4;
 
-        // Step 4 — Agreement done, move-in is next
-        if (status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 4;
+        // Step 5 — Agreement signed (by student), waiting for countersign or payment
+        // Agreement Signed (index 4) is now ✅ done, Move-in Ready (index 5) is current
+        if (status === 'AGREEMENT_PENDING' || status === 'BOOKING_CONFIRMED' || status === 'PAID' || status === 'CASH_PAID') return 5;
 
         // Step 5 — Move-in Ready
         if (status === 'MOVE_IN_SCHEDULED') return 5;
