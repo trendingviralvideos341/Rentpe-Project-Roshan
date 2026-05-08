@@ -157,6 +157,12 @@ export interface AgreementCopyData {
     signedDevice?: string;
     agreementVersion?: string;
     ownerName?: string;
+    // Identity panel fields (shown in full view modal)
+    tenantDisplayId?: string;
+    userDisplayId?: string;
+    propertyDisplayId?: string;
+    noticePeriod?: number;
+    refundPolicy?: string;
 }
 
 export function downloadAgreementCopy(data: AgreementCopyData) {

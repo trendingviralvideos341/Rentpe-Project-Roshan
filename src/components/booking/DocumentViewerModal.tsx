@@ -72,39 +72,173 @@ function TokenView({ data }: { data: TokenReceiptData }) {
     );
 }
 
-// ─── Agreement Copy Render ───────────────────────────────────────────────────
+// ─── Agreement Copy Render (Full — mirrors signing modal, read-only) ──────────
 function AgreementView({ data }: { data: AgreementCopyData }) {
-    const balance = Math.max(0, data.monthlyRent + data.depositAmount - 1000);
+    const rent = Number(data.monthlyRent) || 0;
+    const deposit = Number(data.depositAmount) || 0;
+    const balance = Math.max(0, rent + deposit - 1000);
+    const noticePeriod = data.noticePeriod || 30;
+
     return (
-        <div className="space-y-1">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center mb-1">
+        <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
+            {/* Signed Banner */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
                 <p className="text-sm font-black text-emerald-700">✍️ Digitally Signed by Tenant</p>
                 <p className="text-xs text-emerald-600 mt-0.5">Legally binding under IT Act, 2000 · Version {data.agreementVersion || "v1.0-2026"}</p>
             </div>
-            <Section title="Parties" />
-            <Row label="Tenant" value={data.tenantName} />
-            <Row label="Email" value={data.tenantEmail || "—"} accent />
-            <Row label="Property Owner" value={data.ownerName || "Property Owner"} />
-            <Row label="Facilitated By" value="RentPe Technologies Pvt. Ltd." accent />
-            <Section title="Accommodation" />
-            <Row label="Property" value={data.propertyName} />
-            <Row label="Address" value={`${data.propertyAddress}, ${data.propertyCity}`} accent />
-            <Row label="Room / Bed" value={`${data.roomAssigned} (${data.occupancy})`} />
-            <Row label="Move-In Date" value={data.moveInDate} accent />
-            <Section title="Financial Terms" />
-            <Row label="Monthly Rent" value={`₹${data.monthlyRent.toLocaleString("en-IN")}`} />
-            <Row label={`Deposit (${data.depositMonths}M) — Refundable`} value={`₹${data.depositAmount.toLocaleString("en-IN")}`} accent />
-            <Row label="Token Already Paid" value="₹1,000" />
-            <div className="bg-slate-900 rounded-xl p-4 flex justify-between items-center mt-2">
-                <span className="text-sm font-black text-white">Joining Balance Due</span>
-                <span className="text-lg font-black text-white">₹{balance.toLocaleString("en-IN")}</span>
+
+            {/* Identity Panel */}
+            {(data.userDisplayId || data.tenantDisplayId || data.bookingDisplayId || data.propertyDisplayId) && (
+                <div className="bg-indigo-950 border border-indigo-700/50 rounded-xl p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">📋 Permanent Legal Identifiers — Keep This Safe</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        {data.bookingDisplayId && (
+                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
+                                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">Booking ID</p>
+                                <p className="text-[10px] font-black text-white font-mono">{data.bookingDisplayId}</p>
+                            </div>
+                        )}
+                        {data.userDisplayId && (
+                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
+                                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">User ID (Permanent)</p>
+                                <p className="text-[10px] font-black text-white font-mono">{data.userDisplayId}</p>
+                            </div>
+                        )}
+                        {data.tenantDisplayId && (
+                            <div className="bg-emerald-900/60 rounded-lg p-2 border border-emerald-600/40">
+                                <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">Tenant ID ✓ KYC Verified</p>
+                                <p className="text-[10px] font-black text-emerald-300 font-mono">{data.tenantDisplayId}</p>
+                            </div>
+                        )}
+                        {data.propertyDisplayId && (
+                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
+                                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">PG / Property ID</p>
+                                <p className="text-[10px] font-black text-white font-mono">{data.propertyDisplayId}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Title */}
+            <div className="text-center space-y-1 pb-3 border-b-2 border-dashed border-slate-200">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Accommodation Occupancy Agreement</h3>
+                <p className="text-[10px] text-slate-400">Facilitated by RentPe (Marketplace Intermediary)</p>
+                <p className="text-[10px] text-slate-400">Ref: {data.propertyName} · Executed: {data.signedAt}</p>
             </div>
+
+            {/* 1. Parties */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">1. Parties to This Agreement</h4>
+                <div className="bg-slate-50 rounded-xl p-3 space-y-1">
+                    <p><strong className="text-slate-700">Tenant:</strong> {data.tenantName}{data.tenantEmail ? ` (${data.tenantEmail})` : ""}</p>
+                    <p><strong className="text-slate-700">Property:</strong> {data.propertyName}, {data.propertyAddress}, {data.propertyCity}</p>
+                    <p><strong className="text-slate-700">Facilitated By:</strong> RentPe Platform — an intermediary marketplace. RentPe is NOT the property owner or landlord.</p>
+                </div>
+            </section>
+
+            {/* 2. Financial Terms */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">2. Financial Terms (Locked at Signing)</h4>
+                <div className="rounded-xl overflow-hidden border border-slate-200 font-mono text-[11px]">
+                    <div className="bg-slate-900 px-4 py-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Payment Breakdown</span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                        <div className="flex justify-between px-4 py-2.5">
+                            <span className="text-slate-600">Monthly Rent (1st Month)</span>
+                            <span className="font-black text-slate-900">₹{rent.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-2.5 bg-emerald-50/50">
+                            <div>
+                                <span className="text-emerald-700">Security Deposit ({data.depositMonths} month{data.depositMonths > 1 ? "s" : ""})</span>
+                                <span className="ml-2 text-[9px] bg-emerald-100 text-emerald-600 font-bold px-1.5 py-0.5 rounded-full">✓ Refundable</span>
+                            </div>
+                            <span className="font-black text-emerald-700">₹{deposit.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-3 bg-slate-900">
+                            <span className="text-sm font-black text-white">Joining Balance Due</span>
+                            <span className="text-sm font-black text-white">₹{balance.toLocaleString("en-IN")}</span>
+                        </div>
+                    </div>
+                </div>
+                <p className="mt-1.5 text-[10px] text-slate-400 italic">These amounts are fixed as of the agreement date and cannot be altered retroactively.</p>
+            </section>
+
+            {/* 3. Tenancy Duration */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">3. Tenancy Duration &amp; Rent Schedule</h4>
+                <ul className="space-y-1 list-disc ml-4">
+                    <li>Move-in Date: <strong>{data.moveInDate}</strong></li>
+                    <li>Monthly rent is due on the <strong>1st of every calendar month</strong>. Late payment may attract a penalty as specified by the property owner.</li>
+                    <li>Tenancy is on a month-to-month basis. Minimum stay and notice period rules apply (see Section 5).</li>
+                </ul>
+            </section>
+
+            {/* 4. House Rules */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">4. House Rules &amp; Code of Conduct</h4>
+                <ul className="list-disc ml-4 space-y-1">
+                    <li>You must follow all property rules communicated by the owner, including visitor policies, curfew timings, noise guidelines, and food-related rules.</li>
+                    <li>You are responsible for maintaining your room and assigned area in a clean, undamaged condition.</li>
+                    <li>Illegal activities, possession of prohibited substances, vandalism, or harassment of other residents is strictly prohibited and will result in immediate eviction.</li>
+                    <li>No subletting of your assigned bed/room without written owner consent.</li>
+                    <li>Guests must be declared and comply with the property's visitor policy.</li>
+                </ul>
+            </section>
+
+            {/* 5. Notice Period */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">5. Notice Period &amp; Vacating</h4>
+                <p>You must provide written notice of <strong>{noticePeriod} days</strong> before vacating. Failure to provide adequate notice may result in forfeiture of part or all of the security deposit.</p>
+                <p className="mt-1">A joint move-out inspection will be conducted. Deductions, if any, will be communicated in writing within 7 days of vacating.</p>
+            </section>
+
+            {/* 6. Deposit Refund */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">6. Security Deposit Refund <span className="text-emerald-600 normal-case">(MTA 2021 Compliant)</span></h4>
+                <p>Your security deposit of <strong>₹{deposit.toLocaleString("en-IN")}</strong> ({data.depositMonths} month{data.depositMonths > 1 ? "s" : ""} rent) is <strong className="text-emerald-600">fully refundable</strong> subject to:</p>
+                <ul className="list-disc ml-4 space-y-1 mt-1">
+                    <li><strong>Permitted deductions only:</strong> Documented physical damage (beyond normal wear &amp; tear), unpaid dues, unreturned keys or property assets.</li>
+                    <li><strong>Normal wear &amp; tear is NOT deductible</strong> (fading paint, minor scuffs, worn fixtures from normal use).</li>
+                    <li><strong>Refund timeline:</strong> Within <strong>30 days</strong> of handing over possession of the room.</li>
+                    <li>All deductions will be supported by a written, itemised explanation.</li>
+                </ul>
+                <p className="mt-1.5 text-[10px] text-slate-400">In compliance with Model Tenancy Act 2021 and established Indian PG industry standards.</p>
+            </section>
+
+            {/* 7. Platform Disclaimer */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">7. Platform Disclaimer</h4>
+                <p>RentPe is an <strong>intermediary marketplace platform</strong> and is NOT the property owner or landlord. RentPe is not liable for the physical condition of the property, actions of the owner, or service delivery. Disputes arising from the accommodation are between the Tenant and the Property Owner. RentPe may assist in mediation through its Resolution Centre but bears no direct financial liability.</p>
+            </section>
+
+            {/* 8. Cancellation Policy */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">8. Refund &amp; Cancellation Policy</h4>
+                <p>{data.refundPolicy || "Cancellation refunds are subject to the property owner's cancellation policy. Token amounts, once the reservation window has expired, are non-refundable. Platform service fees are strictly non-refundable upon booking confirmation."}</p>
+            </section>
+
+            {/* 9. Governing Law */}
+            <section>
+                <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">9. Governing Law &amp; Jurisdiction</h4>
+                <p>This agreement is governed by the laws of India, including the Model Tenancy Act 2021, Consumer Protection Act 2019, and applicable State laws. Jurisdiction: Bangalore, Karnataka, India.</p>
+            </section>
+
+            {/* Acceptance Confirmation Banner */}
+            <div className="bg-gradient-to-r from-indigo-950 to-slate-900 rounded-xl p-4 border border-indigo-500/30">
+                <p className="text-[11px] text-indigo-200 font-semibold text-center leading-relaxed">
+                    You confirmed you had read, understood, and irrevocably accepted all terms of this agreement. Your digital acceptance is legally binding under the <strong className="text-white">Information Technology Act, 2000</strong>.
+                </p>
+            </div>
+
+            {/* Audit Trail */}
             <Section title="Digital Signature Audit Trail" />
             <Row label="Agreement ID" value={data.agreementId} />
             <Row label="Signed At (IST)" value={data.signedAt} accent />
             <Row label="IP Address" value={data.signedIp || "—"} />
             <Row label="Device / Browser" value={(data.signedDevice || "—").substring(0, 60)} accent />
-            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mt-3">
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mt-1">
                 <p className="text-xs font-black text-indigo-700">⚖️ Legally Binding under Information Technology Act, 2000</p>
                 <p className="text-xs text-indigo-600 mt-0.5">Governing Law: Model Tenancy Act 2021 · Jurisdiction: Bangalore, Karnataka</p>
             </div>

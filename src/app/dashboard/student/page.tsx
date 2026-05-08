@@ -322,6 +322,9 @@ function BookingCard({
                                             signedIp: booking.agreementSignedIp || undefined,
                                             signedDevice: booking.agreementSignedDevice || undefined,
                                             agreementVersion: booking.agreementVersion || 'v1.0-2026',
+                                            tenantDisplayId: tenantDisplayId || undefined,
+                                            userDisplayId: userDisplayId || undefined,
+                                            propertyDisplayId: booking.propertyDisplayId || undefined,
                                         }});
                                     }}>
                                         <FileText className="h-3 w-3 mr-1" /> View Agreement
@@ -404,6 +407,9 @@ function BookingCard({
                                 signedIp: booking.agreementSignedIp || undefined,
                                 signedDevice: booking.agreementSignedDevice || undefined,
                                 agreementVersion: booking.agreementVersion || 'v1.0-2026',
+                                tenantDisplayId: tenantDisplayId || undefined,
+                                userDisplayId: userDisplayId || undefined,
+                                propertyDisplayId: booking.propertyDisplayId || undefined,
                             }});
                         }}><FileText className="h-3.5 w-3.5 mr-1" /> View Agreement</Button>
                     )}
