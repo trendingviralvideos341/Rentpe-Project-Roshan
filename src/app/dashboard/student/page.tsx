@@ -387,7 +387,7 @@ function BookingCard({
                     {(isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
                         <Button variant="outline" size="sm" className="text-xs h-8 rounded-full" onClick={() => setSelectedBooking(booking)}><FileText className="h-3.5 w-3.5 mr-1" /> Rent Receipt</Button>
                     )}
-                    {booking.paidAt && (isTokenPaid || isPhysicalVerified || isAgreementPending || isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
+                    {booking.tokenPaidAt && (isTokenPaid || isPhysicalVerified || isAgreementPending || isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
                         <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-green-300 text-green-700 hover:bg-green-50" onClick={() => {
                             setViewingDoc({ type: 'token', data: {
                                 bookingDisplayId: booking.displayId,
@@ -395,10 +395,10 @@ function BookingCard({
                                 tenantEmail: booking.guestEmail || undefined,
                                 propertyName: booking.propertyName,
                                 roomAssigned: booking.roomAssigned || '—',
-                                tokenAmount: 1000,
-                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
+                                tokenAmount: booking.tokenAmount || 1000,
+                                paidAt: booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                 paymentMethod: booking.paymentMethod || 'Online',
-                                paymentId: booking.paymentId || undefined,
+                                paymentId: booking.tokenPaymentId || undefined,
                             }});
                         }}><FileText className="h-3.5 w-3.5 mr-1" /> Token Receipt</Button>
                     )}
@@ -746,17 +746,59 @@ export default function StudentDashboardPage() {
                         <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-blue-500" /> Payment History</CardTitle></CardHeader>
                         <CardContent>
                             {paymentHistory.length === 0 ? <div className="text-center py-8 text-muted-foreground">No payments yet.</div> : (
-                                <div className="rounded-md border"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead>Date</TableHead><TableHead>Description</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-center">Status</TableHead></TableRow></TableHeader><TableBody>
-                                    {paymentHistory.map((p, idx) => (
-                                        <TableRow key={idx}>
-                                            <TableCell className="font-medium">{new Date(p.date).toLocaleDateString('en-IN')}</TableCell>
-                                            <TableCell>{p.description}</TableCell>
-                                            <TableCell><span className="text-[10px] bg-muted px-2 py-1 rounded font-medium uppercase tracking-wider">{p.type.replace('_', ' ')}</span></TableCell>
-                                            <TableCell className="text-right font-bold">₹{p.amount.toLocaleString('en-IN')}</TableCell>
-                                            <TableCell className="text-center"><span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded">PAID</span>{p.status === 'PAID' && <Button variant="ghost" size="sm" className="mt-1 h-6 text-[10px] text-blue-600" onClick={() => handleDownloadReceipt(p)}><Download className="h-3 w-3 mr-1" /> Receipt</Button>}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody></Table></div>
+                                <div className="rounded-xl border overflow-hidden">
+                                    <Table>
+                                        <TableHeader className="bg-muted/50">
+                                            <TableRow>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead>Type</TableHead>
+                                                <TableHead>Method</TableHead>
+                                                <TableHead className="text-right">Amount</TableHead>
+                                                <TableHead>Transaction ID</TableHead>
+                                                <TableHead className="text-center">Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {paymentHistory.map((p: any, idx: number) => {
+                                                const statusStyle = p.status === 'SUCCESS'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : p.status === 'PENDING'
+                                                    ? 'bg-amber-100 text-amber-700'
+                                                    : p.status === 'FAILED'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : p.status === 'REFUNDED'
+                                                    ? 'bg-blue-100 text-blue-700'
+                                                    : 'bg-slate-100 text-slate-600';
+                                                const typeLabels: Record<string, string> = {
+                                                    TOKEN_PAYMENT: '🔒 Token',
+                                                    BOOKING_PAYMENT: '🏠 Joining',
+                                                    RENT_INVOICE: '📅 Rent',
+                                                    MONTHLY_RENT: '📅 Rent',
+                                                    SECURITY_DEPOSIT: '🛡 Deposit',
+                                                };
+                                                return (
+                                                    <TableRow key={idx}>
+                                                        <TableCell className="font-medium text-xs whitespace-nowrap">{new Date(p.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
+                                                        <TableCell className="text-xs max-w-[200px] truncate" title={p.description}>{p.description}</TableCell>
+                                                        <TableCell><span className="text-[10px] bg-muted px-2 py-1 rounded font-medium uppercase tracking-wider whitespace-nowrap">{typeLabels[p.type] || p.type.replace(/_/g, ' ')}</span></TableCell>
+                                                        <TableCell><span className="text-[10px] font-bold uppercase text-slate-500">{(p.method || 'ONLINE').replace(/_/g, ' ')}</span></TableCell>
+                                                        <TableCell className="text-right font-bold">₹{Number(p.amount).toLocaleString('en-IN')}</TableCell>
+                                                        <TableCell className="font-mono text-[10px] text-slate-500 max-w-[140px] truncate" title={p.transactionId || '—'}>{p.transactionId || <span className="text-slate-300">N/A</span>}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full ${statusStyle}`}>{p.status}</span>
+                                                            {p.status === 'SUCCESS' && (
+                                                                <Button variant="ghost" size="sm" className="block mx-auto mt-1 h-6 text-[10px] text-blue-600 px-1" onClick={() => handleDownloadReceipt(p)}>
+                                                                    <Download className="h-3 w-3 mr-0.5 inline" /> PDF
+                                                                </Button>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             )}
                         </CardContent>
                     </Card>

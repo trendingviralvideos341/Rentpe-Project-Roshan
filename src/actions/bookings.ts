@@ -273,6 +273,9 @@ export async function getBookings() {
                     ownerPhone: b.property?.owner?.phone || null,
                     propertyAddress: b.property?.address || null,
                     propertyCity: b.property?.city || null,
+                    tokenPaidAt: (b as any).tokenPaidAt || null,
+                    tokenPaymentId: (b as any).tokenPaymentId || null,
+                    tokenAmount: (b as any).tokenAmount || 1000,
                 };
             });
         }

@@ -220,19 +220,24 @@ export async function getStudentPaymentHistory() {
         const userId = (session as any).userId;
         const email = (session as any).email;
 
-        // 1. Get initial booking payments
-        const bookingPayments = await prisma.payment.findMany({
-            where: {
-                booking: { userId },
-                status: 'VERIFIED'
-            },
-            include: {
-                booking: { select: { propertyName: true } }
-            },
+        // 1. All Payment model records (all statuses — so failures show too)
+        const allPayments = await prisma.payment.findMany({
+            where: { booking: { userId } },
+            include: { booking: { select: { propertyName: true, displayId: true } } },
             orderBy: { date: 'desc' }
         });
 
-        // 2. Get monthly rent records
+        // 2. Token payments from bookings (stored directly on booking, not Payment model)
+        const bookingsWithToken = await prisma.booking.findMany({
+            where: { userId, tokenPaidAt: { not: null } },
+            select: {
+                id: true, displayId: true, propertyName: true,
+                tokenPaidAt: true, tokenPaymentId: true, paymentMethod: true,
+                tokenAmount: true,
+            }
+        });
+
+        // 3. Monthly rent records
         let rentRecords: any[] = [];
         if (email) {
             const tenants = await prisma.tenant.findMany({
@@ -242,35 +247,68 @@ export async function getStudentPaymentHistory() {
                     property: { select: { name: true } }
                 }
             });
-
             rentRecords = tenants.flatMap(t =>
                 t.rentRecords.map(r => ({
                     id: r.id,
-                    amount: r.amount,
+                    amount: Number(r.amount),
                     date: r.paidOn ? new Date(r.paidOn) : r.createdAt,
-                    type: "MONTHLY_RENT",
-                    description: `Rent for ${r.month} (${t.property.name})`,
-                    status: "SUCCESS"
+                    type: 'MONTHLY_RENT',
+                    description: `Monthly Rent — ${r.month} · ${t.property.name}`,
+                    status: 'SUCCESS',
+                    transactionId: null,
+                    method: 'CASH / ONLINE',
+                    propertyName: t.property.name,
                 }))
             );
         }
 
-        // Format booking payments
-        const formattedBookingPayments = bookingPayments.map(p => ({
-            id: p.id,
-            amount: p.amount,
-            date: p.date,
-            type: "INITIAL_BOOKING",
-            description: `Booking advance for ${p.booking.propertyName}`,
-            status: "SUCCESS" // Since we filtered by VERIFIED
-        }));
+        // Format Payment model records
+        const formattedPayments = allPayments.map(p => {
+            const statusMap: Record<string, string> = {
+                VERIFIED: 'SUCCESS', PENDING: 'PENDING', FAILED: 'FAILED', REFUNDED: 'REFUNDED'
+            };
+            return {
+                id: p.id,
+                amount: Number(p.amount),
+                date: p.date,
+                type: p.invoiceId ? 'RENT_INVOICE' : p.depositId ? 'SECURITY_DEPOSIT' : 'BOOKING_PAYMENT',
+                description: p.invoiceId
+                    ? `Rent Invoice — ${p.booking?.propertyName || ''}`
+                    : p.depositId
+                    ? `Security Deposit — ${p.booking?.propertyName || ''}`
+                    : `Joining Payment — ${p.booking?.propertyName || ''} (Ref: ${p.booking?.displayId || ''})`,
+                status: statusMap[p.status] || p.status,
+                transactionId: p.razorpayId || p.razorpayOrderId || null,
+                method: p.method || 'ONLINE',
+                propertyName: p.booking?.propertyName || '',
+                bookingRef: p.booking?.displayId || '',
+            };
+        });
 
-        // Combine and sort
-        const combined = [...formattedBookingPayments, ...rentRecords].sort((a, b) => b.date.getTime() - a.date.getTime());
+        // Format token payments (deduplicate — skip if already in Payment model)
+        const existingTxIds = new Set(allPayments.map(p => p.razorpayId).filter(Boolean));
+        const tokenPayments = bookingsWithToken
+            .filter(b => !b.tokenPaymentId || !existingTxIds.has(b.tokenPaymentId))
+            .map(b => ({
+                id: `token-${b.id}`,
+                amount: Number(b.tokenAmount || 1000),
+                date: b.tokenPaidAt ? new Date(b.tokenPaidAt as any) : new Date(),
+                type: 'TOKEN_PAYMENT',
+                description: `Token Payment — ${b.propertyName} (Ref: ${b.displayId})`,
+                status: 'SUCCESS',
+                transactionId: b.tokenPaymentId || null,
+                method: b.paymentMethod || 'ONLINE',
+                propertyName: b.propertyName,
+                bookingRef: b.displayId,
+            }));
+
+        // Combine and sort newest first
+        const combined = [...tokenPayments, ...formattedPayments, ...rentRecords]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         return combined;
     } catch (e) {
-        console.error("getStudentPaymentHistory Error:", e);
+        console.error('getStudentPaymentHistory Error:', e);
         return [];
     }
 }
