@@ -387,7 +387,22 @@ function BookingCard({
                     {(isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
                         <Button variant="outline" size="sm" className="text-xs h-8 rounded-full" onClick={() => setSelectedBooking(booking)}><FileText className="h-3.5 w-3.5 mr-1" /> Rent Receipt</Button>
                     )}
-                    {booking.agreementSigned && !isTokenPaid && (
+                    {booking.paidAt && (isTokenPaid || isPhysicalVerified || isAgreementPending || isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
+                        <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-green-300 text-green-700 hover:bg-green-50" onClick={() => {
+                            setViewingDoc({ type: 'token', data: {
+                                bookingDisplayId: booking.displayId,
+                                tenantName: booking.guestName,
+                                tenantEmail: booking.guestEmail || undefined,
+                                propertyName: booking.propertyName,
+                                roomAssigned: booking.roomAssigned || '—',
+                                tokenAmount: 1000,
+                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
+                                paymentMethod: booking.paymentMethod || 'Online',
+                                paymentId: booking.paymentId || undefined,
+                            }});
+                        }}><FileText className="h-3.5 w-3.5 mr-1" /> Token Receipt</Button>
+                    )}
+                    {booking.agreementSigned && (
                         <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => {
                             setViewingDoc({ type: 'agreement', data: {
                                 agreementId: booking.agreementId || `AGT-${booking.displayId}`,
@@ -675,7 +690,7 @@ export default function StudentDashboardPage() {
                                         if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
                                             return <AlertBanner key={`alert-sign-${booking.id}`} type="info" message={`Token paid! Please sign your rental agreement for ${booking.propertyName}.`} actionLabel="Sign Agreement" onAction={() => setSigningBooking(booking)} />;
                                         if (booking.status === 'AGREEMENT_PENDING')
-                                            return <AlertBanner key={`alert-agr-${booking.id}`} type="info" message={`Agreement signed ✅ Waiting for owner countersign.`} />;
+                                            return null;
                                         if (booking.status === 'MOVE_IN_SCHEDULED') {
                                             const finalAmt = Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000);
                                             return <AlertBanner key={`alert-final-${booking.id}`} type="warning" message={`Physical check-in verified! Pay joining balance ₹${finalAmt.toLocaleString('en-IN')} to activate stay.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
