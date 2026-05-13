@@ -1270,6 +1270,7 @@ model VacatingNotice {
   reason         String
   status         String    @default("SUBMITTED") // SUBMITTED, ACKNOWLEDGED, APPROVED, DISPUTED, WITHDRAWN
   ownerNote      String?
+  tenantComment  String?   // Optional message from tenant requesting early move-out
   submittedAt    DateTime  @default(now())
   acknowledgedAt DateTime?
   createdAt      DateTime  @default(now())

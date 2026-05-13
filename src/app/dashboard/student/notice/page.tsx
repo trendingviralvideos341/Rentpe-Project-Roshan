@@ -4,7 +4,10 @@ import { useEffect, useState, useTransition } from 'react';
 import { getBookings } from '@/actions/bookings';
 import { fileVacatingNotice, getMyVacatingNotice, withdrawVacatingNotice } from '@/actions/tenancy';
 import { toast } from 'sonner';
-import { FileText, AlertTriangle, CheckCircle2, Clock, Loader2, ArrowLeft, XCircle } from 'lucide-react';
+import {
+    FileText, AlertTriangle, CheckCircle2, Clock, Loader2,
+    ArrowLeft, XCircle, CalendarDays, Info, MessageSquare, Lock
+} from 'lucide-react';
 import Link from 'next/link';
 
 const REASON_OPTIONS = [
@@ -19,19 +22,43 @@ const REASON_OPTIONS = [
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; desc: string }> = {
-    SUBMITTED: { label: 'Submitted', color: 'amber', icon: Clock, desc: 'Waiting for owner acknowledgement.' },
-    ACKNOWLEDGED: { label: 'Acknowledged', color: 'blue', icon: CheckCircle2, desc: 'Owner has received and acknowledged your notice.' },
-    APPROVED: { label: 'Approved', color: 'emerald', icon: CheckCircle2, desc: 'Your move-out has been approved.' },
-    DISPUTED: { label: 'Disputed', color: 'red', icon: XCircle, desc: 'Owner has raised a dispute. Please contact support.' },
-    WITHDRAWN: { label: 'Withdrawn', color: 'slate', icon: XCircle, desc: 'You have withdrawn this notice.' },
+    SUBMITTED:    { label: 'Submitted',    color: 'amber',   icon: Clock,         desc: 'Waiting for owner acknowledgement.' },
+    ACKNOWLEDGED: { label: 'Acknowledged', color: 'blue',    icon: CheckCircle2,  desc: 'Owner has received and acknowledged your notice.' },
+    APPROVED:     { label: 'Approved',     color: 'emerald', icon: CheckCircle2,  desc: 'Your move-out has been approved.' },
+    DISPUTED:     { label: 'Disputed',     color: 'red',     icon: XCircle,       desc: 'Owner has raised a dispute. Please contact support.' },
+    WITHDRAWN:    { label: 'Withdrawn',    color: 'slate',   icon: XCircle,       desc: 'You have withdrawn this notice.' },
 };
 
+// Auto-compute 30-days-from-today (locked date)
+function getLockedMoveOutDate() {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d;
+}
+
+function formatDate(d: Date) {
+    return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function toISODate(d: Date) {
+    return d.toISOString().split('T')[0];
+}
+
 export default function NoticePage() {
-    const [booking, setBooking] = useState<any>(null);
-    const [notice, setNotice] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const [booking, setBooking]       = useState<any>(null);
+    const [notice, setNotice]         = useState<any>(null);
+    const [loading, setLoading]       = useState(true);
     const [isPending, startTransition] = useTransition();
-    const [form, setForm] = useState({ plannedMoveOut: '', reason: '', agreed: false, customReason: '' });
+    const [form, setForm]             = useState({
+        reason: '',
+        agreed: false,
+        customReason: '',
+        tenantComment: '',
+    });
+
+    const lockedDate    = getLockedMoveOutDate();
+    const lockedDateISO = toISODate(lockedDate);
+    const lockedDateFmt = formatDate(lockedDate);
 
     useEffect(() => {
         const load = async () => {
@@ -50,12 +77,6 @@ export default function NoticePage() {
         load();
     }, []);
 
-    const minDate = (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 30);
-        return d.toISOString().split('T')[0];
-    })();
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.agreed) { toast.error('Please confirm you understand the notice period.'); return; }
@@ -64,7 +85,12 @@ export default function NoticePage() {
 
         startTransition(async () => {
             try {
-                const result = await fileVacatingNotice({ bookingId: booking.id, plannedMoveOut: form.plannedMoveOut, reason });
+                const result = await fileVacatingNotice({
+                    bookingId:     booking.id,
+                    plannedMoveOut: lockedDateISO,
+                    reason,
+                    tenantComment: form.tenantComment.trim() || undefined,
+                });
                 setNotice(result);
                 toast.success('Vacating notice filed successfully!');
             } catch (e: any) {
@@ -97,6 +123,7 @@ export default function NoticePage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+            {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-20 relative overflow-hidden">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 <div className="max-w-2xl mx-auto relative z-10">
@@ -108,13 +135,16 @@ export default function NoticePage() {
                 </div>
             </div>
 
-            <div className="max-w-2xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
+            <div className="max-w-2xl mx-auto px-4 -mt-12 relative z-10 space-y-5">
+
+                {/* ── No Booking ── */}
                 {!booking ? (
                     <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
                         <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                         <h2 className="font-black text-slate-700 text-lg">No Active Booking</h2>
                         <p className="text-slate-400 text-sm mt-2">Vacating notice is only available for active tenants.</p>
                     </div>
+
                 ) : notice && statusConf ? (
                     /* ── Existing Notice Status ── */
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
@@ -144,6 +174,12 @@ export default function NoticePage() {
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reason</p>
                                     <p className="font-medium text-slate-700 mt-1 text-sm">{notice.reason}</p>
                                 </div>
+                                {notice.tenantComment && (
+                                    <div className="bg-violet-50 rounded-2xl p-4 col-span-2 border border-violet-100">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Your Early-Leave Request</p>
+                                        <p className="font-medium text-violet-800 mt-1 text-sm">{notice.tenantComment}</p>
+                                    </div>
+                                )}
                                 {notice.ownerNote && (
                                     <div className="bg-indigo-50 rounded-2xl p-4 col-span-2 border border-indigo-100">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Owner Response</p>
@@ -162,82 +198,135 @@ export default function NoticePage() {
                             )}
                         </div>
                     </div>
+
                 ) : (
                     /* ── File Notice Form ── */
-                    <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100">
-                            <h2 className="font-black text-slate-900 text-lg flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-indigo-600" /> File Vacating Notice
-                            </h2>
-                            <p className="text-sm text-slate-500 mt-1">Minimum 30 days notice required by law.</p>
-                        </div>
-                        <div className="p-6 space-y-5">
-                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
-                                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                                <p className="text-sm text-amber-800 font-medium">
-                                    Your booking at <strong>{booking.propertyName}</strong> requires a minimum 30-day notice period. Your move-out date must be at least 30 days from today.
-                                </p>
-                            </div>
+                    <form onSubmit={handleSubmit} className="space-y-5">
 
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Planned Move-Out Date *</label>
-                                <input
-                                    type="date"
-                                    min={minDate}
-                                    required
-                                    value={form.plannedMoveOut}
-                                    onChange={e => setForm(f => ({ ...f, plannedMoveOut: e.target.value }))}
-                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
+                        {/* Card 1 — Locked Move-Out Date */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100">
+                                <h2 className="font-black text-slate-900 text-lg flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-indigo-600" /> File Vacating Notice
+                                </h2>
+                                <p className="text-sm text-slate-500 mt-1">Minimum 30 days notice required by law.</p>
                             </div>
+                            <div className="p-6 space-y-5">
 
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Reason for Leaving *</label>
-                                <select
-                                    required
-                                    value={form.reason}
-                                    onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    <option value="">Select a reason</option>
-                                    {REASON_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                                </select>
-                            </div>
-
-                            {form.reason === 'Other' && (
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Please describe *</label>
-                                    <textarea
-                                        required
-                                        rows={3}
-                                        value={form.customReason}
-                                        onChange={e => setForm(f => ({ ...f, customReason: e.target.value }))}
-                                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                                        placeholder="Please explain your reason..."
-                                    />
+                                {/* Amber policy warning */}
+                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                    <p className="text-sm text-amber-800 font-medium">
+                                        Your booking at <strong>{booking.propertyName}</strong> requires a minimum 30-day notice period as per the Model Tenancy Act.
+                                    </p>
                                 </div>
-                            )}
 
-                            <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={form.agreed}
-                                    onChange={e => setForm(f => ({ ...f, agreed: e.target.checked }))}
-                                    className="mt-0.5 w-4 h-4 accent-indigo-600"
-                                />
-                                <span className="text-sm font-medium text-slate-700">
-                                    I understand the 30-day notice period is mandatory and I will not be able to leave before the planned move-out date without penalty.
-                                </span>
-                            </label>
+                                {/* Locked move-out date display */}
+                                <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-5">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <CalendarDays className="w-4 h-4 text-indigo-600" />
+                                        <p className="text-xs font-black uppercase tracking-widest text-indigo-600">Your Move-Out Date</p>
+                                        <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-indigo-400 bg-indigo-100 px-2 py-0.5 rounded-full">
+                                            <Lock className="w-3 h-3" /> Fixed by Policy
+                                        </span>
+                                    </div>
+                                    <p className="text-xl font-black text-indigo-900 mt-1">{lockedDateFmt}</p>
+                                    <p className="text-xs text-indigo-500 mt-1">
+                                        Based on today's date + 30 days. This date cannot be changed.
+                                    </p>
+                                </div>
 
-                            <button
-                                type="submit"
-                                disabled={isPending || !form.plannedMoveOut || !form.reason || !form.agreed}
-                                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-sm rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-200"
-                            >
-                                {isPending ? 'Filing Notice...' : 'File Vacating Notice →'}
-                            </button>
+                                {/* Reason */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Reason for Leaving *</label>
+                                    <select
+                                        required
+                                        value={form.reason}
+                                        onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="">Select a reason</option>
+                                        {REASON_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
+
+                                {form.reason === 'Other' && (
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Please describe *</label>
+                                        <textarea
+                                            required
+                                            rows={3}
+                                            value={form.customReason}
+                                            onChange={e => setForm(f => ({ ...f, customReason: e.target.value }))}
+                                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                            placeholder="Please explain your reason..."
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Agreement checkbox */}
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.agreed}
+                                        onChange={e => setForm(f => ({ ...f, agreed: e.target.checked }))}
+                                        className="mt-0.5 w-4 h-4 accent-indigo-600"
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">
+                                        I understand the 30-day notice period is mandatory and I will not be able to leave before the planned move-out date without penalty.
+                                    </span>
+                                </label>
+                            </div>
                         </div>
+
+                        {/* Card 2 — Early Leave Request (optional) */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100">
+                                <h2 className="font-black text-slate-900 text-base flex items-center gap-2">
+                                    <MessageSquare className="w-5 h-5 text-violet-600" /> Want to Leave Earlier?
+                                </h2>
+                            </div>
+                            <div className="p-6 space-y-4">
+
+                                {/* Info banner */}
+                                <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 flex gap-3">
+                                    <Info className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
+                                    <div className="text-sm text-violet-800">
+                                        <p className="font-black mb-1">If you wish to vacate before <span className="text-violet-900">{lockedDateFmt}</span>:</p>
+                                        <ul className="list-disc list-inside space-y-1 text-violet-700 font-medium text-xs">
+                                            <li>Use the message box below to request an early move-out directly to your owner.</li>
+                                            <li>Reach out to your <strong>Building Management Incharge</strong> to discuss reducing or changing the notice period.</li>
+                                            <li>Early departure without approval may result in a notice-period penalty as per your agreement.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                {/* Tenant comment box */}
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
+                                        Message to Owner <span className="text-slate-300 font-medium normal-case">(optional)</span>
+                                    </label>
+                                    <textarea
+                                        rows={4}
+                                        value={form.tenantComment}
+                                        onChange={e => setForm(f => ({ ...f, tenantComment: e.target.value }))}
+                                        maxLength={500}
+                                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                                        placeholder="E.g. I need to vacate by 25 May due to my internship ending. Can the notice period be reduced? Please let me know."
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1 text-right">{form.tenantComment.length}/500</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Submit */}
+                        <button
+                            type="submit"
+                            disabled={isPending || !form.reason || !form.agreed}
+                            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-sm rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-200"
+                        >
+                            {isPending ? 'Filing Notice...' : `File Vacating Notice for ${lockedDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} →`}
+                        </button>
                     </form>
                 )}
             </div>

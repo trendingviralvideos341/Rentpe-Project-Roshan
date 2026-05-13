@@ -14,6 +14,7 @@ export async function fileVacatingNotice(data: {
     bookingId: string;
     plannedMoveOut: string; // ISO date string
     reason: string;
+    tenantComment?: string; // Optional early-leave request message to owner
 }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
@@ -51,17 +52,21 @@ export async function fileVacatingNotice(data: {
             ownerId: booking.property!.ownerId,
             plannedMoveOut: moveOut,
             reason: data.reason,
+            tenantComment: data.tenantComment?.trim() || null,
             status: 'SUBMITTED',
         }
     });
 
-    // Notify owner
+    // Notify owner — flag if tenant is requesting early move-out
+    const earlyLeaveNote = data.tenantComment?.trim()
+        ? ` ⚠️ Tenant has also requested an early move-out: "${data.tenantComment.trim()}"`
+        : '';
     await prisma.notification.create({
         data: {
             userId: booking.property!.ownerId,
             type: 'VACATING_NOTICE',
             category: 'NOTICE',
-            message: `📋 ${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.`,
+            message: `📋 ${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.${earlyLeaveNote}`,
             isPersistent: true,
             metadata: JSON.stringify({ noticeId: notice.id, bookingId: data.bookingId }),
         }
@@ -75,7 +80,7 @@ export async function fileVacatingNotice(data: {
         entityType: 'VACATING_NOTICE',
         entityId: notice.id,
         description: `Vacating notice filed. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}`,
-        newValue: { reason: data.reason, plannedMoveOut: data.plannedMoveOut }
+        newValue: { reason: data.reason, plannedMoveOut: data.plannedMoveOut, tenantComment: data.tenantComment }
     });
 
     revalidatePath('/dashboard/student/notice');
