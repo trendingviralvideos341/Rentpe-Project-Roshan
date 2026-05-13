@@ -58,6 +58,7 @@ const ID_CONFIG: Record<string, {
     'BED':      { prefix: 'RP-BD',  track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
     'KYC':      { prefix: 'RP-K',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: true  },
     'TICKET':   { prefix: 'RP-T',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
+    'NOTICE':   { prefix: 'RP-N',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
 
     // ── SEQUENTIAL — Numbered IDs (Financial & Legal Records) ────────────
     // BOOKING does NOT reset per FY (a booking ID is permanent for its lifetime)
@@ -129,6 +130,8 @@ async function isDisplayIdTaken(type: string, displayId: string): Promise<boolea
                 return !!(await (prisma as any).bed.findFirst({ where: { displayId }, select: { id: true } }));
             case 'TICKET':
                 return !!(await (prisma as any).ticket.findFirst({ where: { displayId }, select: { id: true } }));
+            case 'NOTICE':
+                return !!(await (prisma as any).vacatingNotice.findFirst({ where: { displayId }, select: { id: true } }));
             default:
                 // No pre-check for unknown types — Layer 3 (DB constraint) handles it
                 return false;
