@@ -1,13 +1,14 @@
 "use client";
 
-import { Fragment, useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle, ClipboardCheck } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord, initiateMoveOut } from "@/actions/tenants";
+import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { SettlementModal } from "@/components/dashboard/SettlementModal";
 
 export function TenantsContainer() {
     const [tenants, setTenants] = useState<any[]>([]);
@@ -24,9 +25,7 @@ export function TenantsContainer() {
     const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
     const [showGenerateRent, setShowGenerateRent] = useState<Record<string, boolean>>({});
     const [generateMonth, setGenerateMonth] = useState<Record<string, string>>({});
-    const [showMoveOut, setShowMoveOut] = useState<Record<string, boolean>>({});
-    const [moveOutDeductions, setMoveOutDeductions] = useState<Record<string, string>>({});
-    const [moveOutNote, setMoveOutNote] = useState<Record<string, string>>({});
+    const [showMoveOut, setShowMoveOut] = useState<any>(null); // tenant object or null
     const [viewingChecklist, setViewingChecklist] = useState<any>(null);
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
@@ -113,20 +112,7 @@ export function TenantsContainer() {
         }
     };
 
-    const handleMoveOut = async (tenantId: string) => {
-        const deductions = parseFloat(moveOutDeductions[tenantId] || "0");
-        const note = moveOutNote[tenantId]?.trim();
-        if (!note) { toast.error("Please enter a move-out note/settlement summary."); return; }
-
-        try {
-            await initiateMoveOut(tenantId, deductions, note);
-            setShowMoveOut(p => ({ ...p, [tenantId]: false }));
-            toast.success("Move-out processed. Room is now vacant.");
-            await fetchTenants();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to process move-out.");
-        }
-    };
+    // Move-out is now handled entirely by SettlementModal
 
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
 
@@ -276,7 +262,7 @@ export function TenantsContainer() {
                                         </Button>
                                     )}
                                     <Button size="sm" variant="outline" className="text-xs border-blue-300 text-blue-700"
-                                        onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}>
+                                        onClick={() => setShowMoveOut({ ...t, rentAmount: parseFloat(String(t.rentAmount ?? t.rent ?? 0).replace(/[^0-9.]/g, '')) })}>
                                         🚶 Move Out
                                     </Button>
                                 </div>
@@ -443,7 +429,7 @@ export function TenantsContainer() {
                                                             <>
                                                                 <Button size="sm" variant="outline"
                                                                     className="h-7 text-[10px] w-full border-blue-400 text-blue-700 hover:bg-blue-50"
-                                                                    onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: true }))}>
+                                                                    onClick={() => setShowMoveOut({ ...t, rentAmount: parseFloat(String(t.rentAmount ?? t.rent ?? 0).replace(/[^0-9.]/g, '')) })}>
                                                                     🚶 Move Out &amp; Settlement
                                                                 </Button>
                                                                 <Input className="h-7 text-xs w-full" placeholder="Block reason..."
@@ -519,41 +505,14 @@ export function TenantsContainer() {
             </Card>
             </div>
 
-            {/* Move Out Dialogs */}
-            {filteredTenants.map(t => (
-                <Dialog key={`moveout-${t.id}`} open={!!showMoveOut[t.id]} onOpenChange={(open) => setShowMoveOut(p => ({ ...p, [t.id]: open }))}>
-                    <DialogContent className="max-w-md">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <Clock className="h-5 w-5 text-blue-600" />
-                                Settlement
-                            </DialogTitle>
-                            <DialogDescription>
-                                Process move-out for {t.name}.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="space-y-4 py-4 text-sm">
-                            <div className="p-3 bg-red-50 rounded-lg border border-red-100 font-bold">
-                                Unpaid Rent: ₹{t.rentRecords.filter((r: any) => !r.paid).reduce((acc: number, r: any) => acc + parseFloat(r.amount), 0).toLocaleString()}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="font-semibold block">Damage Deductions (₹)</label>
-                                <Input type="number" value={moveOutDeductions[t.id] || "0"} onChange={e => setMoveOutDeductions(p => ({ ...p, [t.id]: e.target.value }))} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="font-semibold block">Notes</label>
-                                <textarea className="w-full border p-2 rounded h-20 bg-muted/20" value={moveOutNote[t.id] || ""} onChange={e => setMoveOutNote(p => ({ ...p, [t.id]: e.target.value }))} />
-                            </div>
-                        </div>
-
-                        <DialogFooter>
-                            <Button variant="ghost" onClick={() => setShowMoveOut(p => ({ ...p, [t.id]: false }))}>Cancel</Button>
-                            <Button className="bg-blue-600" onClick={() => handleMoveOut(t.id)}>Finalize</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            ))}
+            {/* ── Settlement Modal (replaces old simple dialog) ── */}
+            {showMoveOut && (
+                <SettlementModal
+                    tenant={showMoveOut}
+                    onClose={() => setShowMoveOut(null)}
+                    onSuccess={() => { setShowMoveOut(null); fetchTenants(); }}
+                />
+            )}
 
             {/* View Checklist Dialog */}
             <Dialog open={!!viewingChecklist} onOpenChange={(open) => !open && setViewingChecklist(null)}>

@@ -9,6 +9,7 @@ import {
     ArrowLeft, XCircle, CalendarDays, Info, MessageSquare, Lock
 } from 'lucide-react';
 import Link from 'next/link';
+import { VacatingTimeline } from '@/components/ui/VacatingTimeline';
 
 const REASON_OPTIONS = [
     'Relocating to another city',
@@ -147,7 +148,19 @@ export default function NoticePage() {
 
                 ) : notice && statusConf ? (
                     /* ── Existing Notice Status ── */
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                    <div className="space-y-4">
+                        {/* ── Flow Timeline ── */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                            <div className="px-6 pt-5 pb-2 border-b border-slate-100">
+                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Vacating Progress</p>
+                            </div>
+                            <div className="px-4 pb-4">
+                                <VacatingTimeline notice={notice} />
+                            </div>
+                        </div>
+
+                        {/* ── Notice Details Card ── */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                         <div className={`p-6 bg-${statusConf.color}-50 border-b border-${statusConf.color}-100`}>
                             <div className="flex items-center gap-3">
                                 {StatusIcon && <StatusIcon className={`w-6 h-6 text-${statusConf.color}-600`} />}
@@ -198,6 +211,7 @@ export default function NoticePage() {
                             )}
                         </div>
                     </div>
+                </div>
 
                 ) : (
                     /* ── File Notice Form ── */
