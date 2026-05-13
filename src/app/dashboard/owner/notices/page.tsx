@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { getOwnerVacatingNotices, acknowledgeVacatingNotice } from '@/actions/tenancy';
+import { getOwnerVacatingNotices, acknowledgeVacatingNotice, getTenantForSettlement } from '@/actions/tenancy';
 import { toast } from 'sonner';
-import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { SettlementModal } from '@/components/dashboard/SettlementModal';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; color: string }> = {
     SUBMITTED:    { label: 'Submitted',    cls: 'bg-amber-100 text-amber-700 border-amber-200', color: 'bg-amber-500' },
@@ -23,6 +24,27 @@ export default function OwnerNoticesPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [revisedMoveOutDate, setRevisedMoveOutDate] = useState('');
     const [isPending, startTransition] = useTransition();
+
+    // Move-out now confirmation + settlement
+    const [confirmNotice, setConfirmNotice] = useState<any>(null);   // notice to confirm early move-out
+    const [settlementTenant, setSettlementTenant] = useState<any>(null); // tenant data for SettlementModal
+    const [fetchingTenant, setFetchingTenant] = useState(false);
+
+    const handleMoveOutNow = (notice: any) => setConfirmNotice(notice);
+
+    const handleConfirmMoveOut = async () => {
+        if (!confirmNotice) return;
+        setFetchingTenant(true);
+        try {
+            const tenant = await getTenantForSettlement(confirmNotice.bookingId);
+            setSettlementTenant(tenant);
+            setConfirmNotice(null);
+        } catch (e: any) {
+            toast.error(e.message || 'Could not load tenant data.');
+        } finally {
+            setFetchingTenant(false);
+        }
+    };
 
     useEffect(() => {
         getOwnerVacatingNotices().then(data => {
@@ -193,18 +215,28 @@ export default function OwnerNoticesPage() {
                                                             <p className="text-xs text-indigo-600 font-medium">Your note: {notice.ownerNote}</p>
                                                         )}
                                                     </div>
-                                                    {notice.status === 'SUBMITTED' && (
-                                                        <button
-                                                            onClick={() => { 
-                                                                setSelected(notice); 
-                                                                setNote(''); 
-                                                                setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
-                                                            }}
-                                                            className="px-4 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-all whitespace-nowrap"
-                                                        >
-                                                            Acknowledge →
-                                                        </button>
-                                                    )}
+                                                    <div className="flex flex-col gap-2 shrink-0">
+                                                        {notice.status === 'SUBMITTED' && (
+                                                            <button
+                                                                onClick={() => { 
+                                                                    setSelected(notice); 
+                                                                    setNote(''); 
+                                                                    setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
+                                                                }}
+                                                                className="px-4 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-all whitespace-nowrap"
+                                                            >
+                                                                Acknowledge →
+                                                            </button>
+                                                        )}
+                                                        {notice.status === 'ACKNOWLEDGED' && (
+                                                            <button
+                                                                onClick={() => handleMoveOutNow(notice)}
+                                                                className="px-4 py-2 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-xs rounded-xl hover:from-rose-700 hover:to-orange-700 transition-all whitespace-nowrap flex items-center gap-1.5 shadow-lg shadow-rose-200"
+                                                            >
+                                                                <Home className="w-3.5 h-3.5" /> Move Out &amp; Settlement Now
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -349,6 +381,65 @@ export default function OwnerNoticesPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ── Early Move-Out Confirmation Dialog ── */}
+            {confirmNotice && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div className="bg-amber-50 p-6 border-b border-amber-100">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+                                </div>
+                                <h2 className="font-black text-slate-900 text-lg">Confirm Early Move-Out</h2>
+                            </div>
+                            <p className="text-sm text-slate-600">
+                                Move-out was scheduled for{' '}
+                                <strong className="text-slate-900">{format(new Date(confirmNotice.plannedMoveOut), 'd MMM yyyy')}</strong>,
+                                but you are selecting{' '}
+                                <strong className="text-rose-700">{format(new Date(), 'd MMM yyyy')} (Today)</strong>.
+                            </p>
+                            <div className="mt-3 bg-white border border-amber-200 rounded-2xl p-3">
+                                <p className="text-xs font-black text-amber-700 uppercase tracking-widest mb-1">What happens next</p>
+                                <p className="text-xs text-slate-600">
+                                    Today&apos;s date will be used for all settlement calculations — pro-rata rent, security deposit, and deductions.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-5 flex gap-3">
+                            <button
+                                onClick={handleConfirmMoveOut}
+                                disabled={fetchingTenant}
+                                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl hover:from-rose-700 hover:to-orange-700 disabled:opacity-50 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2"
+                            >
+                                {fetchingTenant
+                                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</>
+                                    : <><Home className="w-4 h-4" /> Confirm Move-Out</>
+                                }
+                            </button>
+                            <button
+                                onClick={() => setConfirmNotice(null)}
+                                disabled={fetchingTenant}
+                                className="flex-1 py-3 bg-slate-100 text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-200 disabled:opacity-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Settlement Modal ── */}
+            {settlementTenant && (
+                <SettlementModal
+                    tenant={settlementTenant}
+                    onClose={() => setSettlementTenant(null)}
+                    onSuccess={() => {
+                        setSettlementTenant(null);
+                        getOwnerVacatingNotices().then(setNotices);
+                    }}
+                />
             )}
         </div>
     );

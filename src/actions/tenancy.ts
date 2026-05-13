@@ -207,3 +207,40 @@ export async function getPendingVacatingNoticesCount(): Promise<number> {
         where: { ownerId, status: 'SUBMITTED', deletedAt: null }
     });
 }
+
+// ─── getTenantForSettlement ──────────────────────────────────────────────────
+// Fetches full tenant data (rent, rentRecords, phone) from a bookingId so the
+// SettlementModal can compute pro-rata and security-deposit figures.
+export async function getTenantForSettlement(bookingId: string) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes((session as any).role)) {
+        throw new Error('Unauthorized');
+    }
+
+    const tenant = await prisma.tenant.findFirst({
+        where: { bookingId },
+        include: {
+            rentRecords: { orderBy: { createdAt: 'asc' } },
+        },
+    });
+
+    if (!tenant) throw new Error('Tenant record not found for this booking.');
+
+    // Resolve rentAmount as a plain number
+    const rentAmount =
+        typeof tenant.rent === 'number'
+            ? tenant.rent
+            : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, '')) || 0;
+
+    return {
+        id:           tenant.id,
+        name:         tenant.name,
+        phone:        tenant.phone,
+        roomNumber:   tenant.roomNumber,
+        rentAmount,
+        rentRecords:  tenant.rentRecords,
+        startDate:    tenant.startDate,
+        status:       tenant.status,
+    };
+}
+
