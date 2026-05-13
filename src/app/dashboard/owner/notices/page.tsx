@@ -97,21 +97,21 @@ export default function OwnerNoticesPage() {
                 {/* Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
-                        { label: 'Total', val: notices.length },
-                        { label: 'Pending Action', val: notices.filter(n => n.status === 'SUBMITTED').length },
+                        { label: 'Total', val: notices.length, highlight: true },
+                        { label: 'Pending Action', val: notices.filter(n => n.status === 'SUBMITTED').length, highlight: false },
                         { label: 'Upcoming (30d)', val: upcoming.filter(n => {
                             const days = Math.ceil((new Date(n.plannedMoveOut).getTime() - Date.now()) / 86400000);
                             return days <= 30;
-                        }).length },
+                        }).length, highlight: false },
                         { label: 'This Month', val: upcoming.filter(n => {
                             const d = new Date(n.plannedMoveOut);
                             const now = new Date();
                             return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                        }).length },
+                        }).length, highlight: false },
                     ].map(stat => (
-                        <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 text-center">
-                            <p className="text-2xl font-black text-slate-900">{stat.val}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{stat.label}</p>
+                        <div key={stat.label} className={`rounded-2xl p-4 shadow-lg border text-center ${stat.highlight ? 'bg-indigo-600 border-indigo-500' : 'bg-white border-slate-100'}`}>
+                            <p className={`text-2xl font-black ${stat.highlight ? 'text-white' : 'text-slate-900'}`}>{stat.val}</p>
+                            <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${stat.highlight ? 'text-indigo-200' : 'text-slate-400'}`}>{stat.label}</p>
                         </div>
                     ))}
                 </div>
@@ -183,6 +183,12 @@ export default function OwnerNoticesPage() {
                                                                 {daysLeft >= 0 ? ` (${daysLeft} days)` : ' (past)'}
                                                             </span>
                                                         </div>
+                                                        {notice.tenantComment && (
+                                                             <div className="mt-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2">
+                                                                 <span className="text-[10px] font-black text-violet-500">⚠️ Early-Leave Request: </span>
+                                                                 <span className="text-xs text-violet-800 font-medium">{notice.tenantComment}</span>
+                                                             </div>
+                                                         )}
                                                         {notice.ownerNote && (
                                                             <p className="text-xs text-indigo-600 font-medium">Your note: {notice.ownerNote}</p>
                                                         )}
@@ -296,6 +302,12 @@ export default function OwnerNoticesPage() {
                                 <p className="text-xs text-slate-500">Reason: {selected.reason}</p>
                                 <p className="text-xs font-black text-indigo-600">Status: {selected.status}</p>
                             </div>
+                             {selected.tenantComment && (
+                                 <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
+                                     <p className="text-[10px] font-black uppercase tracking-widest text-violet-500 mb-1">⚠️ Tenant Early-Leave Request</p>
+                                     <p className="text-sm text-violet-800 font-medium">{selected.tenantComment}</p>
+                                 </div>
+                             )}
                             {selected.status === 'SUBMITTED' ? (
                                 <>
                                     <div className="grid grid-cols-1 gap-4">

@@ -196,3 +196,14 @@ export async function getOwnerVacatingNotices() {
         orderBy: { createdAt: 'desc' }
     });
 }
+
+export async function getPendingVacatingNoticesCount(): Promise<number> {
+    const session = await getSession();
+    if (!session) return 0;
+    const userId = (session as any).userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const ownerId = user?.parentOwnerId || userId;
+    return await prisma.vacatingNotice.count({
+        where: { ownerId, status: 'SUBMITTED', deletedAt: null }
+    });
+}

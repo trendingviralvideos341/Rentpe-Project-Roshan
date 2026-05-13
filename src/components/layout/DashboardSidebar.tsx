@@ -6,6 +6,7 @@ import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings,
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
+import { getPendingVacatingNoticesCount } from "@/actions/tenancy";
 import { getPendingPropertiesCount, getDeactivationRequestCount } from "@/actions/admin";
 import { getPendingOwnerActionCount } from "@/actions/properties";
 import { getPendingDocumentsCount } from "@/actions/documents";
@@ -46,6 +47,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [adminAlerts, setAdminAlerts] = useState({ bookings: 0, verifications: 0 });
     const [deactivationCount, setDeactivationCount] = useState(0);
     const [roleUpgradeCount, setRoleUpgradeCount] = useState(0);
+    const [pendingNoticesCount, setPendingNoticesCount] = useState(0);
     const [foodStatus, setFoodStatus] = useState<{ label: string; href?: string; hasActiveBooking: boolean } | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -58,6 +60,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setPendingPropCount(propCount);
                 const docCount = await getPendingDocumentsCount();
                 setPendingDocCount(docCount);
+                const noticesCount = await getPendingVacatingNoticesCount();
+                setPendingNoticesCount(noticesCount);
             };
             checkOwner();
             const interval = setInterval(checkOwner, 30000);
@@ -120,7 +124,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/owner/bookings", label: "Bookings & Onboarding", icon: ClipboardCheck, badge: pendingCount, reqPerm: ["view_bookings", "approve_bookings"] },
                 { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
-                { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, badge: pendingNoticesCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/room-changes", label: "Room Change Requests", icon: RefreshCw, reqPerm: ["manage_tenants"] },
             ]
         },
