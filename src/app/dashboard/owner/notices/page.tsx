@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { SettlementModal } from '@/components/dashboard/SettlementModal';
+import { VacatingTimeline } from '@/components/ui/VacatingTimeline';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; color: string }> = {
     SUBMITTED:    { label: 'Submitted',    cls: 'bg-amber-100 text-amber-700 border-amber-200', color: 'bg-amber-500' },
@@ -189,7 +190,8 @@ export default function OwnerNoticesPage() {
                                         const sc = STATUS_CONFIG[notice.status] || STATUS_CONFIG.SUBMITTED;
                                         const daysLeft = Math.ceil((new Date(notice.plannedMoveOut).getTime() - Date.now()) / 86400000);
                                         return (
-                                            <div key={notice.id} className="p-5 hover:bg-slate-50/50 transition-colors">
+                                            <div key={notice.id} className="p-5 hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0">
+                                                {/* Top row: details + action buttons */}
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex-1 space-y-1">
                                                         <div className="flex items-center gap-2 flex-wrap">
@@ -237,6 +239,12 @@ export default function OwnerNoticesPage() {
                                                             </button>
                                                         )}
                                                     </div>
+                                                </div>
+
+                                                {/* ── Vacating Progress Timeline (same as student view) ── */}
+                                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 px-1">Vacating Progress</p>
+                                                    <VacatingTimeline notice={notice} />
                                                 </div>
                                             </div>
                                         );
