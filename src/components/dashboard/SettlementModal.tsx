@@ -90,7 +90,6 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
         setDeductions(prev => prev.map(d => d.id === id ? { ...d, [field]: val } : d));
 
     const handleFinalize = () => {
-        if (!notes.trim()) { toast.error('Please add a settlement note.'); return; }
         const totalDeductions = totalDeductionAmt;
         const combinedNote = [
             notes,
@@ -262,7 +261,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
 
                             {/* Settlement notes */}
                             <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Settlement Note *</label>
+                                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Settlement Note (optional)</label>
                                 <textarea
                                     rows={3}
                                     value={notes}
@@ -360,10 +359,19 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                                         <span className="font-black text-red-600">- ₹{totalTenantOwes.toLocaleString('en-IN')}</span>
                                     </div>
                                 )}
-                                {totalDeductionAmt > 0 && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Deductions</span>
-                                        <span className="font-black text-amber-600">- ₹{totalDeductionAmt.toLocaleString('en-IN')}</span>
+                                {deductions.length > 0 && (
+                                    <div className="border-t border-slate-200 pt-2 space-y-1">
+                                        <p className="text-[10px] font-black uppercase text-slate-400">Damage Deductions</p>
+                                        {deductions.map((d, i) => (
+                                            <div key={d.id} className="flex justify-between text-xs">
+                                                <span className="text-slate-600">{d.description || `Item ${i + 1}`}</span>
+                                                <span className="font-black text-amber-600">- ₹{(parseFloat(d.amount) || 0).toLocaleString('en-IN')}</span>
+                                            </div>
+                                        ))}
+                                        <div className="flex justify-between text-sm font-black text-amber-700 pt-1 border-t border-amber-100">
+                                            <span>Total Deductions</span>
+                                            <span>- ₹{totalDeductionAmt.toLocaleString('en-IN')}</span>
+                                        </div>
                                     </div>
                                 )}
                                 <div className="border-t border-slate-200 pt-2 flex justify-between font-black">
@@ -372,17 +380,6 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                                         ₹{Math.abs(netRefund).toLocaleString('en-IN')}
                                     </span>
                                 </div>
-                                {deductions.length > 0 && (
-                                    <div className="border-t border-slate-200 pt-2 space-y-1">
-                                        <p className="text-[10px] font-black uppercase text-slate-400">Deduction Breakdown</p>
-                                        {deductions.map((d, i) => (
-                                            <div key={d.id} className="flex justify-between text-xs text-slate-600">
-                                                <span>{d.description || `Item ${i + 1}`}</span>
-                                                <span>₹{(parseFloat(d.amount) || 0).toLocaleString('en-IN')}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
 
                             {ownerPaysRefund && (
@@ -416,14 +413,6 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                 {/* Footer navigation */}
                 {step < 3 && (
                     <div className="px-5 pb-5 pt-3 border-t border-slate-100 shrink-0 flex gap-3">
-                        {step > 1 && (
-                            <button
-                                onClick={() => setStep(prev => (prev - 1) as any)}
-                                className="px-5 py-3 rounded-2xl border border-slate-200 font-black text-sm text-slate-600 hover:bg-slate-50 transition-all"
-                            >
-                                ← Back
-                            </button>
-                        )}
                         {step === 1 && (
                             <button
                                 onClick={() => setStep(2)}
@@ -433,16 +422,25 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                             </button>
                         )}
                         {step === 2 && (
-                            <button
-                                onClick={handleFinalize}
-                                disabled={isPending || !notes.trim()}
-                                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-200"
-                            >
-                                {isPending
-                                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
-                                    : <><Home className="w-4 h-4" /> Finalize & Vacate</>
-                                }
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleFinalize}
+                                    disabled={isPending}
+                                    className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-200"
+                                >
+                                    {isPending
+                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                                        : <><Home className="w-4 h-4" /> Finalize & Vacate</>
+                                    }
+                                </button>
+                                <button
+                                    onClick={() => setStep(1)}
+                                    disabled={isPending}
+                                    className="flex-1 py-3 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+                                >
+                                    ← Back
+                                </button>
+                            </>
                         )}
                     </div>
                 )}
