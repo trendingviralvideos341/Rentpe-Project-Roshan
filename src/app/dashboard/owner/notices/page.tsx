@@ -488,7 +488,7 @@ export default function OwnerNoticesPage() {
                             <button
                                 onClick={() => setConfirmNotice(null)}
                                 disabled={fetchingTenant}
-                                className="flex-1 py-3 bg-slate-100 text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-200 disabled:opacity-50 transition-all"
+                                className="flex-1 py-3 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200"
                             >
                                 Cancel
                             </button>
