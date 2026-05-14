@@ -614,7 +614,17 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
     });
 
     if (!tenant) throw new Error("Tenant not found");
-    if (tenant.status === 'Checked Out') throw new Error("Tenant already moved out");
+
+    // Idempotent: if already checked out, ensure notice is VACATED and return success
+    if (tenant.status === 'Checked Out') {
+        if (tenant.bookingId) {
+            await prisma.vacatingNotice.updateMany({
+                where: { bookingId: tenant.bookingId, status: { notIn: ['VACATED', 'WITHDRAWN'] } },
+                data:  { status: 'VACATED' }
+            });
+        }
+        return { alreadyMoved: true };
+    }
 
     return await prisma.$transaction(async (tx) => {
         const moveOutDate = new Date();
