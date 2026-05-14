@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { getOwnerVacatingNotices, acknowledgeVacatingNotice, getTenantForSettlement, getSettlementForNotice } from '@/actions/tenancy';
 import { toast } from 'sonner';
-import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle, FileDown, Eye } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle, FileDown, Eye, Printer } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { SettlementModal } from '@/components/dashboard/SettlementModal';
 import { VacatingTimeline } from '@/components/ui/VacatingTimeline';
@@ -34,50 +34,87 @@ export default function OwnerNoticesPage() {
     const [fetchingTenant, setFetchingTenant] = useState(false);
     const [noticeFilter, setNoticeFilter] = useState<'ALL' | 'VACATED'>('ALL');
     const [receiptLoading, setReceiptLoading] = useState<string | null>(null); // noticeId being loaded
+    const [viewingReceipt, setViewingReceipt] = useState<any>(null); // Data for the receipt modal
 
-    // Generates and opens a printable PDF receipt in a new tab
-    const openReceipt = async (notice: any) => {
+    // Generates the official HTML for the receipt
+    const getReceiptHtml = (d: any) => {
+        const moveOutStr = d.moveOutDate
+            ? new Date(d.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '—';
+        const netRefund = d.securityDeposit - (d.rentDue ?? 0) - (d.deductions ?? 0);
+        
+        return `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Official Settlement Receipt - ${d.name}</title>
+<style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #0f172a; max-width: 700px; margin: 0 auto; line-height: 1.5; }
+    .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+    .brand { font-size: 32px; font-weight: 900; color: #4f46e5; text-transform: uppercase; letter-spacing: -1px; }
+    .doc-type { font-size: 14px; font-weight: 700; color: #64748b; letter-spacing: 4px; text-transform: uppercase; margin-top: 4px; }
+    .meta-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
+    .meta-table td { padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .label { color: #64748b; font-weight: 600; width: 40%; }
+    .value { font-weight: 700; color: #1e293b; text-align: right; }
+    .section-title { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #4f46e5; letter-spacing: 1px; margin: 24px 0 12px; }
+    .summary-table { width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .summary-table th { background: #f8fafc; padding: 12px; text-align: left; font-size: 11px; font-weight: 900; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+    .summary-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+    .total-row { background: #0f172a; color: white; font-weight: 900; font-size: 16px; }
+    .total-row td { padding: 16px; border: none; }
+    .amt-refund { color: #34d399; } .amt-due { color: #f87171; }
+    .legal-footer { margin-top: 50px; text-align: center; border-top: 1px solid #e2e8f0; pt: 20px; }
+    .stamp { display: inline-block; border: 3px solid #ef4444; color: #ef4444; padding: 8px 24px; border-radius: 4px; font-weight: 900; font-size: 14px; margin: 20px 0; transform: rotate(-5deg); text-transform: uppercase; }
+    .footer-note { font-size: 10px; color: #94a3b8; margin-top: 10px; }
+    @media print { .no-print { display: none; } body { padding: 20px; } }
+</style></head><body>
+    <div class="header">
+        <div class="brand">RentPe</div>
+        <div class="doc-type">Final Settlement Receipt</div>
+    </div>
+    
+    <div class="section-title">Tenant & Property Details</div>
+    <table class="meta-table">
+        <tr><td class="label">Tenant Name</td><td class="value">${d.name}</td></tr>
+        <tr><td class="label">Tenant ID</td><td class="value">${d.tenantDisplayId}</td></tr>
+        <tr><td class="label">Notice Reference</td><td class="value">${d.noticeDisplayId || 'N/A'}</td></tr>
+        <tr><td class="label">Room / Bed</td><td class="value">${d.roomNumber} (${d.bedNo || 'Standard'})</td></tr>
+        <tr><td class="label">Room Type</td><td class="value">${d.roomType}</td></tr>
+        <tr><td class="label">Final Move-Out Date</td><td class="value">${moveOutStr}</td></tr>
+    </table>
+
+    <div class="section-title">Financial Breakdown</div>
+    <table class="summary-table" cellspacing="0">
+        <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>
+            <tr><td>Security Deposit (Credit)</td><td style="text-align:right">₹${d.securityDeposit.toLocaleString('en-IN')}</td></tr>
+            ${d.rentDue > 0 ? `<tr><td style="color:#ef4444">Rent Dues / Pro-rata Adjustment</td><td style="text-align:right;color:#ef4444">- ₹${d.rentDue.toLocaleString('en-IN')}</td></tr>` : ''}
+            ${d.deductions > 0 ? `<tr><td style="color:#ef4444">Damage & Maintenance Deductions</td><td style="text-align:right;color:#ef4444">- ₹${d.deductions.toLocaleString('en-IN')}</td></tr>` : ''}
+            <tr class="total-row">
+                <td>${netRefund >= 0 ? 'Net Refund Payable' : 'Net Balance Due'}</td>
+                <td style="text-align:right" class="${netRefund >= 0 ? 'amt-refund' : 'amt-due'}">₹${Math.abs(netRefund).toLocaleString('en-IN')}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    ${d.settlementNotes ? `<div style="margin-top:20px; font-size:12px; color:#64748b"><strong>Notes:</strong> ${d.settlementNotes}</div>` : ''}
+
+    <div class="legal-footer">
+        <div class="stamp">Verified & Settled</div>
+        <div class="footer-note">This is a system-generated document and is legally valid under the Information Technology Act, 2000. It confirms the final settlement between the property owner and the tenant. No physical signature is required.</div>
+        <div style="font-size:10px; color:#cbd5e1; margin-top:10px">Generated on: ${new Date().toLocaleString('en-IN')} | Ref: ${d.tenantId}</div>
+    </div>
+</body></html>`;
+    };
+
+    const openReceipt = async (notice: any, action: 'view' | 'download' = 'view') => {
         setReceiptLoading(notice.id);
         try {
             const d = await getSettlementForNotice(notice.bookingId);
-            const moveOutStr = d.moveOutDate
-                ? new Date(d.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-                : new Date(notice.plannedMoveOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-            const netRefund = d.securityDeposit - (d.rentDue ?? 0) - (d.deductions ?? 0);
-            const html = `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Settlement Receipt - ${d.name}</title>
-<style>body{font-family:Arial,sans-serif;padding:32px;color:#1e293b;max-width:620px;margin:0 auto}
-.hdr{text-align:center;border-bottom:3px solid #4f46e5;padding-bottom:16px;margin-bottom:24px}
-.logo{font-size:24px;font-weight:900;color:#4f46e5}.sub{font-size:13px;color:#64748b;margin-top:4px}
-.sec{margin-bottom:18px}.sec-title{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
-.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f8fafc;font-size:13px}
-.label{color:#64748b}.value{font-weight:700;font-family:monospace}.id{color:#4f46e5}.red{color:#dc2626}.amber{color:#d97706}
-.final{display:flex;justify-content:space-between;padding:12px 16px;background:#0f172a;border-radius:10px;font-weight:900;font-size:17px;margin-top:14px;color:white}
-.final .amt{color:${netRefund >= 0 ? '#34d399' : '#fbbf24'}}
-.stamp{text-align:center;margin-top:28px;font-size:10px;color:#94a3b8}
-.badge{display:inline-block;border:2px solid #059669;color:#059669;padding:5px 16px;border-radius:8px;font-weight:900;font-size:11px;margin-top:10px;letter-spacing:2px}
-@media print{button{display:none}}</style></head><body>
-<div class='hdr'><div class='logo'>RentPe</div><div class='sub'>Move-Out & Settlement Receipt</div></div>
-<div class='sec'><div class='sec-title'>Tenant Information</div>
-<div class='row'><span class='label'>Tenant ID</span><span class='value id'>${d.tenantDisplayId}</span></div>
-<div class='row'><span class='label'>Notice ID</span><span class='value id'>${d.noticeDisplayId || '—'}</span></div>
-<div class='row'><span class='label'>Name</span><span class='value'>${d.name}</span></div>
-<div class='row'><span class='label'>Phone</span><span class='value'>${d.phone || '—'}</span></div>
-<div class='row'><span class='label'>Room Number</span><span class='value'>${d.roomNumber || '—'}</span></div>
-<div class='row'><span class='label'>Bed Number</span><span class='value'>${d.bedNo || '—'}</span></div>
-<div class='row'><span class='label'>Room Type</span><span class='value'>${d.roomType || '—'}</span></div>
-<div class='row'><span class='label'>Move-Out Date</span><span class='value'>${moveOutStr}</span></div>
-</div>
-<div class='sec'><div class='sec-title'>Financial Settlement</div>
-<div class='row'><span class='label'>Security Deposit Held</span><span class='value'>₹${d.securityDeposit.toLocaleString('en-IN')}</span></div>
-${d.rentDue ? `<div class='row'><span class='label'>Rent / Pro-rata Due</span><span class='value red'>- ₹${d.rentDue.toLocaleString('en-IN')}</span></div>` : ''}
-${d.deductions ? `<div class='row'><span class='label'>Damage Deductions</span><span class='value amber'>- ₹${d.deductions.toLocaleString('en-IN')}</span></div>` : ''}
-${d.settlementNotes ? `<div class='row'><span class='label'>Note</span><span class='value'>${d.settlementNotes}</span></div>` : ''}
-</div>
-<div class='final'><span>${netRefund >= 0 ? '🏦 Refund to Tenant' : '💰 Tenant Paid Owner'}</span><span class='amt'>₹${Math.abs(netRefund).toLocaleString('en-IN')}</span></div>
-<div class='stamp'><div>Generated by RentPe · ${new Date().toLocaleString('en-IN')}</div><div class='badge'>SETTLEMENT COMPLETE</div><div style='margin-top:8px;font-size:10px'>System-generated receipt. No signature required.</div></div>
-</body></html>`;
-            const win = window.open('', '_blank');
-            if (win) { win.document.write(html); win.document.close(); win.print(); }
+            if (action === 'view') {
+                setViewingReceipt(d);
+            } else {
+                const html = getReceiptHtml(d);
+                const win = window.open('', '_blank');
+                if (win) { win.document.write(html); win.document.close(); win.print(); }
+            }
         } catch (e: any) {
             toast.error(e.message || 'Could not load receipt.');
         } finally {
@@ -347,14 +384,14 @@ ${d.settlementNotes ? `<div class='row'><span class='label'>Note</span><span cla
                                                                         <p className="text-sm text-teal-800">Settlement finalized. View the full receipt below.</p>
                                                                         <div className="flex gap-2">
                                                                             <button
-                                                                                onClick={() => openReceipt(notice)}
+                                                                                onClick={() => openReceipt(notice, 'view')}
                                                                                 disabled={receiptLoading === notice.id}
                                                                                 className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-indigo-200 disabled:opacity-60"
                                                                             >
                                                                                 {receiptLoading === notice.id ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</> : <><Eye className="w-3.5 h-3.5" /> View Receipt</>}
                                                                             </button>
                                                                             <button
-                                                                                onClick={() => openReceipt(notice)}
+                                                                                onClick={() => openReceipt(notice, 'download')}
                                                                                 disabled={receiptLoading === notice.id}
                                                                                 className="flex-1 py-2.5 bg-slate-800 text-white font-black text-xs rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
                                                                             >
@@ -524,14 +561,14 @@ ${d.settlementNotes ? `<div class='row'><span class='label'>Note</span><span cla
                                            <p className="text-sm text-teal-800">Settlement finalized. View or download the full receipt.</p>
                                            <div className="flex gap-2">
                                                <button
-                                                   onClick={() => openReceipt(selected)}
+                                                   onClick={() => openReceipt(selected, 'view')}
                                                    disabled={receiptLoading === selected.id}
                                                    className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 shadow-md disabled:opacity-60"
                                                >
                                                    {receiptLoading === selected.id ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</> : <><Eye className="w-3.5 h-3.5" /> View Receipt</>}
                                                </button>
                                                <button
-                                                   onClick={() => openReceipt(selected)}
+                                                   onClick={() => openReceipt(selected, 'download')}
                                                    disabled={receiptLoading === selected.id}
                                                    className="flex-1 py-2.5 bg-slate-800 text-white font-black text-xs rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
                                                >
@@ -616,6 +653,89 @@ ${d.settlementNotes ? `<div class='row'><span class='label'>Note</span><span cla
                         getOwnerVacatingNotices().then(setNotices);
                     }}
                 />
+            )}
+            {/* ── Receipt Viewer Modal ── */}
+            {viewingReceipt && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+                            <div>
+                                <h2 className="font-black text-slate-900 text-lg">Settlement Receipt</h2>
+                                <p className="text-xs text-slate-500 mt-0.5">Reference: {viewingReceipt.tenantDisplayId}</p>
+                            </div>
+                            <button onClick={() => setViewingReceipt(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X className="w-5 h-5 text-slate-500" /></button>
+                        </div>
+                        
+                        <div className="overflow-y-auto flex-1 p-6">
+                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-6">
+                                <div className="text-center border-b border-slate-200 pb-4">
+                                    <p className="text-2xl font-black text-indigo-600 tracking-tighter">RentPe</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Final Settlement Document</p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Tenant Details</p>
+                                    {[
+                                        ['Name', viewingReceipt.name],
+                                        ['Room', `${viewingReceipt.roomNumber} (${viewingReceipt.bedNo || 'Standard'})`],
+                                        ['Move-out', viewingReceipt.moveOutDate ? new Date(viewingReceipt.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'],
+                                    ].map(([l, v]) => (
+                                        <div key={l} className="flex justify-between text-sm">
+                                            <span className="text-slate-500">{l}</span>
+                                            <span className="font-bold text-slate-900">{v}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-2 pt-4 border-t border-slate-200">
+                                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Settlement Breakdown</p>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-600">Security Deposit</span>
+                                        <span className="font-bold">₹{viewingReceipt.securityDeposit.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    {viewingReceipt.rentDue > 0 && (
+                                        <div className="flex justify-between text-sm text-red-600">
+                                            <span>Rent Dues / Adjustments</span>
+                                            <span className="font-bold">- ₹{viewingReceipt.rentDue.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    {viewingReceipt.deductions > 0 && (
+                                        <div className="flex justify-between text-sm text-red-600">
+                                            <span>Damage Deductions</span>
+                                            <span className="font-bold">- ₹{viewingReceipt.deductions.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    <div className="bg-slate-900 rounded-xl p-4 flex justify-between items-center mt-4">
+                                        <span className="text-white font-bold text-sm">
+                                            {viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0) >= 0 ? 'Net Refund' : 'Total Due'}
+                                        </span>
+                                        <span className={`text-lg font-black ${viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            ₹{Math.abs(viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0)).toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div className="text-center pt-4 opacity-50">
+                                    <div className="inline-block border-2 border-red-500 text-red-500 px-4 py-1 rounded text-[10px] font-black uppercase tracking-tighter rotate-[-5deg]">Verified & Settled</div>
+                                    <p className="text-[9px] text-slate-400 mt-4 leading-relaxed">This receipt is electronically generated and remains valid under the IT Act 2000. It serves as final proof of settlement for property {viewingReceipt.roomNumber}.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 flex gap-3">
+                            <button onClick={() => {
+                                const html = getReceiptHtml(viewingReceipt);
+                                const win = window.open('', '_blank');
+                                if (win) { win.document.write(html); win.document.close(); win.print(); }
+                            }} className="flex-1 py-3 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                                <Printer className="w-4 h-4" /> Print / Download
+                            </button>
+                            <button onClick={() => setViewingReceipt(null)} className="flex-1 py-3 bg-slate-100 text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-200 transition-all">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
