@@ -709,7 +709,15 @@ Note: ${note}
             }
         });
 
-        // 6. Log event
+        // 6. Mark VacatingNotice as VACATED (so owner/tenant dashboards reflect completion)
+        if (tenant.bookingId) {
+            await tx.vacatingNotice.updateMany({
+                where: { bookingId: tenant.bookingId, status: { not: 'WITHDRAWN' } },
+                data: { status: 'VACATED' }
+            });
+        }
+
+        // 7. Log event
         logAuditEvent({
             actorId: session.userId,
             actorRole: session.role || 'OWNER',
@@ -717,13 +725,15 @@ Note: ${note}
             actionType: 'DELETE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Move-out finalized. Settlement: Refund ₹${finalRefund}.`,
+            description: `Move-out finalized. Settlement: Refund ₹${finalRefund}. Notice marked VACATED.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
         revalidatePath('/dashboard/admin/tenants');
         revalidatePath('/dashboard/owner');
         revalidatePath('/dashboard/owner/availability');
+        revalidatePath('/dashboard/owner/notices');
+        revalidatePath('/dashboard/student/notice');
         return { success: true };
     });
 }

@@ -28,6 +28,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; d
     APPROVED:     { label: 'Approved',     color: 'emerald', icon: CheckCircle2,  desc: 'Your move-out has been approved.' },
     DISPUTED:     { label: 'Disputed',     color: 'red',     icon: XCircle,       desc: 'Owner has raised a dispute. Please contact support.' },
     WITHDRAWN:    { label: 'Withdrawn',    color: 'slate',   icon: XCircle,       desc: 'You have withdrawn this notice.' },
+    VACATED:      { label: 'Move-Out Complete', color: 'emerald', icon: CheckCircle2,  desc: 'Your move-out has been finalized and settled by the owner.' },
 };
 
 // Auto-compute 30-days-from-today (locked date)
@@ -65,7 +66,8 @@ export default function NoticePage() {
         const load = async () => {
             try {
                 const bookings = await getBookings();
-                const active = bookings.find((b: any) => ['ACTIVE', 'MOVE_IN_SCHEDULED'].includes(b.status));
+                // Include CHECKED_OUT so tenant can view their completed notice after move-out
+                const active = bookings.find((b: any) => ['ACTIVE', 'MOVE_IN_SCHEDULED', 'CHECKED_OUT'].includes(b.status));
                 if (active) {
                     setBooking(active);
                     const existing = await getMyVacatingNotice(active.id);
@@ -158,6 +160,33 @@ export default function NoticePage() {
                                 <VacatingTimeline notice={notice} />
                             </div>
                         </div>
+
+                        {/* ── Vacate Completed Receipt Banner ── */}
+                        {notice.status === 'VACATED' && (
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-3xl shadow-xl p-6 text-center space-y-3">
+                                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+                                <h3 className="text-xl font-black text-emerald-900">Move-Out Finalized!</h3>
+                                <p className="text-sm text-emerald-700">Your move-out has been processed and settled by your property owner. Your room has been released.</p>
+                                <div className="bg-white rounded-2xl p-4 text-left space-y-2 border border-emerald-100 mt-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Settlement Details</p>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500">Notice Filed</span>
+                                        <span className="font-black text-slate-900">{new Date(notice.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500">Planned Move-Out</span>
+                                        <span className="font-black text-slate-900">{new Date(notice.plannedMoveOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
+                                    {notice.ownerNote && (
+                                        <div className="flex flex-col gap-1 pt-2 border-t border-slate-100">
+                                            <span className="text-[10px] font-black uppercase text-slate-400">Owner Settlement Note</span>
+                                            <span className="text-sm text-slate-700 font-medium">{notice.ownerNote}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-emerald-600 font-medium">Contact your owner for the final security deposit refund or any outstanding amounts.</p>
+                            </div>
+                        )}
 
                         {/* ── Notice Details Card ── */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">

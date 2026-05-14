@@ -14,6 +14,7 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string; color: string 
     APPROVED:     { label: 'Approved',     cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', color: 'bg-emerald-500' },
     DISPUTED:     { label: 'Disputed',     cls: 'bg-red-100 text-red-700 border-red-200', color: 'bg-red-500' },
     WITHDRAWN:    { label: 'Withdrawn',    cls: 'bg-slate-100 text-slate-500 border-slate-200', color: 'bg-slate-400' },
+    VACATED:      { label: 'Vacated ✓',   cls: 'bg-teal-100 text-teal-700 border-teal-200', color: 'bg-teal-500' },
 };
 
 export default function OwnerNoticesPage() {
@@ -28,9 +29,10 @@ export default function OwnerNoticesPage() {
     const [isPending, startTransition] = useTransition();
 
     // Move-out now confirmation + settlement
-    const [confirmNotice, setConfirmNotice] = useState<any>(null);   // notice to confirm early move-out
-    const [settlementTenant, setSettlementTenant] = useState<any>(null); // tenant data for SettlementModal
+    const [confirmNotice, setConfirmNotice] = useState<any>(null);
+    const [settlementTenant, setSettlementTenant] = useState<any>(null);
     const [fetchingTenant, setFetchingTenant] = useState(false);
+    const [noticeFilter, setNoticeFilter] = useState<'ALL' | 'VACATED'>('ALL');
 
     const handleMoveOutNow = (notice: any) => setConfirmNotice(notice);
 
@@ -117,25 +119,32 @@ export default function OwnerNoticesPage() {
             </div>
 
             <div className="max-w-5xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Summary Cards — 5 tabs */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {[
-                        { label: 'Total', val: notices.length, highlight: true },
-                        { label: 'Pending Action', val: notices.filter(n => n.status === 'SUBMITTED').length, highlight: false },
-                        { label: 'Upcoming (30d)', val: upcoming.filter(n => {
-                            const days = Math.ceil((new Date(n.plannedMoveOut).getTime() - Date.now()) / 86400000);
-                            return days <= 30;
-                        }).length, highlight: false },
-                        { label: 'This Month', val: upcoming.filter(n => {
-                            const d = new Date(n.plannedMoveOut);
-                            const now = new Date();
-                            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                        }).length, highlight: false },
+                        { label: 'Total',            val: notices.filter(n => n.status !== 'VACATED').length, filter: 'ALL'    as const, highlight: noticeFilter === 'ALL' },
+                        { label: 'Pending Action',   val: notices.filter(n => n.status === 'SUBMITTED').length,  filter: 'ALL'    as const, highlight: false },
+                        { label: 'Upcoming (30d)',   val: upcoming.filter(n => { const days = Math.ceil((new Date(n.plannedMoveOut).getTime() - Date.now()) / 86400000); return days <= 30; }).length, filter: 'ALL' as const, highlight: false },
+                        { label: 'This Month',       val: upcoming.filter(n => { const d = new Date(n.plannedMoveOut); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length, filter: 'ALL' as const, highlight: false },
+                        { label: 'Vacate Completed', val: notices.filter(n => n.status === 'VACATED').length,   filter: 'VACATED' as const, highlight: noticeFilter === 'VACATED', teal: true },
                     ].map(stat => (
-                        <div key={stat.label} className={`rounded-2xl p-4 shadow-lg border text-center ${stat.highlight ? 'bg-indigo-600 border-indigo-500' : 'bg-white border-slate-100'}`}>
-                            <p className={`text-2xl font-black ${stat.highlight ? 'text-white' : 'text-slate-900'}`}>{stat.val}</p>
-                            <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${stat.highlight ? 'text-indigo-200' : 'text-slate-400'}`}>{stat.label}</p>
-                        </div>
+                        <button
+                            key={stat.label}
+                            onClick={() => setNoticeFilter(stat.filter)}
+                            className={`rounded-2xl p-4 shadow-lg border text-center transition-all ${
+                                (stat as any).teal && noticeFilter === 'VACATED'
+                                    ? 'bg-teal-600 border-teal-500 ring-2 ring-teal-400'
+                                    : stat.highlight && !('teal' in stat)
+                                    ? 'bg-indigo-600 border-indigo-500 ring-2 ring-indigo-400'
+                                    : 'bg-white border-slate-100 hover:border-indigo-200'
+                            }`}>
+                            <p className={`text-2xl font-black ${
+                                ((stat as any).teal && noticeFilter === 'VACATED') || stat.highlight ? 'text-white' : 'text-slate-900'
+                            }`}>{stat.val}</p>
+                            <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${
+                                ((stat as any).teal && noticeFilter === 'VACATED') || stat.highlight ? 'text-white/80' : 'text-slate-400'
+                            }`}>{stat.label}</p>
+                        </button>
                     ))}
                 </div>
 
@@ -186,7 +195,7 @@ export default function OwnerNoticesPage() {
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-50">
-                                    {notices.map(notice => {
+                                    {notices.filter(n => noticeFilter === 'VACATED' ? n.status === 'VACATED' : n.status !== 'VACATED').map(notice => {
                                         const sc = STATUS_CONFIG[notice.status] || STATUS_CONFIG.SUBMITTED;
                                         const daysLeft = Math.ceil((new Date(notice.plannedMoveOut).getTime() - Date.now()) / 86400000);
                                         return (

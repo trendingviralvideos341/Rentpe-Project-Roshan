@@ -128,10 +128,13 @@ export function TenantsContainer() {
         const matchType = filterType === "ALL" || t.roomType === filterType;
         const matchProperty = filterProperty === "ALL" || t.property?.name === filterProperty;
 
+        // Dedicated filter modes
         if (filterPayment === ("BLOCKED" as any)) return matchSearch && matchType && matchProperty && t.status === "Blocked";
+        if (filterPayment === ("VACATED_FILTER" as any)) return matchSearch && matchType && matchProperty && t.status === "Checked Out";
         
         const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
-        return matchSearch && matchType && matchProperty && matchPayment && t.status !== "Blocked";
+        // Default ALL: show only active (not blocked, not checked out)
+        return matchSearch && matchType && matchProperty && matchPayment && t.status !== "Blocked" && t.status !== "Checked Out";
     }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const unpaidCount = tenants.filter(t => {
@@ -203,10 +206,11 @@ export function TenantsContainer() {
                             <option value="Four Sharing">Four Sharing</option>
                         </select>
                         <select className="border rounded-md p-2 bg-background text-sm" value={filterPayment} onChange={e => setFilterPayment(e.target.value)}>
-                            <option value="ALL">All Payments</option>
+                            <option value="ALL">All Active Tenants</option>
                             <option value="PAID">Rent Paid (This Month)</option>
                             <option value="UNPAID">Rent Unpaid (This Month)</option>
                             <option value="BLOCKED">Blocked Tenants</option>
+                            <option value="VACATED_FILTER">✓ Vacated Tenants</option>
                         </select>
                     </div>
                 </CardContent>
@@ -353,7 +357,15 @@ export function TenantsContainer() {
                                                 {/* Payment Status */}
                                                 <td className="p-4">
                                                     {isCheckedOut ? (
-                                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">🏠 Checked Out</span>
+                                                        <div className="space-y-1">
+                                                            <span className="text-xs text-teal-700 font-black uppercase tracking-wider bg-teal-50 border border-teal-200 px-2 py-1 rounded-full">✓ Vacated</span>
+                                                            {t.vacateNote && (
+                                                                <details className="mt-1">
+                                                                    <summary className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600 font-bold">View Settlement ▾</summary>
+                                                                    <pre className="text-[9px] text-slate-600 bg-slate-50 border rounded-lg p-2 mt-1 whitespace-pre-wrap max-w-xs max-h-32 overflow-y-auto font-mono">{t.vacateNote}</pre>
+                                                                </details>
+                                                            )}
+                                                        </div>
                                                     ) : isBlocked ? (
                                                         <span className="text-xs text-red-500 font-bold uppercase tracking-wider">🚫 Blocked</span>
                                                     ) : (
