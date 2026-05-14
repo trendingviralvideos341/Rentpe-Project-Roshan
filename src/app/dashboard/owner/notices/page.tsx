@@ -413,7 +413,7 @@ export default function OwnerNoticesPage() {
                                                 className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
                                         </div>
                                     </div>
-                                    <button onClick={handleAcknowledge} disabled={isPending}
+                                    <button onClick={() => handleAcknowledge(selected.id)} disabled={isPending}
                                         className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 transition-all shadow-lg shadow-indigo-200">
                                         {isPending ? 'Acknowledging...' : 'Acknowledge Notice ✓'}
                                     </button>
