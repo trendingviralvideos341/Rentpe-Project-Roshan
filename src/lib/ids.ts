@@ -58,7 +58,7 @@ const ID_CONFIG: Record<string, {
     'BED':      { prefix: 'RP-BD',  track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
     'KYC':      { prefix: 'RP-K',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: true  },
     'TICKET':   { prefix: 'RP-T',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
-    'NOTICE':   { prefix: 'RP-N',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
+    'NOTICE':   { prefix: 'RP-VN',  track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
 
     // ── SEQUENTIAL — Numbered IDs (Financial & Legal Records) ────────────
     // BOOKING does NOT reset per FY (a booking ID is permanent for its lifetime)

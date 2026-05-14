@@ -45,11 +45,10 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
     const tenantOwesMore = netRefund < 0;
 
     // Convenience aliases for IDs
-    const tenantDisplayId    = tenant.displayId    || tenant.id?.slice(0, 10) || '—';
-    const bookingDisplayId   = tenant.bookingDisplayId || '—';
-    const roomId             = tenant.roomId        || '—';
-    const bedId              = tenant.bedId         || '—';
-    const roomType           = tenant.roomType      || '—';
+    const tenantDisplayId  = tenant.displayId    || tenant.id?.slice(0, 10) || '—';
+    const noticeDisplayId  = tenant.noticeDisplayId || '—';
+    const bedNo            = tenant.bedNo          || (tenant.bedId ? `${tenant.roomNumber}-?` : '—');
+    const roomType         = tenant.roomType       || '—';
 
     const addDeduction = () => setDeductions(p => [...p, { id: Date.now().toString(), description: '', amount: '' }]);
     const removeDeduction = (id: string) => setDeductions(p => p.filter(d => d.id !== id));
@@ -221,18 +220,17 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                                 <p className="text-xs font-black uppercase text-slate-400 mb-1">Tenant Info</p>
                                 {[
                                     ['Tenant ID',    tenantDisplayId],
-                                    ['Booking ID',   bookingDisplayId],
+                                    ['Notice ID',    noticeDisplayId],
                                     ['Name',         tenant.name],
                                     ['Phone',        tenant.phone],
                                     ['Room No.',     tenant.roomNumber],
+                                    ['Bed No.',      bedNo],
                                     ['Room Type',    roomType],
-                                    ['Room ID',      roomId],
-                                    ['Bed ID',       bedId],
                                     ['Move-out',     today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })],
                                 ].map(([k, v]) => (
                                     <div key={k} className="flex justify-between text-sm">
                                         <span className="text-slate-500">{k}</span>
-                                        <span className={`font-black text-slate-900 font-mono text-xs ${['Tenant ID','Booking ID','Room ID','Bed ID'].includes(k as string) ? 'text-indigo-700' : ''}`}>{v}</span>
+                                        <span className={`font-black text-slate-900 font-mono text-xs ${['Tenant ID','Notice ID'].includes(k as string) ? 'text-indigo-700' : ''}`}>{v}</span>
                                     </div>
                                 ))}
                             </div>
@@ -285,21 +283,19 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
 
                             <div className="bg-slate-50 rounded-2xl p-4 text-left space-y-2 border border-slate-200">
                                 <p className="text-xs font-black uppercase text-slate-500">Settlement Receipt</p>
-                                {/* Identity fields */}
                                 {[
                                     ['Tenant ID',  tenantDisplayId],
-                                    ['Booking ID', bookingDisplayId],
+                                    ['Notice ID',  noticeDisplayId],
                                     ['Tenant',     tenant.name],
                                     ['Room No.',   tenant.roomNumber],
+                                    ['Bed No.',    bedNo],
                                     ['Room Type',  roomType],
-                                    ['Room ID',    roomId],
-                                    ['Bed ID',     bedId],
                                     ['Move-out',   today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })],
                                     ['Security Deposit', `₹${securityDeposit.toLocaleString('en-IN')}`],
                                 ].map(([k, v]) => (
                                     <div key={k} className="flex justify-between text-sm">
                                         <span className="text-slate-500">{k}</span>
-                                        <span className={`font-black text-slate-900 font-mono text-xs ${['Tenant ID','Booking ID','Room ID','Bed ID'].includes(k as string) ? 'text-indigo-700' : ''}`}>{v}</span>
+                                        <span className={`font-black text-slate-900 font-mono text-xs ${['Tenant ID','Notice ID'].includes(k as string) ? 'text-indigo-700' : ''}`}>{v}</span>
                                     </div>
                                 ))}
                                 {totalTenantOwes > 0 && <div className="flex justify-between text-sm"><span className="text-slate-500">Rent Adjusted</span><span className="font-black text-red-600">- ₹{totalTenantOwes.toLocaleString('en-IN')}</span></div>}
@@ -352,7 +348,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                         )}
                         {step === 2 && (<>
                             <button onClick={() => setStep(3)}
-                                className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl hover:from-rose-700 hover:to-orange-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-200">
                                 Finalize <ChevronRight className="w-4 h-4" />
                             </button>
                             <button onClick={() => setStep(1)}
@@ -362,7 +358,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                         </>)}
                         {step === 3 && (<>
                             <button onClick={handleCompleteVacate} disabled={isPending}
-                                className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200">
+                                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 hover:from-rose-700 hover:to-orange-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-200">
                                 {isPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : <><Home className="w-4 h-4" /> Complete Vacate & Payment</>}
                             </button>
                             <button onClick={() => setStep(2)} disabled={isPending}

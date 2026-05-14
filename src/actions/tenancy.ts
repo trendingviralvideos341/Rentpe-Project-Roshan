@@ -223,6 +223,7 @@ export async function getTenantForSettlement(bookingId: string) {
             rentRecords:    { orderBy: { createdAt: 'asc' } },
             billingProfile: { include: { deposit: true } },
             booking:        { select: { displayId: true } },
+            bed:            { select: { bedNumber: true } },
         },
     });
 
@@ -239,21 +240,35 @@ export async function getTenantForSettlement(bookingId: string) {
         Number(tenant.billingProfile?.securityDeposit) ||
         rentAmount;
 
+    // Bed number: "103-A" style
+    const bedNo = (tenant as any).bed?.bedNumber
+        ? `${tenant.roomNumber}-${(tenant as any).bed.bedNumber}`
+        : null;
+
+    // Fetch the active vacating notice for display in settlement receipt
+    const vacatingNotice = await prisma.vacatingNotice.findFirst({
+        where:   { bookingId, status: { not: 'WITHDRAWN' } },
+        select:  { displayId: true },
+        orderBy: { createdAt: 'desc' },
+    });
+
     return {
         id:              tenant.id,
-        displayId:       tenant.displayId,          // Tenant ID  e.g. REN-USER-xxx-T1
-        bookingDisplayId: tenant.booking?.displayId, // Booking ID e.g. REN-BOOK-2026-0001
+        displayId:       tenant.displayId,
+        noticeDisplayId: vacatingNotice?.displayId || null,
         name:            tenant.name,
         phone:           tenant.phone,
         roomNumber:      tenant.roomNumber,
         roomType:        tenant.roomType,
         roomId:          tenant.roomId,
         bedId:           tenant.bedId,
+        bedNo,
         rentAmount,
-        securityDeposit,                             // Real deposit from BillingProfile
+        securityDeposit,
         rentRecords:     tenant.rentRecords,
         startDate:       tenant.startDate,
         status:          tenant.status,
     };
 }
+
 
