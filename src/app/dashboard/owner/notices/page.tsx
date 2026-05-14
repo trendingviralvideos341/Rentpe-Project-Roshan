@@ -218,33 +218,17 @@ export default function OwnerNoticesPage() {
                                                         )}
                                                     </div>
                                                     <div className="flex flex-col gap-2 shrink-0">
-                                                        {notice.status === 'SUBMITTED' && (
-                                                            <button
-                                                                onClick={() => { 
-                                                                    setSelected(notice); 
-                                                                    setNote(''); 
-                                                                    setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
-                                                                }}
-                                                                className="px-4 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-all whitespace-nowrap"
-                                                            >
-                                                                Acknowledge →
-                                                            </button>
-                                                        )}
-                                                        {notice.status === 'ACKNOWLEDGED' && (
-                                                            <button
-                                                                onClick={() => handleMoveOutNow(notice)}
-                                                                className="px-4 py-2 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-xs rounded-xl hover:from-rose-700 hover:to-orange-700 transition-all whitespace-nowrap flex items-center gap-1.5 shadow-lg shadow-rose-200"
-                                                            >
-                                                                <Home className="w-3.5 h-3.5" /> Move Out &amp; Settlement Now
-                                                            </button>
-                                                        )}
+                                                        <button
+                                                            onClick={() => { 
+                                                                setSelected(notice); 
+                                                                setNote(''); 
+                                                                setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
+                                                            }}
+                                                            className="px-4 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-all whitespace-nowrap flex items-center gap-1.5 shadow-md shadow-indigo-200"
+                                                        >
+                                                            <FileText className="w-3.5 h-3.5" /> View Details
+                                                        </button>
                                                     </div>
-                                                </div>
-
-                                                {/* ── Vacating Progress Timeline (same as student view) ── */}
-                                                <div className="mt-4 pt-4 border-t border-slate-100">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 px-1">Vacating Progress</p>
-                                                    <VacatingTimeline notice={notice} />
                                                 </div>
                                             </div>
                                         );
@@ -374,12 +358,26 @@ export default function OwnerNoticesPage() {
                                     </button>
                                 </>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                    {selected.ownerNote && (
                                        <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
                                            <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Your Note</p>
                                            <p className="text-xs text-indigo-700">{selected.ownerNote}</p>
                                        </div>
+                                   )}
+                                   {/* ── Vacating Progress Timeline ── */}
+                                   <div className="pt-2">
+                                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Vacating Progress</p>
+                                       <VacatingTimeline notice={selected} />
+                                   </div>
+                                   {/* ── Move Out & Settlement button (inside modal) ── */}
+                                   {selected.status === 'ACKNOWLEDGED' && (
+                                       <button
+                                           onClick={() => { setSelected(null); handleMoveOutNow(selected); }}
+                                           className="w-full py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl hover:from-rose-700 hover:to-orange-700 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2"
+                                       >
+                                           <Home className="w-4 h-4" /> Move Out &amp; Settlement Now
+                                       </button>
                                    )}
                                    <button onClick={() => setSelected(null)} className="w-full py-3 bg-slate-100 text-slate-600 font-black text-xs rounded-xl hover:bg-slate-200 transition-all">
                                         Close
