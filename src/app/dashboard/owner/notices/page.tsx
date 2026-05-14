@@ -20,6 +20,7 @@ export default function OwnerNoticesPage() {
     const [notices, setNotices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<any>(null);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
     const [note, setNote] = useState('');
     const [view, setView] = useState<'list' | 'calendar'>('list');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -54,13 +55,12 @@ export default function OwnerNoticesPage() {
         });
     }, []);
 
-    const handleAcknowledge = () => {
-        if (!selected) return;
+    const handleAcknowledge = (noticeId: string) => {
         startTransition(async () => {
             try {
-                const updated = await acknowledgeVacatingNotice(selected.id, note, revisedMoveOutDate || undefined);
-                setNotices(prev => prev.map(n => n.id === selected.id ? { ...n, ...updated } : n));
-                setSelected(null);
+                const updated = await acknowledgeVacatingNotice(noticeId, note, revisedMoveOutDate || undefined);
+                setNotices(prev => prev.map(n => n.id === noticeId ? { ...n, ...updated } : n));
+                setExpandedId(null);
                 setNote('');
                 setRevisedMoveOutDate('');
                 toast.success('Notice acknowledged with approved date.');
@@ -219,17 +219,78 @@ export default function OwnerNoticesPage() {
                                                     </div>
                                                     <div className="flex flex-col gap-2 shrink-0">
                                                         <button
-                                                            onClick={() => { 
-                                                                setSelected(notice); 
-                                                                setNote(''); 
-                                                                setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
+                                                            onClick={() => {
+                                                                const isOpen = expandedId === notice.id;
+                                                                setExpandedId(isOpen ? null : notice.id);
+                                                                if (!isOpen) {
+                                                                    setNote('');
+                                                                    setRevisedMoveOutDate(format(new Date(notice.plannedMoveOut), 'yyyy-MM-dd'));
+                                                                }
                                                             }}
-                                                            className="px-4 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl hover:bg-indigo-700 transition-all whitespace-nowrap flex items-center gap-1.5 shadow-md shadow-indigo-200"
+                                                            className={`px-4 py-2 font-black text-xs rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 shadow-md ${
+                                                                expandedId === notice.id
+                                                                    ? 'bg-slate-200 text-slate-700 shadow-slate-100'
+                                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+                                                            }`}
                                                         >
-                                                            <FileText className="w-3.5 h-3.5" /> View Details
+                                                            <FileText className="w-3.5 h-3.5" />
+                                                            {expandedId === notice.id ? 'Hide Details' : 'View Details'}
                                                         </button>
                                                     </div>
                                                 </div>
+
+                                                {/* ── Inline Expanded Details ── */}
+                                                {expandedId === notice.id && (
+                                                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
+                                                        {notice.status === 'SUBMITTED' ? (
+                                                            <>
+                                                                <div className="grid grid-cols-1 gap-4">
+                                                                    <div>
+                                                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Approved Move-out Date</label>
+                                                                        <input
+                                                                            type="date"
+                                                                            value={revisedMoveOutDate}
+                                                                            onChange={e => setRevisedMoveOutDate(e.target.value)}
+                                                                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                        />
+                                                                        <p className="text-[10px] text-slate-400 mt-1 italic">Default is tenant&apos;s request: {format(new Date(notice.plannedMoveOut), 'd MMM yyyy')}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Your Response (optional)</label>
+                                                                        <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
+                                                                            placeholder="Add a note for the tenant..."
+                                                                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+                                                                    </div>
+                                                                </div>
+                                                                <button onClick={() => handleAcknowledge(notice.id)} disabled={isPending}
+                                                                    className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm rounded-2xl disabled:opacity-50 transition-all shadow-lg shadow-indigo-200">
+                                                                    {isPending ? 'Acknowledging...' : 'Acknowledge Notice ✓'}
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {notice.ownerNote && (
+                                                                    <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                                                        <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Your Note</p>
+                                                                        <p className="text-xs text-indigo-700">{notice.ownerNote}</p>
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Vacating Progress</p>
+                                                                    <VacatingTimeline notice={notice} />
+                                                                </div>
+                                                                {notice.status === 'ACKNOWLEDGED' && (
+                                                                    <button
+                                                                        onClick={() => { setExpandedId(null); handleMoveOutNow(notice); }}
+                                                                        className="w-full py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white font-black text-sm rounded-2xl hover:from-rose-700 hover:to-orange-700 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2"
+                                                                    >
+                                                                        <Home className="w-4 h-4" /> Move Out &amp; Settlement Now
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
