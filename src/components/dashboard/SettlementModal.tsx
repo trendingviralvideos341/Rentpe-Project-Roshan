@@ -100,7 +100,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
         </div>
     );
 
-    return (
+    return (<>
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4">
             <div className="bg-white w-full md:max-w-lg md:rounded-3xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
 
@@ -531,6 +531,6 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                 </div>
             </div>
         )}
-    );
+    </>);
 }
 
