@@ -271,4 +271,70 @@ export async function getTenantForSettlement(bookingId: string) {
     };
 }
 
+// ─── getSettlementForNotice ──────────────────────────────────────────────────
+// Returns full settlement receipt data for a vacated notice (bookingId).
+// Safe for both owner and student — student can only fetch their own.
+export async function getSettlementForNotice(bookingId: string) {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+
+    const tenant = await prisma.tenant.findFirst({
+        where: { bookingId },
+        include: {
+            rentRecords:    { orderBy: { createdAt: 'asc' } },
+            billingProfile: { include: { deposit: true } },
+            booking:        { select: { displayId: true, userId: true } },
+            bed:            { select: { bedNumber: true } },
+            settlementRecord: true,
+        },
+    });
+
+    if (!tenant) throw new Error('Settlement data not found.');
+
+    // Students can only view their own settlement
+    const isStudent = (session as any).role === 'USER' || (session as any).role === 'STUDENT';
+    if (isStudent && tenant.booking?.userId !== (session as any).userId) {
+        throw new Error('Unauthorized');
+    }
+
+    const rentAmount = typeof tenant.rent === 'number'
+        ? tenant.rent
+        : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, '')) || 0;
+
+    const securityDeposit =
+        Number(tenant.billingProfile?.deposit?.amount) ||
+        Number(tenant.billingProfile?.securityDeposit) ||
+        rentAmount;
+
+    const bedNo = (tenant as any).bed?.bedNumber
+        ? `${tenant.roomNumber}-${(tenant as any).bed.bedNumber}`
+        : null;
+
+    const vacatingNotice = await prisma.vacatingNotice.findFirst({
+        where:   { bookingId, status: { not: 'WITHDRAWN' } },
+        select:  { displayId: true },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    const sr = (tenant as any).settlementRecord;
+
+    return {
+        tenantId:        tenant.id,
+        tenantDisplayId: tenant.displayId,
+        noticeDisplayId: vacatingNotice?.displayId || null,
+        name:            tenant.name,
+        phone:           tenant.phone,
+        roomNumber:      tenant.roomNumber,
+        roomType:        tenant.roomType,
+        bedNo,
+        moveOutDate:     tenant.actualMoveOutDate || null,
+        securityDeposit,
+        rentAmount,
+        // From settlement record if available
+        rentDue:         sr ? Number(sr.finalRentPending) : null,
+        deductions:      sr ? Number(sr.damageDeductions) : null,
+        refundAmount:    sr ? Number(sr.depositRefunded)  : null,
+        settlementNotes: sr?.notes || null,
+    };
+}
 

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { getOwnerVacatingNotices, acknowledgeVacatingNotice, getTenantForSettlement } from '@/actions/tenancy';
+import { getOwnerVacatingNotices, acknowledgeVacatingNotice, getTenantForSettlement, getSettlementForNotice } from '@/actions/tenancy';
 import { toast } from 'sonner';
-import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle, FileDown, Eye } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { SettlementModal } from '@/components/dashboard/SettlementModal';
 import { VacatingTimeline } from '@/components/ui/VacatingTimeline';
@@ -33,6 +33,57 @@ export default function OwnerNoticesPage() {
     const [settlementTenant, setSettlementTenant] = useState<any>(null);
     const [fetchingTenant, setFetchingTenant] = useState(false);
     const [noticeFilter, setNoticeFilter] = useState<'ALL' | 'VACATED'>('ALL');
+    const [receiptLoading, setReceiptLoading] = useState<string | null>(null); // noticeId being loaded
+
+    // Generates and opens a printable PDF receipt in a new tab
+    const openReceipt = async (notice: any) => {
+        setReceiptLoading(notice.id);
+        try {
+            const d = await getSettlementForNotice(notice.bookingId);
+            const moveOutStr = d.moveOutDate
+                ? new Date(d.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                : new Date(notice.plannedMoveOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+            const netRefund = d.securityDeposit - (d.rentDue ?? 0) - (d.deductions ?? 0);
+            const html = `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Settlement Receipt - ${d.name}</title>
+<style>body{font-family:Arial,sans-serif;padding:32px;color:#1e293b;max-width:620px;margin:0 auto}
+.hdr{text-align:center;border-bottom:3px solid #4f46e5;padding-bottom:16px;margin-bottom:24px}
+.logo{font-size:24px;font-weight:900;color:#4f46e5}.sub{font-size:13px;color:#64748b;margin-top:4px}
+.sec{margin-bottom:18px}.sec-title{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f8fafc;font-size:13px}
+.label{color:#64748b}.value{font-weight:700;font-family:monospace}.id{color:#4f46e5}.red{color:#dc2626}.amber{color:#d97706}
+.final{display:flex;justify-content:space-between;padding:12px 16px;background:#0f172a;border-radius:10px;font-weight:900;font-size:17px;margin-top:14px;color:white}
+.final .amt{color:${netRefund >= 0 ? '#34d399' : '#fbbf24'}}
+.stamp{text-align:center;margin-top:28px;font-size:10px;color:#94a3b8}
+.badge{display:inline-block;border:2px solid #059669;color:#059669;padding:5px 16px;border-radius:8px;font-weight:900;font-size:11px;margin-top:10px;letter-spacing:2px}
+@media print{button{display:none}}</style></head><body>
+<div class='hdr'><div class='logo'>RentPe</div><div class='sub'>Move-Out & Settlement Receipt</div></div>
+<div class='sec'><div class='sec-title'>Tenant Information</div>
+<div class='row'><span class='label'>Tenant ID</span><span class='value id'>${d.tenantDisplayId}</span></div>
+<div class='row'><span class='label'>Notice ID</span><span class='value id'>${d.noticeDisplayId || '—'}</span></div>
+<div class='row'><span class='label'>Name</span><span class='value'>${d.name}</span></div>
+<div class='row'><span class='label'>Phone</span><span class='value'>${d.phone || '—'}</span></div>
+<div class='row'><span class='label'>Room Number</span><span class='value'>${d.roomNumber || '—'}</span></div>
+<div class='row'><span class='label'>Bed Number</span><span class='value'>${d.bedNo || '—'}</span></div>
+<div class='row'><span class='label'>Room Type</span><span class='value'>${d.roomType || '—'}</span></div>
+<div class='row'><span class='label'>Move-Out Date</span><span class='value'>${moveOutStr}</span></div>
+</div>
+<div class='sec'><div class='sec-title'>Financial Settlement</div>
+<div class='row'><span class='label'>Security Deposit Held</span><span class='value'>₹${d.securityDeposit.toLocaleString('en-IN')}</span></div>
+${d.rentDue ? `<div class='row'><span class='label'>Rent / Pro-rata Due</span><span class='value red'>- ₹${d.rentDue.toLocaleString('en-IN')}</span></div>` : ''}
+${d.deductions ? `<div class='row'><span class='label'>Damage Deductions</span><span class='value amber'>- ₹${d.deductions.toLocaleString('en-IN')}</span></div>` : ''}
+${d.settlementNotes ? `<div class='row'><span class='label'>Note</span><span class='value'>${d.settlementNotes}</span></div>` : ''}
+</div>
+<div class='final'><span>${netRefund >= 0 ? '🏦 Refund to Tenant' : '💰 Tenant Paid Owner'}</span><span class='amt'>₹${Math.abs(netRefund).toLocaleString('en-IN')}</span></div>
+<div class='stamp'><div>Generated by RentPe · ${new Date().toLocaleString('en-IN')}</div><div class='badge'>SETTLEMENT COMPLETE</div><div style='margin-top:8px;font-size:10px'>System-generated receipt. No signature required.</div></div>
+</body></html>`;
+            const win = window.open('', '_blank');
+            if (win) { win.document.write(html); win.document.close(); win.print(); }
+        } catch (e: any) {
+            toast.error(e.message || 'Could not load receipt.');
+        } finally {
+            setReceiptLoading(null);
+        }
+    };
 
     const handleMoveOutNow = (notice: any) => setConfirmNotice(notice);
 
@@ -289,11 +340,27 @@ export default function OwnerNoticesPage() {
                                                                     <VacatingTimeline notice={notice} />
                                                                 </div>
                                                                 {notice.status === 'VACATED' && (
-                                                                    <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
-                                                                        <p className="text-xs font-black text-teal-700 uppercase flex items-center gap-1.5 mb-1">
+                                                                    <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 space-y-3">
+                                                                        <p className="text-xs font-black text-teal-700 uppercase flex items-center gap-1.5">
                                                                             <CheckCircle2 className="w-4 h-4" /> Vacating Complete
                                                                         </p>
-                                                                        <p className="text-sm text-teal-800">This tenant has fully vacated and the settlement is finalized.</p>
+                                                                        <p className="text-sm text-teal-800">Settlement finalized. View the full receipt below.</p>
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                onClick={() => openReceipt(notice)}
+                                                                                disabled={receiptLoading === notice.id}
+                                                                                className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-indigo-200 disabled:opacity-60"
+                                                                            >
+                                                                                {receiptLoading === notice.id ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</> : <><Eye className="w-3.5 h-3.5" /> View Receipt</>}
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => openReceipt(notice)}
+                                                                                disabled={receiptLoading === notice.id}
+                                                                                className="flex-1 py-2.5 bg-slate-800 text-white font-black text-xs rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+                                                                            >
+                                                                                <FileDown className="w-3.5 h-3.5" /> Download PDF
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                                 {notice.status === 'ACKNOWLEDGED' && (
@@ -450,11 +517,27 @@ export default function OwnerNoticesPage() {
                                    </div>
                                    {/* ── VACATED: show completed state ── */}
                                    {selected.status === 'VACATED' && (
-                                       <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
+                                       <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 space-y-3">
                                            <p className="text-xs font-black text-teal-700 uppercase flex items-center gap-1.5 mb-1">
                                                <CheckCircle2 className="w-4 h-4" /> Vacating Complete
                                            </p>
-                                           <p className="text-sm text-teal-800">This tenant has fully vacated and the settlement is finalized.</p>
+                                           <p className="text-sm text-teal-800">Settlement finalized. View or download the full receipt.</p>
+                                           <div className="flex gap-2">
+                                               <button
+                                                   onClick={() => openReceipt(selected)}
+                                                   disabled={receiptLoading === selected.id}
+                                                   className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-1.5 shadow-md disabled:opacity-60"
+                                               >
+                                                   {receiptLoading === selected.id ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</> : <><Eye className="w-3.5 h-3.5" /> View Receipt</>}
+                                               </button>
+                                               <button
+                                                   onClick={() => openReceipt(selected)}
+                                                   disabled={receiptLoading === selected.id}
+                                                   className="flex-1 py-2.5 bg-slate-800 text-white font-black text-xs rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+                                               >
+                                                   <FileDown className="w-3.5 h-3.5" /> Download PDF
+                                               </button>
+                                           </div>
                                        </div>
                                    )}
                                    {/* ── Move Out & Settlement button (only if ACKNOWLEDGED, not yet VACATED) ── */}
