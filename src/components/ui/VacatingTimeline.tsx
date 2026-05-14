@@ -67,6 +67,7 @@ function getActiveIndex(notice: VacatingTimelineProps['notice']): number {
         case 'SETTLEMENT_PENDING':
         case 'PAYMENT_REQUESTED': return 3;
         case 'RECEIPT_ISSUED':   return 4;
+        case 'VACATED':          // ← fully completed vacate via owner settlement
         case 'COMPLETED':
         case 'CHECKED_OUT':      return 5;
         case 'WITHDRAWN':        return 0;
@@ -85,7 +86,7 @@ export function VacatingTimeline({ notice }: VacatingTimelineProps) {
 
     const activeIndex = getActiveIndex(notice);
     const isWithdrawn = notice.status === 'WITHDRAWN';
-    const isCompleted = notice.status === 'COMPLETED' || notice.status === 'CHECKED_OUT';
+    const isCompleted = notice.status === 'COMPLETED' || notice.status === 'CHECKED_OUT' || notice.status === 'VACATED';
     const daysLeft    = notice.plannedMoveOut ? getDaysLeft(notice.plannedMoveOut) : null;
 
     return (

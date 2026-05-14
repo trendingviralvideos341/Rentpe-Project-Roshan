@@ -288,6 +288,14 @@ export default function OwnerNoticesPage() {
                                                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Vacating Progress</p>
                                                                     <VacatingTimeline notice={notice} />
                                                                 </div>
+                                                                {notice.status === 'VACATED' && (
+                                                                    <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
+                                                                        <p className="text-xs font-black text-teal-700 uppercase flex items-center gap-1.5 mb-1">
+                                                                            <CheckCircle2 className="w-4 h-4" /> Vacating Complete
+                                                                        </p>
+                                                                        <p className="text-sm text-teal-800">This tenant has fully vacated and the settlement is finalized.</p>
+                                                                    </div>
+                                                                )}
                                                                 {notice.status === 'ACKNOWLEDGED' && (
                                                                     <button
                                                                         onClick={() => { setExpandedId(null); handleMoveOutNow(notice); }}
@@ -440,7 +448,16 @@ export default function OwnerNoticesPage() {
                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Vacating Progress</p>
                                        <VacatingTimeline notice={selected} />
                                    </div>
-                                   {/* ── Move Out & Settlement button (inside modal) ── */}
+                                   {/* ── VACATED: show completed state ── */}
+                                   {selected.status === 'VACATED' && (
+                                       <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
+                                           <p className="text-xs font-black text-teal-700 uppercase flex items-center gap-1.5 mb-1">
+                                               <CheckCircle2 className="w-4 h-4" /> Vacating Complete
+                                           </p>
+                                           <p className="text-sm text-teal-800">This tenant has fully vacated and the settlement is finalized.</p>
+                                       </div>
+                                   )}
+                                   {/* ── Move Out & Settlement button (only if ACKNOWLEDGED, not yet VACATED) ── */}
                                    {selected.status === 'ACKNOWLEDGED' && (
                                        <button
                                            onClick={() => { setSelected(null); handleMoveOutNow(selected); }}
