@@ -35,13 +35,21 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
     const prevUnpaidRent = (tenant.rentRecords || [])
         .filter((r: any) => r.month !== currentMonthLabel && !r.paid)
         .reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0);
-    const securityDeposit = monthlyRent;
+    // Use real security deposit from billing profile if available
+    const securityDeposit = tenant.securityDeposit ?? monthlyRent;
     const totalDeductionAmt = deductions.reduce((acc, d) => acc + (parseFloat(d.amount) || 0), 0);
     const thisMonthOwed = isCurrentMonthPaid ? 0 : proRataRent;
     const totalTenantOwes = prevUnpaidRent + thisMonthOwed;
     const netRefund = securityDeposit - totalTenantOwes - totalDeductionAmt;
     const ownerPaysRefund = netRefund > 0;
     const tenantOwesMore = netRefund < 0;
+
+    // Convenience aliases for IDs
+    const tenantDisplayId    = tenant.displayId    || tenant.id?.slice(0, 10) || '—';
+    const bookingDisplayId   = tenant.bookingDisplayId || '—';
+    const roomId             = tenant.roomId        || '—';
+    const bedId              = tenant.bedId         || '—';
+    const roomType           = tenant.roomType      || '—';
 
     const addDeduction = () => setDeductions(p => [...p, { id: Date.now().toString(), description: '', amount: '' }]);
     const removeDeduction = (id: string) => setDeductions(p => p.filter(d => d.id !== id));
@@ -100,7 +108,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                     <div>
                         <h2 className="font-black text-slate-900 text-lg">Move-Out & Settlement</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">{tenant.name} · {tenant.roomNumber}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{tenant.name} · {tenant.roomNumber} · <span className="font-mono text-indigo-500">{tenantDisplayId}</span></p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X className="w-5 h-5 text-slate-500" /></button>
                 </div>
@@ -211,8 +219,21 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                             {/* Tenant info */}
                             <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
                                 <p className="text-xs font-black uppercase text-slate-400 mb-1">Tenant Info</p>
-                                {[['Name', tenant.name], ['Room', `${tenant.roomNumber} (${tenant.roomType})`], ['Move-out', today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })], ['Phone', tenant.phone]].map(([k, v]) => (
-                                    <div key={k} className="flex justify-between text-sm"><span className="text-slate-500">{k}</span><span className="font-black text-slate-900">{v}</span></div>
+                                {[
+                                    ['Tenant ID',    tenantDisplayId],
+                                    ['Booking ID',   bookingDisplayId],
+                                    ['Name',         tenant.name],
+                                    ['Phone',        tenant.phone],
+                                    ['Room No.',     tenant.roomNumber],
+                                    ['Room Type',    roomType],
+                                    ['Room ID',      roomId],
+                                    ['Bed ID',       bedId],
+                                    ['Move-out',     today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })],
+                                ].map(([k, v]) => (
+                                    <div key={k} className="flex justify-between text-sm">
+                                        <span className="text-slate-500">{k}</span>
+                                        <span className={`font-black text-slate-900 font-mono text-xs ${['Tenant ID','Booking ID','Room ID','Bed ID'].includes(k as string) ? 'text-indigo-700' : ''}`}>{v}</span>
+                                    </div>
                                 ))}
                             </div>
 
@@ -264,8 +285,22 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
 
                             <div className="bg-slate-50 rounded-2xl p-4 text-left space-y-2 border border-slate-200">
                                 <p className="text-xs font-black uppercase text-slate-500">Settlement Receipt</p>
-                                {[['Tenant', tenant.name], ['Room', tenant.roomNumber], ['Move-out Date', today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })], ['Security Deposit', `₹${securityDeposit.toLocaleString('en-IN')}`]].map(([k, v]) => (
-                                    <div key={k} className="flex justify-between text-sm"><span className="text-slate-500">{k}</span><span className="font-black text-slate-900">{v}</span></div>
+                                {/* Identity fields */}
+                                {[
+                                    ['Tenant ID',  tenantDisplayId],
+                                    ['Booking ID', bookingDisplayId],
+                                    ['Tenant',     tenant.name],
+                                    ['Room No.',   tenant.roomNumber],
+                                    ['Room Type',  roomType],
+                                    ['Room ID',    roomId],
+                                    ['Bed ID',     bedId],
+                                    ['Move-out',   today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })],
+                                    ['Security Deposit', `₹${securityDeposit.toLocaleString('en-IN')}`],
+                                ].map(([k, v]) => (
+                                    <div key={k} className="flex justify-between text-sm">
+                                        <span className="text-slate-500">{k}</span>
+                                        <span className={`font-black text-slate-900 font-mono text-xs ${['Tenant ID','Booking ID','Room ID','Bed ID'].includes(k as string) ? 'text-indigo-700' : ''}`}>{v}</span>
+                                    </div>
                                 ))}
                                 {totalTenantOwes > 0 && <div className="flex justify-between text-sm"><span className="text-slate-500">Rent Adjusted</span><span className="font-black text-red-600">- ₹{totalTenantOwes.toLocaleString('en-IN')}</span></div>}
                                 {deductions.length > 0 && (

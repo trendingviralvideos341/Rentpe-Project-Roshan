@@ -220,27 +220,40 @@ export async function getTenantForSettlement(bookingId: string) {
     const tenant = await prisma.tenant.findFirst({
         where: { bookingId },
         include: {
-            rentRecords: { orderBy: { createdAt: 'asc' } },
+            rentRecords:    { orderBy: { createdAt: 'asc' } },
+            billingProfile: { include: { deposit: true } },
+            booking:        { select: { displayId: true } },
         },
     });
 
     if (!tenant) throw new Error('Tenant record not found for this booking.');
 
-    // Resolve rentAmount as a plain number
     const rentAmount =
         typeof tenant.rent === 'number'
             ? tenant.rent
             : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, '')) || 0;
 
+    // Prefer actual security deposit from billing profile, fall back to 1-month rent
+    const securityDeposit =
+        Number(tenant.billingProfile?.deposit?.amount) ||
+        Number(tenant.billingProfile?.securityDeposit) ||
+        rentAmount;
+
     return {
-        id:           tenant.id,
-        name:         tenant.name,
-        phone:        tenant.phone,
-        roomNumber:   tenant.roomNumber,
+        id:              tenant.id,
+        displayId:       tenant.displayId,          // Tenant ID  e.g. REN-USER-xxx-T1
+        bookingDisplayId: tenant.booking?.displayId, // Booking ID e.g. REN-BOOK-2026-0001
+        name:            tenant.name,
+        phone:           tenant.phone,
+        roomNumber:      tenant.roomNumber,
+        roomType:        tenant.roomType,
+        roomId:          tenant.roomId,
+        bedId:           tenant.bedId,
         rentAmount,
-        rentRecords:  tenant.rentRecords,
-        startDate:    tenant.startDate,
-        status:       tenant.status,
+        securityDeposit,                             // Real deposit from BillingProfile
+        rentRecords:     tenant.rentRecords,
+        startDate:       tenant.startDate,
+        status:          tenant.status,
     };
 }
 
