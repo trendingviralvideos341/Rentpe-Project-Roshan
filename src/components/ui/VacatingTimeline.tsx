@@ -9,9 +9,11 @@ interface VacatingTimelineProps {
         plannedMoveOut: string | Date;
         submittedAt?: string | Date;
         acknowledgedAt?: string | Date;
-        settlementStatus?: string;     // 'PENDING_PAYMENT' | 'PENDING_REFUND' | 'CLEARED'
+        settlementStatus?: string;
         moveOutCompletedAt?: string | Date;
     } | null;
+    filedDate?: string;    // formatted date to show under "Notice Filed" step
+    vacatedDate?: string;  // formatted date to show under "Vacated" step
 }
 
 const STEPS = [
@@ -81,7 +83,7 @@ function getDaysLeft(moveOut: string | Date): number {
     return Math.ceil((target.getTime() - now.getTime()) / 86_400_000);
 }
 
-export function VacatingTimeline({ notice }: VacatingTimelineProps) {
+export function VacatingTimeline({ notice, filedDate, vacatedDate }: VacatingTimelineProps) {
     if (!notice) return null;
 
     const activeIndex = getActiveIndex(notice);
@@ -157,7 +159,13 @@ export function VacatingTimeline({ notice }: VacatingTimelineProps) {
                                     {step.label}
                                 </span>
 
-                                {/* Days left badge — only on the "Waiting" step while it's current */}
+                                {/* Date badge under Notice Filed and Vacated steps */}
+                                {step.key === 'SUBMITTED' && filedDate && (
+                                    <span className="text-[9px] font-bold text-rose-600/80 mt-0.5 leading-tight">{filedDate}</span>
+                                )}
+                                {step.key === 'VACATED' && vacatedDate && (
+                                    <span className="text-[9px] font-bold text-rose-600/80 mt-0.5 leading-tight">{vacatedDate}</span>
+                                )}
                                 {isCurrent && step.key === 'WAITING' && daysLeft !== null && daysLeft > 0 && (
                                     <span className="text-[9px] font-black text-rose-600 mt-0.5 md:text-center">
                                         {daysLeft}d left

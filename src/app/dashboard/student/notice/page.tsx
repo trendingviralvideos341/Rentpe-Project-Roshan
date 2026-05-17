@@ -248,122 +248,55 @@ export default function NoticePage() {
                     </div>
 
                 ) : notice && statusConf ? (
-                    /* —â‚¬—â‚¬ Existing Notice Status —â‚¬—â‚¬ */
+                    /* Existing Notice Status */
                     <div className="space-y-4">
-                        {/* —â‚¬—â‚¬ Flow Timeline —â‚¬—â‚¬ */}
+                        {/* ── Vacating Progress Card ── */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                            <div className="px-6 pt-5 pb-2 border-b border-slate-100">
-                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Vacating Progress</p>
-                            </div>
-                            <div className="px-4 pb-4">
-                                <VacatingTimeline notice={notice} />
-                            </div>
-                        </div>
-
-                        {/* —â‚¬—â‚¬ Vacate Completed Receipt Banner —â‚¬—â‚¬ */}
-                        {notice.status === 'VACATED' && (
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-3xl shadow-xl p-6 text-center space-y-3">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                                <h3 className="text-xl font-black text-emerald-900">Move-Out Finalized!</h3>
-                                <p className="text-sm text-emerald-700">Your move-out has been processed and settled by your property owner. Your room has been released.</p>
-                                <div className="bg-white rounded-2xl p-4 text-left space-y-2 border border-emerald-100 mt-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Settlement Details</p>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Notice Filed</span>
-                                        <span className="font-black text-slate-900">{new Date(notice.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Planned Move-Out</span>
-                                        <span className="font-black text-slate-900">{new Date(notice.plannedMoveOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    </div>
-                                    {notice.ownerNote && (
-                                        <div className="flex flex-col gap-1 pt-2 border-t border-slate-100">
-                                            <span className="text-[10px] font-black uppercase text-slate-400">Owner Settlement Note</span>
-                                            <span className="text-sm text-slate-700 font-medium">{notice.ownerNote}</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex gap-3 mt-2">
-                                    <button
-                                        onClick={() => openStudentReceipt('view')}
-                                        disabled={receiptLoading}
-                                        className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-60"
-                                    >
-                                        {receiptLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : <><Eye className="w-4 h-4" /> View Receipt</>}
-                                    </button>
-                                    <button
-                                        onClick={() => openStudentReceipt('download')}
-                                        disabled={receiptLoading}
-                                        className="flex-1 py-3 bg-slate-900 text-white font-black text-sm rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                                    >
-                                        <FileDown className="w-4 h-4" /> Download PDF
-                                    </button>
-                                </div>
-                                <p className="text-xs text-emerald-600 font-medium">Contact your owner for any questions about the settlement.</p>
-                            </div>
-                        )}
-
-                        {/* —â‚¬—â‚¬ Notice Details Card —â‚¬—â‚¬ */}
-                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className={`p-6 bg-${statusConf.color}-50 border-b border-${statusConf.color}-100`}>
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    {StatusIcon && <StatusIcon className={`w-6 h-6 text-${statusConf.color}-600`} />}
+                            {/* Card Header */}
+                            <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+                                <div className="flex items-center justify-between gap-3">
                                     <div>
-                                        <p className={`text-xs font-black uppercase tracking-widest text-${statusConf.color}-600`}>Notice Status</p>
-                                        <h2 className="text-xl font-black text-slate-900">{statusConf.label}</h2>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vacating Progress</p>
+                                        {booking?.propertyName && (
+                                            <p className="text-sm font-black text-slate-800 mt-0.5 flex items-center gap-1.5">
+                                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                                {booking.propertyName}
+                                            </p>
+                                        )}
                                     </div>
+                                    <button
+                                        onClick={() => setShowDetailsModal(true)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-indigo-200 shrink-0"
+                                    >
+                                        <FileText className="w-3.5 h-3.5" /> View Details
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setShowDetailsModal(true)}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-indigo-200 shrink-0"
-                                >
-                                    <FileText className="w-3.5 h-3.5" /> View Details
-                                </button>
                             </div>
-                            <p className="text-sm text-slate-600 mt-3">{statusConf.desc}</p>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-slate-50 rounded-2xl p-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notice ID</p>
-                                    <p className="font-black text-slate-900 mt-1 text-sm">{notice.displayId}</p>
-                                </div>
-                                <div className="bg-slate-50 rounded-2xl p-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Planned Move-Out</p>
-                                    <p className="font-black text-slate-900 mt-1 text-sm">
-                                        {new Date(notice.plannedMoveOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    </p>
-                                </div>
-                                <div className="bg-slate-50 rounded-2xl p-4 col-span-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reason</p>
-                                    <p className="font-medium text-slate-700 mt-1 text-sm">{notice.reason}</p>
-                                </div>
-                                {notice.tenantComment && (
-                                    <div className="bg-violet-50 rounded-2xl p-4 col-span-2 border border-violet-100">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Your Early-Leave Request</p>
-                                        <p className="font-medium text-violet-800 mt-1 text-sm">{notice.tenantComment}</p>
-                                    </div>
-                                )}
-                                {notice.ownerNote && (
-                                    <div className="bg-indigo-50 rounded-2xl p-4 col-span-2 border border-indigo-100">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Owner Response</p>
-                                        <p className="font-medium text-indigo-800 mt-1 text-sm">{notice.ownerNote}</p>
-                                    </div>
-                                )}
+                            {/* Timeline with dates */}
+                            <div className="px-4 pb-4">
+                                <VacatingTimeline
+                                    notice={notice}
+                                    filedDate={notice.submittedAt
+                                        ? new Date(notice.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                        : undefined}
+                                    vacatedDate={notice.plannedMoveOut
+                                        ? new Date(notice.plannedMoveOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                        : undefined}
+                                />
                             </div>
-                            {notice.status === 'SUBMITTED' && (
-                                <button
-                                    onClick={handleWithdraw}
-                                    disabled={isPending}
-                                    className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-700 font-black text-sm rounded-2xl border border-red-200 transition-all disabled:opacity-50"
-                                >
-                                    {isPending ? 'Withdrawing...' : 'Withdraw Notice'}
-                                </button>
-                            )}
                         </div>
+
+                        {/* ── Withdraw button for SUBMITTED notices only ── */}
+                        {notice.status === 'SUBMITTED' && (
+                            <button
+                                onClick={handleWithdraw}
+                                disabled={isPending}
+                                className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-700 font-black text-sm rounded-2xl border border-red-200 transition-all disabled:opacity-50"
+                            >
+                                {isPending ? 'Withdrawing...' : 'Withdraw Notice'}
+                            </button>
+                        )}
                     </div>
-                </div>
 
                 ) : (
                     /* —â‚¬—â‚¬ File Notice Form —â‚¬—â‚¬ */
