@@ -272,8 +272,6 @@ export async function getTenantForSettlement(bookingId: string) {
 }
 
 // ─── getSettlementForNotice ──────────────────────────────────────────────────
-// Returns full settlement receipt data for a vacated notice (bookingId).
-// Safe for both owner and student — student can only fetch their own.
 export async function getSettlementForNotice(bookingId: string) {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
@@ -285,26 +283,26 @@ export async function getSettlementForNotice(bookingId: string) {
             billingProfile: { include: { deposit: true } },
             booking:        { select: { displayId: true, userId: true } },
             bed:            { select: { bedNumber: true } },
+            property:       { select: { name: true, address: true } },
             settlementRecord: true,
         },
     });
 
     if (!tenant) throw new Error('Settlement data not found.');
 
-    // Students can only view their own settlement
     const isStudent = (session as any).role === 'USER' || (session as any).role === 'STUDENT';
     if (isStudent && tenant.booking?.userId !== (session as any).userId) {
         throw new Error('Unauthorized');
     }
 
-    const rentAmount = typeof tenant.rent === 'number'
+    const monthlyRent = typeof tenant.rent === 'number'
         ? tenant.rent
         : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, '')) || 0;
 
     const securityDeposit =
         Number(tenant.billingProfile?.deposit?.amount) ||
-        Number(tenant.billingProfile?.securityDeposit) ||
-        rentAmount;
+        Number((tenant.billingProfile as any)?.securityDeposit) ||
+        monthlyRent;
 
     const bedNo = (tenant as any).bed?.bedNumber
         ? `${tenant.roomNumber}-${(tenant as any).bed.bedNumber}`
@@ -312,29 +310,87 @@ export async function getSettlementForNotice(bookingId: string) {
 
     const vacatingNotice = await prisma.vacatingNotice.findFirst({
         where:   { bookingId, status: { not: 'WITHDRAWN' } },
-        select:  { displayId: true },
+        select:  { displayId: true, plannedMoveOut: true },
         orderBy: { createdAt: 'desc' },
     });
 
     const sr = (tenant as any).settlementRecord;
 
+    // ── Pro-rata computation ─────────────────────────────────────────────────
+    const moveOutDate = tenant.actualMoveOutDate
+        ? new Date(tenant.actualMoveOutDate)
+        : vacatingNotice?.plannedMoveOut
+            ? new Date(vacatingNotice.plannedMoveOut)
+            : new Date();
+
+    const moveOutDay  = moveOutDate.getDate();
+    const daysInMonth = new Date(moveOutDate.getFullYear(), moveOutDate.getMonth() + 1, 0).getDate();
+    const dailyRate   = Math.round(monthlyRent / daysInMonth);
+    const proRataAmt  = dailyRate * moveOutDay;
+
+    // ── Unpaid rent records (itemized) ───────────────────────────────────────
+    const unpaidRecords = ((tenant as any).rentRecords || [])
+        .filter((r: any) => !r.paid)
+        .map((r: any) => ({ month: r.month, amount: Number(r.amount), note: r.note || null }));
+
+    // ── Parse deduction items from notes ─────────────────────────────────────
+    // confirmMoveOut saves notes in format: "Deductions: Broken AC ₹500, Wall damage ₹500 | Owner note"
+    let deductionItems: { description: string; amount: number }[] = [];
+    const noteText = sr?.notes || '';
+    const dedMatch = noteText.match(/Deductions:\s*(.+?)(?:\s*\||\s*$)/i);
+    if (dedMatch) {
+        const parts = dedMatch[1].split(',').map((p: string) => p.trim());
+        for (const part of parts) {
+            const amtMatch = part.match(/₹?([\d,]+)\s*$/);
+            if (amtMatch) {
+                const amount = parseFloat(amtMatch[1].replace(/,/g, '')) || 0;
+                const description = part.replace(/₹?[\d,]+\s*$/, '').trim();
+                if (description) deductionItems.push({ description, amount });
+            }
+        }
+    }
+    // If no items parsed but total deductions exist, show as single line
+    const totalDeductions = sr ? Number(sr.damageDeductions) : 0;
+    if (deductionItems.length === 0 && totalDeductions > 0) {
+        deductionItems = [{ description: 'Damage / Maintenance', amount: totalDeductions }];
+    }
+
+    const netRefund = securityDeposit - (sr ? Number(sr.finalRentPending) : 0) - totalDeductions;
+
     return {
-        tenantId:        tenant.id,
-        tenantDisplayId: tenant.displayId,
-        noticeDisplayId: vacatingNotice?.displayId || null,
-        name:            tenant.name,
-        phone:           tenant.phone,
-        roomNumber:      tenant.roomNumber,
-        roomType:        tenant.roomType,
+        // IDs
+        tenantId:          tenant.id,
+        tenantDisplayId:   tenant.displayId,
+        bookingDisplayId:  tenant.booking?.displayId || null,
+        noticeDisplayId:   vacatingNotice?.displayId || null,
+        // Personal
+        name:              tenant.name,
+        phone:             tenant.phone,
+        // Property / room
+        propertyName:      (tenant as any).property?.name || null,
+        propertyAddress:   (tenant as any).property?.address || null,
+        roomNumber:        tenant.roomNumber,
+        roomType:          tenant.roomType,
         bedNo,
-        moveOutDate:     tenant.actualMoveOutDate || null,
+        // Dates
+        moveOutDate:       moveOutDate.toISOString(),
+        moveInDate:        tenant.startDate ? new Date(tenant.startDate).toISOString() : null,
+        // Pro-rata
+        monthlyRent,
+        moveOutDay,
+        daysInMonth,
+        dailyRate,
+        proRataAmt,
+        // Financial summary
         securityDeposit,
-        rentAmount,
-        // From settlement record if available
-        rentDue:         sr ? Number(sr.finalRentPending) : null,
-        deductions:      sr ? Number(sr.damageDeductions) : null,
-        refundAmount:    sr ? Number(sr.depositRefunded)  : null,
-        settlementNotes: sr?.notes || null,
+        unpaidRecords,
+        totalRentDue:    sr ? Number(sr.finalRentPending) : 0,
+        deductionItems,
+        totalDeductions,
+        netRefund,
+        depositRefunded: sr ? Number(sr.depositRefunded) : 0,
+        // Notes
+        settlementNotes: noteText.split('|').slice(1).join('|').trim() || null,
     };
 }
 

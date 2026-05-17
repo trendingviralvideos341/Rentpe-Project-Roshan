@@ -28,7 +28,6 @@ export default function OwnerNoticesPage() {
     const [revisedMoveOutDate, setRevisedMoveOutDate] = useState('');
     const [isPending, startTransition] = useTransition();
 
-    // Move-out now confirmation + settlement
     const [confirmNotice, setConfirmNotice] = useState<any>(null);
     const [settlementTenant, setSettlementTenant] = useState<any>(null);
     const [fetchingTenant, setFetchingTenant] = useState(false);
@@ -36,71 +35,116 @@ export default function OwnerNoticesPage() {
     const [receiptLoading, setReceiptLoading] = useState<string | null>(null); // noticeId being loaded
     const [viewingReceipt, setViewingReceipt] = useState<any>(null); // Data for the receipt modal
 
-    // Generates the official HTML for the receipt
+    // Generates the complete, legally-valid official HTML for the settlement receipt
     const getReceiptHtml = (d: any) => {
-        const moveOutStr = d.moveOutDate
-            ? new Date(d.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+        const fmt = (date: string | null) => date
+            ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
             : '—';
-        const netRefund = d.securityDeposit - (d.rentDue ?? 0) - (d.deductions ?? 0);
-        
+        const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+        const net = d.netRefund ?? (d.securityDeposit - d.totalRentDue - d.totalDeductions);
+
+        const unpaidRows = (d.unpaidRecords || []).map((r: any) =>
+            `<tr><td style="color:#ef4444;padding-left:20px">${r.note ? `${r.month} (${r.note})` : r.month}</td><td style="text-align:right;color:#ef4444">- ${inr(r.amount)}</td></tr>`
+        ).join('');
+
+        const deductionRows = (d.deductionItems || []).map((item: any) =>
+            `<tr><td style="color:#d97706;padding-left:20px">${item.description}</td><td style="text-align:right;color:#d97706">- ${inr(item.amount)}</td></tr>`
+        ).join('');
+
         return `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Official Settlement Receipt - ${d.name}</title>
 <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #0f172a; max-width: 700px; margin: 0 auto; line-height: 1.5; }
-    .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
-    .brand { font-size: 32px; font-weight: 900; color: #4f46e5; text-transform: uppercase; letter-spacing: -1px; }
-    .doc-type { font-size: 14px; font-weight: 700; color: #64748b; letter-spacing: 4px; text-transform: uppercase; margin-top: 4px; }
-    .meta-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
-    .meta-table td { padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-    .label { color: #64748b; font-weight: 600; width: 40%; }
-    .value { font-weight: 700; color: #1e293b; text-align: right; }
-    .section-title { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #4f46e5; letter-spacing: 1px; margin: 24px 0 12px; }
-    .summary-table { width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
-    .summary-table th { background: #f8fafc; padding: 12px; text-align: left; font-size: 11px; font-weight: 900; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-    .summary-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
-    .total-row { background: #0f172a; color: white; font-weight: 900; font-size: 16px; }
-    .total-row td { padding: 16px; border: none; }
-    .amt-refund { color: #34d399; } .amt-due { color: #f87171; }
-    .legal-footer { margin-top: 50px; text-align: center; border-top: 1px solid #e2e8f0; pt: 20px; }
-    .stamp { display: inline-block; border: 3px solid #ef4444; color: #ef4444; padding: 8px 24px; border-radius: 4px; font-weight: 900; font-size: 14px; margin: 20px 0; transform: rotate(-5deg); text-transform: uppercase; }
-    .footer-note { font-size: 10px; color: #94a3b8; margin-top: 10px; }
-    @media print { .no-print { display: none; } body { padding: 20px; } }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 48px; color: #0f172a; max-width: 740px; margin: 0 auto; line-height: 1.6; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #4f46e5; padding-bottom: 20px; margin-bottom: 32px; }
+    .brand { font-size: 28px; font-weight: 900; color: #4f46e5; letter-spacing: -1px; }
+    .brand-sub { font-size: 11px; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; }
+    .doc-meta { text-align: right; font-size: 12px; color: #64748b; }
+    .doc-title { font-size: 16px; font-weight: 900; color: #0f172a; }
+    .section { margin-bottom: 28px; }
+    .section-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #4f46e5; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px; }
+    table.info { width: 100%; border-collapse: collapse; }
+    table.info td { padding: 6px 4px; font-size: 13px; border-bottom: 1px solid #f8fafc; }
+    table.info .lbl { color: #64748b; font-weight: 600; width: 45%; }
+    table.info .val { font-weight: 700; color: #0f172a; text-align: right; }
+    table.info .val.id { color: #4f46e5; font-family: monospace; }
+    table.fin { width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+    table.fin thead tr { background: #f8fafc; }
+    table.fin th { padding: 10px 14px; font-size: 11px; font-weight: 900; color: #64748b; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    table.fin td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+    table.fin .credit { color: #059669; font-weight: 700; text-align: right; }
+    table.fin .debit { color: #dc2626; text-align: right; }
+    table.fin .sub { color: #d97706; text-align: right; }
+    .total-row td { background: #0f172a; color: white; font-weight: 900; font-size: 15px; padding: 14px; border: none; }
+    .refund { color: #34d399 !important; } .due { color: #f87171 !important; }
+    .proto-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin: 4px 0 12px; font-size: 13px; }
+    .stamp-wrap { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+    .stamp { display: inline-block; border: 3px solid #dc2626; color: #dc2626; padding: 6px 20px; border-radius: 4px; font-weight: 900; font-size: 13px; transform: rotate(-4deg); letter-spacing: 2px; }
+    .legal { font-size: 9px; color: #94a3b8; margin-top: 16px; line-height: 1.8; }
+    @media print { body { padding: 24px; } }
 </style></head><body>
-    <div class="header">
-        <div class="brand">RentPe</div>
-        <div class="doc-type">Final Settlement Receipt</div>
+<div class="header">
+    <div><div class="brand">RentPe</div><div class="brand-sub">Property Management Platform</div></div>
+    <div class="doc-meta">
+        <div class="doc-title">FINAL SETTLEMENT RECEIPT</div>
+        <div>Date: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        <div>Ref: ${d.tenantId}</div>
     </div>
-    
-    <div class="section-title">Tenant & Property Details</div>
-    <table class="meta-table">
-        <tr><td class="label">Tenant Name</td><td class="value">${d.name}</td></tr>
-        <tr><td class="label">Tenant ID</td><td class="value">${d.tenantDisplayId}</td></tr>
-        <tr><td class="label">Notice Reference</td><td class="value">${d.noticeDisplayId || 'N/A'}</td></tr>
-        <tr><td class="label">Room / Bed</td><td class="value">${d.roomNumber} (${d.bedNo || 'Standard'})</td></tr>
-        <tr><td class="label">Room Type</td><td class="value">${d.roomType}</td></tr>
-        <tr><td class="label">Final Move-Out Date</td><td class="value">${moveOutStr}</td></tr>
-    </table>
+</div>
 
-    <div class="section-title">Financial Breakdown</div>
-    <table class="summary-table" cellspacing="0">
+<div class="section">
+    <div class="section-title">Tenant &amp; Property Information</div>
+    <table class="info">
+        <tr><td class="lbl">Tenant Name</td><td class="val">${d.name}</td></tr>
+        <tr><td class="lbl">Tenant ID</td><td class="val id">${d.tenantDisplayId}</td></tr>
+        <tr><td class="lbl">Notice Reference</td><td class="val id">${d.noticeDisplayId || 'N/A'}</td></tr>
+        <tr><td class="lbl">Booking Reference</td><td class="val id">${d.bookingDisplayId || 'N/A'}</td></tr>
+        <tr><td class="lbl">Phone</td><td class="val">${d.phone || '—'}</td></tr>
+        <tr><td class="lbl">Property</td><td class="val">${d.propertyName || '—'}</td></tr>
+        <tr><td class="lbl">Room No.</td><td class="val">${d.roomNumber || '—'}</td></tr>
+        <tr><td class="lbl">Bed No.</td><td class="val">${d.bedNo || '—'}</td></tr>
+        <tr><td class="lbl">Room Type</td><td class="val">${d.roomType || '—'}</td></tr>
+        <tr><td class="lbl">Move-In Date</td><td class="val">${fmt(d.moveInDate)}</td></tr>
+        <tr><td class="lbl">Move-Out Date</td><td class="val">${fmt(d.moveOutDate)}</td></tr>
+    </table>
+</div>
+
+<div class="section">
+    <div class="section-title">Pro-Rata Rent Calculation</div>
+    <div class="proto-box">
+        <strong>Monthly Rent:</strong> ${inr(d.monthlyRent)}<br>
+        <strong>Days in Move-Out Month:</strong> ${d.daysInMonth} days<br>
+        <strong>Daily Rate:</strong> ${inr(d.monthlyRent)} ÷ ${d.daysInMonth} = <strong>${inr(d.dailyRate)}/day</strong><br>
+        <strong>Days Stayed:</strong> ${d.moveOutDay} days<br>
+        <strong>Pro-Rata Rent Amount:</strong> ${inr(d.dailyRate)} × ${d.moveOutDay} = <strong>${inr(d.proRataAmt)}</strong>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-title">Financial Settlement Breakdown</div>
+    <table class="fin" cellspacing="0">
         <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
         <tbody>
-            <tr><td>Security Deposit (Credit)</td><td style="text-align:right">₹${d.securityDeposit.toLocaleString('en-IN')}</td></tr>
-            ${d.rentDue > 0 ? `<tr><td style="color:#ef4444">Rent Dues / Pro-rata Adjustment</td><td style="text-align:right;color:#ef4444">- ₹${d.rentDue.toLocaleString('en-IN')}</td></tr>` : ''}
-            ${d.deductions > 0 ? `<tr><td style="color:#ef4444">Damage & Maintenance Deductions</td><td style="text-align:right;color:#ef4444">- ₹${d.deductions.toLocaleString('en-IN')}</td></tr>` : ''}
+            <tr><td><strong>Security Deposit (Credit)</strong></td><td class="credit">+ ${inr(d.securityDeposit)}</td></tr>
+            ${d.totalRentDue > 0 ? `<tr><td><strong style="color:#dc2626">Rent Dues (Outstanding)</strong></td><td class="debit">- ${inr(d.totalRentDue)}</td></tr>${unpaidRows}` : ''}
+            ${d.totalDeductions > 0 ? `<tr><td><strong style="color:#d97706">Damage &amp; Maintenance Deductions</strong></td><td class="sub">- ${inr(d.totalDeductions)}</td></tr>${deductionRows}` : ''}
             <tr class="total-row">
-                <td>${netRefund >= 0 ? 'Net Refund Payable' : 'Net Balance Due'}</td>
-                <td style="text-align:right" class="${netRefund >= 0 ? 'amt-refund' : 'amt-due'}">₹${Math.abs(netRefund).toLocaleString('en-IN')}</td>
+                <td>${net >= 0 ? '🏦 Net Refund Payable to Tenant' : '💰 Net Balance Due from Tenant'}</td>
+                <td class="${net >= 0 ? 'refund' : 'due'}" style="text-align:right">${inr(Math.abs(net))}</td>
             </tr>
         </tbody>
     </table>
+    ${d.settlementNotes ? `<div style="margin-top:12px;font-size:12px;color:#64748b;padding:10px;background:#f8fafc;border-radius:6px"><strong>Settlement Note:</strong> ${d.settlementNotes}</div>` : ''}
+</div>
 
-    ${d.settlementNotes ? `<div style="margin-top:20px; font-size:12px; color:#64748b"><strong>Notes:</strong> ${d.settlementNotes}</div>` : ''}
-
-    <div class="legal-footer">
-        <div class="stamp">Verified & Settled</div>
-        <div class="footer-note">This is a system-generated document and is legally valid under the Information Technology Act, 2000. It confirms the final settlement between the property owner and the tenant. No physical signature is required.</div>
-        <div style="font-size:10px; color:#cbd5e1; margin-top:10px">Generated on: ${new Date().toLocaleString('en-IN')} | Ref: ${d.tenantId}</div>
+<div class="stamp-wrap">
+    <div class="stamp">VERIFIED &amp; SETTLED</div>
+    <div class="legal">
+        This document is electronically generated and is legally valid under the <strong>Information Technology Act, 2000</strong> and the 
+        <strong>Model Tenancy Act, 2021</strong>. It constitutes the official record of the final settlement between the property owner and the tenant.
+        No physical signature is required for this document to be legally binding.<br>
+        Generated by RentPe on ${new Date().toLocaleString('en-IN')} | System Reference: ${d.tenantId}
     </div>
+</div>
 </body></html>`;
     };
 
@@ -654,75 +698,113 @@ export default function OwnerNoticesPage() {
                     }}
                 />
             )}
-            {/* ── Receipt Viewer Modal ── */}
-            {viewingReceipt && (
+            {viewingReceipt && (() => {
+                const vr = viewingReceipt;
+                const net = vr.netRefund ?? (vr.securityDeposit - vr.totalRentDue - vr.totalDeductions);
+                const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+                return (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+                        {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                             <div>
                                 <h2 className="font-black text-slate-900 text-lg">Settlement Receipt</h2>
-                                <p className="text-xs text-slate-500 mt-0.5">Reference: {viewingReceipt.tenantDisplayId}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Ref: {vr.tenantDisplayId}</p>
                             </div>
                             <button onClick={() => setViewingReceipt(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X className="w-5 h-5 text-slate-500" /></button>
                         </div>
-                        
-                        <div className="overflow-y-auto flex-1 p-6">
-                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-6">
-                                <div className="text-center border-b border-slate-200 pb-4">
-                                    <p className="text-2xl font-black text-indigo-600 tracking-tighter">RentPe</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Final Settlement Document</p>
-                                </div>
 
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Tenant Details</p>
+                        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+                            {/* Brand */}
+                            <div className="text-center border-b border-slate-100 pb-4">
+                                <p className="text-xl font-black text-indigo-600 tracking-tighter">RentPe</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Final Settlement Document</p>
+                            </div>
+
+                            {/* Tenant + Property Info */}
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2">Tenant & Property</p>
+                                <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5">
                                     {[
-                                        ['Name', viewingReceipt.name],
-                                        ['Room', `${viewingReceipt.roomNumber} (${viewingReceipt.bedNo || 'Standard'})`],
-                                        ['Move-out', viewingReceipt.moveOutDate ? new Date(viewingReceipt.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'],
-                                    ].map(([l, v]) => (
-                                        <div key={l} className="flex justify-between text-sm">
-                                            <span className="text-slate-500">{l}</span>
-                                            <span className="font-bold text-slate-900">{v}</span>
+                                        ['Tenant ID', vr.tenantDisplayId, true],
+                                        ['Notice Ref.', vr.noticeDisplayId || '—', true],
+                                        ['Booking Ref.', vr.bookingDisplayId || '—', true],
+                                        ['Name', vr.name, false],
+                                        ['Phone', vr.phone || '—', false],
+                                        ['Property', vr.propertyName || '—', false],
+                                        ['Room No.', vr.roomNumber || '—', false],
+                                        ['Bed No.', vr.bedNo || '—', false],
+                                        ['Room Type', vr.roomType || '—', false],
+                                        ['Move-In', fmtDate(vr.moveInDate), false],
+                                        ['Move-Out', fmtDate(vr.moveOutDate), false],
+                                    ].map(([l, v, isId]) => (
+                                        <div key={String(l)} className="flex justify-between text-xs">
+                                            <span className="text-slate-400">{l}</span>
+                                            <span className={`font-bold ${isId ? 'text-indigo-600 font-mono' : 'text-slate-900'}`}>{String(v)}</span>
                                         </div>
                                     ))}
                                 </div>
+                            </div>
 
-                                <div className="space-y-2 pt-4 border-t border-slate-200">
-                                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Settlement Breakdown</p>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Security Deposit</span>
-                                        <span className="font-bold">₹{viewingReceipt.securityDeposit.toLocaleString('en-IN')}</span>
+                            {/* Pro-Rata Breakdown */}
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2">Pro-Rata Rent Calculation</p>
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-1.5 text-xs">
+                                    <div className="flex justify-between"><span className="text-slate-500">Monthly Rent</span><span className="font-bold">{inr(vr.monthlyRent)}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Days in Month</span><span className="font-bold">{vr.daysInMonth} days</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Daily Rate</span><span className="font-bold">{inr(vr.dailyRate)}/day</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Days Stayed</span><span className="font-bold">{vr.moveOutDay} days</span></div>
+                                    <div className="flex justify-between pt-1 border-t border-emerald-200">
+                                        <span className="font-black text-emerald-800">Pro-Rata Amount</span>
+                                        <span className="font-black text-emerald-700">{inr(vr.dailyRate)} × {vr.moveOutDay} = {inr(vr.proRataAmt)}</span>
                                     </div>
-                                    {viewingReceipt.rentDue > 0 && (
-                                        <div className="flex justify-between text-sm text-red-600">
-                                            <span>Rent Dues / Adjustments</span>
-                                            <span className="font-bold">- ₹{viewingReceipt.rentDue.toLocaleString('en-IN')}</span>
-                                        </div>
-                                    )}
-                                    {viewingReceipt.deductions > 0 && (
-                                        <div className="flex justify-between text-sm text-red-600">
-                                            <span>Damage Deductions</span>
-                                            <span className="font-bold">- ₹{viewingReceipt.deductions.toLocaleString('en-IN')}</span>
-                                        </div>
-                                    )}
-                                    <div className="bg-slate-900 rounded-xl p-4 flex justify-between items-center mt-4">
-                                        <span className="text-white font-bold text-sm">
-                                            {viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0) >= 0 ? 'Net Refund' : 'Total Due'}
-                                        </span>
-                                        <span className={`text-lg font-black ${viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            ₹{Math.abs(viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0)).toLocaleString('en-IN')}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div className="text-center pt-4 opacity-50">
-                                    <div className="inline-block border-2 border-red-500 text-red-500 px-4 py-1 rounded text-[10px] font-black uppercase tracking-tighter rotate-[-5deg]">Verified & Settled</div>
-                                    <p className="text-[9px] text-slate-400 mt-4 leading-relaxed">This receipt is electronically generated and remains valid under the IT Act 2000. It serves as final proof of settlement for property {viewingReceipt.roomNumber}.</p>
                                 </div>
                             </div>
+
+                            {/* Financial Breakdown */}
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2">Settlement Breakdown</p>
+                                <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5 text-xs">
+                                    <div className="flex justify-between"><span className="text-slate-500">Security Deposit (Credit)</span><span className="font-bold text-emerald-700">+ {inr(vr.securityDeposit)}</span></div>
+                                    {vr.totalRentDue > 0 && (<>
+                                        <div className="flex justify-between font-bold text-red-600"><span>Rent Dues (Total)</span><span>- {inr(vr.totalRentDue)}</span></div>
+                                        {(vr.unpaidRecords || []).map((r: any) => (
+                                            <div key={r.month} className="flex justify-between pl-3 text-red-500">
+                                                <span>{r.note ? `${r.month} (${r.note})` : r.month}</span>
+                                                <span>- {inr(r.amount)}</span>
+                                            </div>
+                                        ))}
+                                    </>)}
+                                    {vr.totalDeductions > 0 && (<>
+                                        <div className="flex justify-between font-bold text-amber-700"><span>Damage Deductions (Total)</span><span>- {inr(vr.totalDeductions)}</span></div>
+                                        {(vr.deductionItems || []).map((item: any, i: number) => (
+                                            <div key={i} className="flex justify-between pl-3 text-amber-600">
+                                                <span>{item.description}</span>
+                                                <span>- {inr(item.amount)}</span>
+                                            </div>
+                                        ))}
+                                    </>)}
+                                    <div className="flex justify-between pt-2 border-t border-slate-200">
+                                        <span className={`font-black ${net >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{net >= 0 ? 'Net Refund' : 'Net Due'}</span>
+                                        <span className={`font-black text-base ${net >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{inr(Math.abs(net))}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {vr.settlementNotes && (
+                                <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-600">
+                                    <span className="font-black uppercase text-slate-400 block mb-1">Note</span>
+                                    {vr.settlementNotes}
+                                </div>
+                            )}
+
+                            <p className="text-[8px] text-center text-slate-300 leading-relaxed">
+                                Electronically generated. Valid under IT Act 2000 & Model Tenancy Act 2021. No signature required.
+                            </p>
                         </div>
 
-                        <div className="p-6 border-t border-slate-100 flex gap-3">
+                        <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
                             <button onClick={() => {
                                 const html = getReceiptHtml(viewingReceipt);
                                 const win = window.open('', '_blank');
@@ -736,7 +818,8 @@ export default function OwnerNoticesPage() {
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     );
 }

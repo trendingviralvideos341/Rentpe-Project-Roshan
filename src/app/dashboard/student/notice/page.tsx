@@ -60,12 +60,21 @@ export default function NoticePage() {
     const [receiptLoading, setReceiptLoading] = useState(false);
     const [viewingReceipt, setViewingReceipt] = useState<any>(null);
 
-    // Generates the official HTML for the receipt
+    // Generates the complete, legally-valid official HTML for the settlement receipt
     const getReceiptHtml = (d: any) => {
+        const fmt = (date: string | null) => date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Ã¢â‚¬â€';
+        const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+        const net = d.netRefund ?? (d.securityDeposit - d.totalRentDue - d.totalDeductions);
+        const unpaidRows = (d.unpaidRecords || []).map((r: any) =>
+            `<tr><td style="color:#ef4444;padding-left:20px">${r.note ? `${r.month} (${r.note})` : r.month}</td><td style="text-align:right;color:#ef4444">- ${inr(r.amount)}</td></tr>`
+        ).join('');
+        const deductionRows = (d.deductionItems || []).map((item: any) =>
+            `<tr><td style="color:#d97706;padding-left:20px">${item.description}</td><td style="text-align:right;color:#d97706">- ${inr(item.amount)}</td></tr>`
+        ).join('');
         const moveOutStr = d.moveOutDate
             ? new Date(d.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-            : '—';
-        const netRefund = d.securityDeposit - (d.rentDue ?? 0) - (d.deductions ?? 0);
+            : 'Ã¢â‚¬â€';
+        const netRefund = net;
         
         return `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Official Settlement Receipt - ${d.name}</title>
 <style>
@@ -108,12 +117,12 @@ export default function NoticePage() {
     <table class="summary-table" cellspacing="0">
         <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
         <tbody>
-            <tr><td>Security Deposit (Credit)</td><td style="text-align:right">₹${d.securityDeposit.toLocaleString('en-IN')}</td></tr>
-            ${d.rentDue > 0 ? `<tr><td style="color:#ef4444">Rent Dues / Pro-rata Adjustment</td><td style="text-align:right;color:#ef4444">- ₹${d.rentDue.toLocaleString('en-IN')}</td></tr>` : ''}
-            ${d.deductions > 0 ? `<tr><td style="color:#ef4444">Damage & Maintenance Deductions</td><td style="text-align:right;color:#ef4444">- ₹${d.deductions.toLocaleString('en-IN')}</td></tr>` : ''}
+            <tr><td>Security Deposit (Credit)</td><td style="text-align:right">${inr(d.securityDeposit)}</td></tr>
+            ${d.totalRentDue > 0 ? `<tr><td style="color:#ef4444">Rent Dues (Outstanding)</td><td style="text-align:right;color:#ef4444">- ${inr(d.totalRentDue)}</td></tr>${unpaidRows}` : ''}
+            ${d.totalDeductions > 0 ? `<tr><td style="color:#d97706">Damage &amp; Maintenance Deductions</td><td style="text-align:right;color:#d97706">- ${inr(d.totalDeductions)}</td></tr>${deductionRows}` : ''}
             <tr class="total-row">
-                <td>${netRefund >= 0 ? 'Net Refund Payable' : 'Net Balance Due'}</td>
-                <td style="text-align:right" class="${netRefund >= 0 ? 'amt-refund' : 'amt-due'}">₹${Math.abs(netRefund).toLocaleString('en-IN')}</td>
+                <td>${netRefund >= 0 ? 'Net Refund Payable to Tenant' : 'Net Balance Due from Tenant'}</td>
+                <td style="text-align:right" class="${netRefund >= 0 ? 'amt-refund' : 'amt-due'}">${inr(Math.abs(netRefund))}</td>
             </tr>
         </tbody>
     </table>
@@ -229,7 +238,7 @@ export default function NoticePage() {
 
             <div className="max-w-2xl mx-auto px-4 -mt-12 relative z-10 space-y-5">
 
-                {/* ── No Booking ── */}
+                {/* —â‚¬—â‚¬ No Booking —â‚¬—â‚¬ */}
                 {!booking ? (
                     <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
                         <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -238,9 +247,9 @@ export default function NoticePage() {
                     </div>
 
                 ) : notice && statusConf ? (
-                    /* ── Existing Notice Status ── */
+                    /* —â‚¬—â‚¬ Existing Notice Status —â‚¬—â‚¬ */
                     <div className="space-y-4">
-                        {/* ── Flow Timeline ── */}
+                        {/* —â‚¬—â‚¬ Flow Timeline —â‚¬—â‚¬ */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="px-6 pt-5 pb-2 border-b border-slate-100">
                                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Vacating Progress</p>
@@ -250,7 +259,7 @@ export default function NoticePage() {
                             </div>
                         </div>
 
-                        {/* ── Vacate Completed Receipt Banner ── */}
+                        {/* —â‚¬—â‚¬ Vacate Completed Receipt Banner —â‚¬—â‚¬ */}
                         {notice.status === 'VACATED' && (
                             <div className="bg-emerald-50 border border-emerald-200 rounded-3xl shadow-xl p-6 text-center space-y-3">
                                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
@@ -293,7 +302,7 @@ export default function NoticePage() {
                             </div>
                         )}
 
-                        {/* ── Notice Details Card ── */}
+                        {/* —â‚¬—â‚¬ Notice Details Card —â‚¬—â‚¬ */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                         <div className={`p-6 bg-${statusConf.color}-50 border-b border-${statusConf.color}-100`}>
                             <div className="flex items-center gap-3">
@@ -348,10 +357,10 @@ export default function NoticePage() {
                 </div>
 
                 ) : (
-                    /* ── File Notice Form ── */
+                    /* —â‚¬—â‚¬ File Notice Form —â‚¬—â‚¬ */
                     <form onSubmit={handleSubmit} className="space-y-5">
 
-                        {/* Card 1 — Locked Move-Out Date */}
+                        {/* Card 1 Ã¢â‚¬â€ Locked Move-Out Date */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100">
                                 <h2 className="font-black text-slate-900 text-lg flex items-center gap-2">
@@ -427,7 +436,7 @@ export default function NoticePage() {
                             </div>
                         </div>
 
-                        {/* Card 2 — Early Leave Request (optional) */}
+                        {/* Card 2 Ã¢â‚¬â€ Early Leave Request (optional) */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100">
                                 <h2 className="font-black text-slate-900 text-base flex items-center gap-2">
@@ -478,89 +487,72 @@ export default function NoticePage() {
                     </form>
                 )}
             </div>
-            {/* ── Receipt Viewer Modal ── */}
-            {viewingReceipt && (
+            {viewingReceipt && (() => {
+                const vr = viewingReceipt;
+                const net = vr.netRefund ?? (vr.securityDeposit - vr.totalRentDue - vr.totalDeductions);
+                const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+                const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+                return (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-                            <div>
-                                <h2 className="font-black text-slate-900 text-lg">Settlement Receipt</h2>
-                                <p className="text-xs text-slate-500 mt-0.5">Reference: {viewingReceipt.tenantDisplayId}</p>
-                            </div>
-                            <button onClick={() => setViewingReceipt(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X className="w-5 h-5 text-slate-500" /></button>
+                            <div><h2 className="font-black text-slate-900 text-lg">Settlement Receipt</h2><p className="text-xs text-slate-500 mt-0.5">Ref: {vr.tenantDisplayId}</p></div>
+                            <button onClick={() => setViewingReceipt(null)} className="p-2 hover:bg-slate-100 rounded-xl"><X className="w-5 h-5 text-slate-500" /></button>
                         </div>
-                        
-                        <div className="overflow-y-auto flex-1 p-6">
-                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-6">
-                                <div className="text-center border-b border-slate-200 pb-4">
-                                    <p className="text-2xl font-black text-indigo-600 tracking-tighter">RentPe</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Final Settlement Document</p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Tenant Details</p>
-                                    {[
-                                        ['Name', viewingReceipt.name],
-                                        ['Room', `${viewingReceipt.roomNumber} (${viewingReceipt.bedNo || 'Standard'})`],
-                                        ['Move-out', viewingReceipt.moveOutDate ? new Date(viewingReceipt.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'],
-                                    ].map(([l, v]) => (
-                                        <div key={l} className="flex justify-between text-sm">
-                                            <span className="text-slate-500">{l}</span>
-                                            <span className="font-bold text-slate-900">{v}</span>
+                        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+                            <div className="text-center border-b border-slate-100 pb-4">
+                                <p className="text-xl font-black text-indigo-600 tracking-tighter">RentPe</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Final Settlement Document</p>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2">Tenant & Property</p>
+                                <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5">
+                                    {([['Tenant ID', vr.tenantDisplayId, true],['Notice Ref.', vr.noticeDisplayId || '—', true],['Booking Ref.', vr.bookingDisplayId || '—', true],['Name', vr.name, false],['Phone', vr.phone || '—', false],['Property', vr.propertyName || '—', false],['Room No.', vr.roomNumber || '—', false],['Bed No.', vr.bedNo || '—', false],['Room Type', vr.roomType || '—', false],['Move-In', fmtDate(vr.moveInDate), false],['Move-Out', fmtDate(vr.moveOutDate), false]] as [string,string,boolean][]).map(([l,v,isId]) => (
+                                        <div key={l} className="flex justify-between text-xs">
+                                            <span className="text-slate-400">{l}</span>
+                                            <span className={`font-bold ${isId ? 'text-indigo-600 font-mono' : 'text-slate-900'}`}>{v}</span>
                                         </div>
                                     ))}
                                 </div>
-
-                                <div className="space-y-2 pt-4 border-t border-slate-200">
-                                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Settlement Breakdown</p>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Security Deposit</span>
-                                        <span className="font-bold">₹{viewingReceipt.securityDeposit.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2">Pro-Rata Rent Calculation</p>
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-1.5 text-xs">
+                                    <div className="flex justify-between"><span className="text-slate-500">Monthly Rent</span><span className="font-bold">{inr(vr.monthlyRent)}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Days in Month</span><span className="font-bold">{vr.daysInMonth} days</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Daily Rate</span><span className="font-bold">{inr(vr.dailyRate)}/day</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Days Stayed</span><span className="font-bold">{vr.moveOutDay} days</span></div>
+                                    <div className="flex justify-between pt-1 border-t border-emerald-200">
+                                        <span className="font-black text-emerald-800">Pro-Rata Amount</span>
+                                        <span className="font-black text-emerald-700">{inr(vr.dailyRate)} × {vr.moveOutDay} = {inr(vr.proRataAmt)}</span>
                                     </div>
-                                    {viewingReceipt.rentDue > 0 && (
-                                        <div className="flex justify-between text-sm text-red-600">
-                                            <span>Rent Dues / Adjustments</span>
-                                            <span className="font-bold">- ₹{viewingReceipt.rentDue.toLocaleString('en-IN')}</span>
-                                        </div>
-                                    )}
-                                    {viewingReceipt.deductions > 0 && (
-                                        <div className="flex justify-between text-sm text-red-600">
-                                            <span>Damage Deductions</span>
-                                            <span className="font-bold">- ₹{viewingReceipt.deductions.toLocaleString('en-IN')}</span>
-                                        </div>
-                                    )}
-                                    <div className="bg-slate-900 rounded-xl p-4 flex justify-between items-center mt-4">
-                                        <span className="text-white font-bold text-sm">
-                                            {viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0) >= 0 ? 'Net Refund' : 'Total Due'}
-                                        </span>
-                                        <span className={`text-lg font-black ${viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            ₹{Math.abs(viewingReceipt.securityDeposit - (viewingReceipt.rentDue ?? 0) - (viewingReceipt.deductions ?? 0)).toLocaleString('en-IN')}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div className="text-center pt-4 opacity-50">
-                                    <div className="inline-block border-2 border-red-500 text-red-500 px-4 py-1 rounded text-[10px] font-black uppercase tracking-tighter rotate-[-5deg]">Verified & Settled</div>
-                                    <p className="text-[9px] text-slate-400 mt-4 leading-relaxed">This receipt is electronically generated and remains valid under the IT Act 2000. It serves as final proof of settlement for property {viewingReceipt.roomNumber}.</p>
                                 </div>
                             </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2">Settlement Breakdown</p>
+                                <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5 text-xs">
+                                    <div className="flex justify-between"><span className="text-slate-500">Security Deposit (Credit)</span><span className="font-bold text-emerald-700">+ {inr(vr.securityDeposit)}</span></div>
+                                    {vr.totalRentDue > 0 && (<><div className="flex justify-between font-bold text-red-600"><span>Rent Dues (Total)</span><span>- {inr(vr.totalRentDue)}</span></div>{(vr.unpaidRecords || []).map((r: any) => (<div key={r.month} className="flex justify-between pl-3 text-red-500"><span>{r.note ? `${r.month} (${r.note})` : r.month}</span><span>- {inr(r.amount)}</span></div>))}</>)}
+                                    {vr.totalDeductions > 0 && (<><div className="flex justify-between font-bold text-amber-700"><span>Damage Deductions (Total)</span><span>- {inr(vr.totalDeductions)}</span></div>{(vr.deductionItems || []).map((item: any, i: number) => (<div key={i} className="flex justify-between pl-3 text-amber-600"><span>{item.description}</span><span>- {inr(item.amount)}</span></div>))}</>)}
+                                    <div className="flex justify-between pt-2 border-t border-slate-200">
+                                        <span className={`font-black ${net >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{net >= 0 ? 'Net Refund to You' : 'Net Due'}</span>
+                                        <span className={`font-black text-base ${net >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{inr(Math.abs(net))}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {vr.settlementNotes && <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-600"><span className="font-black uppercase text-slate-400 block mb-1">Note</span>{vr.settlementNotes}</div>}
+                            <p className="text-[8px] text-center text-slate-300">Valid under IT Act 2000 & Model Tenancy Act 2021. No signature required.</p>
                         </div>
-
-                        <div className="p-6 border-t border-slate-100 flex gap-3">
-                            <button onClick={() => {
-                                const html = getReceiptHtml(viewingReceipt);
-                                const win = window.open('', '_blank');
-                                if (win) { win.document.write(html); win.document.close(); win.print(); }
-                            }} className="flex-1 py-3 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                        <div className="p-4 border-t border-slate-100 flex gap-3 shrink-0">
+                            <button onClick={() => { const html = getReceiptHtml(viewingReceipt); const win = window.open('', '_blank'); if (win) { win.document.write(html); win.document.close(); win.print(); }}} className="flex-1 py-3 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
                                 <Printer className="w-4 h-4" /> Print / Download
                             </button>
-                            <button onClick={() => setViewingReceipt(null)} className="flex-1 py-3 bg-slate-100 text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-200 transition-all">
-                                Close
-                            </button>
+                            <button onClick={() => setViewingReceipt(null)} className="flex-1 py-3 bg-slate-100 text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-200 transition-all">Close</button>
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
