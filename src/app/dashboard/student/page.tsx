@@ -172,6 +172,7 @@ function BookingCard({
     // tenantId is populated on the booking after physical check-in
     const tenantDisplayId = booking.tenantDisplayId || booking.tenant?.displayId || null;
     const userDisplayId = booking.userDisplayId || null;
+    const [showVacatedModal, setShowVacatedModal] = useState(false);
 
     return (
         <Card key={booking.id} className={`${isActiveStay ? "border-emerald-500 border-2 shadow-lg shadow-emerald-100/50" : isApproved ? "border-green-400 border-2" : isPaid ? "border-blue-300 border-2" : hasPendingAmount ? "border-red-400 border-2" : isCancelled ? "border-gray-300 opacity-70" : ""}`}>
@@ -190,10 +191,23 @@ function BookingCard({
                             )}
                         </CardDescription>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-2">
                         <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : isVacating ? 'bg-orange-100 text-orange-700 border-orange-300' : isCompleted ? 'bg-slate-100 text-slate-600 border-slate-300' : isCancelled ? 'bg-gray-100 text-gray-500 border-gray-300' : isPaid ? 'bg-blue-100 text-blue-700 border-blue-300' : isApproved ? 'bg-violet-100 text-violet-700 border-violet-300' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>
                             {booking.status.replace(/_/g, ' ')}
                         </span>
+                        {isCompleted && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-500">
+                                    🏠 Vacated{booking.updatedAt ? ` • ${new Date(booking.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                </span>
+                                <button
+                                    onClick={() => setShowVacatedModal(true)}
+                                    className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] rounded-lg transition-all shadow-sm shadow-indigo-200"
+                                >
+                                    <FileText className="h-3 w-3" /> View Details
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </CardHeader>
@@ -475,6 +489,120 @@ function BookingCard({
                 {expandedDocs === booking.id && (
                     <div className="mt-4 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                         <StudentKYCUploader bookingId={booking.id} onUploadSuccess={() => { setExpandedDocs(null); fetchData(); }} />
+                    </div>
+                )}
+
+                {/* ── Vacated / Completed: View Details Modal ── */}
+                {showVacatedModal && isCompleted && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+                                <div>
+                                    <h2 className="font-black text-slate-900 text-lg">Past Booking Details</h2>
+                                    <p className="text-xs text-slate-500 mt-0.5">{booking.propertyName} • {booking.displayId}</p>
+                                </div>
+                                <button onClick={() => setShowVacatedModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                                    <X className="h-5 w-5 text-slate-500" />
+                                </button>
+                            </div>
+
+                            <div className="overflow-y-auto flex-1 p-5 space-y-5">
+                                {/* Vacated status chip */}
+                                <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-300 text-xs font-black px-3 py-1.5 rounded-full">
+                                        🏠 Vacated{booking.updatedAt ? ` • ${new Date(booking.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                    </span>
+                                </div>
+
+                                {/* Booking Progress Timeline */}
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Booking Progress</p>
+                                    <BookingTimeline booking={booking} />
+                                </div>
+
+                                {/* Documents */}
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Documents</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(isPaid || isCheckedIn || isActive || isVacating || isCompleted) && (
+                                            <Button variant="outline" size="sm" className="text-xs h-8 rounded-full" onClick={() => { setShowVacatedModal(false); setSelectedBooking(booking); }}>
+                                                <FileText className="h-3.5 w-3.5 mr-1" /> Rent Receipt
+                                            </Button>
+                                        )}
+                                        {booking.tokenPaidAt && (
+                                            <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-green-300 text-green-700 hover:bg-green-50" onClick={() => {
+                                                setShowVacatedModal(false);
+                                                setViewingDoc({ type: 'token', data: {
+                                                    bookingDisplayId: booking.displayId,
+                                                    tenantName: booking.guestName,
+                                                    tenantEmail: booking.guestEmail || undefined,
+                                                    propertyName: booking.propertyName,
+                                                    roomAssigned: booking.roomAssigned || '—',
+                                                    tokenAmount: booking.tokenAmount || 1000,
+                                                    paidAt: booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
+                                                    paymentMethod: booking.paymentMethod || 'Online',
+                                                    paymentId: booking.tokenPaymentId || undefined,
+                                                }});
+                                            }}><FileText className="h-3.5 w-3.5 mr-1" /> Token Receipt</Button>
+                                        )}
+                                        {booking.agreementSigned && (
+                                            <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => {
+                                                setShowVacatedModal(false);
+                                                setViewingDoc({ type: 'agreement', data: {
+                                                    agreementId: booking.agreementId || `AGT-${booking.displayId}`,
+                                                    bookingDisplayId: booking.displayId,
+                                                    tenantName: booking.guestName,
+                                                    tenantEmail: booking.guestEmail || undefined,
+                                                    propertyName: booking.propertyName,
+                                                    propertyAddress: booking.propertyAddress || '',
+                                                    propertyCity: booking.propertyCity || '',
+                                                    roomAssigned: booking.roomAssigned || '—',
+                                                    occupancy: booking.occupancy || '',
+                                                    monthlyRent: Number(booking.amount || 0),
+                                                    depositAmount: Number(booking.depositAmount || 0),
+                                                    depositMonths: Number(booking.depositMonths || 1),
+                                                    moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                                    signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
+                                                    signedIp: booking.agreementSignedIp || undefined,
+                                                    signedDevice: booking.agreementSignedDevice || undefined,
+                                                    agreementVersion: booking.agreementVersion || 'v1.0-2026',
+                                                    tenantDisplayId: tenantDisplayId || undefined,
+                                                    userDisplayId: userDisplayId || undefined,
+                                                    propertyDisplayId: booking.propertyDisplayId || undefined,
+                                                }});
+                                            }}><FileText className="h-3.5 w-3.5 mr-1" /> View Agreement</Button>
+                                        )}
+                                        {booking.paidAt && (
+                                            <Button variant="outline" size="sm" className="text-xs h-8 rounded-full border-indigo-300 text-indigo-700 hover:bg-indigo-50" onClick={() => {
+                                                setShowVacatedModal(false);
+                                                setViewingDoc({ type: 'payment', data: {
+                                                    bookingDisplayId: booking.displayId,
+                                                    tenantName: booking.guestName,
+                                                    tenantEmail: booking.guestEmail || undefined,
+                                                    propertyName: booking.propertyName,
+                                                    roomAssigned: booking.roomAssigned || '—',
+                                                    monthlyRent: Number(booking.amount || 0),
+                                                    depositAmount: Number(booking.depositAmount || 0),
+                                                    depositMonths: Number(booking.depositMonths || 1),
+                                                    tokenAlreadyPaid: 1000,
+                                                    finalAmountPaid: Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000),
+                                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
+                                                    paymentMethod: booking.paymentMethod || 'Online',
+                                                    paymentId: booking.paymentId || undefined,
+                                                }});
+                                            }}><FileText className="h-3.5 w-3.5 mr-1" /> Payment Receipt</Button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 border-t border-slate-100 shrink-0">
+                                <button onClick={() => setShowVacatedModal(false)} className="w-full py-3 bg-slate-100 text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-200 transition-all">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </CardContent>
