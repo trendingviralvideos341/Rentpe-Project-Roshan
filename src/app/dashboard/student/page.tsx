@@ -202,9 +202,9 @@ function BookingCard({
                                 </span>
                                 <button
                                     onClick={() => setShowVacatedModal(true)}
-                                    className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] rounded-lg transition-all shadow-sm shadow-indigo-200"
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-indigo-200"
                                 >
-                                    <FileText className="h-3 w-3" /> View Details
+                                    <FileText className="h-3.5 w-3.5" /> View Details
                                 </button>
                             </div>
                         )}
@@ -213,6 +213,7 @@ function BookingCard({
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* ── Status Badge ── */}
+                {!isCompleted && (
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">Stage:</span>
                     {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>}
@@ -227,6 +228,7 @@ function BookingCard({
                     {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>}
                     {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>}
                 </div>
+                )}
                 {/* ── Permanent ID Badges (show after physical KYC and beyond) ── */}
                 {(isPhysicalVerified || isAgreementPending || isFinalPaymentPending || isPaid || isCheckedIn || isActive || isCompleted) && (tenantDisplayId || booking.displayId) && (
                     <div className="flex flex-wrap gap-2">
@@ -406,7 +408,7 @@ function BookingCard({
                     </div>
                 )}
 
-                {!isCancelled && booking.status !== "REJECTED" && (
+                {!isCancelled && !isCompleted && booking.status !== "REJECTED" && (
                     <div className="py-4 border-y border-slate-100 my-4 bg-slate-50/50 rounded-xl px-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Booking Progress</p>
                         <BookingTimeline booking={booking} />
@@ -518,7 +520,7 @@ function BookingCard({
                                 {/* Booking Progress Timeline */}
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Booking Progress</p>
-                                    <BookingTimeline booking={booking} />
+                                    <BookingTimeline booking={booking} vacated={true} />
                                 </div>
 
                                 {/* Documents */}

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface BookingTimelineProps {
     booking: any;
+    vacated?: boolean;
 }
 
 const TIMELINE_STEPS = [
@@ -60,7 +61,7 @@ const TIMELINE_STEPS = [
     },
 ];
 
-export function BookingTimeline({ booking }: BookingTimelineProps) {
+export function BookingTimeline({ booking, vacated = false }: BookingTimelineProps) {
     const currentStatus = booking.status;
     const isRejected = currentStatus === 'REJECTED';
     const isCancelled = currentStatus === 'CANCELLED';
@@ -103,19 +104,23 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                 {/* Connecting Lines (Desktop only) */}
                 <div className="hidden md:block absolute top-[18px] left-0 w-full h-0.5 bg-slate-200 -z-10" />
                 <div
-                    className="hidden md:block absolute top-[18px] left-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-1000 -z-10 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
-                    style={{ width: `${(activeIndex / (TIMELINE_STEPS.length - 1)) * 100}%` }}
+                    className={`hidden md:block absolute top-[18px] left-0 h-0.5 transition-all duration-1000 -z-10 ${
+                        vacated
+                            ? 'bg-slate-300 w-full'
+                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-[0_0_10px_rgba(79,70,229,0.3)]'
+                    }`}
+                    style={vacated ? {} : { width: `${(activeIndex / (TIMELINE_STEPS.length - 1)) * 100}%` }}
                 />
 
                 {/* Timeline Steps */}
                 {TIMELINE_STEPS.map((step, index) => {
                                 // For ACTIVE/CHECKED_IN/CHECKIN_CONFIRMED — all steps including the final one are done ✅
                     const isFullyActive = ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(currentStatus);
-                    const isCompleted = index < activeIndex
+                    const isCompleted = vacated || index < activeIndex
                         || (currentStatus === 'COMPLETED' && index === TIMELINE_STEPS.length - 1)
                         || (isFullyActive && index === TIMELINE_STEPS.length - 1);
-                    const isCurrent = index === activeIndex && !isFailed && !isFullyActive;
-                    const isUpcoming = index > activeIndex;
+                    const isCurrent = !vacated && index === activeIndex && !isFailed && !isFullyActive;
+                    const isUpcoming = !vacated && index > activeIndex;
                     const Icon = step.icon;
                     const dateVal = booking[step.dateField] || (index === 0 ? booking.createdAt : null);
 
@@ -125,18 +130,23 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                             {index < TIMELINE_STEPS.length - 1 && (
                                 <div className="md:hidden absolute left-[18px] top-[36px] w-0.5 h-[calc(100%-16px)] bg-slate-200 -z-10" />
                             )}
-                            {index < activeIndex && (
+                            {index < activeIndex && !vacated && (
                                 <div className="md:hidden absolute left-[18px] top-[36px] w-0.5 h-[calc(100%-16px)] bg-gradient-to-b from-indigo-600 to-purple-600 shadow-[0_0_10px_rgba(79,70,229,0.3)] -z-10" />
+                            )}
+                            {vacated && (
+                                <div className="md:hidden absolute left-[18px] top-[36px] w-0.5 h-[calc(100%-16px)] bg-slate-300 -z-10" />
                             )}
 
                             {/* Node Icon */}
                             <div className={cn(
                                 "relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 shrink-0",
-                                isCompleted ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200" :
-                                isCurrent ? "bg-white border-2 border-purple-600 text-purple-600 ring-4 ring-purple-100" :
-                                "bg-white border-2 border-dashed border-slate-300 text-slate-400"
+                                vacated
+                                    ? "bg-slate-200 text-slate-400 border border-slate-300"
+                                    : isCompleted ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200" :
+                                    isCurrent ? "bg-white border-2 border-purple-600 text-purple-600 ring-4 ring-purple-100" :
+                                    "bg-white border-2 border-dashed border-slate-300 text-slate-400"
                             )}>
-                                {isCompleted ? <Check className="w-4 h-4 stroke-[3]" /> : <Icon className="w-4 h-4" />}
+                                {(isCompleted && !vacated) ? <Check className="w-4 h-4 stroke-[3]" /> : <Icon className="w-4 h-4" />}
 
                                 {isCurrent && (
                                     <span className="absolute inset-0 rounded-full border-2 border-purple-600 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-40" />
@@ -146,19 +156,22 @@ export function BookingTimeline({ booking }: BookingTimelineProps) {
                             {/* Content Card */}
                             <div className={cn(
                                 "flex flex-col gap-0.5 p-1.5 md:p-2 rounded-lg border transition-all duration-300 w-full md:max-w-[110px] md:text-center",
-                                isCurrent ? "bg-white border-purple-200 shadow-md shadow-purple-500/5 -translate-y-0.5" :
-                                isCompleted ? "bg-indigo-50/50 border-indigo-100" :
-                                "bg-slate-50 border-slate-100 opacity-60"
+                                vacated
+                                    ? "bg-slate-50 border-slate-200 opacity-70"
+                                    : isCurrent ? "bg-white border-purple-200 shadow-md shadow-purple-500/5 -translate-y-0.5" :
+                                    isCompleted ? "bg-indigo-50/50 border-indigo-100" :
+                                    "bg-slate-50 border-slate-100 opacity-60"
                             )}>
                                 <span className={cn(
                                     "text-[10px] md:text-xs font-black uppercase tracking-tight leading-tight",
+                                    vacated ? "text-slate-400" :
                                     isCurrent ? "text-purple-900" : isCompleted ? "text-indigo-900" : "text-slate-500"
                                 )}>
                                     {step.label}
                                 </span>
 
                                 {dateVal && (
-                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-500 flex items-center md:justify-center gap-1">
+                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-400 flex items-center md:justify-center gap-1">
                                         <Calendar className="w-2 h-2" />
                                         {format(new Date(dateVal), "dd MMM yyyy")}
                                     </span>
