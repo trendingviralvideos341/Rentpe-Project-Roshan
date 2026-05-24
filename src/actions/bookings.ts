@@ -227,14 +227,14 @@ export async function getBookings() {
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    user: { select: { name: true, email: true } },
+                    user: { select: { name: true, email: true, displayId: true } },
                     property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
                     tenant: { select: { id: true, displayId: true } },
                 }
             }).then(bookings => bookings.map(b => ({
                 ...b,
                 tenantDisplayId: (b as any).tenant?.displayId || null,
-                userDisplayId: null,
+                userDisplayId: (b as any).user?.displayId || null,
                 propertyDisplayId: (b as any).property?.displayId || null,
             })));
         } else {
