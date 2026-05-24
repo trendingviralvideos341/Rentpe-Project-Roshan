@@ -197,11 +197,10 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                                         ["Monthly Rent", booking.amount ? `₹${Number(booking.amount).toLocaleString('en-IN')}` : "—"],
                                         ["Security Deposit", booking.depositAmount ? `₹${Number(booking.depositAmount).toLocaleString('en-IN')} (${booking.depositMonths || 2}m)` : "—"],
                                         ["Booking Ref", booking.displayId],
-                                        ["Student Permanent ID", booking.userDisplayId || "Not assigned"],
                                     ].map(([label, value]) => (
-                                        <div key={label} className={`border rounded p-2 ${label === 'Student Permanent ID' ? 'bg-violet-50 border-violet-300' : 'bg-white'}`}>
-                                            <div className={`text-[10px] uppercase font-bold ${label === 'Student Permanent ID' ? 'text-violet-700' : 'text-muted-foreground'}`}>{label}</div>
-                                            <div className={`text-sm font-medium ${label === 'Student Permanent ID' ? 'text-violet-900 font-black font-mono' : ''}`}>{value}</div>
+                                        <div key={label} className="bg-white border rounded p-2">
+                                            <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
+                                            <div className="text-sm font-medium">{value}</div>
                                         </div>
                                     ))}
                                 </div>
