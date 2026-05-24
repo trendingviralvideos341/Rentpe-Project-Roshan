@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import {
     FileText, CheckCircle2, Clock, AlertTriangle, Minus, TrendingUp,
-    Calendar, Shield, IndianRupee, ChevronDown, Building2, XCircle,
-    RefreshCw, Tag, CreditCard, Home
+    Calendar, Shield, IndianRupee, ChevronDown, Building2,
+    Tag, CreditCard, Home, ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
 
@@ -41,11 +41,31 @@ function findCurrentBooking(data: BookingEntry[]): string | null {
     // Priority 1: ACTIVE booking
     const active = data.find(d => d.booking.status === 'ACTIVE');
     if (active) return active.booking.id;
-    // Priority 2: Token paid (most recent)
-    const tokenPaid = data.find(d => d.booking.tokenPaidAt);
-    if (tokenPaid) return tokenPaid.booking.id;
-    // Priority 3: Most recent booking
+    // Priority 2: Any booking with token paid that is NOT completed/vacated
+    const tokenPaidNotDone = data.find(d =>
+        d.booking.tokenPaidAt && !d.booking.completedAt
+    );
+    if (tokenPaidNotDone) return tokenPaidNotDone.booking.id;
+    // Priority 3: Most recent booking with token paid
+    const anyTokenPaid = data.find(d => d.booking.tokenPaidAt);
+    if (anyTokenPaid) return anyTokenPaid.booking.id;
+    // Priority 4: Most recent booking
     return data[0].booking.id;
+}
+
+// ─── Label for dropdown entry ─────────────────────────────────────────────────
+function bookingLabel(d: BookingEntry) {
+    const yr = new Date(d.booking.createdAt).getFullYear();
+    const isActive   = d.booking.status === 'ACTIVE';
+    const isVacated  = !!d.booking.completedAt;
+    const hasToken   = !!d.booking.tokenPaidAt;
+
+    let tag = '';
+    if (isActive)           tag = ' · Current';
+    else if (isVacated)     tag = ' · Past';
+    else if (hasToken)      tag = ' · Current';
+
+    return `${d.booking.propertyName} — ${d.booking.displayId} (${yr})${tag}`;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -70,10 +90,10 @@ function StatusBadge({ status }: { status: string }) {
 
 function PaymentTypeBadge({ type }: { type: string }) {
     const map: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
-        TOKEN:    { label: "Token",    icon: <Tag className="w-3 h-3" />,       cls: "bg-violet-50 text-violet-700 border-violet-100" },
-        INVOICE:  { label: "Rent",     icon: <Home className="w-3 h-3" />,      cls: "bg-indigo-50 text-indigo-700 border-indigo-100" },
-        DEPOSIT:  { label: "Deposit",  icon: <Shield className="w-3 h-3" />,    cls: "bg-teal-50 text-teal-700 border-teal-100" },
-        PAYMENT:  { label: "Payment",  icon: <CreditCard className="w-3 h-3" />, cls: "bg-slate-50 text-slate-600 border-slate-100" },
+        TOKEN:    { label: "Token",   icon: <Tag className="w-3 h-3" />,        cls: "bg-violet-50 text-violet-700 border-violet-100" },
+        INVOICE:  { label: "Rent",    icon: <Home className="w-3 h-3" />,       cls: "bg-indigo-50 text-indigo-700 border-indigo-100" },
+        DEPOSIT:  { label: "Deposit", icon: <Shield className="w-3 h-3" />,     cls: "bg-teal-50 text-teal-700 border-teal-100" },
+        PAYMENT:  { label: "Payment", icon: <CreditCard className="w-3 h-3" />, cls: "bg-slate-50 text-slate-600 border-slate-100" },
     };
     const s = map[type] || map.PAYMENT;
     return (
@@ -91,10 +111,18 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     const [selectedId, setSelectedId] = useState<string | null>(defaultId);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
-    // Reset to default whenever user navigates back to this page
+    // Reset to default (current PG) on every mount / navigation
     useEffect(() => {
         setSelectedId(findCurrentBooking(data));
     }, [data]);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        if (!dropdownOpen) return;
+        const handler = () => setDropdownOpen(false);
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [dropdownOpen]);
 
     const selected = useMemo(
         () => data.find(d => d.booking.id === selectedId) || data[0] || null,
@@ -105,14 +133,22 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
         invoices: [], rawPayments: [], depositInfo: null, booking: null
     };
 
-    // ─── Summary stats for selected booking ──────────────────────────────────
+    // ─── Summary stats ────────────────────────────────────────────────────────
     const currentYear = new Date().getFullYear();
     const fyStart = new Date(currentYear, 3, 1);
-    const fyEnd = new Date(currentYear + 1, 2, 31);
+    const fyEnd   = new Date(currentYear + 1, 2, 31);
 
-    const totalPaid = invoices
+    // Include token amount in FY total if paid
+    const tokenPaidFY = (booking?.tokenPaidAt &&
+        new Date(booking.tokenPaidAt) >= fyStart &&
+        new Date(booking.tokenPaidAt) <= fyEnd)
+        ? (booking.tokenAmount || 0) : 0;
+
+    const invoicePaidFY = invoices
         .filter(i => i.status === 'PAID' && i.paidAt && new Date(i.paidAt) >= fyStart && new Date(i.paidAt) <= fyEnd)
         .reduce((sum, i) => sum + i.amount, 0);
+
+    const totalPaid = tokenPaidFY + invoicePaidFY;
 
     const now = new Date();
     const currentInvoice = invoices.find(i => {
@@ -122,16 +158,16 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     });
     const nextDue = invoices.find(i => i.status === 'PENDING' && i.dueDate && new Date(i.dueDate) >= now);
 
-    // ─── Combined ledger rows (token + raw payments + invoices) ──────────────
+    // ─── Combined ledger rows ─────────────────────────────────────────────────
     type LedgerRow = {
         id: string; date: Date; label: string; amount: number;
-        status: string; type: string; receiptId?: string; txId?: string | null;
+        status: string; type: string; receiptHref?: string; txId?: string | null;
     };
 
     const ledgerRows = useMemo((): LedgerRow[] => {
         const rows: LedgerRow[] = [];
 
-        // Token payment row
+        // 1. Token payment
         if (booking?.tokenPaidAt) {
             rows.push({
                 id: `token-${booking.id}`,
@@ -140,15 +176,18 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                 amount: booking.tokenAmount,
                 status: 'SUCCESS',
                 type: 'TOKEN',
+                receiptHref: `/api/receipts/token/${booking.id}`,
                 txId: booking.tokenPaymentId,
             });
         }
 
-        // Deposit row
+        // 2. Security deposit
         if (depositInfo) {
             rows.push({
                 id: `deposit-${depositInfo.id}`,
-                date: depositInfo.paidAt ? new Date(depositInfo.paidAt) : (booking?.activeAt ? new Date(booking.activeAt) : new Date()),
+                date: depositInfo.paidAt
+                    ? new Date(depositInfo.paidAt)
+                    : booking?.activeAt ? new Date(booking.activeAt) : new Date(),
                 label: `Security Deposit — ${booking?.propertyName}`,
                 amount: depositInfo.amount,
                 status: depositInfo.status === 'PAID' ? 'SUCCESS' : depositInfo.status,
@@ -156,28 +195,33 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
             });
         }
 
-        // Invoice rows
+        // 3. Monthly rent invoices
         invoices.forEach(inv => {
             rows.push({
                 id: `inv-${inv.id}`,
-                date: inv.paidAt ? new Date(inv.paidAt) : (inv.dueDate ? new Date(inv.dueDate) : new Date()),
+                date: inv.paidAt
+                    ? new Date(inv.paidAt)
+                    : inv.dueDate ? new Date(inv.dueDate) : new Date(),
                 label: inv.month ? `Rent — ${inv.month}` : `Rent Invoice ${inv.displayId}`,
                 amount: inv.amount,
                 status: inv.status,
                 type: 'INVOICE',
-                receiptId: inv.status === 'PAID' ? inv.id : undefined,
+                receiptHref: inv.status === 'PAID' ? `/api/receipts/${inv.id}` : undefined,
             });
         });
 
-        // Raw payment attempts (failed, pending, refunded — not already in invoices)
+        // 4. Only FAILED or REFUNDED raw payment attempts (NOT PENDING — those are just abandoned Razorpay orders)
         const invoicePaymentIds = new Set(invoices.flatMap(i => i.payments.map(p => p.id)));
         rawPayments
-            .filter(p => !invoicePaymentIds.has(p.id) && (p.status === 'FAILED' || p.status === 'PENDING' || p.status === 'REFUNDED'))
+            .filter(p =>
+                !invoicePaymentIds.has(p.id) &&
+                (p.status === 'FAILED' || p.status === 'REFUNDED')
+            )
             .forEach(p => {
                 rows.push({
                     id: `pay-${p.id}`,
                     date: new Date(p.date),
-                    label: p.invoiceId ? `Rent Payment Attempt` : p.depositId ? `Deposit Payment Attempt` : `Payment Attempt`,
+                    label: p.invoiceId ? `Rent Payment — Failed` : p.depositId ? `Deposit Payment — Failed` : `Payment — Failed`,
                     amount: p.amount,
                     status: p.status,
                     type: 'PAYMENT',
@@ -188,22 +232,24 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
         return rows.sort((a, b) => b.date.getTime() - a.date.getTime());
     }, [booking, invoices, rawPayments, depositInfo]);
 
-    // ─── Booking year label ───────────────────────────────────────────────────
-    function bookingLabel(d: BookingEntry) {
-        const yr = new Date(d.booking.createdAt).getFullYear();
-        const isActive = d.booking.status === 'ACTIVE';
-        const hasToken = !!d.booking.tokenPaidAt;
-        const tag = isActive ? ' · Active' : hasToken ? ' · Past' : '';
-        return `${d.booking.propertyName} — ${d.booking.displayId} (${yr})${tag}`;
-    }
+    // Only show bookings with token paid or that are active/completed
+    const meaningfulBookings = data.filter(d =>
+        d.booking.tokenPaidAt ||
+        ['ACTIVE', 'COMPLETED', 'MOVE_IN_SCHEDULED', 'BOOKING_CONFIRMED', 'PHYSICAL_VERIFIED', 'ROOM_RESERVED'].includes(d.booking.status)
+    );
+    const dropdownOptions = meaningfulBookings.length > 0 ? meaningfulBookings : data;
 
     if (!data.length) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 flex flex-col">
-                <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-16 relative overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-16 relative">
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+                    </div>
                     <div className="max-w-4xl mx-auto relative z-10">
-                        <Link href="/dashboard/student" className="text-indigo-200 text-xs font-bold flex items-center gap-1 mb-4 hover:text-white transition-colors">
-                            ← Back to Dashboard
+                        <Link href="/dashboard/student"
+                            className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2 rounded-full mb-5 transition-all border border-white/30 backdrop-blur-sm">
+                            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
                         </Link>
                         <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Payment History</h1>
                         <p className="text-indigo-200 text-sm font-medium mt-1">Your complete rent ledger and receipts</p>
@@ -220,36 +266,39 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
         );
     }
 
-    // Only show bookings that have token paid OR are active/completed (meaningful ones)
-    const meaningfulBookings = data.filter(d =>
-        d.booking.tokenPaidAt ||
-        ['ACTIVE', 'COMPLETED', 'MOVE_IN_SCHEDULED', 'BOOKING_CONFIRMED', 'PHYSICAL_VERIFIED'].includes(d.booking.status)
-    );
-    const dropdownOptions = meaningfulBookings.length > 0 ? meaningfulBookings : data;
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
-            {/* ── Header ── */}
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-20 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5" />
-                <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-                <div className="absolute -left-10 bottom-0 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+
+            {/* ── Header (NO overflow-hidden so dropdown isn't clipped) ── */}
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-24 relative">
+                {/* Decorative blobs in their own clipping layer */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5" />
+                    <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+                    <div className="absolute -left-10 bottom-0 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+                </div>
+
                 <div className="max-w-4xl mx-auto relative z-10">
-                    <Link href="/dashboard/student" className="text-indigo-200 text-xs font-bold flex items-center gap-1 mb-4 hover:text-white transition-colors">
-                        ← Back to Dashboard
+                    {/* ── Back to Dashboard — prominent pill button ── */}
+                    <Link
+                        href="/dashboard/student"
+                        className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/35 text-white text-xs font-bold px-4 py-2 rounded-full mb-5 transition-all border border-white/30 backdrop-blur-sm shadow-sm"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
                     </Link>
+
                     <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Payment History</h1>
                     <p className="text-indigo-200 text-sm font-medium mt-1">Your complete rent ledger and receipts</p>
 
                     {/* ── PG / Booking Selector ── */}
-                    <div className="mt-5 relative max-w-sm">
+                    <div className="mt-5 max-w-sm" style={{ position: 'relative', zIndex: 100 }}>
                         <label className="block text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-1.5">
                             Viewing payments for
                         </label>
                         <button
                             id="pg-selector-btn"
-                            onClick={() => setDropdownOpen(v => !v)}
-                            className="w-full flex items-center justify-between gap-2 bg-white/15 hover:bg-white/25 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-white text-sm font-bold transition-all"
+                            onClick={(e) => { e.stopPropagation(); setDropdownOpen(v => !v); }}
+                            className="w-full flex items-center justify-between gap-2 bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 rounded-xl px-4 py-3 text-white text-sm font-bold transition-all"
                         >
                             <span className="flex items-center gap-2 truncate">
                                 <Building2 className="w-4 h-4 text-indigo-200 shrink-0" />
@@ -257,32 +306,46 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                     {selected ? bookingLabel(selected) : "Select a PG..."}
                                 </span>
                             </span>
-                            <ChevronDown className={`w-4 h-4 text-indigo-200 shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`w-4 h-4 text-white shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
 
+                        {/* Dropdown — rendered in normal flow so it's never clipped */}
                         {dropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50">
+                            <div
+                                className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+                                style={{ zIndex: 999, top: '100%' }}
+                                onClick={e => e.stopPropagation()}
+                            >
                                 {dropdownOptions.map(d => {
-                                    const isActive = d.booking.status === 'ACTIVE';
+                                    const isVacated  = !!d.booking.completedAt;
+                                    const isCurrent  = !isVacated && (d.booking.status === 'ACTIVE' || !!d.booking.tokenPaidAt);
                                     const isSelected = d.booking.id === selectedId;
                                     return (
                                         <button
                                             key={d.booking.id}
                                             onClick={() => { setSelectedId(d.booking.id); setDropdownOpen(false); }}
-                                            className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 ${isSelected ? 'bg-indigo-50' : ''}`}
+                                            className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 ${isSelected ? 'bg-indigo-50' : ''}`}
                                         >
-                                            <Building2 className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                            <div className="min-w-0">
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600' : isCurrent ? 'bg-indigo-100' : 'bg-slate-100'}`}>
+                                                <Building2 className={`w-4 h-4 ${isSelected ? 'text-white' : isCurrent ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
                                                 <p className={`text-sm font-bold truncate ${isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>
                                                     {d.booking.propertyName}
                                                 </p>
-                                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                                                    {d.booking.displayId} · {new Date(d.booking.createdAt).getFullYear()}
-                                                    {isActive && <span className="ml-1.5 text-emerald-600 font-bold">● Active</span>}
-                                                    {!isActive && d.booking.completedAt && <span className="ml-1.5 text-slate-400 font-bold">✓ Vacated</span>}
+                                                <p className="text-[10px] text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
+                                                    <span>{d.booking.displayId}</span>
+                                                    <span>·</span>
+                                                    <span>{new Date(d.booking.createdAt).getFullYear()}</span>
+                                                    {isCurrent && !isVacated && (
+                                                        <span className="text-emerald-600 font-bold">● Current</span>
+                                                    )}
+                                                    {isVacated && (
+                                                        <span className="text-slate-400 font-bold">✓ Past</span>
+                                                    )}
                                                 </p>
                                             </div>
-                                            {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0 ml-auto mt-0.5" />}
+                                            {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" />}
                                         </button>
                                     );
                                 })}
@@ -292,7 +355,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 -mt-10 relative z-10 space-y-5">
+            <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-10 space-y-5">
                 {/* ── Summary Cards ── */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
@@ -305,16 +368,24 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
 
                     <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
-                            currentInvoice?.status === 'PAID' ? 'bg-emerald-100' :
-                            currentInvoice?.status === 'OVERDUE' ? 'bg-red-100' : 'bg-amber-100'
+                            currentInvoice?.status === 'PAID'   ? 'bg-emerald-100' :
+                            currentInvoice?.status === 'OVERDUE' ? 'bg-red-100' :
+                            booking?.tokenPaidAt                  ? 'bg-emerald-100' : 'bg-amber-100'
                         }`}>
-                            {currentInvoice?.status === 'PAID' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> :
-                             currentInvoice?.status === 'OVERDUE' ? <AlertTriangle className="w-4 h-4 text-red-600" /> :
-                             <Clock className="w-4 h-4 text-amber-600" />}
+                            {currentInvoice?.status === 'PAID' || (!currentInvoice && booking?.tokenPaidAt)
+                                ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                : currentInvoice?.status === 'OVERDUE'
+                                    ? <AlertTriangle className="w-4 h-4 text-red-600" />
+                                    : <Clock className="w-4 h-4 text-amber-600" />
+                            }
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">This Month</p>
                         <p className="text-base font-black text-slate-900 mt-0.5">
-                            {currentInvoice ? currentInvoice.status : '—'}
+                            {currentInvoice
+                                ? currentInvoice.status
+                                : booking?.tokenPaidAt
+                                    ? 'Token Paid'
+                                    : '—'}
                         </p>
                     </div>
 
@@ -350,7 +421,9 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                         {booking.roomAssigned && (
                             <span>Room: <span className="font-bold text-slate-700">{booking.roomAssigned}</span></span>
                         )}
-                        <span>Status: <span className={`font-bold ${booking.status === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-500'}`}>{booking.status.replace(/_/g, ' ')}</span></span>
+                        <span className={`font-bold ${booking.status === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-500'}`}>
+                            {booking.status.replace(/_/g, ' ')}
+                        </span>
                         {booking.activeAt && (
                             <span>Move-in: <span className="font-bold text-slate-700">{format(new Date(booking.activeAt), 'dd MMM yyyy')}</span></span>
                         )}
@@ -381,7 +454,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                         </div>
                     ) : (
                         <>
-                            {/* Desktop */}
+                            {/* Desktop Table */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
@@ -400,10 +473,10 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                 <td className="px-5 py-4 text-slate-500 text-xs font-bold whitespace-nowrap">
                                                     {format(row.date, 'dd MMM yyyy')}
                                                 </td>
-                                                <td className="px-5 py-4 font-semibold text-slate-700 text-xs max-w-[200px]">
-                                                    <span className="line-clamp-2">{row.label}</span>
+                                                <td className="px-5 py-4 font-semibold text-slate-700 text-xs max-w-[220px]">
+                                                    <span>{row.label}</span>
                                                     {row.txId && (
-                                                        <span className="block text-[9px] text-slate-400 font-mono mt-0.5 truncate max-w-[180px]">
+                                                        <span className="block text-[9px] text-slate-400 font-mono mt-0.5 truncate max-w-[200px]">
                                                             Ref: {row.txId}
                                                         </span>
                                                     )}
@@ -418,10 +491,11 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                     <StatusBadge status={row.status} />
                                                 </td>
                                                 <td className="px-5 py-4 text-center">
-                                                    {row.receiptId ? (
+                                                    {row.receiptHref ? (
                                                         <a
-                                                            href={`/api/receipts/${row.receiptId}`}
+                                                            href={row.receiptHref}
                                                             target="_blank"
+                                                            rel="noreferrer"
                                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all hover:shadow-md"
                                                         >
                                                             <FileText className="w-3 h-3" /> Download
@@ -436,14 +510,12 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                 </table>
                             </div>
 
-                            {/* Mobile */}
+                            {/* Mobile Cards */}
                             <div className="md:hidden divide-y divide-slate-50">
                                 {ledgerRows.map(row => (
                                     <div key={row.id} className="p-4 flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                <span className="text-xs font-bold text-slate-800 line-clamp-1">{row.label}</span>
-                                            </div>
+                                            <span className="text-xs font-bold text-slate-800 block mb-1">{row.label}</span>
                                             <div className="flex items-center gap-1.5 flex-wrap">
                                                 <StatusBadge status={row.status} />
                                                 <PaymentTypeBadge type={row.type} />
@@ -454,10 +526,11 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                         </div>
                                         <div className="flex flex-col items-end gap-2 shrink-0">
                                             <span className="text-sm font-black text-slate-900">₹{row.amount.toLocaleString('en-IN')}</span>
-                                            {row.receiptId && (
+                                            {row.receiptHref && (
                                                 <a
-                                                    href={`/api/receipts/${row.receiptId}`}
+                                                    href={row.receiptHref}
                                                     target="_blank"
+                                                    rel="noreferrer"
                                                     className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-100"
                                                 >
                                                     <FileText className="w-3 h-3" /> PDF
