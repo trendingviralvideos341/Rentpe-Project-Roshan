@@ -270,7 +270,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
 
             {/* ── Header (NO overflow-hidden so dropdown isn't clipped) ── */}
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-24 relative">
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-24 relative z-20">
                 {/* Decorative blobs in their own clipping layer */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5" />
