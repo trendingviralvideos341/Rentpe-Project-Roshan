@@ -872,7 +872,7 @@ export function BookingsContainer() {
                             After approval you will allocate a room.
                         </p>
                         <div className="flex gap-3">
-                            <Button variant="outline" className="flex-1" onClick={() => setApproveModal(null)}>Close</Button>
+                            <Button className="flex-1 bg-black hover:bg-zinc-900 text-white font-bold" onClick={() => setApproveModal(null)}>Close</Button>
                             <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold" onClick={confirmApprove}>✓ Confirm Approve</Button>
                         </div>
                     </div>
