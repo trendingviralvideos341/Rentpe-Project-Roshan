@@ -68,13 +68,17 @@ export function BookingTimeline({ booking, vacated = false }: BookingTimelinePro
     const isFailed = isRejected || isCancelled;
 
     const getActiveIndex = (status: string) => {
-        // Step 0 — Application
+        // Step 0 — Application sent, awaiting owner approval
         if (status === 'APPLIED' || status === 'PENDING_APPROVAL' || status === 'REQUESTED') return 0;
 
-        // Step 1 — Room Allocated done → Step 2 (Token Paid) is next
-        if (status === 'APPROVED_PENDING_TOKEN' || status === 'APPROVED') return 2;
+        // Step 1 — Owner approved booking but has NOT yet confirmed room allocation.
+        // Room Allocated (index 1) is the CURRENT step (not completed).
+        if (status === 'APPROVED' && !booking.roomAssigned) return 1;
 
-        // Step 2 — Token step
+        // Step 1 → 2 — Room actually allocated by owner (confirmed). Token Paid is next.
+        if (status === 'APPROVED_PENDING_TOKEN' || (status === 'APPROVED' && booking.roomAssigned)) return 2;
+
+        // Step 2 — Token step (KYC flow variants)
         if (status === 'KYC_PENDING' || status === 'APPROVED_KYC_PENDING' || status === 'KYC_FAILED') return 2;
 
         // Step 3 — Token paid → Physical KYC is next
