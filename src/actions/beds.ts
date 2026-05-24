@@ -194,6 +194,70 @@ export async function createBedsForRoom(roomId: string, count: number) {
 }
 
 /**
+ * Delete a booking and immediately free the associated bed back to AVAILABLE.
+ * Only OWNER / ADMIN / STAFF can call this.
+ * Runs inside a transaction to safely delete all child records first,
+ * avoiding FK constraint failures (payments, invoices, documents, etc.).
+ */
+export async function deleteBookingAndFreeBed(bookingId: string, bedId: string) {
+    const session = await getSession();
+    if (!session || (session.role !== 'OWNER' && session.role !== 'ADMIN' && session.role !== 'STAFF')) {
+        throw new Error('Unauthorized');
+    }
+
+    await (prisma as any).$transaction(async (tx: any) => {
+        // ── 1. Nullify tenant's bookingId reference (keep tenant record intact) ──
+        await tx.tenant.updateMany({
+            where: { booking: { id: bookingId } },
+            data: { status: 'Checked Out' }
+        }).catch(() => {});
+
+        // ── 2. Delete all child records that reference this booking ──
+        await tx.tenantDocument.deleteMany({ where: { bookingId } }).catch(() => {});
+        await tx.payment.deleteMany({ where: { bookingId } }).catch(() => {});
+        await tx.creditNote.deleteMany({ where: { bookingId } }).catch(() => {});
+        await tx.foodPreference.deleteMany({ where: { bookingId } }).catch(() => {});
+        await tx.rentInvoice.deleteMany({ where: { bookingId } }).catch(() => {});
+        await tx.platformFee.deleteMany({ where: { bookingId } }).catch(() => {});
+
+        // ── 3. Hard-delete the booking ──
+        await tx.booking.delete({ where: { id: bookingId } });
+
+        // ── 4. Free the bed ──
+        await tx.bed.update({
+            where: { id: bedId },
+            data: {
+                status: 'AVAILABLE',
+                lockedByBookingId: null,
+                lockedAt: null,
+                lockExpiresAt: null,
+                currentBookingId: null,
+                tenantId: null,
+            },
+        });
+    });
+
+    // ── 5. Audit trail (outside tx so it persists even if tx committed) ──
+    await logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role as string,
+        actorName: session.name || session.role,
+        actionType: 'DELETE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Booking ${bookingId} deleted and Bed ${bedId} freed to AVAILABLE by ${session.role}.`,
+        newValue: { bedStatus: 'AVAILABLE' },
+    });
+
+    revalidatePath('/dashboard/owner');
+    revalidatePath('/dashboard/owner/bookings');
+    revalidatePath('/dashboard/owner/properties');
+    revalidatePath('/dashboard/student');
+
+    return { success: true };
+}
+
+/**
  * Smart room allocation: find best available bed automatically
  */
 export async function autoAllocateBed(propertyId: string, bookingId: string, roomType?: string) {
