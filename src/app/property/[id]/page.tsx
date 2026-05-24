@@ -140,7 +140,7 @@ export default function PropertyDetailPage() {
             const occupancy = occupancyFull.split(" - ")[0];
             const baseAmount = Number(occupancyFull.split(" - ")[1]?.replace(/[^0-9.]/g, '') || "0");
 
-            await createBooking({
+            const booking = await createBooking({
                 propertyName: property.name,
                 propertyId: property.id,
                 guestName: formData.guestName,
@@ -159,7 +159,7 @@ export default function PropertyDetailPage() {
             toast.success("Booking request sent! 🎉", {
                 description: "The owner will confirm within 24 hours."
             });
-            router.push("/booking/requested");
+            router.push(`/booking/requested?bookingId=${booking.displayId}`);
         } catch (e: any) {
             const msg: string = e?.message || '';
             if (msg.includes("logged in")) {
