@@ -269,46 +269,39 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     return (
         <div className="-mx-4 -mt-4 md:-mx-8 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
 
-            {/* ── Header (NO overflow-hidden so dropdown isn't clipped) ── */}
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-24 relative z-20">
-                {/* Decorative blobs in their own clipping layer */}
+            {/* ── Compact Header ── */}
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-5 pb-6 relative" style={{ zIndex: 20 }}>
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5" />
                     <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-                    <div className="absolute -left-10 bottom-0 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
                 </div>
 
-                <div className="max-w-4xl mx-auto relative z-10">
-                    {/* ── Back to Dashboard — prominent pill button ── */}
-                    <Link
-                        href="/dashboard/student"
-                        className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/35 text-white text-xs font-bold px-4 py-2 rounded-full mb-5 transition-all border border-white/30 backdrop-blur-sm shadow-sm"
-                    >
-                        <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-                    </Link>
+                <div className="max-w-4xl mx-auto relative" style={{ zIndex: 10 }}>
+                    {/* Top row: back button + PG selector */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Link
+                            href="/dashboard/student"
+                            className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/35 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-all border border-white/30 backdrop-blur-sm"
+                        >
+                            <ArrowLeft className="w-3 h-3" /> Back
+                        </Link>
 
-                    {/* ── Title + inline PG Selector ── */}
-                    <div className="flex flex-wrap items-center gap-3 mb-1">
-                        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Payment History</h1>
-
-                        {/* Dropdown inline next to title */}
+                        {/* PG Selector */}
                         <div style={{ position: 'relative', zIndex: 100 }}>
                             <button
                                 id="pg-selector-btn"
                                 onClick={(e) => { e.stopPropagation(); setDropdownOpen(v => !v); }}
-                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 rounded-full px-4 py-2 text-white text-sm font-bold transition-all"
+                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 rounded-full px-3 py-1.5 text-white text-xs font-bold transition-all"
                             >
-                                <Building2 className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
-                                <span className="text-sm font-semibold truncate max-w-[calc(100vw-180px)] md:max-w-md">
+                                <Building2 className="w-3 h-3 text-indigo-200 shrink-0" />
+                                <span className="truncate max-w-[180px] md:max-w-sm">
                                     {selected ? bookingLabel(selected) : "Select a PG..."}
                                 </span>
-                                <ChevronDown className={`w-3.5 h-3.5 text-white shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-3 h-3 text-white shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
 
-                            {/* Dropdown */}
                             {dropdownOpen && (
                                 <div
-                                    className="absolute left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+                                    className="absolute right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
                                     style={{ zIndex: 999, top: '100%', minWidth: '280px' }}
                                     onClick={e => e.stopPropagation()}
                                 >
@@ -349,11 +342,16 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                             )}
                         </div>
                     </div>
-                    <p className="text-indigo-200 text-sm font-medium">Your complete rent ledger and receipts</p>
+
+                    {/* Title row */}
+                    <div className="mt-3">
+                        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Payment History</h1>
+                        <p className="text-indigo-200 text-xs font-medium mt-0.5">Your complete rent ledger and receipts</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-10 space-y-5">
+            <div className="max-w-4xl mx-auto px-4 mt-5 relative space-y-5" style={{ zIndex: 10 }}>
                 {/* ── Summary Cards ── */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
