@@ -344,6 +344,127 @@ export async function getMyPaymentHistory() {
     return { invoices, tenants, depositInfo };
 }
 
+/**
+ * Get ALL bookings for the logged-in student, each with its invoices,
+ * raw payments, token info and security deposit — for the multi-PG payment history page.
+ */
+export async function getAllStudentBookingsWithPayments() {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'USER') throw new Error("Unauthorized");
+
+    const userId = (session as any).userId;
+
+    // All bookings for this student (newest first)
+    const bookings = await prisma.booking.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+            id: true,
+            displayId: true,
+            propertyName: true,
+            status: true,
+            createdAt: true,
+            tokenPaidAt: true,
+            tokenPaymentId: true,
+            tokenAmount: true,
+            paymentMethod: true,
+            amount: true,
+            depositAmount: true,
+            roomAssigned: true,
+            paymentStatus: true,
+            activeAt: true,
+            completedAt: true,
+        }
+    });
+
+    // For each booking, fetch invoices + payments + deposit
+    const result = await Promise.all(bookings.map(async (b) => {
+        const invoices = await prisma.rentInvoice.findMany({
+            where: { bookingId: b.id },
+            include: {
+                payments: { orderBy: { date: 'desc' } }
+            },
+            orderBy: { dueDate: 'desc' }
+        });
+
+        // All raw Payment records for this booking
+        const rawPayments = await prisma.payment.findMany({
+            where: { bookingId: b.id },
+            orderBy: { date: 'desc' }
+        });
+
+        // Security deposit (through tenant/billingProfile)
+        const tenant = await prisma.tenant.findFirst({
+            where: { booking: { id: b.id } }
+        });
+        const depositInfo = tenant
+            ? await (prisma as any).securityDeposit.findFirst({
+                where: { billingProfile: { tenantId: tenant.id } }
+              }).catch(() => null)
+            : null;
+
+        return {
+            booking: {
+                id: b.id,
+                displayId: b.displayId,
+                propertyName: b.propertyName,
+                status: b.status,
+                createdAt: b.createdAt,
+                tokenPaidAt: b.tokenPaidAt,
+                tokenPaymentId: b.tokenPaymentId,
+                tokenAmount: Number(b.tokenAmount || 1000),
+                paymentMethod: b.paymentMethod,
+                amount: Number(b.amount),
+                depositAmount: Number((b as any).depositAmount || 0),
+                roomAssigned: b.roomAssigned,
+                paymentStatus: b.paymentStatus,
+                activeAt: b.activeAt,
+                completedAt: b.completedAt,
+            },
+            invoices: invoices.map(inv => ({
+                id: inv.id,
+                displayId: (inv as any).displayId || `INV-${inv.id.slice(0,8).toUpperCase()}`,
+                month: (inv as any).month || '',
+                billingMonth: (inv as any).billingMonth || '',
+                amount: Number(inv.amount),
+                rentAmount: Number((inv as any).rentAmount || inv.amount),
+                dueDate: inv.dueDate,
+                paidAt: inv.paidAt,
+                status: inv.status,
+                paymentMethod: inv.paymentMethod,
+                payments: inv.payments.map(p => ({
+                    id: p.id,
+                    amount: Number(p.amount),
+                    status: p.status,
+                    method: p.method,
+                    razorpayId: p.razorpayId,
+                    razorpayOrderId: p.razorpayOrderId,
+                    date: p.date,
+                }))
+            })),
+            rawPayments: rawPayments.map(p => ({
+                id: p.id,
+                amount: Number(p.amount),
+                status: p.status,
+                method: p.method,
+                razorpayId: p.razorpayId,
+                razorpayOrderId: p.razorpayOrderId,
+                invoiceId: p.invoiceId,
+                depositId: p.depositId,
+                date: p.date,
+            })),
+            depositInfo: depositInfo ? {
+                id: depositInfo.id,
+                amount: Number(depositInfo.amount),
+                status: depositInfo.status,
+                paidAt: depositInfo.paidAt,
+            } : null,
+        };
+    }));
+
+    return result;
+}
+
 /** Get a single invoice by ID — ownership verified */
 export async function getInvoiceById(invoiceId: string) {
     const session = await getSession();
