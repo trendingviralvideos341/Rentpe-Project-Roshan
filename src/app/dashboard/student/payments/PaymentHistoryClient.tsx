@@ -43,7 +43,7 @@ function findCurrentBooking(data: BookingEntry[]): string | null {
     if (active) return active.booking.id;
     // Priority 2: Any booking with token paid that is NOT completed/vacated
     const tokenPaidNotDone = data.find(d =>
-        d.booking.tokenPaidAt && !d.booking.completedAt
+        d.booking.tokenPaidAt && !d.booking.completedAt && !['CHECKED_OUT', 'CANCELLED', 'REJECTED'].includes(d.booking.status)
     );
     if (tokenPaidNotDone) return tokenPaidNotDone.booking.id;
     // Priority 3: Most recent booking with token paid
@@ -57,7 +57,7 @@ function findCurrentBooking(data: BookingEntry[]): string | null {
 function bookingLabel(d: BookingEntry) {
     const yr = new Date(d.booking.createdAt).getFullYear();
     const isActive   = d.booking.status === 'ACTIVE';
-    const isVacated  = !!d.booking.completedAt;
+    const isVacated  = !!d.booking.completedAt || ['CHECKED_OUT', 'CANCELLED', 'REJECTED'].includes(d.booking.status);
     const hasToken   = !!d.booking.tokenPaidAt;
 
     let tag = '';
@@ -299,7 +299,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                 className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 rounded-full px-4 py-2 text-white text-sm font-bold transition-all"
                             >
                                 <Building2 className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
-                                <span className="max-w-[200px] truncate text-sm">
+                                <span className="text-sm font-semibold truncate max-w-[calc(100vw-180px)] md:max-w-md">
                                     {selected ? bookingLabel(selected) : "Select a PG..."}
                                 </span>
                                 <ChevronDown className={`w-3.5 h-3.5 text-white shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -313,7 +313,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                     onClick={e => e.stopPropagation()}
                                 >
                                     {dropdownOptions.map(d => {
-                                        const isVacated  = !!d.booking.completedAt;
+                                        const isVacated  = !!d.booking.completedAt || ['CHECKED_OUT', 'CANCELLED', 'REJECTED'].includes(d.booking.status);
                                         const isCurrent  = !isVacated && (d.booking.status === 'ACTIVE' || !!d.booking.tokenPaidAt);
                                         const isSelected = d.booking.id === selectedId;
                                         return (
