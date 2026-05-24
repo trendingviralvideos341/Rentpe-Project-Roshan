@@ -227,14 +227,14 @@ export async function getBookings() {
                 where: { propertyId: { in: propertyIds } },
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    user: { select: { name: true, email: true, displayId: true } },
+                    user: { select: { name: true, email: true } },
                     property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
                     tenant: { select: { id: true, displayId: true } },
                 }
             }).then(bookings => bookings.map(b => ({
                 ...b,
                 tenantDisplayId: (b as any).tenant?.displayId || null,
-                userDisplayId: (b as any).user?.displayId || null,
+                userDisplayId: null,
                 propertyDisplayId: (b as any).property?.displayId || null,
             })));
         } else {
@@ -642,9 +642,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                     const tenancy = await prisma.$transaction(async (tx) => {
                         const tenancyCount = await tx.tenancy.count({ where: { userId: studentUser.id } });
                         const tenancyNumber = tenancyCount + 1;
-                        const displayId = tenancyNumber === 1
-                            ? (studentUser.displayId ?? `REN-USER-${studentUser.id.slice(0, 8).toUpperCase()}`)
-                            : `${studentUser.displayId ?? `REN-USER-${studentUser.id.slice(0, 8).toUpperCase()}`}-T${tenancyNumber}`;
+                        const displayId = await generateSequentialId('TENANT');
                         return await tx.tenancy.create({ data: { userId: studentUser.id, propertyId: room.propertyId, tenancyNumber, displayId } });
                     }, { isolationLevel: 'Serializable' });
 
@@ -891,9 +889,7 @@ export async function checkInBooking(id: string) {
         const tenancy = await prisma.$transaction(async (tx) => {
             const tenancyCount = await tx.tenancy.count({ where: { userId: user.id } });
             const tenancyNumber = tenancyCount + 1;
-            const baseId = user.displayId ?? `REN-USER-${user.id.slice(0, 8).toUpperCase()}`;
-            // e.g. REN-USER-AA3C9D68  (first stay)  |  REN-USER-AA3C9D68-T2  (second stay)
-            const displayId = tenancyNumber === 1 ? baseId : `${baseId}-T${tenancyNumber}`;
+            const displayId = await generateSequentialId('TENANT');
             return await tx.tenancy.create({
                 data: { userId: user.id, propertyId: room.propertyId, tenancyNumber, displayId }
             });
@@ -1278,10 +1274,6 @@ export async function signAgreement(id: string, agreementMeta?: {
             <td style="padding:12px 16px;color:#1e1b4b;font-weight:900;font-family:monospace;">${booking.displayId}</td>
           </tr>
           <tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:12px 16px;color:#4338ca;font-weight:700;">Permanent User ID</td>
-            <td style="padding:12px 16px;color:#1e1b4b;font-weight:900;font-family:monospace;">${(booking as any).user?.displayId || 'N/A'}</td>
-          </tr>
-          <tr style="border-bottom:1px solid #e2e8f0;background:#f0f4ff;">
             <td style="padding:12px 16px;color:#4338ca;font-weight:700;">Tenant ID</td>
             <td style="padding:12px 16px;color:#1e1b4b;font-weight:900;font-family:monospace;">${(booking as any).tenant?.displayId || 'Assigned post-verification'}</td>
           </tr>
@@ -1438,8 +1430,7 @@ export async function countersignAgreement(bookingId: string) {
         <tr style="background:#1e1b4b;"><td colspan="2" style="padding:10px 16px;color:#a5b4fc;font-size:10px;font-weight:900;letter-spacing:.1em;">AUDIT TRAIL & PERMANENT IDs</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Agreement ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;">${booking.agreementId}</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;background:#f0f4ff;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Booking ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${booking.displayId}</td></tr>
-        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Permanent User ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${(booking as any).user?.displayId || 'N/A'}</td></tr>
-        <tr style="border-bottom:1px solid #f1f5f9;background:#f0f4ff;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Tenant ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${(booking as any).tenant?.displayId || 'N/A'}</td></tr>
+        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#4338ca;font-weight:700;">Tenant ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;color:#1e1b4b;">${(booking as any).tenant?.displayId || 'N/A'}</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">PG / Property ID</td><td style="padding:10px 16px;font-weight:900;font-family:monospace;">${(booking as any).property?.displayId || booking.propertyId || 'N/A'}</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;background:#f8fafc;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Tenant Signed</td><td style="padding:10px 16px;font-weight:700;">${booking.guestName}</td></tr>
         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned By</td><td style="padding:10px 16px;font-weight:700;">${countersignerName} (${roleLabel})</td></tr>

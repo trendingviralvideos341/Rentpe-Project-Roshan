@@ -88,7 +88,7 @@ function AgreementView({ data }: { data: AgreementCopyData }) {
             </div>
 
             {/* Identity Panel */}
-            {(data.userDisplayId || data.tenantDisplayId || data.bookingDisplayId || data.propertyDisplayId) && (
+            {(data.tenantDisplayId || data.bookingDisplayId || data.propertyDisplayId) && (
                 <div className="bg-indigo-950 border border-indigo-700/50 rounded-xl p-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">📋 Permanent Legal Identifiers — Keep This Safe</p>
                     <div className="grid grid-cols-2 gap-2">
@@ -96,12 +96,6 @@ function AgreementView({ data }: { data: AgreementCopyData }) {
                             <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
                                 <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">Booking ID</p>
                                 <p className="text-[10px] font-black text-white font-mono">{data.bookingDisplayId}</p>
-                            </div>
-                        )}
-                        {data.userDisplayId && (
-                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
-                                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">User ID (Permanent)</p>
-                                <p className="text-[10px] font-black text-white font-mono">{data.userDisplayId}</p>
                             </div>
                         )}
                         {data.tenantDisplayId && (

@@ -7,8 +7,7 @@ import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
 import { firstMonthRent, lastMonthRent } from "@/utils/billingUtils";
-
-// generateSequentialId removed (unused)
+import { generateSequentialId } from "@/lib/ids";
 
 export async function getTenants() {
     const session = await getSession();
@@ -92,20 +91,7 @@ export async function createTenantFromBooking(bookingId: string) {
     }
 
     return await prisma.$transaction(async (tx) => {
-        // === UNIFIED IDENTITY: One Passport for Life ===
-        // Inherit the student's REN-USER-XXXX display ID.
-        // We append a suffix (-02, -03) for subsequent stays to maintain DB uniqueness.
-        const studentUser = await prisma.user.findUnique({
-            where: { id: booking.userId },
-            select: { displayId: true }
-        });
-        
-        const stayCount = await prisma.tenant.count({
-            where: { studentId: booking.userId }
-        });
-        
-        const baseId = studentUser?.displayId || `REN-USER-${booking.userId.slice(0, 8).toUpperCase()}`;
-        const tenantDisplayId = stayCount > 0 ? `${baseId}-${(stayCount + 1).toString().padStart(2, '0')}` : baseId;
+        const tenantDisplayId = await generateSequentialId('TENANT');
 
         const tenant = await tx.tenant.create({
             data: {

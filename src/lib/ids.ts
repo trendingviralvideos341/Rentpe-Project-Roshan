@@ -59,6 +59,7 @@ const ID_CONFIG: Record<string, {
     'KYC':      { prefix: 'RP-K',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: true  },
     'TICKET':   { prefix: 'RP-T',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
     'NOTICE':   { prefix: 'RP-VN',  track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
+    'TENANT':   { prefix: 'RP-TN',  track: 'OPAQUE', randomLen: 10, resetPerFY: false, auditLog: true  },
 
     // ── SEQUENTIAL — Numbered IDs (Financial & Legal Records) ────────────
     // BOOKING does NOT reset per FY (a booking ID is permanent for its lifetime)
@@ -132,6 +133,8 @@ async function isDisplayIdTaken(type: string, displayId: string): Promise<boolea
                 return !!(await (prisma as any).ticket.findFirst({ where: { displayId }, select: { id: true } }));
             case 'NOTICE':
                 return !!(await (prisma as any).vacatingNotice.findFirst({ where: { displayId }, select: { id: true } }));
+            case 'TENANT':
+                return !!(await (prisma as any).tenant.findFirst({ where: { displayId }, select: { id: true } }));
             default:
                 // No pre-check for unknown types — Layer 3 (DB constraint) handles it
                 return false;
@@ -244,7 +247,6 @@ export async function generateSequentialId(type: string): Promise<string> {
 // Keeps older imports working without any changes.
 export async function generateMasterId(type: string): Promise<string> {
     const legacyMap: Record<string, string> = {
-        'TENANT':      'USER',
         'TENANCY':     'BOOKING',
         'OWNER_STAFF': 'STAFF',
         'ADMIN_STAFF': 'EMPLOYEE',
