@@ -288,14 +288,21 @@ export async function getBookings() {
 export async function getAdminBookings() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
-    return await prisma.booking.findMany({
+    const bookings = await prisma.booking.findMany({
         where: { deletedAt: null },
         include: { 
-            user: { select: { name: true, email: true } },
-            property: { select: { foodType: true, foodPricePerMonth: true } as any }
+            user: { select: { name: true, email: true, displayId: true } },
+            property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
+            tenant: { select: { id: true, displayId: true } },
         },
         orderBy: { createdAt: 'desc' }
     });
+    return bookings.map(b => ({
+        ...b,
+        userDisplayId: (b as any).user?.displayId || null,
+        tenantDisplayId: (b as any).tenant?.displayId || null,
+        propertyDisplayId: (b as any).property?.displayId || null,
+    }));
 }
 
 export async function approveBooking(id: string, data: {

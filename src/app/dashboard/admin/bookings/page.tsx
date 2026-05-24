@@ -199,22 +199,26 @@ function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboardin
                                 <div className="bg-indigo-950 rounded-xl p-3 mt-2">
                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">🔒 Permanent Legal Identifiers</p>
                                     <div className="grid grid-cols-2 gap-2">
+                                        {/* Booking ID — always shown */}
                                         <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
                                             <p className="text-[9px] text-indigo-400 font-bold uppercase mb-0.5">Booking ID</p>
                                             <p className="text-[11px] font-black text-white font-mono">{booking.displayId}</p>
                                         </div>
+                                        {/* Student / User ID — ALWAYS shown (permanent across all bookings) */}
+                                        <div className="bg-violet-900/80 rounded-lg p-2 border-2 border-violet-400/60">
+                                            <p className="text-[9px] text-violet-300 font-black uppercase mb-0.5">👤 Student Permanent ID</p>
+                                            <p className="text-[11px] font-black text-violet-100 font-mono">
+                                                {booking.userDisplayId || <span className="text-violet-400 italic font-normal">Not assigned</span>}
+                                            </p>
+                                        </div>
+                                        {/* Tenant ID — shown once physical KYC done */}
                                         {booking.tenantDisplayId && (
                                             <div className="bg-emerald-900/60 rounded-lg p-2 border border-emerald-600/40">
                                                 <p className="text-[9px] text-emerald-400 font-bold uppercase mb-0.5">Tenant ID</p>
                                                 <p className="text-[11px] font-black text-emerald-300 font-mono">{booking.tenantDisplayId}</p>
                                             </div>
                                         )}
-                                        {booking.userDisplayId && (
-                                            <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
-                                                <p className="text-[9px] text-indigo-400 font-bold uppercase mb-0.5">User ID</p>
-                                                <p className="text-[11px] font-black text-white font-mono">{booking.userDisplayId}</p>
-                                            </div>
-                                        )}
+                                        {/* PG / Property ID */}
                                         {booking.propertyDisplayId && (
                                             <div className="bg-indigo-900/60 rounded-lg p-2 border border-indigo-600/30">
                                                 <p className="text-[9px] text-indigo-400 font-bold uppercase mb-0.5">PG / Property ID</p>
@@ -223,6 +227,7 @@ function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboardin
                                         )}
                                     </div>
                                 </div>
+
                             </div>
 
                             <div className="space-y-2">
