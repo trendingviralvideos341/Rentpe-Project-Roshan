@@ -287,71 +287,69 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                         <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
                     </Link>
 
-                    <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Payment History</h1>
-                    <p className="text-indigo-200 text-sm font-medium mt-1">Your complete rent ledger and receipts</p>
+                    {/* ── Title + inline PG Selector ── */}
+                    <div className="flex flex-wrap items-center gap-3 mb-1">
+                        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Payment History</h1>
 
-                    {/* ── PG / Booking Selector ── */}
-                    <div className="mt-5 max-w-sm" style={{ position: 'relative', zIndex: 100 }}>
-                        <label className="block text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-1.5">
-                            Viewing payments for
-                        </label>
-                        <button
-                            id="pg-selector-btn"
-                            onClick={(e) => { e.stopPropagation(); setDropdownOpen(v => !v); }}
-                            className="w-full flex items-center justify-between gap-2 bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 rounded-xl px-4 py-3 text-white text-sm font-bold transition-all"
-                        >
-                            <span className="flex items-center gap-2 truncate">
-                                <Building2 className="w-4 h-4 text-indigo-200 shrink-0" />
-                                <span className="truncate">
+                        {/* Dropdown inline next to title */}
+                        <div style={{ position: 'relative', zIndex: 100 }}>
+                            <button
+                                id="pg-selector-btn"
+                                onClick={(e) => { e.stopPropagation(); setDropdownOpen(v => !v); }}
+                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 rounded-full px-4 py-2 text-white text-sm font-bold transition-all"
+                            >
+                                <Building2 className="w-3.5 h-3.5 text-indigo-200 shrink-0" />
+                                <span className="max-w-[200px] truncate text-sm">
                                     {selected ? bookingLabel(selected) : "Select a PG..."}
                                 </span>
-                            </span>
-                            <ChevronDown className={`w-4 h-4 text-white shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
+                                <ChevronDown className={`w-3.5 h-3.5 text-white shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
 
-                        {/* Dropdown — rendered in normal flow so it's never clipped */}
-                        {dropdownOpen && (
-                            <div
-                                className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
-                                style={{ zIndex: 999, top: '100%' }}
-                                onClick={e => e.stopPropagation()}
-                            >
-                                {dropdownOptions.map(d => {
-                                    const isVacated  = !!d.booking.completedAt;
-                                    const isCurrent  = !isVacated && (d.booking.status === 'ACTIVE' || !!d.booking.tokenPaidAt);
-                                    const isSelected = d.booking.id === selectedId;
-                                    return (
-                                        <button
-                                            key={d.booking.id}
-                                            onClick={() => { setSelectedId(d.booking.id); setDropdownOpen(false); }}
-                                            className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 ${isSelected ? 'bg-indigo-50' : ''}`}
-                                        >
-                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600' : isCurrent ? 'bg-indigo-100' : 'bg-slate-100'}`}>
-                                                <Building2 className={`w-4 h-4 ${isSelected ? 'text-white' : isCurrent ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className={`text-sm font-bold truncate ${isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>
-                                                    {d.booking.propertyName}
-                                                </p>
-                                                <p className="text-[10px] text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
-                                                    <span>{d.booking.displayId}</span>
-                                                    <span>·</span>
-                                                    <span>{new Date(d.booking.createdAt).getFullYear()}</span>
-                                                    {isCurrent && !isVacated && (
-                                                        <span className="text-emerald-600 font-bold">● Current</span>
-                                                    )}
-                                                    {isVacated && (
-                                                        <span className="text-slate-400 font-bold">✓ Past</span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                            {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" />}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
+                            {/* Dropdown */}
+                            {dropdownOpen && (
+                                <div
+                                    className="absolute left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+                                    style={{ zIndex: 999, top: '100%', minWidth: '280px' }}
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    {dropdownOptions.map(d => {
+                                        const isVacated  = !!d.booking.completedAt;
+                                        const isCurrent  = !isVacated && (d.booking.status === 'ACTIVE' || !!d.booking.tokenPaidAt);
+                                        const isSelected = d.booking.id === selectedId;
+                                        return (
+                                            <button
+                                                key={d.booking.id}
+                                                onClick={() => { setSelectedId(d.booking.id); setDropdownOpen(false); }}
+                                                className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-indigo-50 transition-colors border-b border-slate-50 last:border-0 ${isSelected ? 'bg-indigo-50' : ''}`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600' : isCurrent ? 'bg-indigo-100' : 'bg-slate-100'}`}>
+                                                    <Building2 className={`w-4 h-4 ${isSelected ? 'text-white' : isCurrent ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`text-sm font-bold truncate ${isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>
+                                                        {d.booking.propertyName}
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
+                                                        <span>{d.booking.displayId}</span>
+                                                        <span>·</span>
+                                                        <span>{new Date(d.booking.createdAt).getFullYear()}</span>
+                                                        {isCurrent && !isVacated && (
+                                                            <span className="text-emerald-600 font-bold">● Current</span>
+                                                        )}
+                                                        {isVacated && (
+                                                            <span className="text-slate-400 font-bold">✓ Past</span>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
+                    <p className="text-indigo-200 text-sm font-medium">Your complete rent ledger and receipts</p>
                 </div>
             </div>
 
