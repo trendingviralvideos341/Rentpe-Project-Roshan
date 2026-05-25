@@ -743,7 +743,15 @@ export default function AdminBookingsPage() {
                                                     <React.Fragment key={booking.id}>
                                                         <tr className={`hover:bg-slate-50/50 transition-colors ${
                                                             booking.status === 'APPLIED' || booking.status === 'REQUESTED' ? 'bg-red-50/20' : ''}`}>
-                                                            <td className="p-4 font-mono text-xs font-bold text-slate-900">{booking.displayId}</td>
+                                                            <td className="p-4">
+                                                                <div className="font-mono text-xs font-bold text-slate-900">{booking.displayId}</div>
+                                                                {booking.tenantDisplayId && (
+                                                                    <div className="mt-1 inline-flex items-center gap-1 bg-emerald-50 border border-emerald-300 rounded-full px-2 py-0.5">
+                                                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wide">🪪 Tenant ID</span>
+                                                                        <span className="text-[10px] font-black text-emerald-800 font-mono">{booking.tenantDisplayId}</span>
+                                                                    </div>
+                                                                )}
+                                                            </td>
                                                             <td className="p-4">
                                                                 <div className="font-bold text-slate-900">{booking.guestName}</div>
                                                                 <div className="text-[10px] text-slate-400">{booking.guestEmail}</div>
@@ -789,7 +797,20 @@ export default function AdminBookingsPage() {
 
                                                                         if (s === 'ROOM_RESERVED') return (<><Button size="sm" className="h-7 text-[10px] bg-teal-600 hover:bg-teal-700 font-bold" onClick={() => handleCheckIn(booking)}><ShieldCheck className="h-3 w-3 mr-1" />Physical Check-in</Button><RejectBtn /></>);
 
-                                                                        if (s === 'PHYSICAL_VERIFIED') return (<><span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">✍️ Awaiting Student Agreement</span><RejectBtn /></>);
+                                                                        if (s === 'PHYSICAL_VERIFIED') return (
+                                                                            <>
+                                                                                <div className="flex flex-col items-end gap-1">
+                                                                                    {booking.tenantDisplayId && (
+                                                                                        <div className="flex items-center gap-1 bg-emerald-100 border-2 border-emerald-400 rounded-lg px-2 py-1 shadow-sm">
+                                                                                            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wide">🪪 Tenant ID:</span>
+                                                                                            <span className="text-[11px] font-black text-emerald-900 font-mono">{booking.tenantDisplayId}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">✍️ Awaiting Student Agreement</span>
+                                                                                </div>
+                                                                                <RejectBtn />
+                                                                            </>
+                                                                        );
 
                                                                         if (s === 'AGREEMENT_PENDING') return (<><Button size="sm" className="h-7 text-[10px] bg-violet-600 hover:bg-violet-700 font-bold" onClick={async () => { try { await ownerCounterSignAgreement(booking.id); toast.success('Agreement countersigned!'); fetchBookings(); } catch(e:any){toast.error(e.message||'Failed');} }}><ShieldCheck className="h-3 w-3 mr-1" />Countersign</Button><RejectBtn /></>);
 

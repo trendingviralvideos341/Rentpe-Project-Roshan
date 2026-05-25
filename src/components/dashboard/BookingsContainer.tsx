@@ -622,9 +622,17 @@ export function BookingsContainer() {
         // Step 5: Physical KYC done → Awaiting student agreement signature
         if (s === 'PHYSICAL_VERIFIED') return (
             <>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-                    ✍️ Awaiting Student Agreement
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                    {booking.tenantDisplayId && (
+                        <div className="flex items-center gap-1 bg-emerald-100 border-2 border-emerald-400 rounded-lg px-2 py-1 shadow-sm">
+                            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wide">🪪 Tenant ID:</span>
+                            <span className="text-[11px] font-black text-emerald-900 font-mono">{booking.tenantDisplayId}</span>
+                        </div>
+                    )}
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                        ✍️ Awaiting Student Agreement
+                    </span>
+                </div>
                 <RejectCapsule bookingId={booking.id} />
             </>
         );
@@ -794,7 +802,15 @@ export function BookingsContainer() {
                                 {filteredBookings.map(booking => (
                                     <React.Fragment key={booking.id}>
                                         <tr className={`border-b hover:bg-muted/5 transition-colors ${['REQUESTED', 'APPLIED'].includes(booking.status) ? 'bg-red-50/40' : ''}`}>
-                                            <td className="p-4 font-mono text-xs text-purple-700 font-bold">{booking.displayId}</td>
+                                            <td className="p-4">
+                                                <div className="font-mono text-xs text-purple-700 font-bold">{booking.displayId}</div>
+                                                {booking.tenantDisplayId && (
+                                                    <div className="mt-1 inline-flex items-center gap-1 bg-emerald-50 border border-emerald-300 rounded-full px-2 py-0.5">
+                                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wide">🪪 Tenant ID</span>
+                                                        <span className="text-[10px] font-black text-emerald-800 font-mono">{booking.tenantDisplayId}</span>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="p-4">
                                                 <div className="font-semibold text-sm">{booking.guestName}</div>
                                                 <div className="text-[10px] text-muted-foreground">{booking.guestEmail}</div>
