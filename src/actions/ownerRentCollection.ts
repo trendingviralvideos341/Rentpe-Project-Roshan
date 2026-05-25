@@ -70,7 +70,7 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
 
     const today = new Date();
 
-    return invoices.map((inv: any) => {
+    const rentRows = invoices.map((inv: any) => {
         const daysOverdue = inv.status !== 'PAID' && inv.dueDate < today
             ? Math.ceil((today.getTime() - new Date(inv.dueDate).getTime()) / 86400000)
             : 0;
@@ -98,8 +98,67 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
             confirmedByName: inv.confirmedByName || null,
             daysOverdue,
             history: historyByTenant[inv.tenantId] || [],
+            txnType: 'RENT',
         };
     });
+
+    // ── TOKEN PAYMENTS: fetch bookings for this owner's properties that have tokenPaidAt set ──
+    const [yr, mo] = targetMonth.split('-').map(Number);
+    const monthStart = new Date(yr, mo - 1, 1);
+    const monthEnd = new Date(yr, mo, 1);
+
+    const tokenBookings = await prisma.booking.findMany({
+        where: {
+            propertyId: { in: propertyIds },
+            tokenPaidAt: { gte: monthStart, lt: monthEnd },
+        },
+        select: {
+            id: true,
+            displayId: true,
+            tokenAmount: true,
+            tokenPaidAt: true,
+            tokenPaymentId: true,
+            paymentMethod: true,
+            propertyName: true,
+            guestName: true,
+            guestPhone: true,
+            guestEmail: true,
+            roomAssigned: true,
+            occupancy: true,
+            status: true,
+        },
+        orderBy: { tokenPaidAt: 'desc' },
+    });
+
+    const tokenRows = tokenBookings.map((b: any) => ({
+        id: `TOKEN-${b.id}`,
+        displayId: `TKN-${b.displayId}`,
+        tenantId: null,
+        tenantDisplayId: b.displayId,
+        tenantName: b.guestName || 'Unknown',
+        tenantPhone: b.guestPhone || '',
+        tenantEmail: b.guestEmail || '',
+        propertyName: b.propertyName || '',
+        roomNumber: b.roomAssigned || '—',
+        roomType: b.occupancy || '',
+        month: new Date(yr, mo - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+        billingMonth: targetMonth,
+        amount: Number(b.tokenAmount || 1000),
+        paidAmount: Number(b.tokenAmount || 1000),
+        dueDate: b.tokenPaidAt,
+        status: 'PAID',
+        paidAt: b.tokenPaidAt,
+        paymentMethod: b.paymentMethod === 'CASH' ? 'CASH' : 'RAZORPAY',
+        confirmedBy: null,
+        confirmedByName: b.paymentMethod === 'CASH' ? 'Owner (Cash)' : 'Razorpay Auto',
+        daysOverdue: 0,
+        history: [],
+        txnType: 'TOKEN_PAYMENT',
+        tokenPaymentId: b.tokenPaymentId || null,
+        bookingStatus: b.status,
+    }));
+
+    return [...rentRows, ...tokenRows];
 }
 
 export async function markInvoiceAsCashPaid(invoiceId: string, note?: string) {

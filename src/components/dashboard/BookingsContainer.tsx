@@ -205,6 +205,41 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                                     ))}
                                 </div>
 
+                                {/* Token Payment Info — shown whenever tokenPaidAt is set */}
+                                {booking.tokenPaidAt && (
+                                    <div className="mt-3 p-3 rounded-xl border-2 bg-teal-50 border-teal-200 space-y-2">
+                                        <div className="text-xs font-black text-teal-700 uppercase flex items-center gap-2">🔐 Token / Room-Lock Payment</div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="bg-white border border-teal-100 rounded p-2">
+                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Amount Paid</div>
+                                                <div className="text-sm font-black text-teal-800">₹{Number(booking.tokenAmount || 1000).toLocaleString('en-IN')}</div>
+                                            </div>
+                                            <div className="bg-white border border-teal-100 rounded p-2">
+                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Paid On</div>
+                                                <div className="text-sm font-medium text-teal-800">
+                                                    {new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </div>
+                                            </div>
+                                            <div className="bg-white border border-teal-100 rounded p-2">
+                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Method</div>
+                                                <div className="text-sm font-medium text-teal-800">
+                                                    {booking.paymentMethod === 'CASH' ? '💵 Cash (Owner Confirmed)' : '🌐 Razorpay (Online)'}
+                                                </div>
+                                            </div>
+                                            <div className="bg-white border border-teal-100 rounded p-2">
+                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Status</div>
+                                                <div className="text-sm font-black text-green-700">✅ PAID & VERIFIED</div>
+                                            </div>
+                                        </div>
+                                        {booking.tokenPaymentId && (
+                                            <div className="bg-white border border-teal-100 rounded p-2">
+                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Razorpay Payment ID</div>
+                                                <div className="text-xs font-mono text-blue-700 break-all">{booking.tokenPaymentId}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Food Service */}
                                 {booking.property?.foodType !== 'NOT_AVAILABLE' && booking.property?.foodType && (
                                     <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">

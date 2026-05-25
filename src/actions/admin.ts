@@ -238,17 +238,70 @@ export async function getTransactions() {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-        return await prisma.payment.findMany({
+        // Fetch regular Payment records (rent, deposit, final payment)
+        const payments = await prisma.payment.findMany({
             orderBy: { date: 'desc' },
             include: {
-                booking: {
-                    include: {
-                        user: true
-                    }
-                }
+                booking: { include: { user: true } }
             },
-            take: 100
+            take: 200
         });
+
+        // Fetch token payments from bookings (stored on Booking model, NOT in Payment table)
+        const tokenBookings = await prisma.booking.findMany({
+            where: { tokenPaidAt: { not: null } },
+            orderBy: { tokenPaidAt: 'desc' },
+            take: 200,
+            select: {
+                id: true,
+                displayId: true,
+                tokenAmount: true,
+                tokenPaidAt: true,
+                tokenPaymentId: true,
+                paymentMethod: true,
+                propertyName: true,
+                guestName: true,
+                user: { select: { id: true, name: true, email: true, displayId: true } },
+            }
+        });
+
+        // Normalise token payments into same shape as Payment records
+        const tokenRows = tokenBookings.map((b: any) => ({
+            id: `TOKEN-${b.id}`,
+            bookingId: b.id,
+            invoiceId: null,
+            depositId: null,
+            amount: Number(b.tokenAmount || 1000),
+            method: b.paymentMethod === 'CASH' ? 'CASH' : 'RAZORPAY',
+            status: 'VERIFIED',
+            razorpayOrderId: null,
+            razorpayId: b.tokenPaymentId || null,
+            verifiedBy: null,
+            date: b.tokenPaidAt,
+            // Extra fields to display in UI
+            txnType: 'TOKEN_PAYMENT',
+            txnLabel: '🔐 Token / Room Lock',
+            booking: {
+                id: b.id,
+                displayId: b.displayId,
+                propertyName: b.propertyName,
+                user: b.user,
+            },
+        }));
+
+        // Tag regular payments
+        const regularRows = payments.map((p: any) => ({
+            ...p,
+            txnType: p.invoiceId ? 'RENT' : p.depositId ? 'DEPOSIT' : 'PAYMENT',
+            txnLabel: p.invoiceId ? '📄 Rent Payment' : p.depositId ? '🔒 Security Deposit' : '💳 Payment',
+        }));
+
+        // Merge and sort by date descending
+        const allTxns = [...regularRows, ...tokenRows].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        return allTxns.slice(0, 300);
     } catch (e) {
         console.error("getTransactions Error:", e);
         return [];

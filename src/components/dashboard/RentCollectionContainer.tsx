@@ -12,7 +12,7 @@ import {
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 
-type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'UNPAID';
+type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'UNPAID' | 'TOKEN';
 
 
 // ── Receipt Preview Modal (HTML inline — no iframe) ────────────────
@@ -175,6 +175,7 @@ function getPreviousMonth() {
 }
 
 function getStatus(inv: any): string {
+    if (inv.txnType === 'TOKEN_PAYMENT') return 'TOKEN_PAID';
     if (inv.status === 'PAID' && (inv.paymentMethod === 'ONLINE' || inv.paymentMethod === 'RAZORPAY')) return 'ONLINE_PAID';
     if (inv.status === 'PAID' && inv.paymentMethod === 'CASH') return 'CASH_PAID';
     if (inv.status === 'PAID') return 'ONLINE_PAID'; // default paid = online
@@ -184,6 +185,16 @@ function getStatus(inv: any): string {
 
 function StatusBadge({ inv }: { inv: any }) {
     const s = getStatus(inv);
+    if (s === 'TOKEN_PAID') return (
+        <div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-teal-100 text-teal-700 border border-teal-200 uppercase">
+                🔐 Token Paid
+            </span>
+            {inv.tokenPaymentId && (
+                <p className="text-[9px] text-slate-400 mt-0.5 font-mono">ID: {inv.tokenPaymentId.slice(0, 16)}…</p>
+            )}
+        </div>
+    );
     if (s === 'ONLINE_PAID') return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase">
             <Globe className="w-3 h-3" /> Online Paid
@@ -315,15 +326,18 @@ export function RentCollectionContainer() {
     useEffect(() => { reload(month); }, [month]);
 
     // ── summary stats ──
-    const onlinePaid = invoices.filter(i => i.status === 'PAID' && i.paymentMethod !== 'CASH');
-    const cashPaid = invoices.filter(i => i.status === 'PAID' && i.paymentMethod === 'CASH');
-    const unpaid = invoices.filter(i => i.status !== 'PAID');
-    const totalReceived = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + i.paidAmount, 0);
+    const tokenPayments = invoices.filter(i => i.txnType === 'TOKEN_PAYMENT');
+    const rentInvoices = invoices.filter(i => i.txnType !== 'TOKEN_PAYMENT');
+    const onlinePaid = rentInvoices.filter(i => i.status === 'PAID' && i.paymentMethod !== 'CASH');
+    const cashPaid = rentInvoices.filter(i => i.status === 'PAID' && i.paymentMethod === 'CASH');
+    const unpaid = rentInvoices.filter(i => i.status !== 'PAID');
+    const totalReceived = rentInvoices.filter(i => i.status === 'PAID').reduce((s, i) => s + i.paidAmount, 0);
     const onlineReceived = onlinePaid.reduce((s, i) => s + i.paidAmount, 0);
     const cashReceived = cashPaid.reduce((s, i) => s + i.paidAmount, 0);
     const totalUnpaid = unpaid.reduce((s, i) => s + i.amount, 0);
-    const totalExpected = invoices.reduce((s, i) => s + i.amount, 0);
+    const totalExpected = rentInvoices.reduce((s, i) => s + i.amount, 0);
     const collectionRate = totalExpected > 0 ? Math.round((totalReceived / totalExpected) * 100) : 0;
+    const tokenTotal = tokenPayments.reduce((s, i) => s + i.amount, 0);
 
     // ── unique options for filters ──
     const propertyOptions = Array.from(new Set(invoices.map(i => i.propertyName).filter(Boolean)));
@@ -338,6 +352,9 @@ export function RentCollectionContainer() {
         if (tab === 'ONLINE' && s !== 'ONLINE_PAID') return false;
         if (tab === 'CASH' && s !== 'CASH_PAID') return false;
         if (tab === 'UNPAID' && s !== 'UNPAID' && s !== 'OVERDUE') return false;
+        if (tab === 'TOKEN' && s !== 'TOKEN_PAID') return false;
+        // Hide token rows from ONLINE/CASH/UNPAID tabs
+        if (tab !== 'ALL' && tab !== 'TOKEN' && s === 'TOKEN_PAID') return false;
 
         // Dropdown Filters
         if (propertyFilter !== 'ALL' && inv.propertyName !== propertyFilter) return false;
@@ -389,6 +406,7 @@ export function RentCollectionContainer() {
         { key: 'ONLINE', label: '🌐 Online Paid', count: onlinePaid.length },
         { key: 'CASH', label: '💵 Cash Paid', count: cashPaid.length },
         { key: 'UNPAID', label: '❌ Unpaid', count: unpaid.length },
+        { key: 'TOKEN', label: '🔐 Token Paid', count: tokenPayments.length },
     ];
 
     return (
@@ -435,6 +453,23 @@ export function RentCollectionContainer() {
                     </div>
                 ))}
             </div>
+
+            {/* Token Payments Banner — shown when tokens exist this month */}
+            {tokenPayments.length > 0 && (
+                <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-teal-200 bg-teal-50">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">🔐</span>
+                        <div>
+                            <p className="text-sm font-black text-teal-800">Token / Room-Lock Payments This Month</p>
+                            <p className="text-xs text-teal-600">{tokenPayments.length} booking{tokenPayments.length > 1 ? 's' : ''} paid token · Total {fmt(tokenTotal)}</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setTab('TOKEN')}
+                        className="text-[11px] font-black px-3 py-1.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors">
+                        View Tokens →
+                    </button>
+                </div>
+            )}
 
             {/* Tab + Search bar */}
             <div className="flex flex-col lg:flex-row gap-3">
@@ -560,7 +595,14 @@ export function RentCollectionContainer() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                                        {isPaid ? (
+                                                        {inv.txnType === 'TOKEN_PAYMENT' ? (
+                                                            <div className="space-y-1">
+                                                                <span className="px-2.5 py-1.5 bg-teal-50 border border-teal-200 text-teal-700 text-[10px] font-black rounded-lg flex items-center gap-1">
+                                                                    🔐 Room Reserved
+                                                                </span>
+                                                                <p className="text-[9px] text-slate-400 font-mono">{inv.tenantDisplayId}</p>
+                                                            </div>
+                                                        ) : isPaid ? (
                                                             <button
                                                                 onClick={() => setReceiptModal(inv.id)}
                                                                 className="px-2.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black rounded-lg flex items-center gap-1 hover:bg-indigo-100 transition-colors"
