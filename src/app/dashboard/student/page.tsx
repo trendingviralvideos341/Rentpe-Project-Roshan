@@ -281,27 +281,32 @@ function BookingCard({
                                 <FileText className="h-3 w-3 mr-1" /> View Receipt
                             </Button>
                         </div>
-                        {/* NEW FLOW: ROOM_RESERVED → show awaiting physical KYC (not sign agreement yet) */}
+                        {/* ROOM_RESERVED → Physical Check-In Pending (agreement locked until owner confirms physical checkin) */}
                         {!booking.tenantId && isTokenPaid && (
-                            <div className="w-full bg-gradient-to-br from-teal-50 to-cyan-50 border-2 border-teal-400 rounded-2xl p-5 space-y-3">
-                                <div className="flex items-center gap-2 text-sm font-black text-teal-800">
-                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping mr-1"></span>
-                                    🔍 Physical ID Verification Pending
+                            <div className="w-full bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-2xl p-5 space-y-3">
+                                <div className="flex items-center gap-2 text-sm font-black text-amber-800">
+                                    <Lock className="h-4 w-4" />
+                                    🏠 Physical Check-In Pending
                                 </div>
-                                <p className="text-xs text-teal-700 font-medium">Token paid! Your bed is reserved. The property manager will physically verify your ID. Once verified, you can sign the rental agreement.</p>
-                                <div className="bg-teal-100/60 rounded-xl p-3 text-[11px] text-teal-800 font-bold border border-teal-200">
-                                    📌 Visit <strong>{booking.propertyName}</strong> with your original Aadhaar/Passport for KYC verification.
+                                <p className="text-xs text-amber-700 font-medium">Your token is paid and bed is reserved. To proceed, you must <strong>physically visit {booking.propertyName}</strong> and complete your in-person check-in.</p>
+                                <div className="bg-amber-100/60 rounded-xl p-3 text-[11px] text-amber-900 font-bold border border-amber-300 space-y-1">
+                                    <p>📌 Physically visit <strong>{booking.propertyName}</strong> to check in.</p>
+                                    <p className="font-medium text-amber-700">Once the owner or their team confirms your physical check-in, your rental agreement will be automatically unlocked for signing.</p>
+                                </div>
+                                <div className="flex items-center gap-2 bg-white/80 border-2 border-amber-300 rounded-xl p-3">
+                                    <Lock className="h-4 w-4 text-amber-500 shrink-0" />
+                                    <p className="text-[11px] font-black text-amber-700">Agreement is locked until physical check-in is confirmed by the owner.</p>
                                 </div>
                             </div>
                         )}
-                        {/* NEW FLOW: PHYSICAL_VERIFIED — Tenant ID assigned, prompt to sign agreement */}
+                        {/* PHYSICAL_VERIFIED — Tenant ID assigned, agreement unlocked, prompt to sign */}
                         {isPhysicalVerified && !booking.agreementSigned && (
                             <div className="w-full bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-500 rounded-2xl p-5 space-y-3 animate-pulse">
                                 <div className="flex items-center gap-2 text-sm font-black text-emerald-800">
                                     <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping mr-1"></span>
-                                    ✍️ Sign Your Rental Agreement
+                                    ✅ Physical Check-In Confirmed — Sign Your Agreement
                                 </div>
-                                <p className="text-xs text-emerald-700 font-medium">Your identity has been physically verified! Your Tenant ID is now assigned. Sign the rental agreement to complete onboarding.</p>
+                                <p className="text-xs text-emerald-700 font-medium">Your physical check-in at <strong>{booking.propertyName}</strong> has been confirmed by the owner! Your Tenant ID is now assigned. Sign the rental agreement to complete onboarding.</p>
                                 {tenantDisplayId && (
                                     <div className="flex items-center gap-2 bg-white/80 border border-emerald-200 rounded-xl p-3">
                                         <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Your Tenant ID:</span>
@@ -832,9 +837,25 @@ export default function StudentDashboardPage() {
                                         if (booking.status === 'APPROVED_PENDING_TOKEN')
                                             return <AlertBanner key={`alert-token-${booking.id}`} type="warning" message={`🔐 Pay ₹1,000 token to reserve your bed at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => router.push(`/secure/payment?id=${booking.id}&type=token`)} />;
                                         if (booking.status === 'PHYSICAL_VERIFIED' && !booking.agreementSigned)
-                                            return <AlertBanner key={`alert-phys-${booking.id}`} type="info" message={`🆔 ID verified at ${booking.propertyName}! Your Tenant ID is assigned — sign your rental agreement now.`} actionLabel="Sign Agreement Now" onAction={() => setSigningBooking(booking)} />;
+                                            return <AlertBanner key={`alert-phys-${booking.id}`} type="info" message={`✅ Physical check-in confirmed at ${booking.propertyName}! Your Tenant ID is assigned — sign your rental agreement now.`} actionLabel="Sign Agreement Now" onAction={() => setSigningBooking(booking)} />;
                                         if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
-                                            return <AlertBanner key={`alert-sign-${booking.id}`} type="info" message={`Token paid! Please sign your rental agreement for ${booking.propertyName}.`} actionLabel="Sign Agreement" onAction={() => setSigningBooking(booking)} />;
+                                            return (
+                                                <div key={`alert-checkin-pending-${booking.id}`} className="flex items-center justify-between p-4 rounded-lg border shadow-sm mb-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-50 border-amber-200 text-amber-800">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 rounded-full bg-amber-100">
+                                                            <AlertTriangle className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold">Physical Check-In Pending</p>
+                                                            <p className="text-xs opacity-90">To sign your rental agreement, please physically visit <strong>{booking.propertyName}</strong> and complete your in-person check-in first. Once the owner or their team confirms your physical check-in, your agreement will be unlocked for signing.</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-4 shrink-0">
+                                                        <Lock className="h-4 w-4 text-amber-600" />
+                                                        <span className="text-xs font-black text-amber-700 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-full whitespace-nowrap">Agreement Locked</span>
+                                                    </div>
+                                                </div>
+                                            );
                                         if (booking.status === 'AGREEMENT_PENDING')
                                             return null;
                                         if (booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') {
