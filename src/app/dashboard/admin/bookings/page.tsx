@@ -799,15 +799,7 @@ export default function AdminBookingsPage() {
 
                                                                         if (s === 'PHYSICAL_VERIFIED') return (
                                                                             <>
-                                                                                <div className="flex flex-col items-end gap-1">
-                                                                                    {booking.tenantDisplayId && (
-                                                                                        <div className="flex items-center gap-1 bg-emerald-100 border-2 border-emerald-400 rounded-lg px-2 py-1 shadow-sm">
-                                                                                            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wide">🪪 Tenant ID:</span>
-                                                                                            <span className="text-[11px] font-black text-emerald-900 font-mono">{booking.tenantDisplayId}</span>
-                                                                                        </div>
-                                                                                    )}
-                                                                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">✍️ Awaiting Student Agreement</span>
-                                                                                </div>
+                                                                                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">✍️ Awaiting Student Agreement</span>
                                                                                 <RejectBtn />
                                                                             </>
                                                                         );
