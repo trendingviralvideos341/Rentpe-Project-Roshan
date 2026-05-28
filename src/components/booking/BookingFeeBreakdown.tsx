@@ -14,7 +14,7 @@ interface BookingFeeBreakdownProps {
 export function BookingFeeBreakdown({
     rent, depositAmount, depositMonths, platformFee, tokenAmount, showGstNote = true
 }: BookingFeeBreakdownProps) {
-    const totalPayable = rent + depositAmount + platformFee + (tokenAmount || 0);
+    const totalPayable = rent + depositAmount + (tokenAmount || 0);
 
     return (
         <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
@@ -58,14 +58,7 @@ export function BookingFeeBreakdown({
                     </div>
                 )}
 
-                {/* Platform Fee */}
-                <div className="flex items-center justify-between border-t border-dashed border-slate-100 pt-2.5">
-                    <div>
-                        <p className="text-sm font-bold text-amber-700">Platform Fee</p>
-                        <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">✗ Non-refundable</span>
-                    </div>
-                    <span className="text-sm font-black text-amber-700">₹{platformFee.toFixed(2)}</span>
-                </div>
+
 
                 {/* Total */}
                 <div className="border-t-2 border-slate-900 pt-3 mt-1 flex items-center justify-between">
@@ -85,12 +78,7 @@ export function BookingFeeBreakdown({
                         <strong>Deposit is refundable</strong> within 30 days of vacating. Deductions only for documented property damage — not normal wear & tear. (Model Tenancy Act 2021)
                     </p>
                 </div>
-                <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-red-600 font-semibold leading-relaxed">
-                        <strong>Platform fees are non-refundable</strong> once the booking is confirmed.
-                    </p>
-                </div>
+
                 {showGstNote && (
                     <div className="flex items-start gap-2 bg-slate-50 border border-slate-100 rounded-xl p-3">
                         <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />

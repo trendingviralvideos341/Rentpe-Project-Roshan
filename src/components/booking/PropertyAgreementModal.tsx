@@ -77,8 +77,7 @@ export function PropertyAgreementModal({
     const noticePeriod = property.noticePeriod || 30;
     const rent = Number(room.price) || 0;
     const deposit = Number(depositAmount) || 0;
-    const fee = Number(platformFee) || 0;
-    const totalPayable = rent + deposit + fee;
+    const totalPayable = rent + deposit;
 
     const canSign = scrolledToBottom && accepted;
 
@@ -153,12 +152,7 @@ export function PropertyAgreementModal({
                                         <p className="text-[11px] font-black text-white font-mono">{bookingDisplayId}</p>
                                     </div>
                                 )}
-                                {tenant.userId && (
-                                    <div className="bg-indigo-900/60 rounded-lg p-2.5 border border-indigo-600/30">
-                                        <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-0.5">User ID (Permanent)</p>
-                                        <p className="text-[11px] font-black text-white font-mono">{tenant.userId}</p>
-                                    </div>
-                                )}
+
                                 {tenant.tenantId && (
                                     <div className="bg-emerald-900/60 rounded-lg p-2.5 border border-emerald-600/40">
                                         <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">Tenant ID ✓ KYC Verified</p>
@@ -211,13 +205,7 @@ export function PropertyAgreementModal({
                                     </div>
                                     <span className="font-black text-emerald-700">₹{deposit.toLocaleString('en-IN')}</span>
                                 </div>
-                                <div className="flex justify-between px-4 py-2.5 bg-amber-50/50">
-                                    <div>
-                                        <span className="text-amber-700">Platform Service Fee</span>
-                                        <span className="ml-2 text-[9px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">✗ Non-refundable</span>
-                                    </div>
-                                    <span className="font-black text-amber-700">₹{fee.toFixed(2)}</span>
-                                </div>
+
                                 <div className="flex justify-between px-4 py-3 bg-slate-900">
                                     <span className="text-sm font-black text-white">Total Payable Now</span>
                                     <span className="text-sm font-black text-white">₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
