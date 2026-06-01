@@ -195,6 +195,10 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
                         <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
                         {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
                         {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
+                        {booking?.roomAssigned && <p className="text-sm text-slate-400">Room: {booking.roomAssigned}</p>}
+                        {(booking?.agreementSignedAt || booking?.activeAt) && (
+                            <p className="text-sm text-slate-400">Stay from: <span className="font-bold text-slate-700">{new Date(booking.agreementSignedAt || booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
+                        )}
                     </div>
 
                     {/* Reference IDs */}
@@ -369,6 +373,10 @@ function RentReceiptModal({ booking, invoice, onClose }: {
                         <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
                         {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
                         {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
+                        {booking?.roomAssigned && <p className="text-sm text-slate-400">Room: {booking.roomAssigned}</p>}
+                        {(booking?.agreementSignedAt || booking?.activeAt) && (
+                            <p className="text-sm text-slate-400">Stay from: <span className="font-bold text-slate-700">{new Date(booking.agreementSignedAt || booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
+                        )}
                     </div>
 
                     {/* Reference IDs */}
