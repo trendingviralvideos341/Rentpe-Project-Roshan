@@ -1,83 +1,105 @@
+/**
+ * CRON: /api/cron/generate-rent
+ * Schedule: 0 6 1 * *  (6 AM IST on the 1st of every month)
+ *
+ * UNIFIED CALENDAR-MONTH BILLING — RentRecord layer
+ * ─────────────────────────────────────────────────────────────────────────────
+ * This companion cron generates RentRecord rows (legacy rent-tracking table)
+ * in sync with the RentInvoice layer above.
+ *
+ * RentRecord is the simpler record used by:
+ *   - Owner dashboard rent collection table
+ *   - Tenant history / payment tracking
+ *
+ * Skip conditions (fully idempotent):
+ *   - Tenant not 'Active' → skip
+ *   - RentRecord for this month already exists → skip
+ *
+ * Security: CRON_SECRET bearer or query-param secret
+ */
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const secret = searchParams.get("secret");
+    // ── Security ──────────────────────────────────────────────────────────────
+    const { searchParams } = new URL(request.url);
+    const secret = searchParams.get("secret");
+    const authHeader = request.headers.get("Authorization");
 
-        // Simple security check via query param or header
-        if (secret !== process.env.CRON_SECRET && request.headers.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+    if (
+        secret !== process.env.CRON_SECRET &&
+        authHeader !== `Bearer ${process.env.CRON_SECRET}`
+    ) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-        // Current Month (e.g. "March 2026")
-        const now = new Date();
-        const monthYear = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    const now = new Date();
+    // Human-readable month label e.g. "June 2026"
+    const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
 
-        // Get all active tenants
-        const activeTenants = await prisma.tenant.findMany({
-            where: { status: "ACTIVE" }
-        });
+    // ── All active tenants ────────────────────────────────────────────────────
+    const activeTenants = await prisma.tenant.findMany({
+        where: { status: "Active" },
+        include: {
+            booking: { select: { id: true, userId: true } },
+        },
+    });
 
-        const results = {
-            total: activeTenants.length,
-            created: 0,
-            skipped: 0,
-            failed: 0
-        };
+    const results = {
+        month: monthLabel,
+        total: activeTenants.length,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+    };
 
-        for (const tenant of activeTenants) {
-            try {
-                // Check if rent already exists for this month
-                const existing = await prisma.rentRecord.findFirst({
-                    where: {
-                        tenantId: tenant.id,
-                        month: monthYear
-                    }
-                });
+    for (const tenant of activeTenants) {
+        try {
+            // Idempotent: skip if already created for this month
+            const existing = await prisma.rentRecord.findFirst({
+                where: { tenantId: tenant.id, month: monthLabel },
+            });
 
-                if (existing) {
-                    results.skipped++;
-                    continue;
-                }
+            if (existing) {
+                results.skipped++;
+                continue;
+            }
 
-                // Create UNPAID rent record
-                await prisma.rentRecord.create({
-                    data: {
-                        tenantId: tenant.id,
-                        month: monthYear,
-                        amount: tenant.rent,
-                        paid: false
-                    }
-                });
+            // Full-month rent record (first month proration handled at move-in)
+            await prisma.rentRecord.create({
+                data: {
+                    tenantId: tenant.id,
+                    month: monthLabel,
+                    amount: tenant.rent,
+                    paid: false,
+                },
+            });
 
-                // Notify tenant
+            // ── In-app notification ──────────────────────────────────────────
+            if (tenant.booking?.userId) {
                 await prisma.notification.create({
                     data: {
-                        userId: (await prisma.booking.findUnique({ where: { tenantId: tenant.id } }))?.userId || "",
+                        userId: tenant.booking.userId,
                         type: "RENT_DUE",
-                        message: `Rent for ${monthYear} (₹${tenant.rent}) has been generated. Please pay by the 5th to avoid late fees.`
-                    }
-                });
-
-                results.created++;
-            } catch (err) {
-                console.error(`Failed to generate rent for tenant ${tenant.id}:`, err);
-                results.failed++;
+                        category: "RENT_REMINDER",
+                        message: `🏠 Rent for ${monthLabel} (₹${Number(tenant.rent).toLocaleString("en-IN")}) is due. Please pay by the 5th to avoid late fees.`,
+                        isPersistent: false,
+                        targetRole: "USER",
+                    },
+                }).catch(() => {}); // non-fatal: notification failure must never block billing
             }
+
+            results.created++;
+        } catch (err: any) {
+            console.error(`[CRON generate-rent] Failed for tenant ${tenant.id}:`, err?.message);
+            results.failed++;
         }
-
-        return NextResponse.json({
-            success: true,
-            month: monthYear,
-            results
-        });
-
-    } catch (error) {
-        console.error("Cron Error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
+
+    console.log(`[CRON generate-rent] ${monthLabel}:`, results);
+
+    return NextResponse.json({ success: true, ...results });
 }

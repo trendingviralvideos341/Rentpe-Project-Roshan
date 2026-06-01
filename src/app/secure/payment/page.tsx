@@ -209,7 +209,25 @@ function PaymentPortal() {
     const TOKEN_AMOUNT = 1000;
     const rentAmount  = Number(booking.amount || 0);
     const depositAmount = Number((booking as any).depositAmount || 0);
-    const subtotal = rentAmount + depositAmount;
+
+    // ── UNIFIED CALENDAR BILLING: Prorated first-month rent ──────────────────
+    // If customer moves in today (e.g. 28 May, 31-day month):
+    //   days remaining = 31 - 28 + 1 = 4
+    //   daily rate     = ₹10,000 / 31 = ₹322.58
+    //   prorated rent  = 4 × ₹322.58 = ₹1,290
+    // From June 1st onward → full ₹10,000/month via cron.
+    const today = new Date();
+    const daysInThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const daysRemaining = daysInThisMonth - today.getDate() + 1;
+    const dailyRate = Math.round((rentAmount / daysInThisMonth) * 100) / 100;
+    const proratedRent = Math.round(dailyRate * daysRemaining);
+    const isFirstOfMonth = today.getDate() === 1; // if move-in is exactly 1st, no proration needed
+    const effectiveRent = isFirstOfMonth ? rentAmount : proratedRent;
+    const monthName = today.toLocaleString('en-IN', { month: 'long' });
+    const lastDayLabel = `${daysInThisMonth} ${monthName}`;
+    const moveInLabel  = `${today.getDate()} ${monthName}`;
+
+    const subtotal = effectiveRent + depositAmount;
     // Final payment deducts the ₹1,000 token already paid
     const totalAmount = isToken ? TOKEN_AMOUNT : Math.max(0, subtotal - TOKEN_AMOUNT);
 
@@ -360,24 +378,42 @@ function PaymentPortal() {
                                     <span className="font-black text-amber-700">₹1,000</span>
                                 </div>
                             ) : (
-                                // Final joining amount: show breakdown with ₹1,000 deduction
+                                // Final joining payment: PRORATED first-month rent breakdown
                                 <>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-600">Monthly Rent</span>
-                                        <span className="font-black text-slate-800">₹{rentAmount.toLocaleString('en-IN')}</span>
+                                    {/* Prorated Rent Row */}
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <span className="text-sm text-slate-600 font-semibold">🏠 Rent — {isFirstOfMonth ? monthName : `${moveInLabel} to ${lastDayLabel}`}</span>
+                                            {!isFirstOfMonth && (
+                                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                                    {daysRemaining} days × ₹{dailyRate.toFixed(0)}/day
+                                                    <span className="ml-1 text-indigo-500">(₹{rentAmount.toLocaleString('en-IN')}/mo ÷ {daysInThisMonth} days)</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                        <span className="font-black text-slate-800">₹{effectiveRent.toLocaleString('en-IN')}</span>
                                     </div>
+
+                                    {/* Security Deposit */}
                                     {depositAmount > 0 && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-sm text-emerald-700">Security Deposit ({(booking as any).depositMonths || 2}m)</span>
+                                            <div>
+                                                <span className="text-sm text-emerald-700 font-semibold">🛡️ Security Deposit ({(booking as any).depositMonths || 2}m)</span>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">Held in escrow · refundable on exit</p>
+                                            </div>
                                             <span className="font-black text-emerald-700">₹{depositAmount.toLocaleString('en-IN')}</span>
                                         </div>
                                     )}
+
+                                    {/* Subtotal */}
                                     <div className="flex justify-between items-center border-t border-slate-200 pt-2">
                                         <span className="text-sm text-slate-500">Subtotal</span>
                                         <span className="font-bold text-slate-600">₹{subtotal.toLocaleString('en-IN')}</span>
                                     </div>
+
+                                    {/* Token deduction */}
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm text-green-700">Token Advance Paid ✅</span>
+                                        <span className="text-sm text-green-700 font-semibold">🎟️ Token Advance Paid ✅</span>
                                         <span className="font-black text-green-700">− ₹1,000</span>
                                     </div>
                                 </>

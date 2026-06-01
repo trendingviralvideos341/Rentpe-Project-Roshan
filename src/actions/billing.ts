@@ -36,7 +36,9 @@ export async function createBillingProfile(tenantId: string) {
 
     const rentAmount = tenant.rent;
     const depositAmount = rentAmount;
-    const anchorDay = new Date(tenant.startDate).getUTCDate() || 1;
+    // UNIFIED CALENDAR BILLING: All tenants bill on the 1st of every month.
+    // First month is prorated from move-in date → end of that month.
+    const BILLING_ANCHOR = 1;
 
     return await (prisma as any).$transaction(async (tx: any) => {
         const profile = await tx.billingProfile.create({
@@ -47,8 +49,8 @@ export async function createBillingProfile(tenantId: string) {
                 bedId: tenant.bedId,
                 monthlyRent: rentAmount,
                 securityDeposit: depositAmount,
-                billingDay: anchorDay,
-                billingAnchorDay: anchorDay,
+                billingDay: BILLING_ANCHOR,
+                billingAnchorDay: BILLING_ANCHOR,
             }
         });
 
@@ -68,7 +70,7 @@ export async function createBillingProfile(tenantId: string) {
             actionType: 'CREATE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Billing profile initialized. Monthly Rent: ₹${rentAmount}, Deposit: ₹${depositAmount}, AnchorDay: ${anchorDay}.`,
+            description: `Billing profile initialized. Monthly Rent: ₹${rentAmount}, Deposit: ₹${depositAmount}, BillingAnchor: 1st of every month (Unified Calendar Billing).`,
         });
 
         return profile;

@@ -176,7 +176,11 @@ export async function confirmMoveIn(tenantId: string) {
             });
         }
 
-        // 4. Financial Integration: Create Billing Profile, Prorated First Invoice & Deposit
+        // UNIFIED CALENDAR BILLING
+        // Billing is always anchored to the 1st of every calendar month.
+        // First month = prorated from move-in date → last day of that month.
+        const BILLING_ANCHOR = 1;
+
         const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : Number(tenant.rent);
         const moveInDate = new Date(tenant.startDate);
 
@@ -188,13 +192,17 @@ export async function confirmMoveIn(tenantId: string) {
                 bedId: tenant.bedId,
                 monthlyRent: rentAmount,
                 securityDeposit: rentAmount,
-                billingDay: moveInDate.getDate() || 1, // anchor = move-in day
+                billingDay: BILLING_ANCHOR,
+                billingAnchorDay: BILLING_ANCHOR,
             }
         });
 
-        // ── Prorated first-month rent invoice ──────────────────────────────
+        // ── Prorated first-month rent invoice ──
+        // Days charged = move-in day → last day of that month (inclusive)
+        const { firstMonthRent, proratedNote } = await import('@/utils/billingUtils');
         const firstMonthLabel = moveInDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
         const firstInvoiceAmount = firstMonthRent(rentAmount, moveInDate);
+        const note = proratedNote(moveInDate); // e.g. "Prorated — 28 May to 31 May (4 days)"
 
         await tx.rentRecord.create({
             data: {
@@ -202,7 +210,7 @@ export async function confirmMoveIn(tenantId: string) {
                 month: firstMonthLabel,
                 amount: firstInvoiceAmount,
                 paid: false,
-                note: `Prorated — move-in ${moveInDate.getDate()} ${firstMonthLabel}`,
+                note,
             }
         });
 
@@ -222,7 +230,7 @@ export async function confirmMoveIn(tenantId: string) {
             actionType: 'UPDATE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Tenant ${tenant.name} moved in. First invoice: ₹${firstInvoiceAmount} (prorated from day ${moveInDate.getDate()}).`,
+            description: `Tenant ${tenant.name} moved in ${moveInDate.getDate()} ${firstMonthLabel}. First invoice: ₹${firstInvoiceAmount} (${note}). Billing anchor: 1st of every month.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
