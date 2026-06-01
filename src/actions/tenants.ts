@@ -93,6 +93,13 @@ export async function createTenantFromBooking(bookingId: string) {
     return await prisma.$transaction(async (tx) => {
         const tenantDisplayId = await generateSequentialId('TENANT');
 
+        // ── CRITICAL: startDate = agreement signing date (source of truth for all billing) ──
+        // The day the tenant signs the agreement IS their stay start date.
+        // All rent calculations (prorated first month, billing cycles, stay duration) flow from this.
+        const agreementDate = (booking as any).agreementSignedAt
+            ? new Date((booking as any).agreementSignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : booking.moveInDate || new Date().toLocaleDateString('en-IN');
+
         const tenant = await tx.tenant.create({
             data: {
                 displayId: tenantDisplayId,
@@ -108,7 +115,7 @@ export async function createTenantFromBooking(bookingId: string) {
                 roomNumber: booking.roomAssigned || "TBD",
                 roomType: booking.occupancy,
                 rent: booking.amount,
-                startDate: booking.moveInDate || new Date().toLocaleDateString('en-IN'),
+                startDate: agreementDate,
                 status: 'Upcoming'
             }
         });
@@ -178,11 +185,12 @@ export async function confirmMoveIn(tenantId: string) {
 
         // UNIFIED CALENDAR BILLING
         // Billing is always anchored to the 1st of every calendar month.
-        // First month = prorated from move-in date → last day of that month.
+        // First month = prorated from agreement signing date → last day of that month.
+        // tenant.startDate IS the agreement signing date (set in signAgreement()).
         const BILLING_ANCHOR = 1;
 
         const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : Number(tenant.rent);
-        const moveInDate = new Date(tenant.startDate);
+        const moveInDate = new Date(tenant.startDate); // = agreement signing date
 
         const profile = await tx.billingProfile.create({
             data: {

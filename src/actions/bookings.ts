@@ -675,7 +675,10 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                                 roomNumber: room.roomNumber,
                                 roomType: room.type,
                                 rent: existingB.amount,
-                                startDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                                // ── CRITICAL: startDate = agreement signing date (source of truth for all billing) ──
+                                startDate: existingB.agreementSignedAt
+                                    ? existingB.agreementSignedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                    : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
                                 status: 'ACTIVE',
                             }
                         });
@@ -713,8 +716,9 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                         const now = new Date();
                         const billingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-                        // Move-in date = today (actual check-in date, not the opted date)
-                        const moveInDate = now;
+                        // Move-in date = agreement signing date (NOT today, NOT the originally opted date)
+                        // This is what drives prorated rent: from the day they signed, not when they physically arrived
+                        const moveInDate = existingB.agreementSignedAt ? new Date(existingB.agreementSignedAt) : now;
                         const { firstMonthRent, proratedNote } = await import('@/utils/billingUtils');
                         const proratedRent = firstMonthRent(rentAmt, moveInDate);
                         const proratedNoteStr = proratedNote(moveInDate);
@@ -937,7 +941,12 @@ export async function checkInBooking(id: string) {
                 roomNumber: room.roomNumber,
                 roomType: room.type,
                 rent: booking.amount,
-                startDate: updatedBooking.onboardingDate || new Date().toLocaleDateString('en-IN'),
+                // ── CRITICAL: startDate = agreement signing date (source of truth for all billing) ──
+                // If tenant already signed before physical KYC (legacy), use that date.
+                // If not yet signed (new flow), will be updated when signAgreement() is called.
+                startDate: booking.agreementSignedAt
+                    ? booking.agreementSignedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : updatedBooking.onboardingDate || new Date().toLocaleDateString('en-IN'),
                 status: tenantStatus,
             }
         });
@@ -1236,6 +1245,20 @@ export async function signAgreement(id: string, agreementMeta?: {
             ...(agreementMeta?.agreementPdfUrl ? { agreementPdfUrl: agreementMeta.agreementPdfUrl } : {}),
         } as any
     });
+
+    // ─── CRITICAL: Set Tenant.startDate = Agreement Signing Date ─────────────
+    // Agreement signing date IS the stay start date. ALL rent calculations flow from this:
+    //   • Prorated first-month rent (days from signing → end of month)
+    //   • Billing anchor cycles
+    //   • Stay duration for settlements & move-out calculations
+    // This must be set HERE — at the moment of signing — not at check-in or payment.
+    if ((booking as any).tenantId) {
+        const signedDateStr = signedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        await prisma.tenant.update({
+            where: { id: (booking as any).tenantId },
+            data: { startDate: signedDateStr }
+        }).catch(e => console.error('[signAgreement] Failed to update tenant startDate:', e));
+    }
 
     // ─── Notify owner to countersign ─────────────────────────────────────────
     if (booking.propertyId) {
