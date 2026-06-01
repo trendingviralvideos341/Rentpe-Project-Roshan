@@ -407,7 +407,17 @@ export async function getOwnerDeposits() {
                 select: {
                     displayId: true, name: true, phone: true, email: true,
                     roomNumber: true, roomType: true, rent: true,
-                    booking: { select: { displayId: true, id: true, paymentMethod: true } }
+                    booking: {
+                        select: {
+                            displayId: true,
+                            id: true,
+                            paymentMethod: true,
+                            roomAssigned: true,
+                            payments: {
+                                where: { status: 'VERIFIED' }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -421,11 +431,25 @@ export async function getOwnerDeposits() {
         .map((p: any) => {
             const dep = p.deposit;
             const lastPayment = dep.payments?.[0];
-            const rawMethod = lastPayment?.method || (p.tenant as any)?.booking?.paymentMethod || null;
+            const bookingPayments = (p.tenant as any)?.booking?.payments || [];
+            
+            // Find deposit payment
+            const depositPayment = lastPayment;
+            // Fallback: joining payment (no invoiceId, no depositId)
+            const joiningPayment = depositPayment || bookingPayments.find(
+                (pay: any) => !pay.invoiceId && !pay.depositId && (pay.status === 'VERIFIED' || pay.status === 'SUCCESS')
+            );
+            // Fallback: any verified payment on the booking
+            const anyVerifiedPayment = joiningPayment || bookingPayments.find(
+                (pay: any) => pay.status === 'VERIFIED' || pay.status === 'SUCCESS'
+            );
+
+            const rawMethod = lastPayment?.method || anyVerifiedPayment?.method || (p.tenant as any)?.booking?.paymentMethod || null;
             const paymentMode = rawMethod === 'CASH' ? 'Cash'
                 : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
                 : rawMethod ? rawMethod
                 : null;
+
             return {
                 id: dep.id,
                 tenantId: p.tenantId,
@@ -439,6 +463,7 @@ export async function getOwnerDeposits() {
                 monthlyRent: p.monthlyRent,
                 bookingDisplayId: (p.tenant as any)?.booking?.displayId || '',
                 bookingId: (p.tenant as any)?.booking?.id || '',
+                roomAssigned: (p.tenant as any)?.booking?.roomAssigned || '',
                 amount: dep.amount,
                 collectedOn: dep.paidAt,
                 createdAt: dep.createdAt,
@@ -447,7 +472,7 @@ export async function getOwnerDeposits() {
                 deductionAmount: dep.deductionAmount,
                 deductionReason: dep.deductionReason,
                 paymentMethod: paymentMode,
-                razorpayId: lastPayment?.razorpayId || null,
+                razorpayId: anyVerifiedPayment?.razorpayId || anyVerifiedPayment?.razorpayOrderId || null,
             };
         })
         // ── Latest deposit first (by createdAt desc) ──

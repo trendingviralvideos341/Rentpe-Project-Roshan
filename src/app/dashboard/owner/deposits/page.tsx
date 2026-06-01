@@ -24,10 +24,17 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
     const isPaid = ['PAID', 'REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED'].includes(dep.status);
     const receiptNo = `DEP-${dep.id.slice(-6).toUpperCase()}`;
     const statusLabel = STATUS_CONFIG[dep.status]?.label || dep.status;
+    const depositInvoiceId = `DEP-INV-${dep.id.slice(-8).toUpperCase()}`;
+
+    // Extract room number and bed number from roomAssigned (format: "Room 102 — Bed A" or "102")
+    const roomAssigned = dep.roomAssigned || '';
+    const roomParts = roomAssigned.split('—');
+    const roomDisplay = roomParts[0]?.replace(/room/i, '').trim() || dep.roomNumber || '—';
+    const bedDisplay = roomParts[1]?.replace(/bed/i, '').trim() || null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-hidden print:shadow-none print:rounded-none">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-y-auto max-h-[92vh] print:shadow-none print:max-h-none animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Header */}
                 <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white relative overflow-hidden print:bg-indigo-700">
@@ -61,49 +68,63 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                 {/* Body */}
                 <div className="p-6 space-y-4">
 
+                    {/* Room + Bed details */}
+                    <div className="flex gap-3">
+                        <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Room</p>
+                            <p className="text-sm font-black text-slate-800">{roomDisplay}</p>
+                        </div>
+                        {bedDisplay && (
+                            <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Bed</p>
+                                <p className="text-sm font-black text-slate-800">{bedDisplay}</p>
+                            </div>
+                        )}
+                        {dep.roomType && (
+                            <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Type</p>
+                                <p className="text-sm font-black text-slate-800">{dep.roomType}</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Tenant Details */}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                    <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
                         <p className="font-black text-slate-900 text-base">{dep.tenantName}</p>
                         {dep.tenantPhone && <p className="text-sm text-slate-500">{dep.tenantPhone}</p>}
                         {dep.tenantEmail && <p className="text-sm text-slate-400">{dep.tenantEmail}</p>}
-                        <div className="flex flex-wrap gap-4 pt-1">
-                            <div>
-                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Room</p>
-                                <p className="text-sm font-black text-slate-700">{dep.roomNumber || '—'}</p>
-                            </div>
-                            {dep.roomType && (
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Type</p>
-                                    <p className="text-sm font-black text-slate-700">{dep.roomType}</p>
-                                </div>
-                            )}
-                        </div>
                     </div>
 
                     {/* Reference IDs */}
                     <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-teal-500 mb-1">Deposit Invoice ID</p>
+                            <p className="text-xs font-mono font-black text-teal-700">{depositInvoiceId}</p>
+                        </div>
                         {dep.bookingDisplayId && (
                             <div className="bg-slate-50 rounded-xl p-3">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
                                 <p className="text-xs font-mono font-black text-slate-700">{dep.bookingDisplayId}</p>
                             </div>
                         )}
-                        {dep.tenantDisplayId && (
-                            <div className="bg-slate-50 rounded-xl p-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
-                                <p className="text-xs font-mono font-black text-slate-700">{dep.tenantDisplayId}</p>
-                            </div>
-                        )}
                     </div>
 
-                    {/* Transaction ID */}
-                    {dep.razorpayId && (
-                        <div className="bg-indigo-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Transaction ID (Razorpay)</p>
-                            <p className="text-xs font-mono font-bold text-indigo-700 break-all">{dep.razorpayId}</p>
+                    {/* Tenant ID */}
+                    {dep.tenantDisplayId && (
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
+                            <p className="text-xs font-mono font-black text-slate-700">{dep.tenantDisplayId}</p>
                         </div>
                     )}
+
+                    {/* Transaction ID */}
+                    <div className={`rounded-xl p-3 ${dep.razorpayId ? 'bg-indigo-50 border border-indigo-100' : 'bg-amber-50 border border-amber-100'}`}>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${dep.razorpayId ? 'text-indigo-400' : 'text-amber-500'}`}>Transaction ID (Razorpay)</p>
+                        <p className={`text-xs font-mono font-bold break-all ${dep.razorpayId ? 'text-indigo-700' : 'text-amber-600 italic'}`}>
+                            {dep.razorpayId || 'Pending / Not yet captured'}
+                        </p>
+                    </div>
 
                     {/* Payment Breakdown */}
                     <div className="space-y-2">
