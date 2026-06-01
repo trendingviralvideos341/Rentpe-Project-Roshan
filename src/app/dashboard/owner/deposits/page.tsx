@@ -3,16 +3,151 @@
 import { useEffect, useState, useTransition } from 'react';
 import { getOwnerDeposits, updateDepositStatus } from '@/actions/ownerRentCollection';
 import { toast } from 'sonner';
-import { Shield, Loader2, X, AlertCircle } from 'lucide-react';
+import { Shield, Loader2, X, AlertCircle, Receipt, Download, CheckCircle2, Clock } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-    PENDING:              { label: 'Pending Collection',cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-    PAID:                 { label: 'Held',             cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-    REFUND_PENDING:       { label: 'Refund Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-    REFUNDED:             { label: 'Refunded',         cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    PARTIALLY_REFUNDED:   { label: 'Part Refunded',    cls: 'bg-teal-100 text-teal-700 border-teal-200' },
-    FORFEITED:            { label: 'Forfeited',        cls: 'bg-red-100 text-red-700 border-red-200' },
+    PENDING:              { label: 'Pending Collection', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+    PAID:                 { label: 'Held',               cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+    REFUND_PENDING:       { label: 'Refund Pending',     cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+    REFUNDED:             { label: 'Refunded',           cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    PARTIALLY_REFUNDED:   { label: 'Part Refunded',      cls: 'bg-teal-100 text-teal-700 border-teal-200' },
+    FORFEITED:            { label: 'Forfeited',          cls: 'bg-red-100 text-red-700 border-red-200' },
 };
+
+function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
+    const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+    const now = new Date();
+    const collectedDate = dep.collectedOn
+        ? new Date(dep.collectedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+        : '—';
+
+    const payMethod = dep.paymentMethod
+        ? dep.paymentMethod === 'CASH' ? 'Cash' : dep.paymentMethod === 'RAZORPAY' ? 'Online (Razorpay)' : dep.paymentMethod
+        : dep.status === 'PAID' ? 'Cash / Online' : '—';
+
+    const receiptNo = `DEP-${dep.id.slice(-6).toUpperCase()}`;
+
+    const isPaid   = ['PAID','REFUNDED','PARTIALLY_REFUNDED','FORFEITED'].includes(dep.status);
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+                {/* Receipt Header */}
+                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
+                    <div className="absolute -left-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full" />
+                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10">
+                        <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-3 mb-3 relative z-10">
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <Receipt className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Security Deposit Receipt</p>
+                            <p className="font-black text-lg">{receiptNo}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 relative z-10">
+                        {isPaid ? (
+                            <span className="flex items-center gap-1.5 bg-emerald-500/30 border border-emerald-400/40 text-emerald-100 text-xs font-black px-3 py-1 rounded-full">
+                                <CheckCircle2 className="w-3 h-3" /> {STATUS_CONFIG[dep.status]?.label || dep.status}
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1.5 bg-amber-500/30 border border-amber-400/40 text-amber-100 text-xs font-black px-3 py-1 rounded-full">
+                                <Clock className="w-3 h-3" /> Pending Collection
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Receipt Body */}
+                <div className="p-6 space-y-4">
+                    {/* Tenant Info */}
+                    <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
+                        <p className="font-black text-slate-900 text-base">{dep.tenantName}</p>
+                        {dep.tenantPhone && <p className="text-sm text-slate-500">{dep.tenantPhone}</p>}
+                        {dep.tenantEmail && <p className="text-sm text-slate-400">{dep.tenantEmail}</p>}
+                        <div className="flex gap-4 pt-1">
+                            <div>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Room</p>
+                                <p className="text-sm font-black text-slate-700">{dep.roomNumber || '—'}</p>
+                            </div>
+                            {dep.roomType && (
+                                <div>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Type</p>
+                                    <p className="text-sm font-black text-slate-700">{dep.roomType}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Payment Breakdown */}
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Breakdown</p>
+                        <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <div>
+                                    <p className="text-sm font-black text-slate-800">Security Deposit</p>
+                                    <p className="text-xs text-slate-400">One-time refundable deposit</p>
+                                </div>
+                                <p className="font-black text-slate-900">{fmt(dep.amount)}</p>
+                            </div>
+                            {dep.monthlyRent && (
+                                <div className="flex justify-between items-center px-4 py-3 bg-indigo-50/50">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-800">First Month Rent</p>
+                                        <p className="text-xs text-slate-400">Paid at joining</p>
+                                    </div>
+                                    <p className="font-black text-indigo-700">{fmt(dep.monthlyRent)}</p>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
+                                <p className="text-sm font-black text-slate-600">Total Collected at Joining</p>
+                                <p className="font-black text-lg text-slate-900">{fmt(dep.amount + (dep.monthlyRent || 0))}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Meta */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Date Collected</p>
+                            <p className="text-sm font-black text-slate-700">{collectedDate}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
+                            <p className="text-sm font-black text-slate-700">{payMethod}</p>
+                        </div>
+                    </div>
+
+                    {/* Razorpay ID if available */}
+                    {dep.razorpayId && (
+                        <div className="bg-indigo-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Razorpay Transaction ID</p>
+                            <p className="text-xs font-mono font-bold text-indigo-700">{dep.razorpayId}</p>
+                        </div>
+                    )}
+
+                    {/* Refund info if applicable */}
+                    {dep.refundAmount && (
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Refund Processed</p>
+                            <p className="font-black text-emerald-700">{fmt(dep.refundAmount)}</p>
+                            {dep.deductionReason && <p className="text-xs text-emerald-600 mt-1">{dep.deductionReason}</p>}
+                        </div>
+                    )}
+
+                    {/* Footer note */}
+                    <p className="text-center text-xs text-slate-300 font-medium pt-2">
+                        Generated by RentPe • {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function DepositsPage() {
     const [data, setData] = useState<any>(null);
@@ -22,6 +157,7 @@ export default function DepositsPage() {
     const [refundAmount, setRefundAmount] = useState('');
     const [reason, setReason] = useState('');
     const [isPending, startTransition] = useTransition();
+    const [receiptDep, setReceiptDep] = useState<any>(null);
 
     const reload = () => {
         setLoading(true);
@@ -71,7 +207,7 @@ export default function DepositsPage() {
                     <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
                         <Shield className="w-8 h-8" /> Security Deposits
                     </h1>
-                    <p className="text-indigo-200 text-sm font-medium mt-1">Manage all tenant security deposits</p>
+                    <p className="text-indigo-200 text-sm font-medium mt-1">Manage all tenant security deposits · Latest first</p>
                 </div>
             </div>
 
@@ -80,7 +216,7 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-3 gap-3">
                     {[
                         { label: 'Total Deposits Held', val: fmt(summary.totalHeld), sub: `${deposits.filter((d: any) => d.status === 'PAID').length} active` },
-                        { label: 'Pending Refund', val: `${summary.refundPending}`, sub: 'need processing' },
+                        { label: 'Pending Refund',      val: `${summary.refundPending}`, sub: 'need processing' },
                         { label: 'Refunded This Month', val: fmt(summary.refundedThisMonth), sub: 'processed' },
                     ].map(card => (
                         <div key={card.label} className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 text-center">
@@ -93,8 +229,9 @@ export default function DepositsPage() {
 
                 {/* Table */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                    <div className="p-5 border-b border-slate-100">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                         <h2 className="font-black text-slate-900">All Security Deposits</h2>
+                        <span className="text-xs text-slate-400 font-medium">Newest first</span>
                     </div>
 
                     {deposits.length === 0 ? (
@@ -104,20 +241,25 @@ export default function DepositsPage() {
                         </div>
                     ) : (
                         <>
+                            {/* Desktop */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-slate-100 bg-slate-50/50">
-                                            {['Tenant', 'Room', 'Deposit Amount', 'Status', 'Action'].map(h => (
+                                            {['#', 'Tenant', 'Room', 'Deposit Amount', 'Date', 'Status', 'Action'].map(h => (
                                                 <th key={h} className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {deposits.map((dep: any) => {
+                                        {deposits.map((dep: any, idx: number) => {
                                             const sc = STATUS_CONFIG[dep.status] || STATUS_CONFIG.PENDING;
+                                            const collDate = dep.collectedOn
+                                                ? new Date(dep.collectedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                                : '—';
                                             return (
                                                 <tr key={dep.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-5 py-4 text-xs font-black text-slate-300">#{deposits.length - idx}</td>
                                                     <td className="px-5 py-4">
                                                         <p className="font-black text-slate-900 text-sm">{dep.tenantName}</p>
                                                         <p className="text-xs text-slate-400">{dep.tenantPhone}</p>
@@ -129,29 +271,41 @@ export default function DepositsPage() {
                                                             <p className="text-xs text-emerald-600">Refund: ₹{dep.refundAmount.toLocaleString('en-IN')}</p>
                                                         )}
                                                     </td>
+                                                    <td className="px-5 py-4 text-xs text-slate-500 font-medium">{collDate}</td>
                                                     <td className="px-5 py-4">
                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase ${sc.cls}`}>
                                                             {sc.label}
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-4">
-                                                        {dep.status === 'PAID' && (
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => { setSelected(dep); setActionType('REFUNDED'); setRefundAmount(String(dep.amount)); }}
-                                                                    className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-black rounded-lg hover:bg-emerald-700 transition-all">
-                                                                    Refund
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => { setSelected(dep); setActionType('FORFEITED'); }}
-                                                                    className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-black rounded-lg hover:bg-red-100 transition-all border border-red-200">
-                                                                    Forfeit
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        {['REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED'].includes(dep.status) && (
-                                                            <span className="text-xs text-slate-400 font-medium">Processed</span>
-                                                        )}
+                                                        <div className="flex gap-2 flex-wrap">
+                                                            {/* Receipt button — always visible */}
+                                                            <button
+                                                                onClick={() => setReceiptDep(dep)}
+                                                                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-black rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 flex items-center gap-1"
+                                                            >
+                                                                <Receipt className="w-3 h-3" /> Receipt
+                                                            </button>
+                                                            {dep.status === 'PAID' && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => { setSelected(dep); setActionType('REFUNDED'); setRefundAmount(String(dep.amount)); }}
+                                                                        className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-black rounded-lg hover:bg-emerald-700 transition-all"
+                                                                    >
+                                                                        Refund
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { setSelected(dep); setActionType('FORFEITED'); }}
+                                                                        className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-black rounded-lg hover:bg-red-100 transition-all border border-red-200"
+                                                                    >
+                                                                        Forfeit
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                            {['REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED'].includes(dep.status) && (
+                                                                <span className="text-xs text-slate-400 font-medium self-center">Processed</span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -162,26 +316,37 @@ export default function DepositsPage() {
 
                             {/* Mobile */}
                             <div className="md:hidden divide-y divide-slate-100">
-                                {deposits.map((dep: any) => {
+                                {deposits.map((dep: any, idx: number) => {
                                     const sc = STATUS_CONFIG[dep.status] || STATUS_CONFIG.PENDING;
+                                    const collDate = dep.collectedOn
+                                        ? new Date(dep.collectedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                        : '—';
                                     return (
                                         <div key={dep.id} className="p-4 space-y-2">
-                                            <div className="flex justify-between">
+                                            <div className="flex justify-between items-start">
                                                 <div>
                                                     <p className="font-black text-slate-900">{dep.tenantName}</p>
-                                                    <p className="text-xs text-slate-400">Room {dep.roomNumber}</p>
+                                                    <p className="text-xs text-slate-400">Room {dep.roomNumber} · {collDate}</p>
                                                 </div>
                                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${sc.cls} h-fit`}>{sc.label}</span>
                                             </div>
                                             <p className="font-black text-slate-800">₹{dep.amount.toLocaleString('en-IN')}</p>
-                                            {dep.status === 'PAID' && (
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => { setSelected(dep); setActionType('REFUNDED'); setRefundAmount(String(dep.amount)); }}
-                                                        className="flex-1 py-2 bg-emerald-600 text-white text-xs font-black rounded-xl">Refund</button>
-                                                    <button onClick={() => { setSelected(dep); setActionType('FORFEITED'); }}
-                                                        className="flex-1 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-black rounded-xl">Forfeit</button>
-                                                </div>
-                                            )}
+                                            <div className="flex gap-2 flex-wrap">
+                                                <button
+                                                    onClick={() => setReceiptDep(dep)}
+                                                    className="flex-1 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs font-black rounded-xl flex items-center justify-center gap-1"
+                                                >
+                                                    <Receipt className="w-3 h-3" /> Receipt
+                                                </button>
+                                                {dep.status === 'PAID' && (
+                                                    <>
+                                                        <button onClick={() => { setSelected(dep); setActionType('REFUNDED'); setRefundAmount(String(dep.amount)); }}
+                                                            className="flex-1 py-2 bg-emerald-600 text-white text-xs font-black rounded-xl">Refund</button>
+                                                        <button onClick={() => { setSelected(dep); setActionType('FORFEITED'); }}
+                                                            className="flex-1 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-black rounded-xl">Forfeit</button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -191,7 +356,12 @@ export default function DepositsPage() {
                 </div>
             </div>
 
-            {/* Action Modal */}
+            {/* Receipt Modal */}
+            {receiptDep && (
+                <ReceiptModal dep={receiptDep} onClose={() => setReceiptDep(null)} />
+            )}
+
+            {/* Refund / Forfeit Modal */}
             {selected && actionType && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">

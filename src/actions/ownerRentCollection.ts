@@ -398,9 +398,13 @@ export async function getOwnerDeposits() {
     const profiles = await prisma.billingProfile.findMany({
         where: { propertyId: { in: propertyIds } },
         include: {
-            deposit: true,
+            deposit: {
+                include: {
+                    payments: { orderBy: { date: 'desc' }, take: 1 }
+                }
+            },
             tenant: {
-                select: { name: true, phone: true, email: true, roomNumber: true, roomType: true }
+                select: { name: true, phone: true, email: true, roomNumber: true, roomType: true, rent: true }
             }
         }
     });
@@ -412,21 +416,33 @@ export async function getOwnerDeposits() {
         .filter((p: any) => p.deposit)
         .map((p: any) => {
             const dep = p.deposit;
+            const lastPayment = dep.payments?.[0];
             return {
                 id: dep.id,
                 tenantId: p.tenantId,
                 tenantName: p.tenant?.name || 'Unknown',
                 tenantPhone: p.tenant?.phone || '',
+                tenantEmail: p.tenant?.email || '',
                 propertyId: p.propertyId,
                 roomNumber: p.tenant?.roomNumber || '',
                 roomType: p.tenant?.roomType || '',
+                monthlyRent: p.monthlyRent,
                 amount: dep.amount,
                 collectedOn: dep.paidAt,
+                createdAt: dep.createdAt,
                 status: dep.status || 'PENDING',
                 refundAmount: dep.refundAmount,
                 deductionAmount: dep.deductionAmount,
                 deductionReason: dep.deductionReason,
+                paymentMethod: lastPayment?.method || null,
+                razorpayId: lastPayment?.razorpayId || null,
             };
+        })
+        // ── Latest deposit first (by createdAt desc) ──
+        .sort((a: any, b: any) => {
+            const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return db - da;
         });
 
     const totalHeld = deposits.filter(d => d.status === 'PAID').reduce((s: number, d: any) => s + d.amount, 0);
