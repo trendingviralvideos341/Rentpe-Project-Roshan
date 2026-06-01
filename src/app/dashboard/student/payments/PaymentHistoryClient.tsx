@@ -686,7 +686,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                             rel="noreferrer"
                                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all hover:shadow-md"
                                                         >
-                                                            <FileText className="w-3 h-3" /> Download
+                                                            <FileText className="w-3 h-3" /> Receipt
                                                         </a>
                                                     ) : (
                                                         <Minus className="w-3 h-3 text-slate-200 inline" />
@@ -728,7 +728,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                     rel="noreferrer"
                                                     className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-100"
                                                 >
-                                                    <FileText className="w-3 h-3" /> PDF
+                                                    <FileText className="w-3 h-3" /> Receipt
                                                 </a>
                                             )}
                                         </div>
