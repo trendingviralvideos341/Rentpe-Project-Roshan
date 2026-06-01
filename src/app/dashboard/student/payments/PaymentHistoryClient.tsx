@@ -29,6 +29,7 @@ type BookingEntry = {
         paymentMethod: string | null; amount: number; depositAmount: number;
         roomAssigned: string | null; paymentStatus: string;
         activeAt: Date | string | null; completedAt: Date | string | null;
+        guestName: string; guestEmail: string | null; guestPhone: string | null;
     };
     invoices: Invoice[];
     rawPayments: RawPayment[];
@@ -104,8 +105,8 @@ function PaymentTypeBadge({ type }: { type: string }) {
 }
 
 // ─── Deposit Receipt Modal ────────────────────────────────────────────────────
-function DepositReceiptModal({ entry, booking, depositInfo, onClose }: {
-    entry: any; booking: any; depositInfo: any; onClose: () => void;
+function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
+    booking: any; depositInfo: any; rawPayments: RawPayment[]; onClose: () => void;
 }) {
     const now = new Date();
     const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
@@ -115,7 +116,16 @@ function DepositReceiptModal({ entry, booking, depositInfo, onClose }: {
             ? new Date(booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
             : '—';
     const isPaid = depositInfo?.status === 'PAID';
-    const paymentMode = booking?.paymentMethod === 'CASH' ? 'Cash' : booking?.paymentMethod === 'ONLINE' ? 'Online (Razorpay)' : 'Online';
+
+    // Find the joining payment (no invoiceId, no depositId, VERIFIED/SUCCESS) for transaction ID + method
+    const joiningPayment = rawPayments.find(
+        p => !p.invoiceId && !p.depositId && (p.status === 'VERIFIED' || p.status === 'SUCCESS')
+    );
+    const txId = joiningPayment?.razorpayId || joiningPayment?.razorpayOrderId || null;
+    const rawMethod = joiningPayment?.method || booking?.paymentMethod || null;
+    const paymentMode = rawMethod === 'CASH' ? 'Cash'
+        : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
+        : rawMethod ? rawMethod : '—';
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -147,26 +157,39 @@ function DepositReceiptModal({ entry, booking, depositInfo, onClose }: {
                 <div className="p-6 space-y-4">
                     {/* Tenant */}
                     <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Billed To</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
                         <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
                         {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
                         {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
-                        {booking?.roomAssigned && (
-                            <p className="text-xs font-bold text-slate-500 pt-1">Room: {booking.roomAssigned}</p>
-                        )}
+                        <div className="flex flex-wrap gap-4 pt-1">
+                            {booking?.roomAssigned && (
+                                <div>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Room</p>
+                                    <p className="text-sm font-black text-slate-700">{booking.roomAssigned.split(' —')[0]?.trim()}</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Reference IDs */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Deposit Invoice</p>
+                            <p className="text-xs font-mono font-black text-slate-700">{receiptNo}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
                             <p className="text-xs font-mono font-black text-slate-700">{booking?.displayId || '—'}</p>
                         </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Property</p>
-                            <p className="text-xs font-bold text-slate-700 truncate">{booking?.propertyName || '—'}</p>
-                        </div>
                     </div>
+
+                    {/* Transaction ID */}
+                    {txId && (
+                        <div className="bg-indigo-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Transaction ID (Razorpay)</p>
+                            <p className="text-xs font-mono font-bold text-indigo-700 break-all">{txId}</p>
+                        </div>
+                    )}
 
                     {/* Breakdown */}
                     <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
@@ -195,7 +218,7 @@ function DepositReceiptModal({ entry, booking, depositInfo, onClose }: {
                     {/* Meta */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Date Collected</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Paid On</p>
                             <p className="text-sm font-black text-slate-700">{paidDate}</p>
                         </div>
                         <div className="bg-slate-50 rounded-xl p-3">
@@ -209,7 +232,7 @@ function DepositReceiptModal({ entry, booking, depositInfo, onClose }: {
 
                     <div className="flex gap-3 print:hidden">
                         <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            <Printer className="w-4 h-4" /> Print / PDF
+                            <Printer className="w-4 h-4" /> Download / Print
                         </button>
                         <button onClick={onClose} className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-sm rounded-2xl transition-all">
                             Close
@@ -683,9 +706,9 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
             {/* Deposit Receipt Modal */}
             {depositReceiptOpen && booking && depositInfo && (
                 <DepositReceiptModal
-                    entry={ledgerRows.find(r => r.type === 'DEPOSIT')}
                     booking={booking}
                     depositInfo={depositInfo}
+                    rawPayments={rawPayments}
                     onClose={() => setDepositReceiptOpen(false)}
                 />
             )}

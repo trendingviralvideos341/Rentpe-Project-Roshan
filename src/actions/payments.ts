@@ -374,6 +374,9 @@ export async function getAllStudentBookingsWithPayments() {
             paymentStatus: true,
             activeAt: true,
             completedAt: true,
+            guestName: true,
+            guestEmail: true,
+            guestPhone: true,
         }
     });
 
@@ -420,6 +423,9 @@ export async function getAllStudentBookingsWithPayments() {
                 paymentStatus: b.paymentStatus,
                 activeAt: b.activeAt,
                 completedAt: b.completedAt,
+                guestName: b.guestName,
+                guestEmail: b.guestEmail,
+                guestPhone: b.guestPhone,
             },
             invoices: invoices.map(inv => ({
                 id: inv.id,

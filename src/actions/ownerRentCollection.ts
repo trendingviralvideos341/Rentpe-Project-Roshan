@@ -407,7 +407,7 @@ export async function getOwnerDeposits() {
                 select: {
                     displayId: true, name: true, phone: true, email: true,
                     roomNumber: true, roomType: true, rent: true,
-                    booking: { select: { displayId: true, id: true } }
+                    booking: { select: { displayId: true, id: true, paymentMethod: true } }
                 }
             }
         }
@@ -421,11 +421,11 @@ export async function getOwnerDeposits() {
         .map((p: any) => {
             const dep = p.deposit;
             const lastPayment = dep.payments?.[0];
-            const rawMethod = lastPayment?.method || null;
+            const rawMethod = lastPayment?.method || (p.tenant as any)?.booking?.paymentMethod || null;
             const paymentMode = rawMethod === 'CASH' ? 'Cash'
                 : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
                 : rawMethod ? rawMethod
-                : dep.status === 'PAID' ? 'Cash' : null;
+                : null;
             return {
                 id: dep.id,
                 tenantId: p.tenantId,
