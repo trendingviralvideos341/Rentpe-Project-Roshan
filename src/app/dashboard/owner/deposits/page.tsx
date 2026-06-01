@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { getOwnerDeposits, updateDepositStatus } from '@/actions/ownerRentCollection';
 import { toast } from 'sonner';
-import { Shield, Loader2, X, AlertCircle, Receipt, Download, CheckCircle2, Clock } from 'lucide-react';
+import { Shield, Loader2, X, AlertCircle, Receipt, Printer, CheckCircle2, Clock } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
     PENDING:              { label: 'Pending Collection', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
@@ -21,27 +21,24 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
         ? new Date(dep.collectedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
         : '—';
 
-    const payMethod = dep.paymentMethod
-        ? dep.paymentMethod === 'CASH' ? 'Cash' : dep.paymentMethod === 'RAZORPAY' ? 'Online (Razorpay)' : dep.paymentMethod
-        : dep.status === 'PAID' ? 'Cash / Online' : '—';
-
+    const isPaid = ['PAID', 'REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED'].includes(dep.status);
     const receiptNo = `DEP-${dep.id.slice(-6).toUpperCase()}`;
-
-    const isPaid   = ['PAID','REFUNDED','PARTIALLY_REFUNDED','FORFEITED'].includes(dep.status);
+    const statusLabel = STATUS_CONFIG[dep.status]?.label || dep.status;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
-                {/* Receipt Header */}
-                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white relative overflow-hidden">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-hidden print:shadow-none print:rounded-none">
+
+                {/* Header */}
+                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white relative overflow-hidden print:bg-indigo-700">
                     <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
                     <div className="absolute -left-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full" />
-                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10">
+                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10 print:hidden">
                         <X className="w-4 h-4" />
                     </button>
                     <div className="flex items-center gap-3 mb-3 relative z-10">
                         <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <Receipt className="w-5 h-5" />
+                            <Shield className="w-5 h-5" />
                         </div>
                         <div>
                             <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Security Deposit Receipt</p>
@@ -51,7 +48,7 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                     <div className="flex items-center gap-2 relative z-10">
                         {isPaid ? (
                             <span className="flex items-center gap-1.5 bg-emerald-500/30 border border-emerald-400/40 text-emerald-100 text-xs font-black px-3 py-1 rounded-full">
-                                <CheckCircle2 className="w-3 h-3" /> {STATUS_CONFIG[dep.status]?.label || dep.status}
+                                <CheckCircle2 className="w-3 h-3" /> {statusLabel}
                             </span>
                         ) : (
                             <span className="flex items-center gap-1.5 bg-amber-500/30 border border-amber-400/40 text-amber-100 text-xs font-black px-3 py-1 rounded-full">
@@ -61,15 +58,16 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                     </div>
                 </div>
 
-                {/* Receipt Body */}
+                {/* Body */}
                 <div className="p-6 space-y-4">
-                    {/* Tenant Info */}
+
+                    {/* Tenant Details */}
                     <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
                         <p className="font-black text-slate-900 text-base">{dep.tenantName}</p>
                         {dep.tenantPhone && <p className="text-sm text-slate-500">{dep.tenantPhone}</p>}
                         {dep.tenantEmail && <p className="text-sm text-slate-400">{dep.tenantEmail}</p>}
-                        <div className="flex gap-4 pt-1">
+                        <div className="flex flex-wrap gap-4 pt-1">
                             <div>
                                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Room</p>
                                 <p className="text-sm font-black text-slate-700">{dep.roomNumber || '—'}</p>
@@ -83,6 +81,30 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                         </div>
                     </div>
 
+                    {/* Reference IDs */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {dep.bookingDisplayId && (
+                            <div className="bg-slate-50 rounded-xl p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
+                                <p className="text-xs font-mono font-black text-slate-700">{dep.bookingDisplayId}</p>
+                            </div>
+                        )}
+                        {dep.tenantDisplayId && (
+                            <div className="bg-slate-50 rounded-xl p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
+                                <p className="text-xs font-mono font-black text-slate-700">{dep.tenantDisplayId}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Transaction ID */}
+                    {dep.razorpayId && (
+                        <div className="bg-indigo-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Transaction ID (Razorpay)</p>
+                            <p className="text-xs font-mono font-bold text-indigo-700 break-all">{dep.razorpayId}</p>
+                        </div>
+                    )}
+
                     {/* Payment Breakdown */}
                     <div className="space-y-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Breakdown</p>
@@ -94,7 +116,7 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                                 </div>
                                 <p className="font-black text-slate-900">{fmt(dep.amount)}</p>
                             </div>
-                            {dep.monthlyRent && (
+                            {dep.monthlyRent > 0 && (
                                 <div className="flex justify-between items-center px-4 py-3 bg-indigo-50/50">
                                     <div>
                                         <p className="text-sm font-black text-slate-800">First Month Rent</p>
@@ -110,7 +132,7 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                         </div>
                     </div>
 
-                    {/* Payment Meta */}
+                    {/* Date + Payment Mode */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-slate-50 rounded-xl p-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Date Collected</p>
@@ -118,19 +140,11 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                         </div>
                         <div className="bg-slate-50 rounded-xl p-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
-                            <p className="text-sm font-black text-slate-700">{payMethod}</p>
+                            <p className="text-sm font-black text-slate-700">{dep.paymentMethod || '—'}</p>
                         </div>
                     </div>
 
-                    {/* Razorpay ID if available */}
-                    {dep.razorpayId && (
-                        <div className="bg-indigo-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Razorpay Transaction ID</p>
-                            <p className="text-xs font-mono font-bold text-indigo-700">{dep.razorpayId}</p>
-                        </div>
-                    )}
-
-                    {/* Refund info if applicable */}
+                    {/* Refund info */}
                     {dep.refundAmount && (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Refund Processed</p>
@@ -139,10 +153,25 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                         </div>
                     )}
 
-                    {/* Footer note */}
-                    <p className="text-center text-xs text-slate-300 font-medium pt-2">
-                        Generated by RentPe • {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <p className="text-center text-xs text-slate-300 font-medium">
+                        Generated by RentPe · {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 print:hidden">
+                        <button
+                            onClick={() => window.print()}
+                            className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all"
+                        >
+                            <Printer className="w-4 h-4" /> Print / Save PDF
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-2xl transition-all"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -161,10 +190,7 @@ export default function DepositsPage() {
 
     const reload = () => {
         setLoading(true);
-        getOwnerDeposits().then(d => {
-            setData(d);
-            setLoading(false);
-        });
+        getOwnerDeposits().then(d => { setData(d); setLoading(false); });
     };
 
     useEffect(() => { reload(); }, []);
@@ -178,14 +204,9 @@ export default function DepositsPage() {
                     reason,
                 });
                 toast.success(`Deposit ${actionType.toLowerCase()} successfully.`);
-                setSelected(null);
-                setActionType(null);
-                setRefundAmount('');
-                setReason('');
+                setSelected(null); setActionType(null); setRefundAmount(''); setReason('');
                 reload();
-            } catch (e: any) {
-                toast.error(e.message || 'Action failed');
-            }
+            } catch (e: any) { toast.error(e.message || 'Action failed'); }
         });
     };
 
@@ -200,7 +221,6 @@ export default function DepositsPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
-            {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 pt-10 pb-20 relative overflow-hidden">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 <div className="max-w-5xl mx-auto relative z-10">
@@ -216,7 +236,7 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-3 gap-3">
                     {[
                         { label: 'Total Deposits Held', val: fmt(summary.totalHeld), sub: `${deposits.filter((d: any) => d.status === 'PAID').length} active` },
-                        { label: 'Pending Refund',      val: `${summary.refundPending}`, sub: 'need processing' },
+                        { label: 'Pending Refund', val: `${summary.refundPending}`, sub: 'need processing' },
                         { label: 'Refunded This Month', val: fmt(summary.refundedThisMonth), sub: 'processed' },
                     ].map(card => (
                         <div key={card.label} className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 text-center">
@@ -246,8 +266,8 @@ export default function DepositsPage() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-slate-100 bg-slate-50/50">
-                                            {['#', 'Tenant', 'Room', 'Deposit Amount', 'Date', 'Status', 'Action'].map(h => (
-                                                <th key={h} className="text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
+                                            {['#', 'Tenant', 'Room', 'Deposit', 'Date', 'Mode', 'Status', 'Action'].map(h => (
+                                                <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -259,27 +279,24 @@ export default function DepositsPage() {
                                                 : '—';
                                             return (
                                                 <tr key={dep.id} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-5 py-4 text-xs font-black text-slate-300">#{deposits.length - idx}</td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="px-4 py-4 text-xs font-black text-slate-300">#{deposits.length - idx}</td>
+                                                    <td className="px-4 py-4">
                                                         <p className="font-black text-slate-900 text-sm">{dep.tenantName}</p>
                                                         <p className="text-xs text-slate-400">{dep.tenantPhone}</p>
+                                                        {dep.bookingDisplayId && <p className="text-[10px] font-mono text-slate-300">{dep.bookingDisplayId}</p>}
                                                     </td>
-                                                    <td className="px-5 py-4 text-sm font-bold text-slate-600">{dep.roomNumber}</td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="px-4 py-4 text-sm font-bold text-slate-600">{dep.roomNumber}</td>
+                                                    <td className="px-4 py-4">
                                                         <p className="font-black text-slate-900">₹{dep.amount.toLocaleString('en-IN')}</p>
-                                                        {dep.refundAmount && (
-                                                            <p className="text-xs text-emerald-600">Refund: ₹{dep.refundAmount.toLocaleString('en-IN')}</p>
-                                                        )}
+                                                        {dep.refundAmount && <p className="text-xs text-emerald-600">Refund: ₹{dep.refundAmount.toLocaleString('en-IN')}</p>}
                                                     </td>
-                                                    <td className="px-5 py-4 text-xs text-slate-500 font-medium">{collDate}</td>
-                                                    <td className="px-5 py-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase ${sc.cls}`}>
-                                                            {sc.label}
-                                                        </span>
+                                                    <td className="px-4 py-4 text-xs text-slate-500 font-medium whitespace-nowrap">{collDate}</td>
+                                                    <td className="px-4 py-4 text-xs font-bold text-slate-500">{dep.paymentMethod || '—'}</td>
+                                                    <td className="px-4 py-4">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase ${sc.cls}`}>{sc.label}</span>
                                                     </td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="px-4 py-4">
                                                         <div className="flex gap-2 flex-wrap">
-                                                            {/* Receipt button — always visible */}
                                                             <button
                                                                 onClick={() => setReceiptDep(dep)}
                                                                 className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-black rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 flex items-center gap-1"
@@ -291,15 +308,11 @@ export default function DepositsPage() {
                                                                     <button
                                                                         onClick={() => { setSelected(dep); setActionType('REFUNDED'); setRefundAmount(String(dep.amount)); }}
                                                                         className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-black rounded-lg hover:bg-emerald-700 transition-all"
-                                                                    >
-                                                                        Refund
-                                                                    </button>
+                                                                    >Refund</button>
                                                                     <button
                                                                         onClick={() => { setSelected(dep); setActionType('FORFEITED'); }}
                                                                         className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-black rounded-lg hover:bg-red-100 transition-all border border-red-200"
-                                                                    >
-                                                                        Forfeit
-                                                                    </button>
+                                                                    >Forfeit</button>
                                                                 </>
                                                             )}
                                                             {['REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED'].includes(dep.status) && (
@@ -327,6 +340,7 @@ export default function DepositsPage() {
                                                 <div>
                                                     <p className="font-black text-slate-900">{dep.tenantName}</p>
                                                     <p className="text-xs text-slate-400">Room {dep.roomNumber} · {collDate}</p>
+                                                    {dep.paymentMethod && <p className="text-xs text-slate-400">{dep.paymentMethod}</p>}
                                                 </div>
                                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${sc.cls} h-fit`}>{sc.label}</span>
                                             </div>
@@ -357,9 +371,7 @@ export default function DepositsPage() {
             </div>
 
             {/* Receipt Modal */}
-            {receiptDep && (
-                <ReceiptModal dep={receiptDep} onClose={() => setReceiptDep(null)} />
-            )}
+            {receiptDep && <ReceiptModal dep={receiptDep} onClose={() => setReceiptDep(null)} />}
 
             {/* Refund / Forfeit Modal */}
             {selected && actionType && (
@@ -376,7 +388,7 @@ export default function DepositsPage() {
                         <div className="p-5 space-y-4">
                             <div className="bg-slate-50 rounded-2xl p-4">
                                 <p className="font-black text-slate-900">{selected.tenantName}</p>
-                                <p className="text-xs text-slate-500">Deposit Amount: ₹{selected.amount.toLocaleString('en-IN')}</p>
+                                <p className="text-xs text-slate-500">Deposit: ₹{selected.amount.toLocaleString('en-IN')}</p>
                             </div>
                             {actionType === 'REFUNDED' && (
                                 <div>
@@ -401,7 +413,7 @@ export default function DepositsPage() {
                                 </div>
                             )}
                             <button onClick={handleAction} disabled={isPending || (actionType === 'FORFEITED' && !reason.trim())}
-                                className={`w-full py-4 font-black text-sm rounded-2xl text-white disabled:opacity-50 transition-all shadow-lg ${actionType === 'REFUNDED' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-200' : 'bg-gradient-to-r from-red-600 to-rose-600 shadow-red-200'}`}>
+                                className={`w-full py-4 font-black text-sm rounded-2xl text-white disabled:opacity-50 transition-all shadow-lg ${actionType === 'REFUNDED' ? 'bg-gradient-to-r from-emerald-600 to-teal-600' : 'bg-gradient-to-r from-red-600 to-rose-600'}`}>
                                 {isPending ? 'Processing...' : (actionType === 'REFUNDED' ? `Confirm Refund ₹${parseFloat(refundAmount || '0').toLocaleString('en-IN')}` : 'Confirm Forfeit')}
                             </button>
                         </div>

@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import {
     FileText, CheckCircle2, Clock, AlertTriangle, Minus, TrendingUp,
     Calendar, Shield, IndianRupee, ChevronDown, Building2,
-    Tag, CreditCard, Home, ArrowLeft
+    Tag, CreditCard, Home, ArrowLeft, X, Printer
 } from "lucide-react";
 import Link from "next/link";
 
@@ -103,6 +103,124 @@ function PaymentTypeBadge({ type }: { type: string }) {
     );
 }
 
+// ─── Deposit Receipt Modal ────────────────────────────────────────────────────
+function DepositReceiptModal({ entry, booking, depositInfo, onClose }: {
+    entry: any; booking: any; depositInfo: any; onClose: () => void;
+}) {
+    const now = new Date();
+    const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
+    const paidDate = depositInfo?.paidAt
+        ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+        : booking?.activeAt
+            ? new Date(booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+            : '—';
+    const isPaid = depositInfo?.status === 'PAID';
+    const paymentMode = booking?.paymentMethod === 'CASH' ? 'Cash' : booking?.paymentMethod === 'ONLINE' ? 'Online (Razorpay)' : 'Online';
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-hidden print:shadow-none">
+                {/* Header */}
+                <div className="bg-gradient-to-br from-teal-600 to-indigo-700 p-6 text-white relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
+                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10 print:hidden">
+                        <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-3 mb-3 relative z-10">
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <Shield className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-teal-200">Security Deposit Receipt</p>
+                            <p className="font-black text-lg">{receiptNo}</p>
+                        </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full relative z-10 ${
+                        isPaid ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-100' : 'bg-amber-500/30 border border-amber-400/40 text-amber-100'
+                    }`}>
+                        {isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                        {isPaid ? 'Held by Owner' : 'Pending'}
+                    </span>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 space-y-4">
+                    {/* Tenant */}
+                    <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Billed To</p>
+                        <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
+                        {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
+                        {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
+                        {booking?.roomAssigned && (
+                            <p className="text-xs font-bold text-slate-500 pt-1">Room: {booking.roomAssigned}</p>
+                        )}
+                    </div>
+
+                    {/* Reference IDs */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
+                            <p className="text-xs font-mono font-black text-slate-700">{booking?.displayId || '—'}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Property</p>
+                            <p className="text-xs font-bold text-slate-700 truncate">{booking?.propertyName || '—'}</p>
+                        </div>
+                    </div>
+
+                    {/* Breakdown */}
+                    <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                        <div className="flex justify-between items-center px-4 py-3">
+                            <div>
+                                <p className="text-sm font-black text-slate-800">Security Deposit</p>
+                                <p className="text-xs text-slate-400">One-time refundable deposit</p>
+                            </div>
+                            <p className="font-black text-slate-900">₹{(depositInfo?.amount || 0).toLocaleString('en-IN')}</p>
+                        </div>
+                        {booking?.amount > 0 && (
+                            <div className="flex justify-between items-center px-4 py-3 bg-indigo-50/50">
+                                <div>
+                                    <p className="text-sm font-black text-slate-800">First Month Rent</p>
+                                    <p className="text-xs text-slate-400">Paid at joining</p>
+                                </div>
+                                <p className="font-black text-indigo-700">₹{(booking.amount || 0).toLocaleString('en-IN')}</p>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
+                            <p className="text-sm font-black text-slate-600">Total Collected at Joining</p>
+                            <p className="font-black text-lg text-slate-900">₹{((depositInfo?.amount || 0) + (booking?.amount || 0)).toLocaleString('en-IN')}</p>
+                        </div>
+                    </div>
+
+                    {/* Meta */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Date Collected</p>
+                            <p className="text-sm font-black text-slate-700">{paidDate}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
+                            <p className="text-sm font-black text-slate-700">{paymentMode}</p>
+                        </div>
+                    </div>
+
+                    <p className="text-xs text-center text-slate-400">This is a computer-generated receipt. Deposit is held by the owner and is refundable on vacating.</p>
+                    <p className="text-center text-xs text-slate-300">Generated by RentPe · {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+
+                    <div className="flex gap-3 print:hidden">
+                        <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
+                            <Printer className="w-4 h-4" /> Print / PDF
+                        </button>
+                        <button onClick={onClose} className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-sm rounded-2xl transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Client Component ─────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
@@ -110,6 +228,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     const defaultId = useMemo(() => findCurrentBooking(data), [data]);
     const [selectedId, setSelectedId] = useState<string | null>(defaultId);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [depositReceiptOpen, setDepositReceiptOpen] = useState(false);
 
     // Reset to default (current PG) on every mount / navigation
     useEffect(() => {
@@ -192,6 +311,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                 amount: depositInfo.amount,
                 status: depositInfo.status === 'PAID' ? 'SUCCESS' : depositInfo.status,
                 type: 'DEPOSIT',
+                receiptHref: 'DEPOSIT_MODAL',
             });
         }
 
@@ -487,7 +607,14 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                     <StatusBadge status={row.status} />
                                                 </td>
                                                 <td className="px-5 py-4 text-center">
-                                                    {row.receiptHref ? (
+                                                    {row.receiptHref === 'DEPOSIT_MODAL' ? (
+                                                        <button
+                                                            onClick={() => setDepositReceiptOpen(true)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-teal-100 transition-all"
+                                                        >
+                                                            <FileText className="w-3 h-3" /> Receipt
+                                                        </button>
+                                                    ) : row.receiptHref ? (
                                                         <a
                                                             href={row.receiptHref}
                                                             target="_blank"
@@ -522,7 +649,14 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                         </div>
                                         <div className="flex flex-col items-end gap-2 shrink-0">
                                             <span className="text-sm font-black text-slate-900">₹{row.amount.toLocaleString('en-IN')}</span>
-                                            {row.receiptHref && (
+                                            {row.receiptHref === 'DEPOSIT_MODAL' ? (
+                                                <button
+                                                    onClick={() => setDepositReceiptOpen(true)}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 text-teal-700 text-[10px] font-black uppercase rounded-lg border border-teal-100"
+                                                >
+                                                    <FileText className="w-3 h-3" /> Receipt
+                                                </button>
+                                            ) : row.receiptHref && (
                                                 <a
                                                     href={row.receiptHref}
                                                     target="_blank"
@@ -545,6 +679,16 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                     Receipts are generated automatically for paid invoices. For disputes, raise a ticket.
                 </p>
             </div>
+
+            {/* Deposit Receipt Modal */}
+            {depositReceiptOpen && booking && depositInfo && (
+                <DepositReceiptModal
+                    entry={ledgerRows.find(r => r.type === 'DEPOSIT')}
+                    booking={booking}
+                    depositInfo={depositInfo}
+                    onClose={() => setDepositReceiptOpen(false)}
+                />
+            )}
         </div>
     );
 }

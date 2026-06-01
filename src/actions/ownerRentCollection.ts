@@ -404,7 +404,11 @@ export async function getOwnerDeposits() {
                 }
             },
             tenant: {
-                select: { name: true, phone: true, email: true, roomNumber: true, roomType: true, rent: true }
+                select: {
+                    displayId: true, name: true, phone: true, email: true,
+                    roomNumber: true, roomType: true, rent: true,
+                    booking: { select: { displayId: true, id: true } }
+                }
             }
         }
     });
@@ -417,9 +421,15 @@ export async function getOwnerDeposits() {
         .map((p: any) => {
             const dep = p.deposit;
             const lastPayment = dep.payments?.[0];
+            const rawMethod = lastPayment?.method || null;
+            const paymentMode = rawMethod === 'CASH' ? 'Cash'
+                : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
+                : rawMethod ? rawMethod
+                : dep.status === 'PAID' ? 'Cash' : null;
             return {
                 id: dep.id,
                 tenantId: p.tenantId,
+                tenantDisplayId: p.tenant?.displayId || '',
                 tenantName: p.tenant?.name || 'Unknown',
                 tenantPhone: p.tenant?.phone || '',
                 tenantEmail: p.tenant?.email || '',
@@ -427,6 +437,8 @@ export async function getOwnerDeposits() {
                 roomNumber: p.tenant?.roomNumber || '',
                 roomType: p.tenant?.roomType || '',
                 monthlyRent: p.monthlyRent,
+                bookingDisplayId: (p.tenant as any)?.booking?.displayId || '',
+                bookingId: (p.tenant as any)?.booking?.id || '',
                 amount: dep.amount,
                 collectedOn: dep.paidAt,
                 createdAt: dep.createdAt,
@@ -434,7 +446,7 @@ export async function getOwnerDeposits() {
                 refundAmount: dep.refundAmount,
                 deductionAmount: dep.deductionAmount,
                 deductionReason: dep.deductionReason,
-                paymentMethod: lastPayment?.method || null,
+                paymentMethod: paymentMode,
                 razorpayId: lastPayment?.razorpayId || null,
             };
         })
