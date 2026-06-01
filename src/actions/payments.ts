@@ -377,6 +377,9 @@ export async function getAllStudentBookingsWithPayments() {
             guestName: true,
             guestEmail: true,
             guestPhone: true,
+            agreementSigned: true,
+            agreementSignedAt: true,
+            moveInDate: true,
         }
     });
 
@@ -426,6 +429,9 @@ export async function getAllStudentBookingsWithPayments() {
                 guestName: b.guestName,
                 guestEmail: b.guestEmail,
                 guestPhone: b.guestPhone,
+                agreementSigned: b.agreementSigned,
+                agreementSignedAt: b.agreementSignedAt,
+                moveInDate: b.moveInDate,
             },
             invoices: invoices.map(inv => ({
                 id: inv.id,

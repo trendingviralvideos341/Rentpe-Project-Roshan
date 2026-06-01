@@ -30,6 +30,7 @@ type BookingEntry = {
         roomAssigned: string | null; paymentStatus: string;
         activeAt: Date | string | null; completedAt: Date | string | null;
         guestName: string; guestEmail: string | null; guestPhone: string | null;
+        agreementSigned: boolean; agreementSignedAt: Date | string | null; moveInDate: string | null;
     };
     invoices: Invoice[];
     rawPayments: RawPayment[];
@@ -113,9 +114,11 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
     const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
     const paidDate = depositInfo?.paidAt
         ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-        : booking?.activeAt
-            ? new Date(booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-            : '—';
+        : booking?.agreementSignedAt
+            ? new Date(booking.agreementSignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+            : booking?.activeAt
+                ? new Date(booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+                : '—';
     const isPaid = depositInfo?.status === 'PAID';
 
     // Find the deposit payment first (has depositId matching depositInfo.id)
@@ -695,7 +698,9 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                 id: `deposit-${depositInfo.id}`,
                 date: depositInfo.paidAt
                     ? new Date(depositInfo.paidAt)
-                    : booking?.activeAt ? new Date(booking.activeAt) : new Date(),
+                    : booking?.agreementSignedAt
+                        ? new Date(booking.agreementSignedAt)
+                        : booking?.activeAt ? new Date(booking.activeAt) : new Date(),
                 label: `Security Deposit — ${booking?.propertyName}`,
                 amount: depositInfo.amount,
                 status: depositInfo.status === 'PAID' ? 'SUCCESS' : depositInfo.status,
@@ -929,9 +934,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                         <span className={`font-bold ${booking.status === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-500'}`}>
                             {booking.status.replace(/_/g, ' ')}
                         </span>
-                        {booking.activeAt && (
-                            <span>Move-in: <span className="font-bold text-slate-700">{format(new Date(booking.activeAt), 'dd MMM yyyy')}</span></span>
-                        )}
+                        {(() => { const moveInDisplay = booking.agreementSignedAt || booking.activeAt; return moveInDisplay && (<span>Move-in: <span className="font-bold text-slate-700">{format(new Date(moveInDisplay), 'dd MMM yyyy')}</span></span>); })()}
                         {booking.completedAt && (
                             <span>Vacated: <span className="font-bold text-slate-700">{format(new Date(booking.completedAt), 'dd MMM yyyy')}</span></span>
                         )}
