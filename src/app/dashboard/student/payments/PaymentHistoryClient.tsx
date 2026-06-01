@@ -109,6 +109,7 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
     booking: any; depositInfo: any; rawPayments: RawPayment[]; onClose: () => void;
 }) {
     const now = new Date();
+    const depositInvoiceId = `DEP-INV-${depositInfo?.id?.slice(-8).toUpperCase() || 'XXXXXXXX'}`;
     const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
     const paidDate = depositInfo?.paidAt
         ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -117,19 +118,33 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
             : '—';
     const isPaid = depositInfo?.status === 'PAID';
 
-    // Find the joining payment (no invoiceId, no depositId, VERIFIED/SUCCESS) for transaction ID + method
-    const joiningPayment = rawPayments.find(
+    // Find the deposit payment first (has depositId matching depositInfo.id)
+    const depositPayment = rawPayments.find(
+        p => p.depositId === depositInfo?.id && (p.status === 'VERIFIED' || p.status === 'SUCCESS')
+    );
+    // Fallback: joining payment (no invoiceId, no depositId)
+    const joiningPayment = depositPayment || rawPayments.find(
         p => !p.invoiceId && !p.depositId && (p.status === 'VERIFIED' || p.status === 'SUCCESS')
     );
-    const txId = joiningPayment?.razorpayId || joiningPayment?.razorpayOrderId || null;
-    const rawMethod = joiningPayment?.method || booking?.paymentMethod || null;
+    // Also check any verified payment for this booking
+    const anyVerifiedPayment = joiningPayment || rawPayments.find(
+        p => p.status === 'VERIFIED' || p.status === 'SUCCESS'
+    );
+    const txId = anyVerifiedPayment?.razorpayId || anyVerifiedPayment?.razorpayOrderId || null;
+    const rawMethod = anyVerifiedPayment?.method || booking?.paymentMethod || null;
     const paymentMode = rawMethod === 'CASH' ? 'Cash'
         : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
         : rawMethod ? rawMethod : '—';
 
+    // Extract room number and bed number from roomAssigned (format: "Room 102 — Bed A" or "102")
+    const roomAssigned = booking?.roomAssigned || '';
+    const roomParts = roomAssigned.split('—');
+    const roomDisplay = roomParts[0]?.replace(/room/i, '').trim() || roomAssigned || '—';
+    const bedDisplay = roomParts[1]?.replace(/bed/i, '').trim() || null;
+
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-hidden print:shadow-none">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-y-auto max-h-[92vh] print:shadow-none print:max-h-none">
                 {/* Header */}
                 <div className="bg-gradient-to-br from-teal-600 to-indigo-700 p-6 text-white relative overflow-hidden">
                     <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
@@ -155,27 +170,35 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
 
                 {/* Body */}
                 <div className="p-6 space-y-4">
+                    {/* Room + Type strip at top */}
+                    {roomAssigned && (
+                        <div className="flex gap-3">
+                            <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Room</p>
+                                <p className="text-sm font-black text-slate-800">{roomDisplay}</p>
+                            </div>
+                            {bedDisplay && (
+                                <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Bed</p>
+                                    <p className="text-sm font-black text-slate-800">{bedDisplay}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Tenant */}
                     <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
                         <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
                         {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
                         {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
-                        <div className="flex flex-wrap gap-4 pt-1">
-                            {booking?.roomAssigned && (
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Room</p>
-                                    <p className="text-sm font-black text-slate-700">{booking.roomAssigned.split(' —')[0]?.trim()}</p>
-                                </div>
-                            )}
-                        </div>
                     </div>
 
                     {/* Reference IDs */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Deposit Invoice</p>
-                            <p className="text-xs font-mono font-black text-slate-700">{receiptNo}</p>
+                        <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-teal-500 mb-1">Deposit Invoice ID</p>
+                            <p className="text-xs font-mono font-black text-teal-700">{depositInvoiceId}</p>
                         </div>
                         <div className="bg-slate-50 rounded-xl p-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
@@ -183,13 +206,23 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
                         </div>
                     </div>
 
-                    {/* Transaction ID */}
-                    {txId && (
-                        <div className="bg-indigo-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Transaction ID (Razorpay)</p>
-                            <p className="text-xs font-mono font-bold text-indigo-700 break-all">{txId}</p>
+                    {/* Tenant ID */}
+                    {booking?.guestPhone && (
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
+                            <p className="text-xs font-mono font-black text-slate-700">
+                                {`RP-TN-${booking.guestPhone.replace(/\D/g, '').slice(-10)}`}
+                            </p>
                         </div>
                     )}
+
+                    {/* Transaction ID — always show, with fallback */}
+                    <div className={`rounded-xl p-3 ${txId ? 'bg-indigo-50 border border-indigo-100' : 'bg-amber-50 border border-amber-100'}`}>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${txId ? 'text-indigo-400' : 'text-amber-500'}`}>Transaction ID (Razorpay)</p>
+                        <p className={`text-xs font-mono font-bold break-all ${txId ? 'text-indigo-700' : 'text-amber-600 italic'}`}>
+                            {txId || 'Pending / Not yet captured'}
+                        </p>
+                    </div>
 
                     {/* Breakdown */}
                     <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
