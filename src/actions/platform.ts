@@ -205,15 +205,22 @@ export async function getFeeExemptions() {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     return await (prisma as any).feeExemption.findMany({
+        where: { status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' }
     });
 }
 
 export async function addFeeExemption(data: {
     userId?: string;
+    propertyId?: string;
     propertyName?: string;
-    exemptCustomer: boolean;
-    exemptOwner: boolean;
+    exemptCustomer?: boolean;
+    customStudentFee?: number | null;
+    customStudentFeeType?: string | null;
+    exemptOwner?: boolean;
+    exemptOnboardingFee?: boolean;
+    customOwnerFee?: number | null;
+    customOwnerFeeType?: string | null;
     reason: string;
 }) {
     const session = await getSession();
@@ -230,7 +237,7 @@ export async function addFeeExemption(data: {
         actionType: 'CREATE',
         entityType: 'ADMIN',
         entityId: exemption.id,
-        description: `Exemption added: ${data.propertyName || 'All PGs'} / ${data.userId || 'All Users'} — Customer: ${data.exemptCustomer}, Owner: ${data.exemptOwner}. Reason: ${data.reason}`,
+        description: `Fee exemption added: ${data.propertyName || 'All PGs'} / ${data.userId || 'All Users'}. Reason: ${data.reason}`,
     });
 
     revalidatePath('/dashboard/admin/platform-fees');
@@ -258,6 +265,44 @@ export async function removeFeeExemption(id: string) {
 
     revalidatePath('/dashboard/admin/platform-fees');
 }
+
+/** Get all registered/approved properties (for exemption property picker) */
+export async function getRegisteredPropertiesForExemption() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const properties = await prisma.property.findMany({
+        where: { status: { in: ['VERIFIED', 'ACTIVE', 'APPROVED'] } },
+        select: {
+            id: true, displayId: true, name: true, city: true,
+            status: true, createdAt: true, isVerified: true,
+            onboardingPaidAt: true,
+            owner: { select: { name: true, phone: true, email: true, displayId: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+    return properties;
+}
+
+/** Get all active students/tenants (for exemption student picker) */
+export async function getActiveStudentsForExemption() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const bookings = await prisma.booking.findMany({
+        where: { status: { in: ['ACTIVE', 'CONFIRMED', 'CHECKED_IN'] } },
+        select: {
+            id: true, displayId: true, propertyName: true,
+            guestName: true, guestPhone: true, guestEmail: true,
+            createdAt: true, activeAt: true,
+            user: { select: { id: true, name: true, phone: true, email: true, displayId: true } },
+            tenant: { select: { displayId: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+    return bookings;
+}
+
 
 // ── P8: Owner Razorpay Account Linking (DUMMY) ──
 export async function updateOwnerRazorpayAccount(accountId: string | null) {

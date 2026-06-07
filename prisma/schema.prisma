@@ -764,15 +764,23 @@ model PlatformFee {
 }
 
 model FeeExemption {
-  id             String    @id @default(uuid())
-  userId         String?
-  propertyName   String?
-  exemptCustomer Boolean   @default(false)
-  exemptOwner    Boolean   @default(false)
-  reason         String
-  status         String    @default("ACTIVE")
-  deletedAt      DateTime?
-  createdAt      DateTime  @default(now())
+  id                    String    @id @default(uuid())
+  userId                String?
+  propertyId            String?
+  propertyName          String?
+  // Student / Customer fees
+  exemptCustomer        Boolean   @default(false)
+  customStudentFee      Float?    // null = use global; 0 = hide fee from student; >0 = custom
+  customStudentFeeType  String?   // "FLAT" | "PERCENT"
+  // Owner fees
+  exemptOwner           Boolean   @default(false)
+  exemptOnboardingFee   Boolean   @default(false)
+  customOwnerFee        Float?    // null = use global; 0 = hide fee from owner; >0 = custom
+  customOwnerFeeType    String?   // "FLAT" | "PERCENT"
+  reason                String
+  status                String    @default("ACTIVE")
+  deletedAt             DateTime?
+  createdAt             DateTime  @default(now())
 }
 
 model OwnerOnboarding {

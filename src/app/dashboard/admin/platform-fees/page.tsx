@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getPlatformSettings, updatePlatformSettings, getPlatformFees, getPlatformChangeLogs, getFeeExemptions, addFeeExemption, removeFeeExemption } from "@/actions/platform";
+import { getPlatformSettings, updatePlatformSettings, getPlatformFees, getPlatformChangeLogs, getFeeExemptions, addFeeExemption, removeFeeExemption, getRegisteredPropertiesForExemption, getActiveStudentsForExemption } from "@/actions/platform";
 import { Shield, ToggleLeft, ToggleRight, IndianRupee, TrendingUp, RefreshCcw, Search, History, Database, Target } from "lucide-react";
 
 function calcFee(amount: number, flat: number, pct: number) {
@@ -31,23 +31,41 @@ export default function PlatformFeesPage() {
     const [ownerRentFeeFlat, setOwnerRentFeeFlat] = useState(9);
     const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
     const [exemptions, setExemptions] = useState<any[]>([]);
-    const [exPG, setExPG] = useState("");
-    const [exUserId, setExUserId] = useState("");
-    const [exCustomer, setExCustomer] = useState(false);
-    const [exOwner, setExOwner] = useState(false);
-    const [exReason, setExReason] = useState("");
-    const [allUsers, setAllUsers] = useState<any[]>([]);
+
+    // â”€â”€ NEW: Exemption panel state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [registeredProperties, setRegisteredProperties] = useState<any[]>([]);
+    const [activeStudents, setActiveStudents] = useState<any[]>([]);
+    const [pgSearch, setPgSearch] = useState("");
+    const [studentSearch, setStudentSearch] = useState("");
+    const [selectedPG, setSelectedPG] = useState<any>(null);
+    const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    // PG exemption config
+    const [pgExemptOwner, setPgExemptOwner] = useState(false);
+    const [pgExemptOnboarding, setPgExemptOnboarding] = useState(false);
+    const [pgOwnerFeeType, setPgOwnerFeeType] = useState<"FLAT"|"PERCENT">("FLAT");
+    const [pgOwnerFeeValue, setPgOwnerFeeValue] = useState<string>("");
+    const [pgReason, setPgReason] = useState("");
+    const [pgSaving, setPgSaving] = useState(false);
+    // Student exemption config
+    const [stuExemptStudent, setStuExemptStudent] = useState(false);
+    const [stuFeeType, setStuFeeType] = useState<"FLAT"|"PERCENT">("FLAT");
+    const [stuFeeValue, setStuFeeValue] = useState<string>("");
+    const [stuReason, setStuReason] = useState("");
+    const [stuSaving, setStuSaving] = useState(false);
+
     const [allPGs, setAllPGs] = useState<string[]>([]);
     const [exSaving, setExSaving] = useState(false);
 
     const fetchAll = async () => {
         setLoading(true);
         try {
-            const [s, f, l, ex] = await Promise.all([
+            const [s, f, l, ex, props, students] = await Promise.all([
                 getPlatformSettings(),
                 getPlatformFees(),
                 getPlatformChangeLogs(),
                 getFeeExemptions(),
+                getRegisteredPropertiesForExemption(),
+                getActiveStudentsForExemption(),
             ]);
             setSettings(s);
             setFeesEnabled(s.feesEnabled);
@@ -58,7 +76,8 @@ export default function PlatformFeesPage() {
             setFees(f);
             setChangeLogs(l);
             setExemptions(ex);
-            // Collect unique PGs from fee records
+            setRegisteredProperties(props);
+            setActiveStudents(students);
             const pgs = Array.from(new Set(f.map((fee: any) => fee.booking?.propertyName).filter(Boolean))) as string[];
             setAllPGs(pgs);
         } catch (e) { console.error(e); }
@@ -72,7 +91,7 @@ export default function PlatformFeesPage() {
         try {
             await updatePlatformSettings({ feesEnabled, allowCashPayment, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat });
             await fetchAll();
-            alert("✅ Platform fee settings saved successfully.");
+            alert("âœ… Platform fee settings saved successfully.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
         finally { setSaving(false); }
     };
@@ -100,13 +119,110 @@ export default function PlatformFeesPage() {
     const totalCustomerFees = filteredFees.reduce((s, f) => s + (f.customerFee || 0), 0);
     const totalOwnerFees = filteredFees.reduce((s, f) => s + (f.ownerFee || 0), 0);
 
+    // â”€â”€ PG search filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const filteredPGs = registeredProperties.filter(p => {
+        const q = pgSearch.toLowerCase();
+        if (!q) return true;
+        return (
+            p.name?.toLowerCase().includes(q) ||
+            p.displayId?.toLowerCase().includes(q) ||
+            p.owner?.phone?.includes(q) ||
+            p.owner?.name?.toLowerCase().includes(q) ||
+            p.id?.toLowerCase().includes(q)
+        );
+    });
+
+    // â”€â”€ Student search filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const filteredStudents = activeStudents.filter(b => {
+        const q = studentSearch.toLowerCase();
+        if (!q) return true;
+        return (
+            b.guestName?.toLowerCase().includes(q) ||
+            b.guestPhone?.includes(q) ||
+            b.displayId?.toLowerCase().includes(q) ||
+            b.user?.displayId?.toLowerCase().includes(q) ||
+            b.user?.phone?.includes(q) ||
+            b.tenant?.displayId?.toLowerCase().includes(q) ||
+            b.user?.name?.toLowerCase().includes(q)
+        );
+    });
+
+    const handleSelectPG = (pg: any) => {
+        setSelectedPG(pg);
+        // Pre-fill from existing exemption if any
+        const ex = exemptions.find(e => e.propertyId === pg.id);
+        setPgExemptOwner(ex?.exemptOwner ?? false);
+        setPgExemptOnboarding(ex?.exemptOnboardingFee ?? false);
+        setPgOwnerFeeType(ex?.customOwnerFeeType ?? "FLAT");
+        setPgOwnerFeeValue(ex?.customOwnerFee != null ? String(ex.customOwnerFee) : "");
+        setPgReason(ex?.reason ?? "");
+    };
+
+    const handleSelectStudent = (student: any) => {
+        setSelectedStudent(student);
+        const ex = exemptions.find(e => e.userId === student.user?.id);
+        setStuExemptStudent(ex?.exemptCustomer ?? false);
+        setStuFeeType(ex?.customStudentFeeType ?? "FLAT");
+        setStuFeeValue(ex?.customStudentFee != null ? String(ex.customStudentFee) : "");
+        setStuReason(ex?.reason ?? "");
+    };
+
+    const handleSavePGExemption = async () => {
+        if (!selectedPG || !pgReason.trim()) { alert("Reason is required."); return; }
+        setPgSaving(true);
+        try {
+            // Remove old exemption for this property if exists
+            const old = exemptions.find(e => e.propertyId === selectedPG.id);
+            if (old) await removeFeeExemption(old.id);
+            // Only save if at least one thing is configured
+            if (pgExemptOwner || pgExemptOnboarding || pgOwnerFeeValue !== "") {
+                const customFee = pgOwnerFeeValue !== "" ? parseFloat(pgOwnerFeeValue) : null;
+                await addFeeExemption({
+                    propertyId: selectedPG.id,
+                    propertyName: selectedPG.name,
+                    exemptOwner: pgExemptOwner,
+                    exemptOnboardingFee: pgExemptOnboarding,
+                    customOwnerFee: customFee,
+                    customOwnerFeeType: customFee != null ? pgOwnerFeeType : null,
+                    reason: pgReason,
+                });
+            }
+            await fetchAll();
+            alert("âœ… PG exemption saved.");
+        } catch (e: any) { alert(`Failed: ${e.message}`); }
+        finally { setPgSaving(false); }
+    };
+
+    const handleSaveStudentExemption = async () => {
+        if (!selectedStudent || !stuReason.trim()) { alert("Reason is required."); return; }
+        setStuSaving(true);
+        try {
+            const old = exemptions.find(e => e.userId === selectedStudent.user?.id);
+            if (old) await removeFeeExemption(old.id);
+            if (stuExemptStudent || stuFeeValue !== "") {
+                const customFee = stuFeeValue !== "" ? parseFloat(stuFeeValue) : null;
+                await addFeeExemption({
+                    userId: selectedStudent.user?.id,
+                    propertyName: selectedStudent.propertyName,
+                    exemptCustomer: stuExemptStudent,
+                    customStudentFee: customFee,
+                    customStudentFeeType: customFee != null ? stuFeeType : null,
+                    reason: stuReason,
+                });
+            }
+            await fetchAll();
+            alert("âœ… Student exemption saved.");
+        } catch (e: any) { alert(`Failed: ${e.message}`); }
+        finally { setStuSaving(false); }
+    };
+
     if (loading) return <div className="p-8 text-center animate-pulse">Loading platform settings...</div>;
 
     const tabs: { id: TabType; label: string; icon: any }[] = [
-        { id: "settings", label: "⚙️ Fee Settings", icon: Shield },
-        { id: "data", label: `📊 Fee Data (${fees.length})`, icon: Database },
-        { id: "log", label: `📋 Change Log (${changeLogs.length})`, icon: History },
-        { id: "exemptions", label: `🎯 Exemptions (${exemptions.length})`, icon: Target },
+        { id: "settings", label: "âš™ï¸ Fee Settings", icon: Shield },
+        { id: "data", label: `ðŸ“Š Fee Data (${fees.length})`, icon: Database },
+        { id: "log", label: `ðŸ“‹ Change Log (${changeLogs.length})`, icon: History },
+        { id: "exemptions", label: `ðŸŽ¯ Exemptions (${exemptions.length})`, icon: Target },
     ];
 
     return (
@@ -118,7 +234,7 @@ export default function PlatformFeesPage() {
                         <Shield className="h-7 w-7 text-purple-600" /> Platform Fees
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">
-                        Commission model — <strong>invisible to users and owners</strong>. Only you can see and control this.
+                        Commission model â€” <strong>invisible to users and owners</strong>. Only you can see and control this.
                     </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
@@ -134,7 +250,7 @@ export default function PlatformFeesPage() {
                     </div>
                     <div>
                         <p className="text-sm text-muted-foreground font-medium">Platform Wallet Balance</p>
-                        <p className="text-3xl font-bold text-purple-700">₹{(settings?.platformWalletBalance ?? 0).toFixed(2)}</p>
+                        <p className="text-3xl font-bold text-purple-700">â‚¹{(settings?.platformWalletBalance ?? 0).toFixed(2)}</p>
                         <p className="text-xs text-muted-foreground">Total accumulated platform earnings from all transactions</p>
                     </div>
                 </CardContent>
@@ -158,7 +274,7 @@ export default function PlatformFeesPage() {
                 ))}
             </div>
 
-            {/* ── SETTINGS TAB ── */}
+            {/* â”€â”€ SETTINGS TAB â”€â”€ */}
             {activeTab === "settings" && (
                 <div className="space-y-4 max-w-3xl">
                     {/* Master Toggle */}
@@ -168,7 +284,7 @@ export default function PlatformFeesPage() {
                                 <div>
                                     <h2 className="text-lg font-bold">Platform Fees Master Switch</h2>
                                     <p className="text-sm text-muted-foreground">
-                                        {feesEnabled ? "✅ Fees are ENABLED — commission is being collected on payments" : "⭕ Fees are DISABLED — no commission collected (default)"}
+                                        {feesEnabled ? "âœ… Fees are ENABLED â€” commission is being collected on payments" : "â­• Fees are DISABLED â€” no commission collected (default)"}
                                     </p>
                                 </div>
                                 <button
@@ -187,11 +303,11 @@ export default function PlatformFeesPage() {
                         <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-lg font-bold flex items-center gap-2">💵 During Booking Cash Payment</h2>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">ðŸ’µ During Booking Cash Payment</h2>
                                     <p className="text-sm text-muted-foreground">
                                         {allowCashPayment
-                                            ? "✅ ENABLED — Students see \"Pay Cash at Property\" option on payment page"
-                                            : "⭕ DISABLED — Students can only pay Online (default). Enable to allow cash at property."}
+                                            ? "âœ… ENABLED â€” Students see \"Pay Cash at Property\" option on payment page"
+                                            : "â­• DISABLED â€” Students can only pay Online (default). Enable to allow cash at property."}
                                     </p>
                                 </div>
                                 <button
@@ -209,30 +325,30 @@ export default function PlatformFeesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card className="border-blue-200">
                             <CardContent className="p-5 space-y-3">
-                                <h3 className="font-bold text-blue-800">👤 Customer (Student) Rent Fee</h3>
+                                <h3 className="font-bold text-blue-800">ðŸ‘¤ Customer (Student) Rent Fee</h3>
                                 <p className="text-xs text-muted-foreground">Added ON TOP of monthly rent payment.</p>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (â‚¹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={studentRentFeeFlat} min={0} step={1} onChange={e => setStudentRentFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </CardContent>
                         </Card>
                         <Card className="border-orange-200">
                             <CardContent className="p-5 space-y-3">
-                                <h3 className="font-bold text-orange-800">🏠 Owner Rent Fee</h3>
+                                <h3 className="font-bold text-orange-800">ðŸ  Owner Rent Fee</h3>
                                 <p className="text-xs text-muted-foreground">Deducted FROM the rent the owner receives.</p>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (â‚¹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerRentFeeFlat} min={0} step={1} onChange={e => setOwnerRentFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </CardContent>
                         </Card>
                         <Card className="border-green-200">
                             <CardContent className="p-5 space-y-3">
-                                <h3 className="font-bold text-green-800">🚀 Owner Onboarding Fee</h3>
+                                <h3 className="font-bold text-green-800">ðŸš€ Owner Onboarding Fee</h3>
                                 <p className="text-xs text-muted-foreground">Paid once per property activation.</p>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (â‚¹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerOnboardingFeeFlat} min={0} step={1} onChange={e => setOwnerOnboardingFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </CardContent>
@@ -247,18 +363,18 @@ export default function PlatformFeesPage() {
                                 <h3 className="font-bold text-indigo-800">Live Fee Preview</h3>
                             </div>
                             <div className="flex items-center gap-3">
-                                <label className="text-sm font-medium whitespace-nowrap">Rent Amount (₹)</label>
+                                <label className="text-sm font-medium whitespace-nowrap">Rent Amount (â‚¹)</label>
                                 <input type="number" className="border rounded-md p-2 text-sm w-36" value={previewAmount} min={100} step={100} onChange={e => setPreviewAmount(parseFloat(e.target.value) || 0)} />
                             </div>
                             {feesEnabled ? (
                                 <div className="grid grid-cols-3 gap-3 text-sm">
                                     {[
-                                        { label: "Rent Amount", value: `₹${previewAmount.toFixed(2)}`, color: "" },
-                                        { label: "Customer Fee Added", value: `+₹${customerFee.toFixed(2)}`, color: "blue" },
-                                        { label: "Customer Pays Total", value: `₹${totalCharged.toFixed(2)}`, color: "green" },
-                                        { label: "Owner Fee Deducted", value: `-₹${ownerFee.toFixed(2)}`, color: "orange" },
-                                        { label: "Owner Receives", value: `₹${ownerNet.toFixed(2)}`, color: "" },
-                                        { label: "Platform Earns", value: `₹${platformEarned.toFixed(2)}`, color: "purple" },
+                                        { label: "Rent Amount", value: `â‚¹${previewAmount.toFixed(2)}`, color: "" },
+                                        { label: "Customer Fee Added", value: `+â‚¹${customerFee.toFixed(2)}`, color: "blue" },
+                                        { label: "Customer Pays Total", value: `â‚¹${totalCharged.toFixed(2)}`, color: "green" },
+                                        { label: "Owner Fee Deducted", value: `-â‚¹${ownerFee.toFixed(2)}`, color: "orange" },
+                                        { label: "Owner Receives", value: `â‚¹${ownerNet.toFixed(2)}`, color: "" },
+                                        { label: "Platform Earns", value: `â‚¹${platformEarned.toFixed(2)}`, color: "purple" },
                                     ].map(({ label, value, color }) => (
                                         <div key={label} className={`rounded-lg p-3 border ${color ? `bg-${color}-50 border-${color}-200` : "bg-white"}`}>
                                             <p className={`text-xs ${color ? `text-${color}-600` : "text-muted-foreground"}`}>{label}</p>
@@ -273,21 +389,21 @@ export default function PlatformFeesPage() {
                     </Card>
 
                     <Button className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-3" onClick={handleSave} disabled={saving}>
-                        {saving ? "Saving..." : "💾 Save Platform Fee Settings"}
+                        {saving ? "Saving..." : "ðŸ’¾ Save Platform Fee Settings"}
                     </Button>
-                    <p className="text-xs text-center text-muted-foreground">⚠️ Changes take effect immediately on the next payment.</p>
+                    <p className="text-xs text-center text-muted-foreground">âš ï¸ Changes take effect immediately on the next payment.</p>
                 </div>
             )}
 
-            {/* ── DATA TAB ── */}
+            {/* â”€â”€ DATA TAB â”€â”€ */}
             {activeTab === "data" && (
                 <div className="space-y-4">
                     {/* Summary Stats */}
                     <div className="grid grid-cols-3 gap-4">
                         {[
-                            { label: "Total Platform Earned", value: `₹${totalEarned.toFixed(2)}`, color: "purple" },
-                            { label: "From Customer Fees", value: `₹${totalCustomerFees.toFixed(2)}`, color: "blue" },
-                            { label: "From Owner Fees", value: `₹${totalOwnerFees.toFixed(2)}`, color: "orange" },
+                            { label: "Total Platform Earned", value: `â‚¹${totalEarned.toFixed(2)}`, color: "purple" },
+                            { label: "From Customer Fees", value: `â‚¹${totalCustomerFees.toFixed(2)}`, color: "blue" },
+                            { label: "From Owner Fees", value: `â‚¹${totalOwnerFees.toFixed(2)}`, color: "orange" },
                         ].map(({ label, value, color }) => (
                             <div key={label} className={`p-4 rounded-xl border-2 bg-${color}-50 border-${color}-200`}>
                                 <div className={`text-2xl font-bold text-${color}-700`}>{value}</div>
@@ -330,18 +446,18 @@ export default function PlatformFeesPage() {
                                             <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No fee records found. Fees are collected when a booking payment is made with fees enabled.</td></tr>
                                         ) : filteredFees.map(f => (
                                             <tr key={f.id} className="border-b hover:bg-muted/5">
-                                                <td className="p-4 font-mono text-xs">{f.booking?.displayId || "—"}</td>
+                                                <td className="p-4 font-mono text-xs">{f.booking?.displayId || "â€”"}</td>
                                                 <td className="p-4">
-                                                    <div className="font-medium text-sm">{f.booking?.user?.name || "—"}</div>
+                                                    <div className="font-medium text-sm">{f.booking?.user?.name || "â€”"}</div>
                                                     <div className="text-xs text-muted-foreground">{f.booking?.user?.email}</div>
                                                     <div className="text-[10px] font-mono text-muted-foreground">{f.booking?.user?.displayId}</div>
                                                 </td>
-                                                <td className="p-4 text-sm font-medium">{f.booking?.propertyName || "—"}</td>
-                                                <td className="p-4 font-bold">₹{f.grossAmount?.toFixed(2)}</td>
-                                                <td className="p-4 text-blue-700 font-medium">+₹{f.customerFee?.toFixed(2)}</td>
-                                                <td className="p-4 text-orange-700 font-medium">-₹{f.ownerFee?.toFixed(2)}</td>
+                                                <td className="p-4 text-sm font-medium">{f.booking?.propertyName || "â€”"}</td>
+                                                <td className="p-4 font-bold">â‚¹{f.grossAmount?.toFixed(2)}</td>
+                                                <td className="p-4 text-blue-700 font-medium">+â‚¹{f.customerFee?.toFixed(2)}</td>
+                                                <td className="p-4 text-orange-700 font-medium">-â‚¹{f.ownerFee?.toFixed(2)}</td>
                                                 <td className="p-4">
-                                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold text-sm">₹{f.platformEarned?.toFixed(2)}</span>
+                                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold text-sm">â‚¹{f.platformEarned?.toFixed(2)}</span>
                                                 </td>
                                                 <td className="p-4 text-xs text-muted-foreground">
                                                     {new Date(f.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -356,12 +472,12 @@ export default function PlatformFeesPage() {
                 </div>
             )}
 
-            {/* ── CHANGE LOG TAB ── */}
+            {/* â”€â”€ CHANGE LOG TAB â”€â”€ */}
             {activeTab === "log" && (
                 <Card>
                     <CardContent className="p-0">
                         <div className="p-4 bg-green-50 border-b border-green-200">
-                            <p className="text-sm font-bold text-green-700">📋 Platform Fee Settings Change Log — All changes made by admins</p>
+                            <p className="text-sm font-bold text-green-700">ðŸ“‹ Platform Fee Settings Change Log â€” All changes made by admins</p>
                         </div>
                         <table className="w-full">
                             <thead className="bg-muted border-b">
@@ -385,7 +501,7 @@ export default function PlatformFeesPage() {
                                         <td className="p-4 text-sm">{log.description}</td>
                                         <td className="p-4 text-xs font-mono text-muted-foreground">{log.actorId}</td>
                                         <td className="p-4 text-xs text-muted-foreground font-mono">
-                                            🕐 {new Date(log.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' })}
+                                            ðŸ• {new Date(log.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' })}
                                         </td>
                                     </tr>
                                 ))}
@@ -394,104 +510,295 @@ export default function PlatformFeesPage() {
                     </CardContent>
                 </Card>
             )}
-            {/* ── EXEMPTIONS TAB ── */}
+
+            {/* â”€â”€ EXEMPTIONS TAB â”€â”€ */}
             {activeTab === "exemptions" && (
-                <div className="space-y-4">
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                        <p className="text-sm font-bold text-orange-700">🎯 Fee Exemptions — Choose specific PGs or Users to exempt from platform fees</p>
-                        <p className="text-xs text-orange-600 mt-1">Exemptions override the global fee settings. Leave PG or User blank to apply to all.</p>
+                <div className="space-y-5">
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                        <p className="text-sm font-bold text-orange-700">ðŸŽ¯ Per-Property & Per-Student Custom Fee Rules</p>
+                        <p className="text-xs text-orange-600 mt-1">
+                            Set custom fees for specific PGs or Students. Set to 0 to hide the fee entirely from their receipt. Leave blank to use global settings.
+                        </p>
                     </div>
 
-                    {/* Add Exemption Form */}
-                    <Card className="border-orange-200">
-                        <CardContent className="p-5 space-y-4">
-                            <h3 className="font-bold text-orange-800">➕ Add New Exemption</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">PG / Property (leave blank = all PGs)</label>
-                                    <select className="w-full border rounded-md p-2 bg-background text-sm" value={exPG} onChange={e => setExPG(e.target.value)}>
-                                        <option value="">— All PGs —</option>
-                                        {allPGs.map(pg => <option key={pg} value={pg}>{pg}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">User ID (leave blank = all users)</label>
-                                    <input className="w-full border rounded-md p-2 text-sm" placeholder="User ID or leave blank for all" value={exUserId} onChange={e => setExUserId(e.target.value)} />
-                                </div>
-                            </div>
-                            <div className="flex gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={exCustomer} onChange={e => setExCustomer(e.target.checked)} className="w-4 h-4" />
-                                    <span className="text-sm font-medium text-blue-700">Exempt Customer Fee</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={exOwner} onChange={e => setExOwner(e.target.checked)} className="w-4 h-4" />
-                                    <span className="text-sm font-medium text-orange-700">Exempt Owner Fee</span>
-                                </label>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Reason <span className="text-red-500">*</span></label>
-                                <input className="w-full border rounded-md p-2 text-sm" placeholder="e.g. Special arrangement, Early adopter, etc." value={exReason} onChange={e => setExReason(e.target.value)} />
-                            </div>
-                            <Button
-                                className="bg-orange-600 hover:bg-orange-700 text-white"
-                                disabled={exSaving || (!exCustomer && !exOwner) || !exReason.trim()}
-                                onClick={async () => {
-                                    if (!exReason.trim()) { alert("Reason is required."); return; }
-                                    setExSaving(true);
-                                    try {
-                                        await addFeeExemption({ userId: exUserId || undefined, propertyName: exPG || undefined, exemptCustomer: exCustomer, exemptOwner: exOwner, reason: exReason });
-                                        setExPG(""); setExUserId(""); setExCustomer(false); setExOwner(false); setExReason("");
-                                        await fetchAll();
-                                    } catch (e: any) { alert(`Failed: ${e.message}`); }
-                                    finally { setExSaving(false); }
-                                }}
-                            >
-                                {exSaving ? "Adding..." : "➕ Add Exemption"}
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    {/* â”€â”€ TWO PANEL LAYOUT â”€â”€ */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                    {/* Exemptions Table */}
+                        {/* â”€â”€â”€ LEFT: PG / PROPERTY PANEL â”€â”€â”€ */}
+                        <Card className="border-2 border-orange-200">
+                            <CardContent className="p-0">
+                                <div className="bg-orange-600 text-white px-4 py-3 rounded-t-xl flex items-center gap-2">
+                                    <span className="text-lg">ðŸ </span>
+                                    <div>
+                                        <p className="font-black text-sm">PG Properties</p>
+                                        <p className="text-[10px] text-orange-200">Auto-loaded from accepted &amp; registered properties</p>
+                                    </div>
+                                    <span className="ml-auto bg-orange-500 text-white text-xs font-black px-2 py-1 rounded-full">{registeredProperties.length} PGs</span>
+                                </div>
+
+                                {/* PG Search */}
+                                <div className="p-3 border-b">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                        <input
+                                            className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-orange-400"
+                                            placeholder="Search by PG name, mobile, property ID, booking IDâ€¦"
+                                            value={pgSearch}
+                                            onChange={e => setPgSearch(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* PG List */}
+                                <div className="max-h-72 overflow-y-auto divide-y">
+                                    {filteredPGs.length === 0 ? (
+                                        <div className="p-6 text-center text-sm text-slate-400">No registered properties found.</div>
+                                    ) : filteredPGs.map(pg => {
+                                        const ex = exemptions.find(e => e.propertyId === pg.id);
+                                        const isSelected = selectedPG?.id === pg.id;
+                                        return (
+                                            <button
+                                                key={pg.id}
+                                                onClick={() => handleSelectPG(pg)}
+                                                className={`w-full text-left px-4 py-3 hover:bg-orange-50 transition-all ${isSelected ? 'bg-orange-50 border-l-4 border-orange-500' : ''}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <p className="font-black text-sm text-slate-800">{pg.name}</p>
+                                                        <p className="text-[10px] font-mono text-slate-400">{pg.displayId} Â· {pg.city}</p>
+                                                        <p className="text-[10px] text-slate-400">Owner: {pg.owner?.name} Â· {pg.owner?.phone}</p>
+                                                        <p className="text-[9px] text-slate-400">Registered: {new Date(pg.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">âœ“ {pg.status}</span>
+                                                        {ex && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Custom Rule</span>}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* PG Config Panel */}
+                                {selectedPG && (
+                                    <div className="border-t-2 border-orange-200 p-4 bg-orange-50 space-y-3">
+                                        <p className="font-black text-sm text-orange-800">âš™ï¸ Configure: {selectedPG.name}</p>
+                                        <p className="text-[10px] text-slate-500">Global: Owner Rent Fee = â‚¹{ownerRentFeeFlat} | Onboarding Fee = â‚¹{ownerOnboardingFeeFlat}</p>
+
+                                        {/* Owner Onboarding Fee */}
+                                        <div className="bg-white rounded-xl p-3 border border-orange-100 space-y-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={pgExemptOnboarding} onChange={e => setPgExemptOnboarding(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                                                <span className="text-sm font-black text-slate-800">Exempt Owner Onboarding Fee</span>
+                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: â‚¹{ownerOnboardingFeeFlat}</span>
+                                            </label>
+                                            {pgExemptOnboarding && <p className="text-[10px] text-emerald-600 ml-6">âœ… Onboarding fee will be waived for this PG.</p>}
+                                        </div>
+
+                                        {/* Owner Rent Fee */}
+                                        <div className="bg-white rounded-xl p-3 border border-orange-100 space-y-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={pgExemptOwner} onChange={e => { setPgExemptOwner(e.target.checked); if (e.target.checked) setPgOwnerFeeValue("0"); else setPgOwnerFeeValue(""); }} className="w-4 h-4 accent-orange-500" />
+                                                <span className="text-sm font-black text-slate-800">Custom Owner Platform Fee</span>
+                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: â‚¹{ownerRentFeeFlat}</span>
+                                            </label>
+                                            {pgExemptOwner && (
+                                                <div className="ml-6 flex gap-2 items-center">
+                                                    <select className="border rounded-md px-2 py-1.5 text-xs bg-white" value={pgOwnerFeeType} onChange={e => setPgOwnerFeeType(e.target.value as any)}>
+                                                        <option value="FLAT">â‚¹ Flat</option>
+                                                        <option value="PERCENT">% Percent</option>
+                                                    </select>
+                                                    <input
+                                                        type="number" min={0} step={0.5}
+                                                        className="border rounded-md px-2 py-1.5 text-xs w-24"
+                                                        placeholder={pgOwnerFeeType === "FLAT" ? "e.g. 5" : "e.g. 0.5"}
+                                                        value={pgOwnerFeeValue}
+                                                        onChange={e => setPgOwnerFeeValue(e.target.value)}
+                                                    />
+                                                    <span className="text-xs text-slate-500">{pgOwnerFeeType === "FLAT" ? "â‚¹" : "% of rent"}</span>
+                                                </div>
+                                            )}
+                                            {pgExemptOwner && pgOwnerFeeValue === "0" && (
+                                                <p className="text-[10px] text-emerald-600 ml-6">âœ… Owner fee = â‚¹0 â†’ Will be hidden from owner receipt breakdown.</p>
+                                            )}
+                                            {pgExemptOwner && pgOwnerFeeValue !== "" && parseFloat(pgOwnerFeeValue) > 0 && (
+                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Owner will be charged {pgOwnerFeeType === "FLAT" ? `â‚¹${pgOwnerFeeValue}` : `${pgOwnerFeeValue}% of rent`} instead of global â‚¹{ownerRentFeeFlat}.</p>
+                                            )}
+                                        </div>
+
+                                        {/* Reason */}
+                                        <input
+                                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                                            placeholder="Reason (e.g. Early adopter discount, Special arrangementâ€¦) *"
+                                            value={pgReason}
+                                            onChange={e => setPgReason(e.target.value)}
+                                        />
+                                        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black text-sm" onClick={handleSavePGExemption} disabled={pgSaving || !pgReason.trim()}>
+                                            {pgSaving ? "Savingâ€¦" : "ðŸ’¾ Save PG Rule"}
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* â”€â”€â”€ RIGHT: STUDENT PANEL â”€â”€â”€ */}
+                        <Card className="border-2 border-blue-200">
+                            <CardContent className="p-0">
+                                <div className="bg-blue-600 text-white px-4 py-3 rounded-t-xl flex items-center gap-2">
+                                    <span className="text-lg">ðŸ‘¤</span>
+                                    <div>
+                                        <p className="font-black text-sm">Students / Tenants</p>
+                                        <p className="text-[10px] text-blue-200">Auto-loaded from active bookings &amp; tenants</p>
+                                    </div>
+                                    <span className="ml-auto bg-blue-500 text-white text-xs font-black px-2 py-1 rounded-full">{activeStudents.length} students</span>
+                                </div>
+
+                                {/* Student Search */}
+                                <div className="p-3 border-b">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                        <input
+                                            className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                                            placeholder="Search by name, mobile, tenant ID, booking ID, permanent IDâ€¦"
+                                            value={studentSearch}
+                                            onChange={e => setStudentSearch(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Student List */}
+                                <div className="max-h-72 overflow-y-auto divide-y">
+                                    {filteredStudents.length === 0 ? (
+                                        <div className="p-6 text-center text-sm text-slate-400">No active students found.</div>
+                                    ) : filteredStudents.map(b => {
+                                        const ex = exemptions.find(e => e.userId === b.user?.id);
+                                        const isSelected = selectedStudent?.id === b.id;
+                                        return (
+                                            <button
+                                                key={b.id}
+                                                onClick={() => handleSelectStudent(b)}
+                                                className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-all ${isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <p className="font-black text-sm text-slate-800">{b.guestName || b.user?.name}</p>
+                                                        <p className="text-[10px] text-slate-400">{b.guestPhone || b.user?.phone} Â· {b.user?.email}</p>
+                                                        <p className="text-[10px] font-mono text-slate-400">Booking: {b.displayId} Â· Tenant: {b.tenant?.displayId || b.user?.displayId}</p>
+                                                        <p className="text-[10px] text-slate-400">PG: {b.propertyName}</p>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Active</span>
+                                                        {ex && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Custom Rule</span>}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Student Config Panel */}
+                                {selectedStudent && (
+                                    <div className="border-t-2 border-blue-200 p-4 bg-blue-50 space-y-3">
+                                        <p className="font-black text-sm text-blue-800">âš™ï¸ Configure: {selectedStudent.guestName || selectedStudent.user?.name}</p>
+                                        <p className="text-[10px] text-slate-500">Global: Student Convenience Fee = â‚¹{studentRentFeeFlat}</p>
+
+                                        {/* Student Convenience Fee */}
+                                        <div className="bg-white rounded-xl p-3 border border-blue-100 space-y-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={stuExemptStudent} onChange={e => { setStuExemptStudent(e.target.checked); if (e.target.checked) setStuFeeValue("0"); else setStuFeeValue(""); }} className="w-4 h-4 accent-blue-500" />
+                                                <span className="text-sm font-black text-slate-800">Custom Convenience Fee for Student</span>
+                                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Global: â‚¹{studentRentFeeFlat}</span>
+                                            </label>
+                                            {stuExemptStudent && (
+                                                <div className="ml-6 flex gap-2 items-center">
+                                                    <select className="border rounded-md px-2 py-1.5 text-xs bg-white" value={stuFeeType} onChange={e => setStuFeeType(e.target.value as any)}>
+                                                        <option value="FLAT">â‚¹ Flat</option>
+                                                        <option value="PERCENT">% Percent</option>
+                                                    </select>
+                                                    <input
+                                                        type="number" min={0} step={0.5}
+                                                        className="border rounded-md px-2 py-1.5 text-xs w-24"
+                                                        placeholder={stuFeeType === "FLAT" ? "e.g. 0" : "e.g. 0.5"}
+                                                        value={stuFeeValue}
+                                                        onChange={e => setStuFeeValue(e.target.value)}
+                                                    />
+                                                    <span className="text-xs text-slate-500">{stuFeeType === "FLAT" ? "â‚¹" : "% of rent"}</span>
+                                                </div>
+                                            )}
+                                            {stuExemptStudent && stuFeeValue === "0" && (
+                                                <p className="text-[10px] text-emerald-600 ml-6">âœ… Convenience fee = â‚¹0 â†’ Will be hidden from student checkout.</p>
+                                            )}
+                                            {stuExemptStudent && stuFeeValue !== "" && parseFloat(stuFeeValue) > 0 && (
+                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Student will be charged {stuFeeType === "FLAT" ? `â‚¹${stuFeeValue}` : `${stuFeeValue}% of rent`} instead of global â‚¹{studentRentFeeFlat}.</p>
+                                            )}
+                                        </div>
+
+                                        {/* Reason */}
+                                        <input
+                                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                            placeholder="Reason (e.g. VIP student, special dealâ€¦) *"
+                                            value={stuReason}
+                                            onChange={e => setStuReason(e.target.value)}
+                                        />
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm" onClick={handleSaveStudentExemption} disabled={stuSaving || !stuReason.trim()}>
+                                            {stuSaving ? "Savingâ€¦" : "ðŸ’¾ Save Student Rule"}
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* â”€â”€ Active Exemptions Table â”€â”€ */}
                     <Card>
                         <CardContent className="p-0">
-                            <table className="w-full">
-                                <thead className="bg-muted border-b">
-                                    <tr>
-                                        <th className="p-4 text-left font-medium">PG / Property</th>
-                                        <th className="p-4 text-left font-medium">User ID</th>
-                                        <th className="p-4 text-left font-medium">Customer Fee</th>
-                                        <th className="p-4 text-left font-medium">Owner Fee</th>
-                                        <th className="p-4 text-left font-medium">Reason</th>
-                                        <th className="p-4 text-left font-medium">Added On</th>
-                                        <th className="p-4 text-left font-medium">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {exemptions.length === 0 ? (
-                                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No exemptions set. All users and PGs follow the global fee settings.</td></tr>
-                                    ) : exemptions.map(ex => (
-                                        <tr key={ex.id} className="border-b hover:bg-muted/5">
-                                            <td className="p-4 font-medium text-sm">{ex.propertyName || <span className="text-muted-foreground italic">All PGs</span>}</td>
-                                            <td className="p-4 font-mono text-xs">{ex.userId || <span className="text-muted-foreground italic">All Users</span>}</td>
-                                            <td className="p-4">
-                                                {ex.exemptCustomer ? <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">✅ Exempt</span> : <span className="text-muted-foreground text-xs">Not exempt</span>}
-                                            </td>
-                                            <td className="p-4">
-                                                {ex.exemptOwner ? <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">✅ Exempt</span> : <span className="text-muted-foreground text-xs">Not exempt</span>}
-                                            </td>
-                                            <td className="p-4 text-sm">{ex.reason}</td>
-                                            <td className="p-4 text-xs text-muted-foreground">{new Date(ex.createdAt).toLocaleDateString('en-IN')}</td>
-                                            <td className="p-4">
-                                                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={async () => {
-                                                    if (!confirm("Remove this exemption?")) return;
-                                                    try { await removeFeeExemption(ex.id); await fetchAll(); } catch (e: any) { alert(e.message); }
-                                                }}>Remove</Button>
-                                            </td>
+                            <div className="px-4 py-3 bg-slate-50 border-b flex items-center justify-between">
+                                <p className="font-black text-sm text-slate-700">ðŸ“‹ Active Custom Fee Rules ({exemptions.length})</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-muted border-b">
+                                        <tr>
+                                            <th className="p-3 text-left font-medium text-xs">PG / Property</th>
+                                            <th className="p-3 text-left font-medium text-xs">Student</th>
+                                            <th className="p-3 text-left font-medium text-xs">Owner Rules</th>
+                                            <th className="p-3 text-left font-medium text-xs">Student Rules</th>
+                                            <th className="p-3 text-left font-medium text-xs">Reason</th>
+                                            <th className="p-3 text-left font-medium text-xs">Added On</th>
+                                            <th className="p-3 text-left font-medium text-xs">Action</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {exemptions.length === 0 ? (
+                                            <tr><td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">No custom rules set. All PGs and students follow global fee settings.</td></tr>
+                                        ) : exemptions.map(ex => (
+                                            <tr key={ex.id} className="border-b hover:bg-muted/5">
+                                                <td className="p-3 text-sm font-medium">{ex.propertyName || <span className="text-slate-400 italic text-xs">All PGs</span>}</td>
+                                                <td className="p-3 font-mono text-xs">{ex.userId || <span className="text-slate-400 italic">All Students</span>}</td>
+                                                <td className="p-3 space-y-1">
+                                                    {ex.exemptOwner && ex.customOwnerFee === 0 && <span className="block text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: FREE (hidden)</span>}
+                                                    {ex.exemptOwner && ex.customOwnerFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: {ex.customOwnerFeeType === "PERCENT" ? `${ex.customOwnerFee}%` : `â‚¹${ex.customOwnerFee}`}</span>}
+                                                    {ex.exemptOnboardingFee && <span className="block text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-bold">Onboarding: FREE</span>}
+                                                    {!ex.exemptOwner && !ex.exemptOnboardingFee && <span className="text-slate-400 text-xs">â€”</span>}
+                                                </td>
+                                                <td className="p-3 space-y-1">
+                                                    {ex.exemptCustomer && ex.customStudentFee === 0 && <span className="block text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Conv. Fee: FREE (hidden)</span>}
+                                                    {ex.exemptCustomer && ex.customStudentFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Conv. Fee: {ex.customStudentFeeType === "PERCENT" ? `${ex.customStudentFee}%` : `â‚¹${ex.customStudentFee}`}</span>}
+                                                    {!ex.exemptCustomer && <span className="text-slate-400 text-xs">â€”</span>}
+                                                </td>
+                                                <td className="p-3 text-xs text-slate-600">{ex.reason}</td>
+                                                <td className="p-3 text-xs text-muted-foreground">{new Date(ex.createdAt).toLocaleDateString('en-IN')}</td>
+                                                <td className="p-3">
+                                                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={async () => {
+                                                        if (!confirm("Remove this custom rule?")) return;
+                                                        try { await removeFeeExemption(ex.id); await fetchAll(); } catch (e: any) { alert(e.message); }
+                                                    }}>Remove</Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
