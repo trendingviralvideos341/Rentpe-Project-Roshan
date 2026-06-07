@@ -191,9 +191,8 @@ export default function DashboardSidebar(props: SidebarProps) {
             title: "Finance",
             links: [
                 { href: "/dashboard/admin/payouts", label: "Owner Payouts", icon: IndianRupee, reqPerm: ["super_admin", "payments"] },
-                { href: "/dashboard/admin/settings/commission", label: "Commission Config", icon: Percent, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/transactions", label: "Global Transactions", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
-                { href: "/dashboard/admin/platform-fees", label: "Revenue & Fees", icon: Receipt, reqPerm: ["super_admin", "payments"] },
+                { href: "/dashboard/admin/platform-fees", label: "Commission Configuration Settings", icon: Receipt, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/analytics", label: "Platform Analytics", icon: BarChart3, reqPerm: ["super_admin"] },
             ]
         },
