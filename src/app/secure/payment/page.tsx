@@ -519,9 +519,14 @@ function PaymentPortal() {
                             >
                                 {isPaying
                                     ? <><span className="animate-spin inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full" />Processing...</>
-                                    : `💳 Pay ₹${rentAmt.toLocaleString('en-IN')} Now`
+                                    : `💳 Pay ₹${(rentAmt + convenienceFee).toLocaleString('en-IN')} Now`
                                 }
                             </Button>
+                            {convenienceFee > 0 && (
+                                <p className="text-xs text-center text-slate-500">
+                                    Rent ₹{rentAmt.toLocaleString('en-IN')} + Platform Fee ₹{convenienceFee.toLocaleString('en-IN')}
+                                </p>
+                            )}
                             <p className="text-xs text-center text-slate-400">🔒 256-bit SSL encrypted. Powered by Razorpay.</p>
                         </CardFooter>
                     </Card>
