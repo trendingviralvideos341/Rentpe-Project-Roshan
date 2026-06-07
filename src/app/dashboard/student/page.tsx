@@ -7,6 +7,7 @@ import { getBookings, cancelBooking, signAgreement, completeVacate } from "@/act
 import { getPersistentNotifications, markNotificationRead } from "@/actions/notifications";
 import { getTenantDocuments, uploadTenantDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
+import { getPendingRentInvoice } from "@/actions/rent";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X } from "lucide-react";
@@ -634,6 +635,8 @@ export default function StudentDashboardPage() {
     const [dismissedSharingAlert, setDismissedSharingAlert] = useState<string | null>(null);
     const [roomAllocNotifs, setRoomAllocNotifs] = useState<any[]>([]);
     const [viewingDoc, setViewingDoc] = useState<DocumentViewerDoc | null>(null);
+    const [pendingRent, setPendingRent] = useState<any | null>(null);
+    const [rentBannerDismissed, setRentBannerDismissed] = useState(false);
 
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
@@ -662,16 +665,20 @@ export default function StudentDashboardPage() {
         setLoading(true);
         setError(false);
         try {
-            const [bData, pData, profData, notifData] = await Promise.all([
+            const [bData, pData, profData, notifData, rentData] = await Promise.all([
                 getBookings(),
                 getStudentPaymentHistory(),
                 getStudentProfile(),
                 getPersistentNotifications(),
+                getPendingRentInvoice(),
             ]);
             setBookings(bData);
             setPaymentHistory(pData);
             setProfile(profData);
             setRoomAllocNotifs((notifData as any[]).filter((n: any) => n.category === 'ROOM_ALLOCATED'));
+            setPendingRent(rentData);
+            // Reset banner dismiss on every full refresh so it re-appears if still unpaid
+            setRentBannerDismissed(false);
         } catch (e) {
             console.error(e);
             setError(true);
@@ -758,6 +765,59 @@ export default function StudentDashboardPage() {
                 </TabsList>
 
                 <TabsContent value="active-stay" className="space-y-6">
+                    {/* ── RENT PENDING BLINKING BANNER ── */}
+                    {pendingRent && !rentBannerDismissed && (
+                        <div className="relative overflow-hidden rounded-2xl border-2 border-red-500 shadow-xl shadow-red-200/60 animate-[pulse_1.2s_ease-in-out_infinite] bg-gradient-to-r from-red-600 via-rose-600 to-red-700">
+                            {/* Animated shine overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_2s_linear_infinite]" />
+                            <div className="relative z-10 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-3">
+                                        {/* Pulsing red dot */}
+                                        <div className="shrink-0 mt-1">
+                                            <span className="relative flex h-4 w-4">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                                                <span className="relative inline-flex rounded-full h-4 w-4 bg-white" />
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-white font-black text-sm uppercase tracking-wider">
+                                                🔴 Rent Pending — {pendingRent.invoice.month}
+                                            </p>
+                                            <p className="text-red-100 text-xs mt-0.5 font-bold">
+                                                ₹{pendingRent.invoice.amount.toLocaleString('en-IN')} due &bull; Pay before the 5th to avoid late fees
+                                            </p>
+                                            {/* IDs row */}
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                <span className="inline-flex items-center gap-1 bg-white/20 border border-white/30 text-white text-[10px] font-black px-2 py-0.5 rounded-full font-mono">
+                                                    🪪 {pendingRent.tenantDisplayId}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 bg-white/20 border border-white/30 text-white text-[10px] font-black px-2 py-0.5 rounded-full font-mono">
+                                                    🔖 {pendingRent.bookingDisplayId}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Dismiss X */}
+                                    <button
+                                        onClick={() => setRentBannerDismissed(true)}
+                                        className="shrink-0 p-1 hover:bg-white/20 rounded-lg transition-all"
+                                        aria-label="Dismiss"
+                                    >
+                                        <X className="h-4 w-4 text-white" />
+                                    </button>
+                                </div>
+                                {/* Pay button */}
+                                <button
+                                    onClick={() => router.push(`/secure/payment?id=${pendingRent.bookingId}&type=rent&invoiceId=${pendingRent.invoice.id}`)}
+                                    className="mt-3 w-full flex items-center justify-center gap-2 bg-white text-red-700 font-black text-sm py-2.5 px-4 rounded-xl hover:bg-red-50 active:scale-95 transition-all shadow-lg"
+                                >
+                                    <CreditCard className="h-4 w-4" />
+                                    💳 Pay ₹{pendingRent.invoice.amount.toLocaleString('en-IN')} Online via Razorpay
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {(() => {
                         const activeStay = bookings.find((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
                         if (!activeStay) return <div className="p-8 text-center text-muted-foreground">No active stay found.</div>;

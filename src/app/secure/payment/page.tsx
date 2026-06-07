@@ -18,14 +18,18 @@ function PaymentPortal() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
-    const paymentType = searchParams.get("type"); // "token" | null
+    const paymentType = searchParams.get("type"); // "token" | "rent" | null
+    const invoiceId = searchParams.get("invoiceId"); // for rent invoice payments
     const isToken = paymentType === "token";
+    const isRent  = paymentType === "rent" && !!invoiceId;
 
     const [method, setMethod] = useState<"online" | "cash">("online");
     const [isPaying, setIsPaying] = useState(false);
     const [isPaid, setIsPaid] = useState(false);
+    const [payFailed, setPayFailed] = useState(false);
     const [loading, setLoading] = useState(true);
     const [booking, setBooking] = useState<any>(null);
+    const [invoice, setInvoice] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [countdown, setCountdown] = useState(5);
@@ -40,8 +44,16 @@ function PaymentPortal() {
                 ]);
                 setBooking(data);
                 setAllowCashPayment(cashEnabled);
-                // Always default to online regardless of previous state
                 setMethod("online");
+
+                // If this is a rent invoice payment, fetch the invoice details
+                if (paymentType === "rent" && invoiceId) {
+                    try {
+                        const { getInvoiceById } = await import("@/actions/payments");
+                        const inv = await getInvoiceById(invoiceId);
+                        setInvoice(inv);
+                    } catch { /* invoice fetch fail is non-fatal */ }
+                }
             } catch (err: any) {
                 setError(err.message || "Failed to load booking");
             } finally {
@@ -49,31 +61,83 @@ function PaymentPortal() {
             }
         };
         fetchBooking();
-    }, [id, router]);
+    }, [id, invoiceId, paymentType, router]);
 
-    // Auto-redirect countdown after payment success
+    // Auto-redirect countdown after payment success OR failure
     useEffect(() => {
-        if (!isPaid) return;
+        if (!isPaid && !payFailed) return;
         if (countdown <= 0) { router.push("/dashboard/student"); return; }
         const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
         return () => clearTimeout(timer);
-    }, [isPaid, countdown, router]);
+    }, [isPaid, payFailed, countdown, router]);
 
     const handlePay = async () => {
         if (!booking) return;
         setIsPaying(true);
         setError(null);
+        setPayFailed(false);
 
         try {
+            // ── RENT INVOICE PAYMENT ──────────────────────────────────────────
+            if (isRent && invoiceId) {
+                const order = await createRazorpayOrder(booking.id, { invoiceId });
+
+                if (order.isDummyRoute || !(window as any).Razorpay) {
+                    // Dev / mock fallback
+                    await verifyPayment({
+                        razorpay_order_id: order.id,
+                        razorpay_payment_id: "pay_rent_sim_" + Math.random().toString(36).slice(2),
+                        razorpay_signature: "sim_sig",
+                    });
+                    setIsPaid(true);
+                    return;
+                }
+
+                const rentAmt = invoice ? Number(invoice.amount) : Number(booking.amount);
+                const options = {
+                    key: order.key,
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: "RentPe",
+                    description: `Monthly Rent — ${invoice?.month || ''} · ${booking.propertyName}`,
+                    order_id: order.id,
+                    handler: async (response: any) => {
+                        try {
+                            await verifyPayment(response);
+                            // verifyPayment already marks invoice PAID when invoiceId is on Payment
+                            setIsPaid(true);
+                        } catch {
+                            setError("Payment verification failed. Contact support.");
+                            setPayFailed(true);
+                            setIsPaying(false);
+                        }
+                    },
+                    prefill: {
+                        name: booking.guestName,
+                        email: booking.guestEmail || "user@example.com",
+                        contact: booking.guestPhone || "",
+                    },
+                    theme: { color: "#dc2626" },
+                    modal: { ondismiss: () => setIsPaying(false) },
+                };
+
+                const rzp = new (window as any).Razorpay(options);
+                rzp.on("payment.failed", (resp: any) => {
+                    setError(`Payment failed: ${resp.error?.description || "Unknown error"}.`);
+                    setPayFailed(true);
+                    setIsPaying(false);
+                });
+                rzp.open();
+                return;
+            }
+
+            // ── TOKEN PAYMENT ─────────────────────────────────────────────────
             if (isToken) {
-                // Token payment: ₹1,000 non-refundable via Razorpay or registered intent
                 if (method === "cash") {
-                    // Cash token: owner will manually confirm in dashboard
                     await registerCashIntent(booking.id);
                     setIsPaid(true);
                     return;
                 }
-                // Online token payment
                 const order = await createRazorpayOrder(booking.id);
                 if (order.isDummyRoute || !(window as any).Razorpay) {
                     await payTokenAmount(booking.id, 'ONLINE', 'pay_tok_sim_' + Math.random().toString(36).slice(2));
@@ -82,7 +146,7 @@ function PaymentPortal() {
                 }
                 const options = {
                     key: order.key,
-                    amount: 100000, // ₹1,000 in paise
+                    amount: 100000,
                     currency: 'INR',
                     name: 'RentPe',
                     description: `Non-Refundable Reservation Token — ${booking.propertyName}`,
@@ -104,14 +168,13 @@ function PaymentPortal() {
                 return;
             }
 
+            // ── FINAL JOINING PAYMENT ─────────────────────────────────────────
             if (method === "cash") {
-                // Final joining amount cash: register intent, owner confirms
                 await registerCashIntent(booking.id);
                 setIsPaid(true);
                 return;
             }
 
-            // Final joining amount online via Razorpay
             const order = await createRazorpayOrder(booking.id);
 
             if (order.isDummyRoute || !(window as any).Razorpay) {
@@ -231,16 +294,18 @@ function PaymentPortal() {
     // Final payment deducts the ₹1,000 token already paid
     const totalAmount = isToken ? TOKEN_AMOUNT : Math.max(0, subtotal - TOKEN_AMOUNT);
 
+    // ── SUCCESS SCREEN ────────────────────────────────────────────────────────
     if (isPaid) {
         const isCash = method === "cash";
+        const accentColor = isRent ? "red" : isToken ? "amber" : "green";
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
                 <Card className="w-full max-w-lg shadow-2xl border-0 overflow-hidden">
-                    <div className={`h-2 w-full ${isCash ? "bg-orange-500" : "bg-green-500"}`} />
+                    <div className={`h-2 w-full ${isCash ? "bg-orange-500" : isRent ? "bg-red-500" : "bg-green-500"}`} />
                     <CardContent className="p-8 text-center space-y-5">
                         <div className="flex justify-center">
-                            <div className={`p-5 rounded-full ${isCash ? "bg-orange-100" : "bg-green-100"} animate-bounce`}>
-                                {isCash ? <Banknote className="h-12 w-12 text-orange-600" /> : <CheckCircle className="h-12 w-12 text-green-600" />}
+                            <div className={`p-5 rounded-full ${isCash ? "bg-orange-100" : isRent ? "bg-red-50" : "bg-green-100"} animate-bounce`}>
+                                {isCash ? <Banknote className="h-12 w-12 text-orange-600" /> : <CheckCircle className={`h-12 w-12 ${isRent ? "text-red-600" : "text-green-600"}`} />}
                             </div>
                         </div>
                         {isCash ? (
@@ -260,6 +325,19 @@ function PaymentPortal() {
                                     </div>
                                 </div>
                                 <p className="text-sm text-slate-500">Booking ID: <strong>{booking.displayId}</strong></p>
+                            </>
+                        ) : isRent ? (
+                            <>
+                                <h2 className="text-2xl font-black text-red-700">🏠 Rent Paid Successfully!</h2>
+                                <div className="bg-red-50 border-2 border-red-300 p-4 rounded-xl text-sm text-red-800 space-y-2 text-left">
+                                    <p className="font-black text-base">✅ ₹{Number(invoice?.amount || 0).toLocaleString('en-IN')} Confirmed</p>
+                                    <p className="text-slate-600">Rent for <strong>{invoice?.month || 'this month'}</strong> has been captured by Razorpay and marked paid.</p>
+                                    <div className="pt-2 border-t border-red-200 space-y-1">
+                                        <p className="text-xs text-slate-500">Property: <strong>{booking.propertyName}</strong></p>
+                                        <p className="text-xs text-slate-500">Booking: <strong>{booking.displayId}</strong></p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-400">Your rent receipt will appear in Payment History.</p>
                             </>
                         ) : (
                             <>
@@ -286,21 +364,147 @@ function PaymentPortal() {
                             <div className="relative w-10 h-10 flex items-center justify-center">
                                 <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                                     <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                                    <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" strokeWidth="3"
+                                    <circle cx="18" cy="18" r="16" fill="none" stroke={isRent ? "#dc2626" : "#6366f1"} strokeWidth="3"
                                         strokeDasharray={`${(countdown / 5) * 100} 100`}
                                         strokeLinecap="round"
                                         style={{ transition: 'stroke-dasharray 1s linear' }}
                                     />
                                 </svg>
-                                <span className="text-sm font-black text-indigo-700 relative z-10">{countdown}</span>
+                                <span className={`text-sm font-black relative z-10 ${isRent ? 'text-red-700' : 'text-indigo-700'}`}>{countdown}</span>
                             </div>
-                            <p className="text-sm font-bold text-slate-500">Redirecting to dashboard in <strong className="text-indigo-600">{countdown}s</strong>…</p>
+                            <p className="text-sm font-bold text-slate-500">Redirecting to dashboard in <strong className={isRent ? 'text-red-600' : 'text-indigo-600'}>{countdown}s</strong>…</p>
                         </div>
-                        <Button className="w-full h-12 font-black rounded-xl bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white shadow-lg" onClick={() => router.push("/dashboard/student")}>
+                        <Button className={`w-full h-12 font-black rounded-xl shadow-lg text-white ${isRent ? 'bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800' : 'bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800'}`} onClick={() => router.push("/dashboard/student")}>
                             Go to My Dashboard
                         </Button>
                     </CardContent>
                 </Card>
+            </div>
+        );
+    }
+
+    // ── PAYMENT FAILED SCREEN ─────────────────────────────────────────────────
+    if (payFailed) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+                <Card className="w-full max-w-lg shadow-2xl border-0 overflow-hidden">
+                    <div className="h-2 w-full bg-red-500" />
+                    <CardContent className="p-8 text-center space-y-5">
+                        <div className="flex justify-center">
+                            <div className="p-5 rounded-full bg-red-100 animate-bounce">
+                                <AlertTriangle className="h-12 w-12 text-red-600" />
+                            </div>
+                        </div>
+                        <h2 className="text-2xl font-black text-red-700">Payment Failed ❌</h2>
+                        <div className="bg-red-50 border-2 border-red-300 p-4 rounded-xl text-sm text-red-800 text-left space-y-2">
+                            <p className="font-black">Your payment was not successful.</p>
+                            <p className="text-slate-600">{error || 'The transaction could not be completed. No amount has been deducted.'}</p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 py-2">
+                            <div className="relative w-10 h-10 flex items-center justify-center">
+                                <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                                    <circle cx="18" cy="18" r="16" fill="none" stroke="#dc2626" strokeWidth="3"
+                                        strokeDasharray={`${(countdown / 5) * 100} 100`}
+                                        strokeLinecap="round"
+                                        style={{ transition: 'stroke-dasharray 1s linear' }}
+                                    />
+                                </svg>
+                                <span className="text-sm font-black text-red-700 relative z-10">{countdown}</span>
+                            </div>
+                            <p className="text-sm font-bold text-slate-500">Returning to dashboard in <strong className="text-red-600">{countdown}s</strong>…</p>
+                        </div>
+                        <Button className="w-full h-12 font-black rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800" onClick={() => router.push("/dashboard/student")}>
+                            Back to Dashboard
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // ── RENT INVOICE PAYMENT PAGE ─────────────────────────────────────────────
+    if (isRent) {
+        const rentAmt = invoice ? Number(invoice.amount) : Number(booking?.amount || 0);
+        const dueDate = invoice?.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '5th of this month';
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-red-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
+                <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+                <div className="w-full max-w-lg space-y-3">
+                    <button onClick={() => router.back()} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors group">
+                        <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Go Back
+                    </button>
+                    <Card className="shadow-2xl border-0 overflow-hidden">
+                        <div className="h-2 w-full bg-gradient-to-r from-red-500 to-rose-600" />
+                        <CardHeader className="space-y-2 pb-4">
+                            <div className="flex items-center justify-center mb-2">
+                                <div className="p-3 bg-red-100 rounded-full">
+                                    <Lock className="h-8 w-8 text-red-600" />
+                                </div>
+                            </div>
+                            <CardTitle className="text-2xl font-black text-center">🏠 Pay Monthly Rent</CardTitle>
+                            <CardDescription className="text-center font-medium">
+                                PG: <strong>{booking.propertyName}</strong>
+                            </CardDescription>
+                            <p className="text-center text-sm text-slate-500">Booking: <strong>{booking.displayId}</strong></p>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            {/* Rent breakdown */}
+                            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl space-y-3">
+                                <div className="flex items-center gap-2 font-black text-sm text-red-800">
+                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                                    Rent Due — {invoice?.month || 'Current Month'}
+                                </div>
+                                <div className="space-y-2">
+                                    {invoice?.rentAmount > 0 && (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-slate-600">Monthly Rent</span>
+                                            <span className="font-black text-slate-800">₹{Number(invoice.rentAmount).toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    {invoice?.foodAmount > 0 && (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-slate-600">Food Charges</span>
+                                            <span className="font-black text-slate-800">₹{Number(invoice.foodAmount).toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center pt-2 border-t border-red-200">
+                                        <span className="font-black text-red-800">Total Due</span>
+                                        <span className="text-2xl font-black text-red-700">₹{rentAmt.toLocaleString('en-IN')}</span>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-red-600 font-bold">⚠️ Due by {dueDate}. Late fees may apply after this date.</p>
+                            </div>
+                            {/* Online payment info */}
+                            <div className="border-2 border-indigo-100 rounded-xl p-4 bg-white">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Lock className="h-4 w-4 text-indigo-600" />
+                                    <p className="text-sm font-black text-slate-700">Secure Online Payment via Razorpay</p>
+                                </div>
+                                <p className="text-xs text-slate-500 text-center mt-1">UPI · Card · Netbanking · Wallets</p>
+                            </div>
+                            {error && (
+                                <div className="bg-red-50 border-2 border-red-400 rounded-xl p-3 flex items-start gap-2">
+                                    <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                    <p className="text-sm font-bold text-red-700">{error}</p>
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter className="flex flex-col space-y-3 pb-6">
+                            <Button
+                                className="w-full text-base font-black rounded-2xl shadow-lg py-6 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white active:scale-95 transition-all"
+                                onClick={handlePay}
+                                disabled={isPaying}
+                            >
+                                {isPaying
+                                    ? <><span className="animate-spin inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full" />Processing...</>
+                                    : `💳 Pay ₹${rentAmt.toLocaleString('en-IN')} Now`
+                                }
+                            </Button>
+                            <p className="text-xs text-center text-slate-400">🔒 256-bit SSL encrypted. Powered by Razorpay.</p>
+                        </CardFooter>
+                    </Card>
+                </div>
             </div>
         );
     }
