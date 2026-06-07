@@ -34,7 +34,7 @@ const BaseLayout = (content: string) => `
       ${content}
     </div>
     <div class="footer">
-      <p>Â© ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd.</p>
+      <p>© ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd.</p>
       <div class="footer-links">
         <a href="${BASE_URL}/terms" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Terms</a>
         <a href="${BASE_URL}/privacy" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Privacy</a>
@@ -71,7 +71,7 @@ export const LifecycleTemplate = (data: {
 
 // 1. BOOKING_REQUEST_SENT (Tenant)
 export const BookingRequestSentTemplate = (name: string, propertyName: string) => LifecycleTemplate({
-  title: "Booking Request Received ðŸ•’",
+  title: "Booking Request Received 🕒",
   name,
   status: "REQUEST_SENT",
   message: `Your request for <strong>${propertyName}</strong> has been sent to the owner. We'll notify you as soon as they respond.`,
@@ -82,7 +82,7 @@ export const BookingRequestSentTemplate = (name: string, propertyName: string) =
 
 // 2. REQUEST_ACCEPTED (Tenant)
 export const RequestAcceptedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
-  title: "Request Accepted! ðŸŽ‰",
+  title: "Request Accepted! 🎉",
   name,
   status: "APPROVED",
   message: `Great news! The owner of <strong>${propertyName}</strong> has accepted your booking request.`,
@@ -106,7 +106,7 @@ export const RoomAllocatedTemplate = (name: string, propertyName: string, roomNu
 
 // 4. ONBOARDING_COMPLETED (Tenant)
 export const OnboardingCompletedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
-  title: "Onboarding Confirmed! âœ…",
+  title: "Onboarding Confirmed! ✅",
   name,
   status: "ONBOARDED",
   message: `Your basic onboarding for <strong>${propertyName}</strong> is complete. Your reservation is now fully active.`,
@@ -118,10 +118,10 @@ export const OnboardingCompletedTemplate = (name: string, propertyName: string) 
 
 // 5. PAYMENT_COMPLETED (Tenant)
 export const PaymentCompletedTemplate = (name: string, propertyName: string, amount: string) => LifecycleTemplate({
-  title: "Payment Successful ðŸ’³",
+  title: "Payment Successful 💳",
   name,
   status: "PAID",
-  message: `A payment of <strong>â‚¹${amount}</strong> for ${propertyName} has been successfully processed.`,
+  message: `A payment of <strong>₹${amount}</strong> for ${propertyName} has been successfully processed.`,
   nextStep: "Download your receipt and prepare for move-in.",
   actionLabel: "Download Receipt",
   actionUrl: "/dashboard/student",
@@ -142,7 +142,7 @@ export const AgreementSignedTemplate = (name: string, propertyName: string) => L
 
 // 7. CHECKIN_CONFIRMED (Tenant)
 export const CheckinConfirmedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
-  title: "Check-in Confirmed! ðŸŽ’",
+  title: "Check-in Confirmed! 🎒",
   name,
   status: "CHECKED_IN",
   message: `Welcome home! Your check-in at <strong>${propertyName}</strong> is confirmed.`,
@@ -165,7 +165,7 @@ export const KycSubmittedTemplate = (name: string) => LifecycleTemplate({
 
 // 9. OWNER_REVIEWED (Tenant)
 export const OwnerReviewedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
-  title: "Documents Received by Owner ðŸ“‹",
+  title: "Documents Received by Owner 📋",
   name,
   status: "DOCS_RECEIVED",
   message: `The owner of <strong>${propertyName}</strong> has acknowledged receipt of your documents.`,
@@ -177,7 +177,7 @@ export const OwnerReviewedTemplate = (name: string, propertyName: string) => Lif
 
 // 10. KYC_VERIFIED (Tenant)
 export const KycVerifiedTemplate = (name: string) => LifecycleTemplate({
-  title: "KYC Verified! âœ…",
+  title: "KYC Verified! ✅",
   name,
   status: "KYC_CLEARED",
   message: `Congratulations! Your professional KYC verification is complete. You are now a fully verified RentPe resident.`,
@@ -241,13 +241,13 @@ export const EmailVerificationTemplate = (name: string, token: string) => Lifecy
   isSuccess: true,
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // RESTORED TEMPLATES (Auth & Billing)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 
 export const WelcomeTemplate = (name: string) => `
 ${BaseLayout(`
-  <div class="header">Welcome to RentPe! ðŸŽ‰</div>
+  <div class="header">Welcome to RentPe! 🎉</div>
   <p>Hi ${name},</p>
   <p>We're thrilled to have you on board. RentPe is your one-stop solution for finding and managing high-fidelity student housing.</p>
   <p>Explore verified properties, manage your bookings, and experience hassle-free living.</p>
@@ -257,10 +257,10 @@ ${BaseLayout(`
 
 export const InvoiceGeneratedTemplate = (tenantName: string, monthLabel: string, amount: number, dueDate: string) => `
 ${BaseLayout(`
-  <div class="header">New Rent Invoice Generated ðŸ§¾</div>
+  <div class="header">New Rent Invoice Generated 🧾</div>
   <p>Hi ${tenantName},</p>
   <p>Your rent invoice for <strong>${monthLabel}</strong> has been generated.</p>
-  <p><strong>Amount Due:</strong> â‚¹${amount.toLocaleString('en-IN')}</p>
+  <p><strong>Amount Due:</strong> ₹${amount.toLocaleString('en-IN')}</p>
   <p><strong>Due Date:</strong> ${dueDate}</p>
   <p>Please pay your rent on time to avoid late fees.</p>
   <a href="${BASE_URL}/dashboard/student/payments" class="btn">View & Pay Invoice</a>
@@ -268,7 +268,7 @@ ${BaseLayout(`
 `;
 
 
-// â”€â”€â”€ Password Reset Template (appended) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Password Reset Template (appended) ──────────────────────────────────────
 export const PasswordResetTemplate = (name: string, resetUrl: string): string => {
     return `<!DOCTYPE html>
 <html>
@@ -290,7 +290,7 @@ export const PasswordResetTemplate = (name: string, resetUrl: string): string =>
       </p>
       <div style="text-align:center;margin:32px 0;">
         <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#3b5bdb,#7048e8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:0.3px;">
-          Reset My Password â†’
+          Reset My Password →
         </a>
       </div>
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;margin:24px 0;">
@@ -299,7 +299,7 @@ export const PasswordResetTemplate = (name: string, resetUrl: string): string =>
         </p>
       </div>
       <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0;">
-        If you didn't request this, please ignore this email. Your password will remain unchanged. Never share this link â€” RentPe will never ask for it.
+        If you didn't request this, please ignore this email. Your password will remain unchanged. Never share this link — RentPe will never ask for it.
       </p>
       <p style="color:#cbd5e1;font-size:11px;margin:16px 0 0;word-break:break-all;">
         If the button doesn't work, copy this URL: ${resetUrl}
@@ -307,7 +307,7 @@ export const PasswordResetTemplate = (name: string, resetUrl: string): string =>
     </div>
     <div style="background:#f8f9ff;padding:20px 32px;border-top:1px solid #e2e8f0;">
       <p style="color:#94a3b8;font-size:12px;margin:0;text-align:center;">
-        Â© ${new Date().getFullYear()} RentPe. India's trusted PG &amp; Hostel platform.
+        © ${new Date().getFullYear()} RentPe. India's trusted PG & Hostel platform.
       </p>
     </div>
   </div>

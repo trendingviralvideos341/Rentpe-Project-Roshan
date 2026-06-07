@@ -32,7 +32,7 @@ export default function PlatformFeesPage() {
     const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
     const [exemptions, setExemptions] = useState<any[]>([]);
 
-    // â”€â”€ NEW: Exemption panel state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── NEW: Exemption panel state ──────────────────────────
     const [registeredProperties, setRegisteredProperties] = useState<any[]>([]);
     const [activeStudents, setActiveStudents] = useState<any[]>([]);
     const [pgSearch, setPgSearch] = useState("");
@@ -91,7 +91,7 @@ export default function PlatformFeesPage() {
         try {
             await updatePlatformSettings({ feesEnabled, allowCashPayment, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat });
             await fetchAll();
-            alert("âœ… Platform fee settings saved successfully.");
+            alert("✅ Platform fee settings saved successfully.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
         finally { setSaving(false); }
     };
@@ -119,7 +119,7 @@ export default function PlatformFeesPage() {
     const totalCustomerFees = filteredFees.reduce((s, f) => s + (f.customerFee || 0), 0);
     const totalOwnerFees = filteredFees.reduce((s, f) => s + (f.ownerFee || 0), 0);
 
-    // â”€â”€ PG search filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PG search filter ──────────────────────────────────────
     const filteredPGs = registeredProperties.filter(p => {
         const q = pgSearch.toLowerCase();
         if (!q) return true;
@@ -132,7 +132,7 @@ export default function PlatformFeesPage() {
         );
     });
 
-    // â”€â”€ Student search filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Student search filter ─────────────────────────────────
     const filteredStudents = activeStudents.filter(b => {
         const q = studentSearch.toLowerCase();
         if (!q) return true;
@@ -188,7 +188,7 @@ export default function PlatformFeesPage() {
                 });
             }
             await fetchAll();
-            alert("âœ… PG exemption saved.");
+            alert("✅ PG exemption saved.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
         finally { setPgSaving(false); }
     };
@@ -211,7 +211,7 @@ export default function PlatformFeesPage() {
                 });
             }
             await fetchAll();
-            alert("âœ… Student exemption saved.");
+            alert("✅ Student exemption saved.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
         finally { setStuSaving(false); }
     };
@@ -220,9 +220,9 @@ export default function PlatformFeesPage() {
 
     const tabs: { id: TabType; label: string; icon: any }[] = [
         { id: "settings", label: "âš™ï¸ Fee Settings", icon: Shield },
-        { id: "data", label: `ðŸ“Š Fee Data (${fees.length})`, icon: Database },
-        { id: "log", label: `ðŸ“‹ Change Log (${changeLogs.length})`, icon: History },
-        { id: "exemptions", label: `ðŸŽ¯ Exemptions (${exemptions.length})`, icon: Target },
+        { id: "data", label: `📊 Fee Data (${fees.length})`, icon: Database },
+        { id: "log", label: `📋 Change Log (${changeLogs.length})`, icon: History },
+        { id: "exemptions", label: `🎯 Exemptions (${exemptions.length})`, icon: Target },
     ];
 
     return (
@@ -234,7 +234,7 @@ export default function PlatformFeesPage() {
                         <Shield className="h-7 w-7 text-purple-600" /> Platform Fees
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">
-                        Commission model â€” <strong>invisible to users and owners</strong>. Only you can see and control this.
+                        Commission model — <strong>invisible to users and owners</strong>. Only you can see and control this.
                     </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
@@ -250,7 +250,7 @@ export default function PlatformFeesPage() {
                     </div>
                     <div>
                         <p className="text-sm text-muted-foreground font-medium">Platform Wallet Balance</p>
-                        <p className="text-3xl font-bold text-purple-700">â‚¹{(settings?.platformWalletBalance ?? 0).toFixed(2)}</p>
+                        <p className="text-3xl font-bold text-purple-700">₹{(settings?.platformWalletBalance ?? 0).toFixed(2)}</p>
                         <p className="text-xs text-muted-foreground">Total accumulated platform earnings from all transactions</p>
                     </div>
                 </CardContent>
@@ -274,7 +274,7 @@ export default function PlatformFeesPage() {
                 ))}
             </div>
 
-            {/* â”€â”€ SETTINGS TAB â”€â”€ */}
+            {/* ── SETTINGS TAB ── */}
             {activeTab === "settings" && (
                 <div className="space-y-4 max-w-3xl">
                     {/* Master Toggle */}
@@ -284,7 +284,7 @@ export default function PlatformFeesPage() {
                                 <div>
                                     <h2 className="text-lg font-bold">Platform Fees Master Switch</h2>
                                     <p className="text-sm text-muted-foreground">
-                                        {feesEnabled ? "âœ… Fees are ENABLED â€” commission is being collected on payments" : "â­• Fees are DISABLED â€” no commission collected (default)"}
+                                        {feesEnabled ? "✅ Fees are ENABLED — commission is being collected on payments" : "⭕ Fees are DISABLED — no commission collected (default)"}
                                     </p>
                                 </div>
                                 <button
@@ -303,11 +303,11 @@ export default function PlatformFeesPage() {
                         <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-lg font-bold flex items-center gap-2">ðŸ’µ During Booking Cash Payment</h2>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">💵 During Booking Cash Payment</h2>
                                     <p className="text-sm text-muted-foreground">
                                         {allowCashPayment
-                                            ? "âœ… ENABLED â€” Students see \"Pay Cash at Property\" option on payment page"
-                                            : "â­• DISABLED â€” Students can only pay Online (default). Enable to allow cash at property."}
+                                            ? "✅ ENABLED — Students see \"Pay Cash at Property\" option on payment page"
+                                            : "⭕ DISABLED — Students can only pay Online (default). Enable to allow cash at property."}
                                     </p>
                                 </div>
                                 <button
@@ -325,10 +325,10 @@ export default function PlatformFeesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card className="border-blue-200">
                             <CardContent className="p-5 space-y-3">
-                                <h3 className="font-bold text-blue-800">ðŸ‘¤ Customer (Student) Rent Fee</h3>
+                                <h3 className="font-bold text-blue-800">👤 Customer (Student) Rent Fee</h3>
                                 <p className="text-xs text-muted-foreground">Added ON TOP of monthly rent payment.</p>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (â‚¹)</label>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={studentRentFeeFlat} min={0} step={1} onChange={e => setStudentRentFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </CardContent>
@@ -338,17 +338,17 @@ export default function PlatformFeesPage() {
                                 <h3 className="font-bold text-orange-800">ðŸ  Owner Rent Fee</h3>
                                 <p className="text-xs text-muted-foreground">Deducted FROM the rent the owner receives.</p>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (â‚¹)</label>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerRentFeeFlat} min={0} step={1} onChange={e => setOwnerRentFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </CardContent>
                         </Card>
                         <Card className="border-green-200">
                             <CardContent className="p-5 space-y-3">
-                                <h3 className="font-bold text-green-800">ðŸš€ Owner Onboarding Fee</h3>
+                                <h3 className="font-bold text-green-800">🚀 Owner Onboarding Fee</h3>
                                 <p className="text-xs text-muted-foreground">Paid once per property activation.</p>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (â‚¹)</label>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerOnboardingFeeFlat} min={0} step={1} onChange={e => setOwnerOnboardingFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
                             </CardContent>
@@ -363,18 +363,18 @@ export default function PlatformFeesPage() {
                                 <h3 className="font-bold text-indigo-800">Live Fee Preview</h3>
                             </div>
                             <div className="flex items-center gap-3">
-                                <label className="text-sm font-medium whitespace-nowrap">Rent Amount (â‚¹)</label>
+                                <label className="text-sm font-medium whitespace-nowrap">Rent Amount (₹)</label>
                                 <input type="number" className="border rounded-md p-2 text-sm w-36" value={previewAmount} min={100} step={100} onChange={e => setPreviewAmount(parseFloat(e.target.value) || 0)} />
                             </div>
                             {feesEnabled ? (
                                 <div className="grid grid-cols-3 gap-3 text-sm">
                                     {[
-                                        { label: "Rent Amount", value: `â‚¹${previewAmount.toFixed(2)}`, color: "" },
-                                        { label: "Customer Fee Added", value: `+â‚¹${customerFee.toFixed(2)}`, color: "blue" },
-                                        { label: "Customer Pays Total", value: `â‚¹${totalCharged.toFixed(2)}`, color: "green" },
-                                        { label: "Owner Fee Deducted", value: `-â‚¹${ownerFee.toFixed(2)}`, color: "orange" },
-                                        { label: "Owner Receives", value: `â‚¹${ownerNet.toFixed(2)}`, color: "" },
-                                        { label: "Platform Earns", value: `â‚¹${platformEarned.toFixed(2)}`, color: "purple" },
+                                        { label: "Rent Amount", value: `₹${previewAmount.toFixed(2)}`, color: "" },
+                                        { label: "Customer Fee Added", value: `+₹${customerFee.toFixed(2)}`, color: "blue" },
+                                        { label: "Customer Pays Total", value: `₹${totalCharged.toFixed(2)}`, color: "green" },
+                                        { label: "Owner Fee Deducted", value: `-₹${ownerFee.toFixed(2)}`, color: "orange" },
+                                        { label: "Owner Receives", value: `₹${ownerNet.toFixed(2)}`, color: "" },
+                                        { label: "Platform Earns", value: `₹${platformEarned.toFixed(2)}`, color: "purple" },
                                     ].map(({ label, value, color }) => (
                                         <div key={label} className={`rounded-lg p-3 border ${color ? `bg-${color}-50 border-${color}-200` : "bg-white"}`}>
                                             <p className={`text-xs ${color ? `text-${color}-600` : "text-muted-foreground"}`}>{label}</p>
@@ -389,21 +389,21 @@ export default function PlatformFeesPage() {
                     </Card>
 
                     <Button className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-3" onClick={handleSave} disabled={saving}>
-                        {saving ? "Saving..." : "ðŸ’¾ Save Platform Fee Settings"}
+                        {saving ? "Saving..." : "💾 Save Platform Fee Settings"}
                     </Button>
                     <p className="text-xs text-center text-muted-foreground">âš ï¸ Changes take effect immediately on the next payment.</p>
                 </div>
             )}
 
-            {/* â”€â”€ DATA TAB â”€â”€ */}
+            {/* ── DATA TAB ── */}
             {activeTab === "data" && (
                 <div className="space-y-4">
                     {/* Summary Stats */}
                     <div className="grid grid-cols-3 gap-4">
                         {[
-                            { label: "Total Platform Earned", value: `â‚¹${totalEarned.toFixed(2)}`, color: "purple" },
-                            { label: "From Customer Fees", value: `â‚¹${totalCustomerFees.toFixed(2)}`, color: "blue" },
-                            { label: "From Owner Fees", value: `â‚¹${totalOwnerFees.toFixed(2)}`, color: "orange" },
+                            { label: "Total Platform Earned", value: `₹${totalEarned.toFixed(2)}`, color: "purple" },
+                            { label: "From Customer Fees", value: `₹${totalCustomerFees.toFixed(2)}`, color: "blue" },
+                            { label: "From Owner Fees", value: `₹${totalOwnerFees.toFixed(2)}`, color: "orange" },
                         ].map(({ label, value, color }) => (
                             <div key={label} className={`p-4 rounded-xl border-2 bg-${color}-50 border-${color}-200`}>
                                 <div className={`text-2xl font-bold text-${color}-700`}>{value}</div>
@@ -446,18 +446,18 @@ export default function PlatformFeesPage() {
                                             <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No fee records found. Fees are collected when a booking payment is made with fees enabled.</td></tr>
                                         ) : filteredFees.map(f => (
                                             <tr key={f.id} className="border-b hover:bg-muted/5">
-                                                <td className="p-4 font-mono text-xs">{f.booking?.displayId || "â€”"}</td>
+                                                <td className="p-4 font-mono text-xs">{f.booking?.displayId || "—"}</td>
                                                 <td className="p-4">
-                                                    <div className="font-medium text-sm">{f.booking?.user?.name || "â€”"}</div>
+                                                    <div className="font-medium text-sm">{f.booking?.user?.name || "—"}</div>
                                                     <div className="text-xs text-muted-foreground">{f.booking?.user?.email}</div>
                                                     <div className="text-[10px] font-mono text-muted-foreground">{f.booking?.user?.displayId}</div>
                                                 </td>
-                                                <td className="p-4 text-sm font-medium">{f.booking?.propertyName || "â€”"}</td>
-                                                <td className="p-4 font-bold">â‚¹{f.grossAmount?.toFixed(2)}</td>
-                                                <td className="p-4 text-blue-700 font-medium">+â‚¹{f.customerFee?.toFixed(2)}</td>
-                                                <td className="p-4 text-orange-700 font-medium">-â‚¹{f.ownerFee?.toFixed(2)}</td>
+                                                <td className="p-4 text-sm font-medium">{f.booking?.propertyName || "—"}</td>
+                                                <td className="p-4 font-bold">₹{f.grossAmount?.toFixed(2)}</td>
+                                                <td className="p-4 text-blue-700 font-medium">+₹{f.customerFee?.toFixed(2)}</td>
+                                                <td className="p-4 text-orange-700 font-medium">-₹{f.ownerFee?.toFixed(2)}</td>
                                                 <td className="p-4">
-                                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold text-sm">â‚¹{f.platformEarned?.toFixed(2)}</span>
+                                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold text-sm">₹{f.platformEarned?.toFixed(2)}</span>
                                                 </td>
                                                 <td className="p-4 text-xs text-muted-foreground">
                                                     {new Date(f.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -472,12 +472,12 @@ export default function PlatformFeesPage() {
                 </div>
             )}
 
-            {/* â”€â”€ CHANGE LOG TAB â”€â”€ */}
+            {/* ── CHANGE LOG TAB ── */}
             {activeTab === "log" && (
                 <Card>
                     <CardContent className="p-0">
                         <div className="p-4 bg-green-50 border-b border-green-200">
-                            <p className="text-sm font-bold text-green-700">ðŸ“‹ Platform Fee Settings Change Log â€” All changes made by admins</p>
+                            <p className="text-sm font-bold text-green-700">📋 Platform Fee Settings Change Log — All changes made by admins</p>
                         </div>
                         <table className="w-full">
                             <thead className="bg-muted border-b">
@@ -511,27 +511,27 @@ export default function PlatformFeesPage() {
                 </Card>
             )}
 
-            {/* â”€â”€ EXEMPTIONS TAB â”€â”€ */}
+            {/* ── EXEMPTIONS TAB ── */}
             {activeTab === "exemptions" && (
                 <div className="space-y-5">
                     <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                        <p className="text-sm font-bold text-orange-700">ðŸŽ¯ Per-Property & Per-Student Custom Fee Rules</p>
+                        <p className="text-sm font-bold text-orange-700">🎯 Per-Property & Per-Student Custom Fee Rules</p>
                         <p className="text-xs text-orange-600 mt-1">
                             Set custom fees for specific PGs or Students. Set to 0 to hide the fee entirely from their receipt. Leave blank to use global settings.
                         </p>
                     </div>
 
-                    {/* â”€â”€ TWO PANEL LAYOUT â”€â”€ */}
+                    {/* ── TWO PANEL LAYOUT ── */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                        {/* â”€â”€â”€ LEFT: PG / PROPERTY PANEL â”€â”€â”€ */}
+                        {/* ─── LEFT: PG / PROPERTY PANEL ─── */}
                         <Card className="border-2 border-orange-200">
                             <CardContent className="p-0">
                                 <div className="bg-orange-600 text-white px-4 py-3 rounded-t-xl flex items-center gap-2">
                                     <span className="text-lg">ðŸ </span>
                                     <div>
                                         <p className="font-black text-sm">PG Properties</p>
-                                        <p className="text-[10px] text-orange-200">Auto-loaded from accepted &amp; registered properties</p>
+                                        <p className="text-[10px] text-orange-200">Auto-loaded from accepted & registered properties</p>
                                     </div>
                                     <span className="ml-auto bg-orange-500 text-white text-xs font-black px-2 py-1 rounded-full">{registeredProperties.length} PGs</span>
                                 </div>
@@ -542,7 +542,7 @@ export default function PlatformFeesPage() {
                                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                         <input
                                             className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-orange-400"
-                                            placeholder="Search by PG name, mobile, property ID, booking IDâ€¦"
+                                            placeholder="Search by PG name, mobile, property ID, booking ID…"
                                             value={pgSearch}
                                             onChange={e => setPgSearch(e.target.value)}
                                         />
@@ -565,8 +565,8 @@ export default function PlatformFeesPage() {
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div>
                                                         <p className="font-black text-sm text-slate-800">{pg.name}</p>
-                                                        <p className="text-[10px] font-mono text-slate-400">{pg.displayId} Â· {pg.city}</p>
-                                                        <p className="text-[10px] text-slate-400">Owner: {pg.owner?.name} Â· {pg.owner?.phone}</p>
+                                                        <p className="text-[10px] font-mono text-slate-400">{pg.displayId} · {pg.city}</p>
+                                                        <p className="text-[10px] text-slate-400">Owner: {pg.owner?.name} · {pg.owner?.phone}</p>
                                                         <p className="text-[9px] text-slate-400">Registered: {new Date(pg.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -583,16 +583,16 @@ export default function PlatformFeesPage() {
                                 {selectedPG && (
                                     <div className="border-t-2 border-orange-200 p-4 bg-orange-50 space-y-3">
                                         <p className="font-black text-sm text-orange-800">âš™ï¸ Configure: {selectedPG.name}</p>
-                                        <p className="text-[10px] text-slate-500">Global: Owner Rent Fee = â‚¹{ownerRentFeeFlat} | Onboarding Fee = â‚¹{ownerOnboardingFeeFlat}</p>
+                                        <p className="text-[10px] text-slate-500">Global: Owner Rent Fee = ₹{ownerRentFeeFlat} | Onboarding Fee = ₹{ownerOnboardingFeeFlat}</p>
 
                                         {/* Owner Onboarding Fee */}
                                         <div className="bg-white rounded-xl p-3 border border-orange-100 space-y-2">
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={pgExemptOnboarding} onChange={e => setPgExemptOnboarding(e.target.checked)} className="w-4 h-4 accent-orange-500" />
                                                 <span className="text-sm font-black text-slate-800">Exempt Owner Onboarding Fee</span>
-                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: â‚¹{ownerOnboardingFeeFlat}</span>
+                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: ₹{ownerOnboardingFeeFlat}</span>
                                             </label>
-                                            {pgExemptOnboarding && <p className="text-[10px] text-emerald-600 ml-6">âœ… Onboarding fee will be waived for this PG.</p>}
+                                            {pgExemptOnboarding && <p className="text-[10px] text-emerald-600 ml-6">✅ Onboarding fee will be waived for this PG.</p>}
                                         </div>
 
                                         {/* Owner Rent Fee */}
@@ -600,12 +600,12 @@ export default function PlatformFeesPage() {
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={pgExemptOwner} onChange={e => { setPgExemptOwner(e.target.checked); if (e.target.checked) setPgOwnerFeeValue("0"); else setPgOwnerFeeValue(""); }} className="w-4 h-4 accent-orange-500" />
                                                 <span className="text-sm font-black text-slate-800">Custom Owner Platform Fee</span>
-                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: â‚¹{ownerRentFeeFlat}</span>
+                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: ₹{ownerRentFeeFlat}</span>
                                             </label>
                                             {pgExemptOwner && (
                                                 <div className="ml-6 flex gap-2 items-center">
                                                     <select className="border rounded-md px-2 py-1.5 text-xs bg-white" value={pgOwnerFeeType} onChange={e => setPgOwnerFeeType(e.target.value as any)}>
-                                                        <option value="FLAT">â‚¹ Flat</option>
+                                                        <option value="FLAT">₹ Flat</option>
                                                         <option value="PERCENT">% Percent</option>
                                                     </select>
                                                     <input
@@ -615,40 +615,40 @@ export default function PlatformFeesPage() {
                                                         value={pgOwnerFeeValue}
                                                         onChange={e => setPgOwnerFeeValue(e.target.value)}
                                                     />
-                                                    <span className="text-xs text-slate-500">{pgOwnerFeeType === "FLAT" ? "â‚¹" : "% of rent"}</span>
+                                                    <span className="text-xs text-slate-500">{pgOwnerFeeType === "FLAT" ? "₹" : "% of rent"}</span>
                                                 </div>
                                             )}
                                             {pgExemptOwner && pgOwnerFeeValue === "0" && (
-                                                <p className="text-[10px] text-emerald-600 ml-6">âœ… Owner fee = â‚¹0 â†’ Will be hidden from owner receipt breakdown.</p>
+                                                <p className="text-[10px] text-emerald-600 ml-6">✅ Owner fee = ₹0 → Will be hidden from owner receipt breakdown.</p>
                                             )}
                                             {pgExemptOwner && pgOwnerFeeValue !== "" && parseFloat(pgOwnerFeeValue) > 0 && (
-                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Owner will be charged {pgOwnerFeeType === "FLAT" ? `â‚¹${pgOwnerFeeValue}` : `${pgOwnerFeeValue}% of rent`} instead of global â‚¹{ownerRentFeeFlat}.</p>
+                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Owner will be charged {pgOwnerFeeType === "FLAT" ? `₹${pgOwnerFeeValue}` : `${pgOwnerFeeValue}% of rent`} instead of global ₹{ownerRentFeeFlat}.</p>
                                             )}
                                         </div>
 
                                         {/* Reason */}
                                         <input
                                             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                                            placeholder="Reason (e.g. Early adopter discount, Special arrangementâ€¦) *"
+                                            placeholder="Reason (e.g. Early adopter discount, Special arrangement…) *"
                                             value={pgReason}
                                             onChange={e => setPgReason(e.target.value)}
                                         />
                                         <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black text-sm" onClick={handleSavePGExemption} disabled={pgSaving || !pgReason.trim()}>
-                                            {pgSaving ? "Savingâ€¦" : "ðŸ’¾ Save PG Rule"}
+                                            {pgSaving ? "Saving…" : "💾 Save PG Rule"}
                                         </Button>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
-                        {/* â”€â”€â”€ RIGHT: STUDENT PANEL â”€â”€â”€ */}
+                        {/* ─── RIGHT: STUDENT PANEL ─── */}
                         <Card className="border-2 border-blue-200">
                             <CardContent className="p-0">
                                 <div className="bg-blue-600 text-white px-4 py-3 rounded-t-xl flex items-center gap-2">
-                                    <span className="text-lg">ðŸ‘¤</span>
+                                    <span className="text-lg">👤</span>
                                     <div>
                                         <p className="font-black text-sm">Students / Tenants</p>
-                                        <p className="text-[10px] text-blue-200">Auto-loaded from active bookings &amp; tenants</p>
+                                        <p className="text-[10px] text-blue-200">Auto-loaded from active bookings & tenants</p>
                                     </div>
                                     <span className="ml-auto bg-blue-500 text-white text-xs font-black px-2 py-1 rounded-full">{activeStudents.length} students</span>
                                 </div>
@@ -659,7 +659,7 @@ export default function PlatformFeesPage() {
                                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                         <input
                                             className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400"
-                                            placeholder="Search by name, mobile, tenant ID, booking ID, permanent IDâ€¦"
+                                            placeholder="Search by name, mobile, tenant ID, booking ID, permanent ID…"
                                             value={studentSearch}
                                             onChange={e => setStudentSearch(e.target.value)}
                                         />
@@ -682,8 +682,8 @@ export default function PlatformFeesPage() {
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div>
                                                         <p className="font-black text-sm text-slate-800">{b.guestName || b.user?.name}</p>
-                                                        <p className="text-[10px] text-slate-400">{b.guestPhone || b.user?.phone} Â· {b.user?.email}</p>
-                                                        <p className="text-[10px] font-mono text-slate-400">Booking: {b.displayId} Â· Tenant: {b.tenant?.displayId || b.user?.displayId}</p>
+                                                        <p className="text-[10px] text-slate-400">{b.guestPhone || b.user?.phone} · {b.user?.email}</p>
+                                                        <p className="text-[10px] font-mono text-slate-400">Booking: {b.displayId} · Tenant: {b.tenant?.displayId || b.user?.displayId}</p>
                                                         <p className="text-[10px] text-slate-400">PG: {b.propertyName}</p>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -700,19 +700,19 @@ export default function PlatformFeesPage() {
                                 {selectedStudent && (
                                     <div className="border-t-2 border-blue-200 p-4 bg-blue-50 space-y-3">
                                         <p className="font-black text-sm text-blue-800">âš™ï¸ Configure: {selectedStudent.guestName || selectedStudent.user?.name}</p>
-                                        <p className="text-[10px] text-slate-500">Global: Student Convenience Fee = â‚¹{studentRentFeeFlat}</p>
+                                        <p className="text-[10px] text-slate-500">Global: Student Convenience Fee = ₹{studentRentFeeFlat}</p>
 
                                         {/* Student Convenience Fee */}
                                         <div className="bg-white rounded-xl p-3 border border-blue-100 space-y-2">
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={stuExemptStudent} onChange={e => { setStuExemptStudent(e.target.checked); if (e.target.checked) setStuFeeValue("0"); else setStuFeeValue(""); }} className="w-4 h-4 accent-blue-500" />
                                                 <span className="text-sm font-black text-slate-800">Custom Convenience Fee for Student</span>
-                                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Global: â‚¹{studentRentFeeFlat}</span>
+                                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Global: ₹{studentRentFeeFlat}</span>
                                             </label>
                                             {stuExemptStudent && (
                                                 <div className="ml-6 flex gap-2 items-center">
                                                     <select className="border rounded-md px-2 py-1.5 text-xs bg-white" value={stuFeeType} onChange={e => setStuFeeType(e.target.value as any)}>
-                                                        <option value="FLAT">â‚¹ Flat</option>
+                                                        <option value="FLAT">₹ Flat</option>
                                                         <option value="PERCENT">% Percent</option>
                                                     </select>
                                                     <input
@@ -722,26 +722,26 @@ export default function PlatformFeesPage() {
                                                         value={stuFeeValue}
                                                         onChange={e => setStuFeeValue(e.target.value)}
                                                     />
-                                                    <span className="text-xs text-slate-500">{stuFeeType === "FLAT" ? "â‚¹" : "% of rent"}</span>
+                                                    <span className="text-xs text-slate-500">{stuFeeType === "FLAT" ? "₹" : "% of rent"}</span>
                                                 </div>
                                             )}
                                             {stuExemptStudent && stuFeeValue === "0" && (
-                                                <p className="text-[10px] text-emerald-600 ml-6">âœ… Convenience fee = â‚¹0 â†’ Will be hidden from student checkout.</p>
+                                                <p className="text-[10px] text-emerald-600 ml-6">✅ Convenience fee = ₹0 → Will be hidden from student checkout.</p>
                                             )}
                                             {stuExemptStudent && stuFeeValue !== "" && parseFloat(stuFeeValue) > 0 && (
-                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Student will be charged {stuFeeType === "FLAT" ? `â‚¹${stuFeeValue}` : `${stuFeeValue}% of rent`} instead of global â‚¹{studentRentFeeFlat}.</p>
+                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Student will be charged {stuFeeType === "FLAT" ? `₹${stuFeeValue}` : `${stuFeeValue}% of rent`} instead of global ₹{studentRentFeeFlat}.</p>
                                             )}
                                         </div>
 
                                         {/* Reason */}
                                         <input
                                             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-                                            placeholder="Reason (e.g. VIP student, special dealâ€¦) *"
+                                            placeholder="Reason (e.g. VIP student, special deal…) *"
                                             value={stuReason}
                                             onChange={e => setStuReason(e.target.value)}
                                         />
                                         <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm" onClick={handleSaveStudentExemption} disabled={stuSaving || !stuReason.trim()}>
-                                            {stuSaving ? "Savingâ€¦" : "ðŸ’¾ Save Student Rule"}
+                                            {stuSaving ? "Saving…" : "💾 Save Student Rule"}
                                         </Button>
                                     </div>
                                 )}
@@ -749,11 +749,11 @@ export default function PlatformFeesPage() {
                         </Card>
                     </div>
 
-                    {/* â”€â”€ Active Exemptions Table â”€â”€ */}
+                    {/* ── Active Exemptions Table ── */}
                     <Card>
                         <CardContent className="p-0">
                             <div className="px-4 py-3 bg-slate-50 border-b flex items-center justify-between">
-                                <p className="font-black text-sm text-slate-700">ðŸ“‹ Active Custom Fee Rules ({exemptions.length})</p>
+                                <p className="font-black text-sm text-slate-700">📋 Active Custom Fee Rules ({exemptions.length})</p>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
@@ -777,14 +777,14 @@ export default function PlatformFeesPage() {
                                                 <td className="p-3 font-mono text-xs">{ex.userId || <span className="text-slate-400 italic">All Students</span>}</td>
                                                 <td className="p-3 space-y-1">
                                                     {ex.exemptOwner && ex.customOwnerFee === 0 && <span className="block text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: FREE (hidden)</span>}
-                                                    {ex.exemptOwner && ex.customOwnerFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: {ex.customOwnerFeeType === "PERCENT" ? `${ex.customOwnerFee}%` : `â‚¹${ex.customOwnerFee}`}</span>}
+                                                    {ex.exemptOwner && ex.customOwnerFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: {ex.customOwnerFeeType === "PERCENT" ? `${ex.customOwnerFee}%` : `₹${ex.customOwnerFee}`}</span>}
                                                     {ex.exemptOnboardingFee && <span className="block text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-bold">Onboarding: FREE</span>}
-                                                    {!ex.exemptOwner && !ex.exemptOnboardingFee && <span className="text-slate-400 text-xs">â€”</span>}
+                                                    {!ex.exemptOwner && !ex.exemptOnboardingFee && <span className="text-slate-400 text-xs">—</span>}
                                                 </td>
                                                 <td className="p-3 space-y-1">
                                                     {ex.exemptCustomer && ex.customStudentFee === 0 && <span className="block text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Conv. Fee: FREE (hidden)</span>}
-                                                    {ex.exemptCustomer && ex.customStudentFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Conv. Fee: {ex.customStudentFeeType === "PERCENT" ? `${ex.customStudentFee}%` : `â‚¹${ex.customStudentFee}`}</span>}
-                                                    {!ex.exemptCustomer && <span className="text-slate-400 text-xs">â€”</span>}
+                                                    {ex.exemptCustomer && ex.customStudentFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Conv. Fee: {ex.customStudentFeeType === "PERCENT" ? `${ex.customStudentFee}%` : `₹${ex.customStudentFee}`}</span>}
+                                                    {!ex.exemptCustomer && <span className="text-slate-400 text-xs">—</span>}
                                                 </td>
                                                 <td className="p-3 text-xs text-slate-600">{ex.reason}</td>
                                                 <td className="p-3 text-xs text-muted-foreground">{new Date(ex.createdAt).toLocaleDateString('en-IN')}</td>

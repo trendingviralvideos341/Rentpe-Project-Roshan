@@ -63,7 +63,7 @@ export default function NoticePage() {
 
     // Generates the complete, legally-valid official HTML for the settlement receipt
     const getReceiptHtml = (d: any) => {
-        const fmt = (date: string | null) => date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Ã¢â‚¬â€';
+        const fmt = (date: string | null) => date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
         const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
         const net = d.netRefund ?? (d.securityDeposit - d.totalRentDue - d.totalDeductions);
         const unpaidRows = (d.unpaidRecords || []).map((r: any) =>
@@ -74,7 +74,7 @@ export default function NoticePage() {
         ).join('');
         const moveOutStr = d.moveOutDate
             ? new Date(d.moveOutDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-            : 'Ã¢â‚¬â€';
+            : '—';
         const netRefund = net;
         
         return `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Official Settlement Receipt - ${d.name}</title>
@@ -120,7 +120,7 @@ export default function NoticePage() {
         <tbody>
             <tr><td>Security Deposit (Credit)</td><td style="text-align:right">${inr(d.securityDeposit)}</td></tr>
             ${d.totalRentDue > 0 ? `<tr><td style="color:#ef4444">Rent Dues (Outstanding)</td><td style="text-align:right;color:#ef4444">- ${inr(d.totalRentDue)}</td></tr>${unpaidRows}` : ''}
-            ${d.totalDeductions > 0 ? `<tr><td style="color:#d97706">Damage &amp; Maintenance Deductions</td><td style="text-align:right;color:#d97706">- ${inr(d.totalDeductions)}</td></tr>${deductionRows}` : ''}
+            ${d.totalDeductions > 0 ? `<tr><td style="color:#d97706">Damage & Maintenance Deductions</td><td style="text-align:right;color:#d97706">- ${inr(d.totalDeductions)}</td></tr>${deductionRows}` : ''}
             <tr class="total-row">
                 <td>${netRefund >= 0 ? 'Net Refund Payable to Tenant' : 'Net Balance Due from Tenant'}</td>
                 <td style="text-align:right" class="${netRefund >= 0 ? 'amt-refund' : 'amt-due'}">${inr(Math.abs(netRefund))}</td>
@@ -239,7 +239,7 @@ export default function NoticePage() {
 
             <div className="max-w-2xl mx-auto px-4 -mt-12 relative z-10 space-y-5">
 
-                {/* —â‚¬—â‚¬ No Booking —â‚¬—â‚¬ */}
+                {/* ── No Booking ── */}
                 {!booking ? (
                     <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
                         <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -299,10 +299,10 @@ export default function NoticePage() {
                     </div>
 
                 ) : (
-                    /* —â‚¬—â‚¬ File Notice Form —â‚¬—â‚¬ */
+                    /* ── File Notice Form ── */
                     <form onSubmit={handleSubmit} className="space-y-5">
 
-                        {/* Card 1 Ã¢â‚¬â€ Locked Move-Out Date */}
+                        {/* Card 1 — Locked Move-Out Date */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100">
                                 <h2 className="font-black text-slate-900 text-lg flex items-center gap-2">
@@ -378,7 +378,7 @@ export default function NoticePage() {
                             </div>
                         </div>
 
-                        {/* Card 2 Ã¢â‚¬â€ Early Leave Request (optional) */}
+                        {/* Card 2 — Early Leave Request (optional) */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100">
                                 <h2 className="font-black text-slate-900 text-base flex items-center gap-2">

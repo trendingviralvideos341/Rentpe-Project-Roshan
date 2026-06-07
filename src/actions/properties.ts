@@ -144,7 +144,7 @@ export async function createProperty(data: FormData | any) {
     const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
     const userId = session.userId;
 
-    // â”€â”€ PHASE 1: PARALLEL PRE-FLIGHT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PHASE 1: PARALLEL PRE-FLIGHT ─────────────────────────────
     // Fire all independent DB reads CONCURRENTLY. Eliminates one full
     // round-trip from the cold path (~200-400ms on remote DBs).
     const [user, settings] = await Promise.all([
@@ -160,7 +160,7 @@ export async function createProperty(data: FormData | any) {
         if (!perms.includes('register_property')) throw new Error("You do not have permission to register properties");
     }
 
-    // â”€â”€ PHASE 2: DATA EXTRACTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PHASE 2: DATA EXTRACTION ────────────────────────────────────
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");
@@ -189,7 +189,7 @@ export async function createProperty(data: FormData | any) {
 
     const onboardingFee = settings?.feesEnabled ? settings.ownerOnboardingFeeFlat : 0;
     if (onboardingFee > 0 && !feeTermsAccepted) {
-        throw new Error(`Acknowledgment of the â‚¹${onboardingFee} platform onboarding fee is mandatory.`);
+        throw new Error(`Acknowledgment of the ₹${onboardingFee} platform onboarding fee is mandatory.`);
     }
 
     const buildingPhotos = getAllVal("buildingPhotos");
@@ -204,14 +204,14 @@ export async function createProperty(data: FormData | any) {
 
     const parsedRooms: any[] = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
-    // â”€â”€ SECURITY: Hard-caps to prevent abuse & DB overload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SECURITY: Hard-caps to prevent abuse & DB overload ───────────────
     const MAX_ROOMS = 50;
     const MAX_BEDS = 500;
     if (parsedRooms.length > MAX_ROOMS) throw new Error(`Maximum ${MAX_ROOMS} rooms allowed per registration.`);
     const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
     if (totalBedsNeeded > MAX_BEDS) throw new Error(`Maximum ${MAX_BEDS} total beds allowed per registration.`);
 
-    // â”€â”€ PHASE 3: PARALLEL ID GENERATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PHASE 3: PARALLEL ID GENERATION ────────────────────────────
     // All 3 ID-sequence DB reads now run simultaneously and atomically.
     const [displayId, roomIdsList, bedIdsList] = await Promise.all([
         generateSequentialId('PROPERTY'),
@@ -219,8 +219,8 @@ export async function createProperty(data: FormData | any) {
         totalBedsNeeded > 0 ? Promise.all(Array(totalBedsNeeded).fill(0).map(() => generateSequentialId('BED'))) : Promise.resolve([] as string[]),
     ]);
 
-    // â”€â”€ PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // randomUUID() pre-links roomsâ†’beds without sequential DB reads.
+    // ── PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) ───────────
+    // randomUUID() pre-links rooms→beds without sequential DB reads.
     const roomsToCreate: any[] = [];
     const bedsToCreate: any[] = [];
     let bedIdx = 0;
@@ -254,7 +254,7 @@ export async function createProperty(data: FormData | any) {
         }
     }
 
-    // â”€â”€ PHASE 5: ATOMIC TRANSACTION â€” 4 writes total, regardless of scale â”€â”€â”€â”€â”€â”€
+    // ── PHASE 5: ATOMIC TRANSACTION — 4 writes total, regardless of scale ──────
     // Before: O(NÃ—M) sequential writes. After: always exactly 4 bulk writes.
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.create({
@@ -269,7 +269,7 @@ export async function createProperty(data: FormData | any) {
                 licenseNumber,
                 reraId,
                 businessName,
-                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - â‚¹${onboardingFee}]` : null,
+                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - ₹${onboardingFee}]` : null,
                 ownerName: ownerName || user?.name || "Owner",
                 ownerId: user?.parentOwnerId || userId,
                 amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
@@ -779,7 +779,7 @@ export async function deleteProperty(propertyId: string) {
         }
         // For other models, check if they have status; if not, they might need model updates or just stay for now.
         // But the policy says: "Do not delete: invoices, credit notes, food preferences".
-        // FeeExemption, FoodMenu, Assignment â€” we added status to some.
+        // FeeExemption, FoodMenu, Assignment — we added status to some.
         
         await (tx as any).foodMenu?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
         await (tx as any).employeePropertyAssignment?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
@@ -808,11 +808,11 @@ export async function deleteProperty(propertyId: string) {
     });
 }
 
-// â”€â”€ Property Deactivation Flow (OYO / Zolo / Stanza standard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Property Deactivation Flow (OYO / Zolo / Stanza standard) ─────────────────
 
 /**
  * OWNER: Request to deactivate an approved property.
- * Sets status â†’ DEACTIVATION_REQUESTED for admin review.
+ * Sets status → DEACTIVATION_REQUESTED for admin review.
  */
 export async function requestPropertyDeactivation(propertyId: string, reason: string) {
     const session = await getSession();
@@ -824,7 +824,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             throw new Error("Permission Denied: Missing request_deactivation permission.");
         }
 
-        // âœ… Scope check: staff can only request deactivation for properties they're assigned to
+        // ✅ Scope check: staff can only request deactivation for properties they're assigned to
         const staffUser = await prisma.user.findUnique({
             where: { id: session.userId },
             include: { employeeProfile: true }
@@ -874,7 +874,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
                 data: {
                     userId: admin.id,
                     type: "PROPERTY_PENDING",
-                    message: `Deactivation Request: "${property.name}" (${property.displayId}) â€” Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
+                    message: `Deactivation Request: "${property.name}" (${property.displayId}) — Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
                     targetRole: "ADMIN"
                 }
             });
@@ -892,11 +892,11 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             });
         }
 
-        // âœ… Audit Log â€” correctly captures whether Owner or Staff submitted the request
+        // ✅ Audit Log — correctly captures whether Owner or Staff submitted the request
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
-                actorRole: session.role,  // 'OWNER' or 'STAFF' â€” accurate
+                actorRole: session.role,  // 'OWNER' or 'STAFF' — accurate
                 actorName: session.name || session.role,
                 actionType: 'UPDATE',
                 entityType: 'PROPERTY',
@@ -922,7 +922,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
 /**
  * ADMIN: Approve a deactivation request.
  * Blocks if active tenants or pending bookings still exist.
- * Sets status â†’ DEACTIVATED.
+ * Sets status → DEACTIVATED.
  */
 export async function approvePropertyDeactivation(propertyId: string) {
     const session = await getSession();
@@ -967,7 +967,7 @@ export async function approvePropertyDeactivation(propertyId: string) {
             }
         });
 
-        // âœ… Audit Log
+        // ✅ Audit Log
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
@@ -1028,7 +1028,7 @@ export async function rejectPropertyDeactivation(propertyId: string, rejectionRe
             }
         });
 
-        // âœ… Audit Log
+        // ✅ Audit Log
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,

@@ -42,7 +42,7 @@ export async function raiseDispute(data: {
     // Notify admin team
     const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true, email: true } });
     for (const admin of admins) {
-        await createNotification(admin.id, 'TICKET', `New ${data.type} dispute raised: "${data.subject}" â€” Priority: ${data.priority || 'MEDIUM'}`);
+        await createNotification(admin.id, 'TICKET', `New ${data.type} dispute raised: "${data.subject}" — Priority: ${data.priority || 'MEDIUM'}`);
         
         if (admin.email) {
             sendEmail({
@@ -111,7 +111,7 @@ export async function resolveDispute(disputeId: string, resolution: string) {
     if (user?.email) {
         sendEmail({
             to: user.email,
-            subject: `Dispute Resolved: ${dispute.subject} âœ…`,
+            subject: `Dispute Resolved: ${dispute.subject} ✅`,
             html: `<h2>Good news!</h2><p>Hi ${user.name || 'there'},</p><p>Your dispute "<strong>${dispute.subject}</strong>" has been resolved by our support team.</p><div style="background: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0;"><strong>Resolution:</strong><br/>${resolution}</div><p>Thank you for your patience.</p>`
         }).catch(err => console.error('Failed to email dispute resolution:', err));
     }
@@ -175,18 +175,18 @@ export async function getMyDisputes() {
     });
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // FOOD BILLING ADMIN OVERRIDE (All 5 Specs Â§6)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 
 type FoodOverrideAction = 'CREDIT' | 'REFUND' | 'DISABLE_FOOD';
 
 /**
  * Admin-only: override food billing for a booking.
  *
- * CREDIT      â€” Create CreditNote (PENDING) applied at next invoice generation
- * REFUND      â€” Create CreditNote (REFUND) + mark latest invoice foodNotes
- * DISABLE_FOOD â€” Force food off: FoodPreference CONFIRMED false + booking cache update
+ * CREDIT      — Create CreditNote (PENDING) applied at next invoice generation
+ * REFUND      — Create CreditNote (REFUND) + mark latest invoice foodNotes
+ * DISABLE_FOOD — Force food off: FoodPreference CONFIRMED false + booking cache update
  *
  * Rules:
  *  - Admin only
@@ -201,9 +201,9 @@ export async function overrideFoodBilling(
     notes?: string
 ): Promise<{ success: boolean; error?: string }> {
     const session = await getSession();
-    if (!session || session.role !== 'ADMIN') return { success: false, error: 'Unauthorized â€” Admin only.' };
+    if (!session || session.role !== 'ADMIN') return { success: false, error: 'Unauthorized — Admin only.' };
 
-    // â”€â”€ Input Validation â”€â”€
+    // ── Input Validation ──
     if (!bookingId?.trim()) return { success: false, error: 'bookingId is required.' };
     if (!notes?.trim()) return { success: false, error: 'Notes are mandatory for admin overrides.' };
     if (amount !== undefined && (typeof amount !== 'number' || amount <= 0 || !isFinite(amount))) {
@@ -222,7 +222,7 @@ export async function overrideFoodBilling(
     const prevState = { foodSelected: booking.foodSelected, action };
 
     try {
-        // â”€â”€ CREDIT: create a pending credit note for next invoice â”€â”€
+        // ── CREDIT: create a pending credit note for next invoice ──
         if (action === 'CREDIT') {
             if (!amount || amount <= 0) return { success: false, error: 'Credit amount must be greater than 0.' };
 
@@ -244,7 +244,7 @@ export async function overrideFoodBilling(
             logAuditEvent({
                 actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
                 actionType: 'CREATE', entityType: 'BOOKING', entityId: bookingId,
-                description: `Admin issued credit note of â‚¹${amount}. Reason: ${notes}`,
+                description: `Admin issued credit note of ₹${amount}. Reason: ${notes}`,
                 previousValue: prevState,
                 newValue: { creditNoteAmount: amount, type: 'ADMIN_OVERRIDE' },
             });
@@ -253,7 +253,7 @@ export async function overrideFoodBilling(
             return { success: true };
         }
 
-        // â”€â”€ REFUND: credit note + mark invoice foodNotes â”€â”€
+        // ── REFUND: credit note + mark invoice foodNotes ──
         if (action === 'REFUND') {
             if (!amount || amount <= 0) return { success: false, error: 'Refund amount must be greater than 0.' };
 
@@ -280,18 +280,18 @@ export async function overrideFoodBilling(
                 }
             });
 
-            // Mark invoice with refund note (no amount modification â€” invoice is immutable)
+            // Mark invoice with refund note (no amount modification — invoice is immutable)
             if (latestInvoice) {
                 await prisma.rentInvoice.update({
                     where: { id: latestInvoice.id },
-                    data: { foodNotes: `Refund issued: â‚¹${amount}. ${notes}` } as any
+                    data: { foodNotes: `Refund issued: ₹${amount}. ${notes}` } as any
                 });
             }
 
             logAuditEvent({
                 actorId: adminId, actorRole: 'ADMIN', actorName: adminName,
                 actionType: 'UPDATE', entityType: 'BOOKING', entityId: bookingId,
-                description: `Admin issued food refund of â‚¹${amount}. Invoice: ${latestInvoice?.displayId || 'N/A'}. Reason: ${notes}`,
+                description: `Admin issued food refund of ₹${amount}. Invoice: ${latestInvoice?.displayId || 'N/A'}. Reason: ${notes}`,
                 previousValue: prevState,
                 newValue: { refundAmount: amount, invoiceId: latestInvoice?.id },
             });
@@ -300,7 +300,7 @@ export async function overrideFoodBilling(
             return { success: true };
         }
 
-        // â”€â”€ DISABLE_FOOD: force food off â€” bypasses student confirmation â”€â”€
+        // ── DISABLE_FOOD: force food off — bypasses student confirmation ──
         if (action === 'DISABLE_FOOD') {
             const { nextBillingCycleStart, toUTC } = await import('@/utils/foodBillingUtils');
             const billingProfile = await prisma.billingProfile.findFirst({

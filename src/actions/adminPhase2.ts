@@ -9,9 +9,9 @@ import { sendEmail } from "@/lib/email";
 import { getSLAStatus } from "@/lib/sla";
 import { KycRejectedTemplate } from "@/lib/email-templates";
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // KYC VERIFICATION QUEUE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getKYCQueue(filter?: string) {
     const session = await getSession();
@@ -30,7 +30,7 @@ export async function getKYCQueue(filter?: string) {
         orderBy: { createdAt: 'desc' }
     });
 
-    // Build queue items â€” one per doc per property
+    // Build queue items — one per doc per property
     const queue: any[] = [];
 
     for (const prop of properties) {
@@ -102,7 +102,7 @@ export async function verifyDocument(propertyId: string, docType: string) {
     await createNotification(
         property.ownerId,
         'KYC_VERIFIED',
-        `âœ… Your ${docType.replace('_', ' ')} document for "${property.name}" has been verified by admin.`
+        `✅ Your ${docType.replace('_', ' ')} document for "${property.name}" has been verified by admin.`
     );
 
     await logAuditEvent({
@@ -186,9 +186,9 @@ export async function rejectDocument(propertyId: string, docType: string, reason
     return { success: true };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // REFUND MANAGEMENT
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getRefundRequests(status?: string) {
     const session = await getSession();
@@ -253,7 +253,7 @@ export async function approveRefund(refundId: string, note?: string) {
         await createNotification(
             booking.user.id,
             'PAYMENT',
-            `âœ… Your refund of â‚¹${refund.amount} has been approved and will be processed within 5-7 business days.`
+            `✅ Your refund of ₹${refund.amount} has been approved and will be processed within 5-7 business days.`
         );
     }
 
@@ -264,7 +264,7 @@ export async function approveRefund(refundId: string, note?: string) {
         actionType: 'APPROVE',
         entityType: 'REFUND',
         entityId: refundId,
-        description: `Refund of â‚¹${refund.amount} approved. Note: ${note || 'N/A'}`,
+        description: `Refund of ₹${refund.amount} approved. Note: ${note || 'N/A'}`,
     });
 
     revalidatePath('/dashboard/admin/refunds');
@@ -296,7 +296,7 @@ export async function rejectRefund(refundId: string, reason: string) {
         await createNotification(
             booking.user.id,
             'PAYMENT',
-            `âŒ Your refund request of â‚¹${refund.amount} has been rejected. Reason: ${reason}`
+            `âŒ Your refund request of ₹${refund.amount} has been rejected. Reason: ${reason}`
         );
     }
 
@@ -307,16 +307,16 @@ export async function rejectRefund(refundId: string, reason: string) {
         actionType: 'REJECT',
         entityType: 'REFUND',
         entityId: refundId,
-        description: `Refund of â‚¹${refund.amount} rejected. Reason: ${reason}`,
+        description: `Refund of ₹${refund.amount} rejected. Reason: ${reason}`,
     });
 
     revalidatePath('/dashboard/admin/refunds');
     return { success: true };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // CITY / AREA MANAGEMENT
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getServiceCities() {
     const session = await getSession();
@@ -424,9 +424,9 @@ export async function toggleCityStatus(id: string, isActive: boolean) {
     return updated;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // COMMISSION CONFIGURATION
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getCommissionConfigs() {
     const session = await getSession();
@@ -472,16 +472,16 @@ export async function updateCommissionConfig(data: {
         actionType: 'UPDATE',
         entityType: 'ADMIN',
         entityId: config.id,
-        description: `Commission config updated: ${data.propertyType} â†’ ${data.feePercent}%${data.flatFee ? ` / â‚¹${data.flatFee} flat` : ''}`,
+        description: `Commission config updated: ${data.propertyType} → ${data.feePercent}%${data.flatFee ? ` / ₹${data.flatFee} flat` : ''}`,
     });
 
     revalidatePath('/dashboard/admin/settings/commission');
     return config;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // BULK NOTIFICATION SENDER
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getNotificationRecipientCount(
     audience: 'ALL' | 'STUDENTS' | 'OWNERS' | 'CITY',
@@ -568,9 +568,9 @@ export async function sendBulkNotification(
     return { success: true, recipientCount: sent };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // DISPUTE MESSAGES
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getDisputeById(id: string) {
     const session = await getSession();
@@ -659,9 +659,9 @@ export async function updateDisputePriority(disputeId: string, priority: string)
     return dispute;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // PAYOUT MANAGEMENT (extends existing payouts.ts)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getOwnerPayouts(period?: string, status?: string) {
     const session = await getSession();
@@ -719,7 +719,7 @@ export async function processOwnerPayout(payoutId: string) {
         await createNotification(
             owner.id,
             'PAYMENT',
-            `ðŸ’° Your payout of â‚¹${payout.netAmount} for ${payout.period} has been processed!`
+            `💰 Your payout of ₹${payout.netAmount} for ${payout.period} has been processed!`
         );
     }
 
@@ -730,7 +730,7 @@ export async function processOwnerPayout(payoutId: string) {
         actionType: 'APPROVE',
         entityType: 'PAYOUT',
         entityId: payoutId,
-        description: `Payout ${payout.displayId} processed. Net: â‚¹${payout.netAmount} for period ${payout.period}`,
+        description: `Payout ${payout.displayId} processed. Net: ₹${payout.netAmount} for period ${payout.period}`,
     });
 
     revalidatePath('/dashboard/admin/payouts');
@@ -752,9 +752,9 @@ export async function processBulkPayouts(payoutIds: string[]) {
     return { succeeded, failed, total: payoutIds.length };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 // ADMIN ANALYTICS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────
 
 export async function getAdminAnalytics(days: number = 30) {
     const session = await getSession();
