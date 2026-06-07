@@ -219,7 +219,7 @@ export default function PlatformFeesPage() {
     if (loading) return <div className="p-8 text-center animate-pulse">Loading platform settings...</div>;
 
     const tabs: { id: TabType; label: string; icon: any }[] = [
-        { id: "settings", label: "âš™ï¸ Fee Settings", icon: Shield },
+        { id: "settings", label: "⚙️ Fee Settings", icon: Shield },
         { id: "data", label: `📊 Fee Data (${fees.length})`, icon: Database },
         { id: "log", label: `📋 Change Log (${changeLogs.length})`, icon: History },
         { id: "exemptions", label: `🎯 Exemptions (${exemptions.length})`, icon: Target },
@@ -391,7 +391,7 @@ export default function PlatformFeesPage() {
                     <Button className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-3" onClick={handleSave} disabled={saving}>
                         {saving ? "Saving..." : "💾 Save Platform Fee Settings"}
                     </Button>
-                    <p className="text-xs text-center text-muted-foreground">âš ï¸ Changes take effect immediately on the next payment.</p>
+                    <p className="text-xs text-center text-muted-foreground">⚠️ Changes take effect immediately on the next payment.</p>
                 </div>
             )}
 
@@ -570,7 +570,7 @@ export default function PlatformFeesPage() {
                                                         <p className="text-[9px] text-slate-400">Registered: {new Date(pg.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0">
-                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">âœ“ {pg.status}</span>
+                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">✓ {pg.status}</span>
                                                         {ex && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Custom Rule</span>}
                                                     </div>
                                                 </div>
@@ -582,7 +582,7 @@ export default function PlatformFeesPage() {
                                 {/* PG Config Panel */}
                                 {selectedPG && (
                                     <div className="border-t-2 border-orange-200 p-4 bg-orange-50 space-y-3">
-                                        <p className="font-black text-sm text-orange-800">âš™ï¸ Configure: {selectedPG.name}</p>
+                                        <p className="font-black text-sm text-orange-800">⚙️ Configure: {selectedPG.name}</p>
                                         <p className="text-[10px] text-slate-500">Global: Owner Rent Fee = ₹{ownerRentFeeFlat} | Onboarding Fee = ₹{ownerOnboardingFeeFlat}</p>
 
                                         {/* Owner Onboarding Fee */}
@@ -622,7 +622,7 @@ export default function PlatformFeesPage() {
                                                 <p className="text-[10px] text-emerald-600 ml-6">✅ Owner fee = ₹0 → Will be hidden from owner receipt breakdown.</p>
                                             )}
                                             {pgExemptOwner && pgOwnerFeeValue !== "" && parseFloat(pgOwnerFeeValue) > 0 && (
-                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Owner will be charged {pgOwnerFeeType === "FLAT" ? `₹${pgOwnerFeeValue}` : `${pgOwnerFeeValue}% of rent`} instead of global ₹{ownerRentFeeFlat}.</p>
+                                                <p className="text-[10px] text-blue-600 ml-6">ℹ️ Owner will be charged {pgOwnerFeeType === "FLAT" ? `₹${pgOwnerFeeValue}` : `${pgOwnerFeeValue}% of rent`} instead of global ₹{ownerRentFeeFlat}.</p>
                                             )}
                                         </div>
 
@@ -699,7 +699,7 @@ export default function PlatformFeesPage() {
                                 {/* Student Config Panel */}
                                 {selectedStudent && (
                                     <div className="border-t-2 border-blue-200 p-4 bg-blue-50 space-y-3">
-                                        <p className="font-black text-sm text-blue-800">âš™ï¸ Configure: {selectedStudent.guestName || selectedStudent.user?.name}</p>
+                                        <p className="font-black text-sm text-blue-800">⚙️ Configure: {selectedStudent.guestName || selectedStudent.user?.name}</p>
                                         <p className="text-[10px] text-slate-500">Global: Student Convenience Fee = ₹{studentRentFeeFlat}</p>
 
                                         {/* Student Convenience Fee */}
@@ -729,7 +729,7 @@ export default function PlatformFeesPage() {
                                                 <p className="text-[10px] text-emerald-600 ml-6">✅ Convenience fee = ₹0 → Will be hidden from student checkout.</p>
                                             )}
                                             {stuExemptStudent && stuFeeValue !== "" && parseFloat(stuFeeValue) > 0 && (
-                                                <p className="text-[10px] text-blue-600 ml-6">â„¹ï¸ Student will be charged {stuFeeType === "FLAT" ? `₹${stuFeeValue}` : `${stuFeeValue}% of rent`} instead of global ₹{studentRentFeeFlat}.</p>
+                                                <p className="text-[10px] text-blue-600 ml-6">ℹ️ Student will be charged {stuFeeType === "FLAT" ? `₹${stuFeeValue}` : `${stuFeeValue}% of rent`} instead of global ₹{studentRentFeeFlat}.</p>
                                             )}
                                         </div>
 

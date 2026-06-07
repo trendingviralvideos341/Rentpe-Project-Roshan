@@ -130,7 +130,7 @@ export const PaymentCompletedTemplate = (name: string, propertyName: string, amo
 
 // 6. AGREEMENT_SIGNED (Tenant)
 export const AgreementSignedTemplate = (name: string, propertyName: string) => LifecycleTemplate({
-  title: "Agreement Signed âœï¸",
+  title: "Agreement Signed ✍️",
   name,
   status: "SIGNED",
   message: `Your digital rental agreement for <strong>${propertyName}</strong> has been successfully signed.`,
@@ -295,7 +295,7 @@ export const PasswordResetTemplate = (name: string, resetUrl: string): string =>
       </div>
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;margin:24px 0;">
         <p style="color:#c2410c;font-size:13px;font-weight:700;margin:0;">
-          âš ï¸ This link expires in <strong>30 minutes</strong>.
+          ⚠️ This link expires in <strong>30 minutes</strong>.
         </p>
       </div>
       <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0;">

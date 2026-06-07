@@ -151,7 +151,7 @@ export async function rejectDocument(propertyId: string, docType: string, reason
     await createNotification(
         property.ownerId,
         'KYC_REJECTED',
-        `âŒ Your ${docType.replace('_', ' ')} document for "${property.name}" was rejected. Reason: ${reason}. Please re-upload.`
+        `❌ Your ${docType.replace('_', ' ')} document for "${property.name}" was rejected. Reason: ${reason}. Please re-upload.`
     );
 
     if (property.owner?.email) {
@@ -296,7 +296,7 @@ export async function rejectRefund(refundId: string, reason: string) {
         await createNotification(
             booking.user.id,
             'PAYMENT',
-            `âŒ Your refund request of ₹${refund.amount} has been rejected. Reason: ${reason}`
+            `❌ Your refund request of ₹${refund.amount} has been rejected. Reason: ${reason}`
         );
     }
 
