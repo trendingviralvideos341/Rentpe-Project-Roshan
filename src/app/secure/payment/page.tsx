@@ -32,6 +32,7 @@ function PaymentPortal() {
     const [invoice, setInvoice] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
+    const [convenienceFee, setConvenienceFee] = useState(0); // platform fee charged to student
     const [countdown, setCountdown] = useState(5);
 
     useEffect(() => {
@@ -54,6 +55,13 @@ function PaymentPortal() {
                         setInvoice(inv);
                     } catch { /* invoice fetch fail is non-fatal */ }
                 }
+
+                // Fetch platform settings to show convenience fee in checkout breakdown
+                try {
+                    const { getPlatformSettings } = await import("@/actions/platform");
+                    const ps = await getPlatformSettings();
+                    if (ps.feesEnabled) setConvenienceFee(ps.studentRentFeeFlat ?? 0);
+                } catch { /* non-fatal */ }
             } catch (err: any) {
                 setError(err.message || "Failed to load booking");
             } finally {
@@ -469,11 +477,24 @@ function PaymentPortal() {
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center pt-2 border-t border-red-200">
-                                        <span className="font-black text-red-800">Total Due</span>
-                                        <span className="text-2xl font-black text-red-700">₹{rentAmt.toLocaleString('en-IN')}</span>
+                                        <span className="text-slate-600 text-sm">Rent Total</span>
+                                        <span className="font-black text-slate-800">₹{rentAmt.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    {convenienceFee > 0 && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-slate-500">Platform Convenience Fee</span>
+                                            <span className="font-bold text-slate-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center pt-2 border-t border-red-300">
+                                        <span className="font-black text-red-800">Total You Pay</span>
+                                        <span className="text-2xl font-black text-red-700">₹{(rentAmt + convenienceFee).toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
                                 <p className="text-xs text-red-600 font-bold">⚠️ Due by {dueDate}. Late fees may apply after this date.</p>
+                                {convenienceFee > 0 && (
+                                    <p className="text-[10px] text-slate-400">* ₹{convenienceFee} platform convenience fee is a service charge by RentPe and is separate from your rent receipt.</p>
+                                )}
                             </div>
                             {/* Online payment info */}
                             <div className="border-2 border-indigo-100 rounded-xl p-4 bg-white">

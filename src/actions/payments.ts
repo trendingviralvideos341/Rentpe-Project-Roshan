@@ -146,9 +146,13 @@ export async function verifyPayment(data: {
 
         // 2. Clear related records
         if (payment.invoiceId) {
+            // ✅ LEGAL: paidAmount = base rent only (NOT student convenience fee).
+            // student convenience fee is RentPe's service charge, not part of rent receipt.
+            const inv = await tx.rentInvoice.findUnique({ where: { id: payment.invoiceId }, select: { amount: true } });
+            const baseRentAmount = inv ? Number(inv.amount) : payment.amount;
             await tx.rentInvoice.update({
                 where: { id: payment.invoiceId },
-                data: { status: 'PAID', paidAt: new Date(), paidAmount: payment.amount }
+                data: { status: 'PAID', paidAt: new Date(), paidAmount: baseRentAmount }
             });
         }
         
@@ -521,6 +525,22 @@ export async function getInvoiceForReceipt(invoiceId: string) {
     const property = booking?.property;
     const payment = invoice.payments[0];
 
+    // ✅ LEGAL: Fetch platform settings for owner's commission breakdown on their receipt
+    const platformSettings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    const feesEnabled = platformSettings?.feesEnabled ?? false;
+    const grossRent = Number(invoice.amount);
+    // Check if owner has a custom commission rate
+    const ownerUser = booking?.property ? await prisma.user.findFirst({ where: { properties: { some: { id: booking.property.id } } }, select: { commissionRate: true } as any }) : null;
+    let ownerFee = 0;
+    if (feesEnabled) {
+        if (ownerUser && (ownerUser as any).commissionRate != null) {
+            ownerFee = Math.round((grossRent * (ownerUser as any).commissionRate) / 100 * 100) / 100;
+        } else {
+            ownerFee = platformSettings?.ownerRentFeeFlat ?? 0;
+        }
+    }
+    const netPayout = grossRent - ownerFee;
+
     return {
         id: invoice.id,
         displayId: invoice.displayId || `INV-${invoiceId.slice(0, 8).toUpperCase()}`,
@@ -530,8 +550,12 @@ export async function getInvoiceForReceipt(invoiceId: string) {
         rentAmount: Number(invoice.rentAmount),
         foodAmount: Number(invoice.foodAmount || 0),
         creditApplied: Number((invoice as any).creditApplied || 0),
-        amount: Number(invoice.amount),
+        amount: grossRent,
         paidAmount: Number(invoice.paidAmount),
+        // Platform commission fields for owner's receipt
+        feesEnabled,
+        ownerFee,
+        netPayout,
         dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
         paidAt: invoice.paidAt ? new Date(invoice.paidAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
         paymentMethod: invoice.paymentMethod || payment?.method || 'Online',

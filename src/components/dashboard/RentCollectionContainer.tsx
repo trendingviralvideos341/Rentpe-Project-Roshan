@@ -128,7 +128,7 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
                                             { label: 'Rent Amount',     value: inr(data.rentAmount),  bold: false },
                                             ...(data.foodAmount > 0 ? [{ label: 'Food Charges', value: inr(data.foodAmount), bold: false }] : []),
                                             ...(data.creditApplied > 0 ? [{ label: 'Credit Applied', value: `- ${inr(data.creditApplied)}`, bold: false }] : []),
-                                            { label: 'Total Amount',    value: inr(data.amount),      bold: true, highlight: true },
+                                            { label: 'Gross Rent Collected', value: inr(data.amount), bold: true, highlight: true },
                                             { label: 'Due Date',        value: data.dueDate,          bold: false },
                                             { label: 'Paid On',         value: data.paidAt,           bold: false },
                                             { label: 'Payment Method',  value: data.paymentMethod,    bold: false },
@@ -145,6 +145,26 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
                                         ))}
                                     </tbody>
                                 </table>
+
+                                {/* ✅ LEGAL: Platform Commission Breakdown for Owner */}
+                                {data.feesEnabled && data.ownerFee > 0 && (
+                                    <div className="bg-amber-50 border-t-2 border-amber-200 px-4 py-3 space-y-1.5">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-2">💼 RentPe Commission Breakdown</p>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-600">Gross Rent Collected</span>
+                                            <span className="font-black text-slate-800">{inr(data.amount)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-amber-700">RentPe Platform Commission</span>
+                                            <span className="font-black text-amber-700">− {inr(data.ownerFee)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs border-t border-amber-200 pt-1.5 mt-1">
+                                            <span className="font-black text-emerald-700">✅ Net Payout to You</span>
+                                            <span className="font-black text-emerald-700 text-sm">{inr(data.netPayout)}</span>
+                                        </div>
+                                        <p className="text-[9px] text-amber-600 italic mt-1">Commission deducted via Razorpay Route. Keep this for your income tax records.</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Footer note */}
