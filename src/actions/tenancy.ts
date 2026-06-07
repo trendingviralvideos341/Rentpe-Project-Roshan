@@ -222,7 +222,7 @@ export async function getTenantForSettlement(bookingId: string) {
         include: {
             rentRecords:    { orderBy: { createdAt: 'asc' } },
             billingProfile: { include: { deposit: true } },
-            booking:        { select: { displayId: true } },
+            booking:        { select: { displayId: true, agreementSignedAt: true } },
             bed:            { select: { bedNumber: true } },
         },
     });
@@ -266,7 +266,9 @@ export async function getTenantForSettlement(bookingId: string) {
         rentAmount,
         securityDeposit,
         rentRecords:     tenant.rentRecords,
-        startDate:       tenant.startDate,
+        startDate:       tenant.booking?.agreementSignedAt 
+            ? tenant.booking.agreementSignedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
+            : tenant.startDate,
         status:          tenant.status,
     };
 }
@@ -281,7 +283,7 @@ export async function getSettlementForNotice(bookingId: string) {
         include: {
             rentRecords:    { orderBy: { createdAt: 'asc' } },
             billingProfile: { include: { deposit: true } },
-            booking:        { select: { displayId: true, userId: true } },
+            booking:        { select: { displayId: true, userId: true, agreementSignedAt: true } },
             bed:            { select: { bedNumber: true } },
             property:       { select: { name: true, address: true } },
             settlementRecord: true,
@@ -374,7 +376,9 @@ export async function getSettlementForNotice(bookingId: string) {
         bedNo,
         // Dates
         moveOutDate:       moveOutDate.toISOString(),
-        moveInDate:        tenant.startDate ? new Date(tenant.startDate).toISOString() : null,
+        moveInDate:        tenant.booking?.agreementSignedAt 
+            ? tenant.booking.agreementSignedAt.toISOString() 
+            : (tenant.startDate ? new Date(tenant.startDate).toISOString() : null),
         // Pro-rata
         monthlyRent,
         moveOutDay,

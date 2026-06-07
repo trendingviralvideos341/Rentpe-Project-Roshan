@@ -542,7 +542,9 @@ export async function getInvoiceForReceipt(invoiceId: string) {
         tenantDisplayId: tenant?.displayId || booking?.user?.displayId || '—',
         tenantRoom: tenant?.roomNumber || booking?.roomAssigned || booking?.room?.roomNumber || '—',
         tenantRoomType: tenant?.roomType || '',
-        stayFrom: tenant?.startDate || '—',
+        stayFrom: booking?.agreementSignedAt
+            ? new Date(booking.agreementSignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : (tenant?.startDate || '—'),
         // Property
         propertyName: booking?.propertyName || property?.name || '—',
         propertyAddress: property?.address || '—',

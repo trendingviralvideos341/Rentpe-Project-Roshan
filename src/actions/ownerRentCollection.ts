@@ -323,7 +323,8 @@ export async function getTenantMovementLog(propertyId?: string, month?: string) 
         where: { propertyId: { in: propertyIds } },
         include: {
             property: { select: { name: true } },
-            room: { select: { roomNumber: true, type: true } }
+            room: { select: { roomNumber: true, type: true } },
+            booking: { select: { agreementSignedAt: true } }
         },
         orderBy: { createdAt: 'desc' }
     });
@@ -339,7 +340,7 @@ export async function getTenantMovementLog(propertyId?: string, month?: string) 
     const events: any[] = [];
 
     for (const t of tenants) {
-        const moveInDate = new Date(t.startDate);
+        const moveInDate = t.booking?.agreementSignedAt ? new Date(t.booking.agreementSignedAt) : new Date(t.startDate);
         const moveOutDate = t.actualMoveOutDate ? new Date(t.actualMoveOutDate) : null;
 
         // Move-In event

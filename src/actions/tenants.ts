@@ -149,7 +149,7 @@ export async function confirmMoveIn(tenantId: string) {
 
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        include: { bed: true }
+        include: { bed: true, booking: { select: { agreementSignedAt: true } } }
     });
 
     if (!tenant || tenant.status !== 'Upcoming') {
@@ -190,7 +190,7 @@ export async function confirmMoveIn(tenantId: string) {
         const BILLING_ANCHOR = 1;
 
         const rentAmount = typeof tenant.rent === 'string' ? parseFloat((tenant.rent as string).replace(/[^0-9.]/g, '')) : Number(tenant.rent);
-        const moveInDate = new Date(tenant.startDate); // = agreement signing date
+        const moveInDate = tenant.booking?.agreementSignedAt ? new Date(tenant.booking.agreementSignedAt) : new Date(tenant.startDate); // = agreement signing date
 
         const profile = await tx.billingProfile.create({
             data: {
@@ -330,7 +330,8 @@ export async function blockTenant(tenantId: string, note: string) {
         include: {
             property: true,
             bed: true,
-            rentRecords: true
+            rentRecords: true,
+            booking: { select: { agreementSignedAt: true } }
         }
     });
 
@@ -341,7 +342,7 @@ export async function blockTenant(tenantId: string, note: string) {
 
     return await prisma.$transaction(async (tx) => {
         const moveOutDate = new Date();
-        const moveInDate = new Date(tenant.startDate);
+        const moveInDate = tenant.booking?.agreementSignedAt ? new Date(tenant.booking.agreementSignedAt) : new Date(tenant.startDate);
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
         // 1. Financial Settlement logic for Eviction
@@ -611,7 +612,8 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         include: {
             property: true,
             bed: true,
-            rentRecords: true
+            rentRecords: true,
+            booking: { select: { agreementSignedAt: true } }
         }
     });
 
@@ -630,7 +632,7 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
 
     return await prisma.$transaction(async (tx) => {
         const moveOutDate = new Date();
-        const moveInDate = new Date(tenant.startDate);
+        const moveInDate = tenant.booking?.agreementSignedAt ? new Date(tenant.booking.agreementSignedAt) : new Date(tenant.startDate);
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
         // 1. Prorated last-month rent — update/create the final month record

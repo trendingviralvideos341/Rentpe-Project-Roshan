@@ -68,7 +68,9 @@ export async function GET(
                             || invoice.booking?.roomAssigned
                             || invoice.booking?.room?.roomNumber || "—";
         const bedInfo     = invoice.billingProfile?.tenant?.roomType ? ` (${invoice.billingProfile.tenant.roomType})` : "";
-        const stayStart   = invoice.billingProfile?.tenant?.startDate || (invoice.booking as any)?.moveInDate || "—";
+        const stayStart   = invoice.booking?.agreementSignedAt
+                            ? format(new Date(invoice.booking.agreementSignedAt), "dd MMM yyyy")
+                            : (invoice.billingProfile?.tenant?.startDate || (invoice.booking as any)?.moveInDate || "—");
         const propName    = invoice.booking?.propertyName || invoice.booking?.property?.name || "—";
         const propAddr    = invoice.booking?.property?.address || "—";
         const propCity    = invoice.booking?.property?.city || "";

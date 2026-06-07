@@ -1207,8 +1207,8 @@ export async function signAgreement(id: string, agreementMeta?: {
         throw new Error(`Cannot sign agreement at this stage (status: ${booking.status}).`);
     }
     if (booking.status === 'ROOM_RESERVED') {
-        // Soft check: if status is ROOM_RESERVED but no tenantId, physical KYC hasn't happened yet
-        if (!(booking as any).tenantId) {
+        // Soft check: if status is ROOM_RESERVED but no tenant, physical KYC hasn't happened yet
+        if (!booking.tenant?.id && !(booking as any).tenantId) {
             throw new Error("Physical verification required before signing the agreement. Please contact the property manager.");
         }
     }
@@ -1252,10 +1252,11 @@ export async function signAgreement(id: string, agreementMeta?: {
     //   • Billing anchor cycles
     //   • Stay duration for settlements & move-out calculations
     // This must be set HERE — at the moment of signing — not at check-in or payment.
-    if ((booking as any).tenantId) {
+    const tenantId = booking.tenant?.id || (booking as any).tenantId;
+    if (tenantId) {
         const signedDateStr = signedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
         await prisma.tenant.update({
-            where: { id: (booking as any).tenantId },
+            where: { id: tenantId },
             data: { startDate: signedDateStr }
         }).catch(e => console.error('[signAgreement] Failed to update tenant startDate:', e));
     }
