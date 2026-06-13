@@ -545,10 +545,10 @@ export default function PlatformFeesPage() {
                                         />
                                     </div>
 
-                                    {/* Dropdown / List */}
+                                    {/* Dropdown */}
                                     {registeredProperties.length === 0 ? (
                                         <div className="text-center py-6 text-sm text-slate-400 bg-slate-50 rounded-lg border border-dashed">
-                                            No registered properties found.
+                                            No properties found.
                                         </div>
                                     ) : (
                                         <div>
@@ -564,10 +564,14 @@ export default function PlatformFeesPage() {
                                             >
                                                 <option value="" disabled>-- Click to select a PG property --</option>
                                                 {filteredPGs.map(pg => {
-                                                    const hasRule = exemptions.find(ex => ex.propertyId === pg.id);
+                                                    const isLive = pg.status === 'LIVE';
+                                                    const hasRule = exemptions.find((ex) => ex.propertyId === pg.id);
+                                                    const ref = isLive ? (pg.displayId || pg.applicationId) : (pg.applicationId || pg.displayId);
+                                                    const tag = isLive ? '[✅ LIVE]' : '[⏳ Not Onboarded]';
+                                                    const fee = isLive ? `Rent Fee ₹${ownerRentFeeFlat}` : `Onboarding ₹${ownerOnboardingFeeFlat}`;
                                                     return (
                                                         <option key={pg.id} value={pg.id}>
-                                                            {pg.name} ({pg.displayId}){hasRule ? " ★ Custom Rule" : ""} — {pg.owner?.name}
+                                                            {tag} {pg.name} ({ref}) — {pg.owner?.name} | {fee}{hasRule ? ' ★ Custom Rule' : ''}
                                                         </option>
                                                     );
                                                 })}
@@ -581,21 +585,41 @@ export default function PlatformFeesPage() {
                                         {filteredPGs.length === 0 ? (
                                             <div className="p-4 text-center text-sm text-slate-400">No results.</div>
                                         ) : filteredPGs.map(pg => {
-                                            const ex = exemptions.find(e => e.propertyId === pg.id);
+                                            const isLive = pg.status === 'LIVE';
+                                            const ex = exemptions.find((e) => e.propertyId === pg.id);
+                                            const displayRef = isLive ? (pg.displayId || pg.applicationId) : (pg.applicationId || pg.displayId);
                                             return (
                                                 <button
                                                     key={pg.id}
                                                     onClick={() => openPgDialog(pg)}
-                                                    className="w-full text-left px-4 py-3 hover:bg-orange-50 transition-all"
+                                                    className={`w-full text-left px-4 py-3 transition-all ${isLive ? 'hover:bg-emerald-50' : 'hover:bg-amber-50'}`}
                                                 >
-                                                    <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-start justify-between gap-2">
                                                         <div>
                                                             <p className="font-bold text-sm text-slate-800">{pg.name}</p>
-                                                            <p className="text-[10px] font-mono text-slate-400">{pg.displayId} · {pg.city} · Owner: {pg.owner?.name}</p>
+                                                            <p className="text-[10px] font-mono text-slate-400">
+                                                                {displayRef} · {pg.city} · Owner: {pg.owner?.name} · {pg.owner?.phone}
+                                                            </p>
+                                                            <p className="text-[10px] text-slate-400">
+                                                                Submitted: {new Date(pg.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                            </p>
+                                                            {isLive ? (
+                                                                <p className="text-[10px] text-emerald-700 font-bold mt-0.5">
+                                                                    💰 Rent Fee: ₹{ownerRentFeeFlat}{pg.onboardingPaidAt ? ' | Onboarding: Paid ✓' : ` | Onboarding: ₹${ownerOnboardingFeeFlat}`}
+                                                                </p>
+                                                            ) : (
+                                                                <p className="text-[10px] text-amber-700 font-bold mt-0.5">
+                                                                    💰 Onboarding Fee Due: ₹{ownerOnboardingFeeFlat} · {pg.status.replace(/_/g, ' ')}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                         <div className="flex flex-col items-end gap-1 shrink-0">
-                                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">✓ {pg.status}</span>
-                                                            {ex && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Custom Rule</span>}
+                                                            {isLive ? (
+                                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">✓ Property Live</span>
+                                                            ) : (
+                                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300">⏳ Not Onboarded Fully</span>
+                                                            )}
+                                                            {ex && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">★ Custom Rule</span>}
                                                         </div>
                                                     </div>
                                                 </button>

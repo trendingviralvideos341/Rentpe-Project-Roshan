@@ -268,15 +268,20 @@ export async function removeFeeExemption(id: string) {
     revalidatePath('/dashboard/admin/platform-fees');
 }
 
-/** Get all registered/approved properties (for exemption property picker) */
+/** Get all submitted/live properties (for exemption property picker) */
 export async function getRegisteredPropertiesForExemption() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     const properties = await prisma.property.findMany({
-        where: { status: { in: ['VERIFIED', 'ACTIVE', 'APPROVED', 'LIVE'] } },
+        where: {
+            status: {
+                notIn: ['REJECTED', 'DEACTIVATED', 'DELETED'],
+            },
+            deletedAt: null,
+        },
         select: {
-            id: true, displayId: true, name: true, city: true,
+            id: true, displayId: true, applicationId: true, name: true, city: true,
             status: true, createdAt: true, isVerified: true,
             onboardingPaidAt: true,
             owner: { select: { name: true, phone: true, email: true, displayId: true } },
@@ -284,6 +289,7 @@ export async function getRegisteredPropertiesForExemption() {
         orderBy: { createdAt: 'desc' },
     });
     return properties;
+
 }
 
 /** Get all active students/tenants (for exemption student picker) */
