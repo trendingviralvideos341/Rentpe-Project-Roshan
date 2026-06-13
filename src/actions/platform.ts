@@ -272,7 +272,7 @@ export async function getRegisteredPropertiesForExemption() {
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     const properties = await prisma.property.findMany({
-        where: { status: { in: ['VERIFIED', 'ACTIVE', 'APPROVED'] } },
+        where: { status: { in: ['VERIFIED', 'ACTIVE', 'APPROVED', 'LIVE'] } },
         select: {
             id: true, displayId: true, name: true, city: true,
             status: true, createdAt: true, isVerified: true,
