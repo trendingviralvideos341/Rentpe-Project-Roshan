@@ -18,7 +18,8 @@ import {
     getSuperAdminBusinessSnapshot,
     getPlatformRevenueTrends,
     getUserGrowthAnalytics,
-    getBookingConversionAnalytics
+    getBookingConversionAnalytics,
+    getOnboardedProperties
 } from "@/actions/superAdmin";
 import { SuperAdminKPIs } from "@/components/dashboard/SuperAdminKPIs";
 import { formatDistanceToNow } from "date-fns";
@@ -28,6 +29,7 @@ export default function AdminDashboard() {
     const [revenueTrends, setRevenueTrends] = useState<any>(null);
     const [userGrowth, setUserGrowth] = useState<any>(null);
     const [conversion, setConversion] = useState<any>(null);
+    const [onboardedProperties, setOnboardedProperties] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const searchParams = useSearchParams();
@@ -58,6 +60,9 @@ export default function AdminDashboard() {
                     getUserGrowthAnalytics(6),
                     getBookingConversionAnalytics(6)
                 ]);
+                // Fetch onboarded properties for Super Admin
+                const props = await getOnboardedProperties().catch(() => []);
+                setOnboardedProperties(props || []);
             } catch (e) {
                 console.warn("User is not a Super Admin, limited dashboard access.", e);
                 // If snap failed, use basicStats data to fill the snapshot for the UI
@@ -198,6 +203,7 @@ export default function AdminDashboard() {
                         revenueTrends={revenueTrends}
                         userGrowth={userGrowth}
                         conversionAnalytics={conversion}
+                        onboardedProperties={onboardedProperties}
                     />
                 </TabsContent>
 

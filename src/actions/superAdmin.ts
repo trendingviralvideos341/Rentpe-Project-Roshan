@@ -116,6 +116,78 @@ export async function getSuperAdminBusinessSnapshot() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  ONBOARDED PROPERTIES — All fully registered & live/approved properties
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getOnboardedProperties() {
+    await isSuperAdmin();
+
+    const properties = await prisma.property.findMany({
+        where: {
+            status: { in: ['LIVE', 'APPROVED'] }
+        },
+        include: {
+            owner: {
+                select: { id: true, name: true, email: true, phone: true, displayId: true }
+            },
+            rooms: {
+                select: { id: true, roomNumber: true, type: true, price: true, availability: true, totalBeds: true, status: true }
+            },
+            _count: {
+                select: { bookings: true, reviews: true }
+            }
+        },
+        orderBy: { updatedAt: 'desc' }
+    });
+
+    // Enrich each property with active tenant count and revenue
+    const enriched = await Promise.all(properties.map(async (prop: any) => {
+        const [activeTenants, revenue, avgRating] = await Promise.all([
+            (prisma.tenant as any).count({ where: { propertyId: prop.id, status: 'ACTIVE_TENANT' } }),
+            prisma.booking.aggregate({
+                where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] } },
+                _sum: { amount: true }
+            }),
+            prisma.review.aggregate({
+                where: { propertyId: prop.id },
+                _avg: { rating: true }
+            }),
+        ]);
+
+        const totalBeds = prop.rooms.reduce((s: number, r: any) => s + (r.totalBeds || 0), 0);
+        const availableBeds = prop.rooms.reduce((s: number, r: any) => s + (r.status === 'AVAILABLE' ? r.availability : 0), 0);
+
+        return {
+            id: prop.id,
+            displayId: prop.displayId,
+            name: prop.name,
+            propertyType: prop.propertyType || 'PG',
+            address: prop.address,
+            city: prop.city,
+            status: prop.status,
+            genderType: prop.genderType,
+            isVerified: prop.isVerified,
+            totalRooms: prop.rooms.length,
+            totalBeds,
+            availableBeds,
+            activeTenants,
+            totalBookings: prop._count.bookings,
+            totalRevenue: revenue._sum?.amount ?? 0,
+            avgRating: Math.round((avgRating._avg?.rating ?? 0) * 10) / 10,
+            reviewCount: prop._count.reviews,
+            owner: prop.owner,
+            rooms: prop.rooms,
+            createdAt: prop.createdAt,
+            updatedAt: prop.updatedAt,
+            amenities: prop.amenities,
+            description: prop.description,
+            foodType: prop.foodType,
+        };
+    }));
+
+    return enriched;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  PLATFORM REVENUE TRENDS — Monthly breakdown
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getPlatformRevenueTrends(months: number = 12) {
