@@ -21,8 +21,8 @@ export default async function OwnerLayout({
     const isStaff = !!user?.parentOwnerId;
 
     return (
-        <div className="flex min-h-[calc(100vh-4rem)]">
-            <Suspense fallback={<div className="w-64 bg-card border-r h-full hidden md:flex" />}>
+        <div className="flex min-h-screen">
+            <Suspense fallback={<div className="w-64 bg-card border-r min-h-screen hidden md:flex" />}>
                 <DashboardSidebar 
                     role="owner" 
                     permissions={permissions} 

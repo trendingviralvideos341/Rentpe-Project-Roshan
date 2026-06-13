@@ -12,14 +12,14 @@ export default async function StudentLayout({
     const user = await getCurrentUser() as any;
 
     return (
-        <div className="flex bg-muted/30">
-            <Suspense fallback={<div className="w-64 bg-card border-r h-full hidden md:flex" />}>
+        <div className="flex bg-muted/30 min-h-screen">
+            <Suspense fallback={<div className="w-64 bg-card border-r min-h-screen hidden md:flex" />}>
                 <DashboardSidebar 
                     role="student" 
                     displayId={user?.displayId}
                 />
             </Suspense>
-            <main className="flex-1 p-4 md:p-8 h-[calc(100vh-4rem)] overflow-y-auto w-full">
+            <main className="flex-1 p-4 md:p-8 min-h-screen overflow-y-auto w-full">
                 {children}
             </main>
         </div>

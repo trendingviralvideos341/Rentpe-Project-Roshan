@@ -362,7 +362,7 @@ export default function DashboardSidebar(props: SidebarProps) {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="w-64 bg-card border-r h-full flex-col hidden md:flex sticky top-16">
+            <aside className="w-64 bg-card border-r min-h-screen flex-col hidden md:flex sticky top-0 self-start h-screen overflow-y-auto">
                 {navContent}
             </aside>
 
