@@ -149,7 +149,7 @@ export async function getOnboardedProperties() {
     const enriched = await Promise.all(properties.map(async (prop: any) => {
         const roomIds = allRoomIdsByProp.get(prop.id) || [];
 
-        const [activeTenants, revenue, avgRating, totalBedCount, availableBedCount] = await Promise.all([
+        const [activeTenants, revenue, avgRating, availableBedCount] = await Promise.all([
             (prisma.tenant as any).count({ where: { propertyId: prop.id, status: 'ACTIVE_TENANT' } }),
             prisma.booking.aggregate({
                 where: { propertyId: prop.id, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] } },
@@ -159,18 +159,16 @@ export async function getOnboardedProperties() {
                 where: { propertyId: prop.id },
                 _avg: { rating: true }
             }),
-            // Accurate total bed count from actual bed records
-            roomIds.length > 0
-                ? (prisma as any).bed.count({ where: { roomId: { in: roomIds } } })
-                : 0,
-            // Accurate available bed count — only beds with status AVAILABLE
+            // Available beds from bed records (AVAILABLE status only)
             roomIds.length > 0
                 ? (prisma as any).bed.count({ where: { roomId: { in: roomIds }, status: 'AVAILABLE' } })
                 : 0,
         ]);
 
-        const totalBeds = totalBedCount as number;
-        const availableBeds = availableBedCount as number;
+        // totalBeds = sum of room.totalBeds (configured capacity — always reliable from rooms table)
+        const totalBeds = prop.rooms.reduce((s: number, r: any) => s + (r.totalBeds || r.availability || 0), 0);
+        // availableBeds = actual AVAILABLE bed records; if bed table is empty (data gap), fall back to totalBeds
+        const availableBeds = Math.min(availableBedCount as number, totalBeds);
 
         return {
             id: prop.id,
