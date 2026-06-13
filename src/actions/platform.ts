@@ -219,6 +219,8 @@ export async function addFeeExemption(data: {
     customStudentFeeType?: string | null;
     exemptOwner?: boolean;
     exemptOnboardingFee?: boolean;
+    customOnboardingFee?: number | null;
+    customOnboardingFeeType?: string | null;
     customOwnerFee?: number | null;
     customOwnerFeeType?: string | null;
     reason: string;

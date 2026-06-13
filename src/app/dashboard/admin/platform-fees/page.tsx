@@ -41,6 +41,8 @@ export default function PlatformFeesPage() {
     // PG exemption config (inside dialog)
     const [pgExemptOwner, setPgExemptOwner] = useState(false);
     const [pgExemptOnboarding, setPgExemptOnboarding] = useState(false);
+    const [pgOnboardingFeeType, setPgOnboardingFeeType] = useState<"FLAT" | "PERCENT">("FLAT");
+    const [pgOnboardingFeeValue, setPgOnboardingFeeValue] = useState<string>("");
     const [pgOwnerFeeType, setPgOwnerFeeType] = useState<"FLAT" | "PERCENT">("FLAT");
     const [pgOwnerFeeValue, setPgOwnerFeeValue] = useState<string>("");
     const [pgReason, setPgReason] = useState("");
@@ -96,6 +98,8 @@ export default function PlatformFeesPage() {
         const ex = exemptions.find(e => e.propertyId === pg.id);
         setPgExemptOwner(ex?.exemptOwner ?? false);
         setPgExemptOnboarding(ex?.exemptOnboardingFee ?? false);
+        setPgOnboardingFeeType(ex?.customOnboardingFeeType ?? "FLAT");
+        setPgOnboardingFeeValue(ex?.customOnboardingFee != null ? String(ex.customOnboardingFee) : "");
         setPgOwnerFeeType(ex?.customOwnerFeeType ?? "FLAT");
         setPgOwnerFeeValue(ex?.customOwnerFee != null ? String(ex.customOwnerFee) : "");
         setPgReason(ex?.reason ?? "");
@@ -118,15 +122,18 @@ export default function PlatformFeesPage() {
         try {
             const old = exemptions.find(e => e.propertyId === pgDialog.id);
             if (old) await removeFeeExemption(old.id);
-            if (pgExemptOwner || pgExemptOnboarding || pgOwnerFeeValue !== "") {
-                const customFee = pgOwnerFeeValue !== "" ? parseFloat(pgOwnerFeeValue) : null;
+            if (pgExemptOwner || pgExemptOnboarding || pgOwnerFeeValue !== "" || pgOnboardingFeeValue !== "") {
+                const customOwnerFee = pgOwnerFeeValue !== "" ? parseFloat(pgOwnerFeeValue) : null;
+                const customOnboardingFee = pgOnboardingFeeValue !== "" ? parseFloat(pgOnboardingFeeValue) : null;
                 await addFeeExemption({
                     propertyId: pgDialog.id,
                     propertyName: pgDialog.name,
                     exemptOwner: pgExemptOwner,
                     exemptOnboardingFee: pgExemptOnboarding,
-                    customOwnerFee: customFee,
-                    customOwnerFeeType: customFee != null ? pgOwnerFeeType : null,
+                    customOnboardingFee: customOnboardingFee,
+                    customOnboardingFeeType: customOnboardingFee != null ? pgOnboardingFeeType : null,
+                    customOwnerFee: customOwnerFee,
+                    customOwnerFeeType: customOwnerFee != null ? pgOwnerFeeType : null,
                     reason: pgReason,
                 });
             }
@@ -768,13 +775,41 @@ export default function PlatformFeesPage() {
                             {/* Onboarding Fee Exemption */}
                             <div className="bg-white rounded-xl p-4 border border-orange-100 space-y-2">
                                 <label className="flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" checked={pgExemptOnboarding} onChange={e => setPgExemptOnboarding(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                                    <input type="checkbox" checked={pgExemptOnboarding} onChange={e => {
+                                        setPgExemptOnboarding(e.target.checked);
+                                        if (e.target.checked) setPgOnboardingFeeValue("0"); else setPgOnboardingFeeValue("");
+                                    }} className="w-4 h-4 accent-orange-500" />
                                     <div>
-                                        <span className="text-sm font-black text-slate-800">Exempt Owner Onboarding Fee</span>
+                                        <span className="text-sm font-black text-slate-800">Custom Owner Onboarding Fee</span>
                                         <span className="ml-2 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">Global: ₹{ownerOnboardingFeeFlat}</span>
                                     </div>
                                 </label>
-                                {pgExemptOnboarding && <p className="text-[10px] text-emerald-600 ml-7">✅ Onboarding fee will be waived for this PG.</p>}
+                                {pgExemptOnboarding && (
+                                    <div className="ml-7 flex gap-2 items-center">
+                                        <select
+                                            className="border rounded-md px-2 py-1.5 text-xs bg-white"
+                                            value={pgOnboardingFeeType}
+                                            onChange={e => setPgOnboardingFeeType(e.target.value as any)}
+                                        >
+                                            <option value="FLAT">₹ Flat</option>
+                                            <option value="PERCENT">% Percent</option>
+                                        </select>
+                                        <input
+                                            type="number" min={0} step={0.5}
+                                            className="border rounded-md px-2 py-1.5 text-xs w-24"
+                                            placeholder={pgOnboardingFeeType === "FLAT" ? "e.g. 0" : "e.g. 0.5"}
+                                            value={pgOnboardingFeeValue}
+                                            onChange={e => setPgOnboardingFeeValue(e.target.value)}
+                                        />
+                                        <span className="text-xs text-slate-500">{pgOnboardingFeeType === "FLAT" ? "₹" : "% of rent"}</span>
+                                    </div>
+                                )}
+                                {pgExemptOnboarding && pgOnboardingFeeValue === "0" && (
+                                    <p className="text-[10px] text-emerald-600 ml-7">✅ Onboarding fee = ₹0 — Will be hidden from owner receipt.</p>
+                                )}
+                                {pgExemptOnboarding && pgOnboardingFeeValue !== "" && parseFloat(pgOnboardingFeeValue) > 0 && (
+                                    <p className="text-[10px] text-blue-600 ml-7">ℹ️ Owner will be charged {pgOnboardingFeeType === "FLAT" ? `₹${pgOnboardingFeeValue}` : `${pgOnboardingFeeValue}% of rent`} instead of global ₹{ownerOnboardingFeeFlat}.</p>
+                                )}
                             </div>
 
                             {/* Owner Rent Fee */}
