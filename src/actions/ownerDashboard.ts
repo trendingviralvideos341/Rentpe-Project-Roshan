@@ -66,12 +66,15 @@ export async function getOwnerDashboardHome() {
         }),
         (prisma as any).securityDeposit.findMany({
             where: { billingProfile: { propertyId: { in: propertyIds } }, status: 'PAID' },
-            select: { amount: true }
+            select: { amount: true, refundAmount: true }
         })
     ]);
 
     const totalOutstandingRent = (unpaidInvoices as any[]).reduce((sum, inv) => sum + (inv.amount - (inv.paidAmount || 0)), 0);
-    const totalDepositsHeld = (depositsHeld as any[]).reduce((sum, dep) => sum + dep.amount, 0);
+    // Net deposits held = collected amount minus any refunds already returned to tenants
+    const totalDepositsHeld = (depositsHeld as any[]).reduce(
+        (sum, dep) => sum + Math.max(0, dep.amount - (dep.refundAmount || 0)), 0
+    );
 
     // Occupancy %
     const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;

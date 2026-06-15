@@ -148,8 +148,8 @@ export default function OwnerDashboard() {
 
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {/* ── KPI Cards ── */}
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                        <Card className="lg:col-span-1 border-l-4 border-l-emerald-500 hover:shadow-lg transition-shadow">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                        <Card className="xl:col-span-1 border-l-4 border-l-emerald-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Total Revenue</CardTitle>
                                 <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -159,12 +159,28 @@ export default function OwnerDashboard() {
                             <CardContent>
                                 <div className="text-2xl font-black text-slate-900">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
                                 <p className="text-xs mt-1 flex items-center gap-1 text-emerald-600 font-bold">
-                                    <TrendingUp className="h-3 w-3" /> From confirmed bookings
+                                    <TrendingUp className="h-3 w-3" /> Rent only · Excl. deposits
                                 </p>
                             </CardContent>
                         </Card>
 
-                        <Card className="lg:col-span-1 border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+                        {/* ── Deposits Held — Liability (CA/GST Compliant) ── */}
+                        <Card className="xl:col-span-1 border-l-4 border-l-orange-400 hover:shadow-lg transition-shadow bg-orange-50/20">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Deposits Held</CardTitle>
+                                <div className="h-8 w-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <Lock className="h-4 w-4 text-orange-500" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-black text-orange-700">₹{(stats.totalDepositsHeld ?? 0).toLocaleString('en-IN')}</div>
+                                <p className="text-xs mt-1 text-orange-500 font-bold flex items-center gap-1">
+                                    <Shield className="h-3 w-3" /> Refundable liability
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="xl:col-span-1 border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Active Tenants</CardTitle>
                                 <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -177,7 +193,7 @@ export default function OwnerDashboard() {
                             </CardContent>
                         </Card>
 
-                        <Card className="lg:col-span-1 border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+                        <Card className="xl:col-span-1 border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Properties</CardTitle>
                                 <div className="h-8 w-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -190,7 +206,7 @@ export default function OwnerDashboard() {
                             </CardContent>
                         </Card>
 
-                        <Card className="lg:col-span-1 border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
+                        <Card className="xl:col-span-1 border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Vacant Beds</CardTitle>
                                 <div className="h-8 w-8 bg-teal-100 rounded-lg flex items-center justify-center">
@@ -203,7 +219,7 @@ export default function OwnerDashboard() {
                             </CardContent>
                         </Card>
 
-                        <Card className={`lg:col-span-1 border-l-4 hover:shadow-lg transition-shadow ${ (stats.pendingBookingCount ?? 0) > 0 ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-slate-300' }`}>
+                        <Card className={`xl:col-span-1 border-l-4 hover:shadow-lg transition-shadow ${ (stats.pendingBookingCount ?? 0) > 0 ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-slate-300' }`}>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Pending</CardTitle>
                                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${ (stats.pendingBookingCount ?? 0) > 0 ? 'bg-amber-100' : 'bg-slate-100' }`}>

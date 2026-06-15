@@ -12,6 +12,13 @@ export async function getOwnerDashboardStats() {
 
         const userId = session.userId;
 
+        // ── Get all property IDs for this owner (needed for SecurityDeposit query) ──
+        const ownerProperties = await prisma.property.findMany({
+            where: { ownerId: userId },
+            select: { id: true }
+        });
+        const ownerPropertyIds = ownerProperties.map((p: any) => p.id);
+
         const [
             propertyCount,
             tenantCount,
@@ -20,6 +27,7 @@ export async function getOwnerDashboardStats() {
             pendingBookingCount,
             confirmedBookings,
             roomTotalBeds,
+            depositsHeldRecords,
         ] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId } }),
             prisma.tenant.count({
@@ -43,28 +51,48 @@ export async function getOwnerDashboardStats() {
                     status: 'PENDING_APPROVAL'
                 }
             }),
-            // Revenue from confirmed bookings — last 12 months
+            // Revenue from confirmed bookings — rent ONLY (excludes deposits) — last 12 months
+            // Note: booking.amount = monthly rent; booking.depositAmount = security deposit (separate field)
+            // Per CA/GST standards, security deposits are liabilities — NOT revenue
             prisma.booking.findMany({
                 where: {
                     property: { ownerId: userId },
                     status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
                     createdAt: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }
                 },
-                select: { createdAt: true, amount: true }
+                select: { createdAt: true, amount: true, depositAmount: true }
             }),
             // Fallback bed count from room configuration
             prisma.room.aggregate({
                 where: { property: { ownerId: userId } },
                 _sum: { totalBeds: true }
             }),
+            // Security Deposits Held — refundable liability, NOT revenue
+            // Fetch ALL paid deposits; subtract any refundAmount already returned to tenant.
+            // Net held = amount - (refundAmount already processed). This is the true liability.
+            // Per Indian CA / GST standards: deposits are Balance Sheet liabilities, never P&L.
+            ownerPropertyIds.length > 0
+                ? (prisma as any).securityDeposit.findMany({
+                    where: {
+                        billingProfile: { propertyId: { in: ownerPropertyIds } },
+                        status: 'PAID',           // collected from tenant
+                        // Include all — full/partial refunds handled in JS below
+                    },
+                    select: { amount: true, refundAmount: true, refundStatus: true }
+                  })
+                : Promise.resolve([]),
         ]);
 
         // ── Revenue: group bookings by month ─────────────────────────────
+        // CA Rule: booking.amount = rent only. depositAmount is a liability.
+        // Revenue = sum of rent amounts from confirmed bookings.
         const monthMap: Record<string, number> = {};
         for (const booking of confirmedBookings) {
             const d = new Date(booking.createdAt);
             const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-            monthMap[key] = (monthMap[key] || 0) + (booking.amount || 0);
+            // Use rent amount only (booking.amount is rent, depositAmount is stored separately)
+            const rentAmount = Number(booking.amount || 0);
+            monthMap[key] = (monthMap[key] || 0) + rentAmount;
         }
 
         // Last 6 months in order
@@ -75,7 +103,22 @@ export async function getOwnerDashboardStats() {
             return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
         });
 
-        const totalRevenue = confirmedBookings.reduce((s, b) => s + (b.amount || 0), 0);
+        // Total rent revenue (12 months window)
+        const totalRevenue = confirmedBookings.reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
+
+        // ── Security Deposits Held (Liability — not revenue) ─────────────
+        // Net held = amount collected − amount already refunded back to tenant.
+        // Example: ₹40,000 deposit collected, ₹5,000 partially refunded → Net held = ₹35,000
+        // A fully refunded deposit (refundStatus=FULL_REFUND, refundAmount=amount) → nets to 0.
+        const totalDepositsHeld = (depositsHeldRecords as any[]).reduce(
+            (sum: number, dep: any) => {
+                const collected = Number(dep.amount || 0);
+                const alreadyRefunded = Number(dep.refundAmount || 0);
+                const netHeld = Math.max(0, collected - alreadyRefunded); // never go negative
+                return sum + netHeld;
+            },
+            0
+        );
 
         // ── Occupancy: prefer real bed records; fallback to room config ────
         const effectiveTotalBeds = totalBeds > 0 ? totalBeds : (roomTotalBeds._sum?.totalBeds ?? 0);
@@ -109,7 +152,8 @@ export async function getOwnerDashboardStats() {
         return {
             propertyCount,
             tenantCount,
-            totalRevenue,
+            totalRevenue: Math.round(totalRevenue * 100) / 100,
+            totalDepositsHeld: Math.round(totalDepositsHeld * 100) / 100,
             totalBeds: effectiveTotalBeds,
             availableBeds: vacantBeds,
             occupiedBeds: effectiveOccupied,
@@ -136,6 +180,7 @@ export async function getOwnerDashboardStats() {
             propertyCount: 0,
             tenantCount: 0,
             totalRevenue: 0,
+            totalDepositsHeld: 0,
             totalBeds: 0,
             availableBeds: 0,
             occupiedBeds: 0,
