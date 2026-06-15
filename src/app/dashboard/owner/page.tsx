@@ -17,6 +17,7 @@ import { getOwnerDashboardStats, getOwnerInventory } from "@/actions/dashboard";
 import { getOwnerStaff } from "@/actions/staff";
 import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
 import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
+import { OwnerPropertyPanel } from "@/components/dashboard/OwnerPropertyPanel";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 const COLORS = ['#8b5cf6', '#e2e8f0'];
@@ -239,6 +240,9 @@ export default function OwnerDashboard() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Property Panel — full property overview with filters */}
+                    <OwnerPropertyPanel userRole="OWNER" />
 
                     {/* Activity Log Link */}
                     <div className="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
