@@ -12,7 +12,15 @@ export async function getOwnerDashboardStats() {
 
         const userId = session.userId;
 
-        const [propertyCount, tenantCount, paidRecordSums, totalBeds, occupiedBeds, paidRecords] = await Promise.all([
+        const [
+            propertyCount,
+            tenantCount,
+            totalBeds,
+            occupiedBeds,
+            pendingBookingCount,
+            confirmedBookings,
+            roomTotalBeds,
+        ] = await Promise.all([
             prisma.property.count({ where: { ownerId: userId } }),
             prisma.tenant.count({
                 where: {
@@ -20,45 +28,43 @@ export async function getOwnerDashboardStats() {
                     status: 'ACTIVE'
                 }
             }),
-            prisma.rentRecord.aggregate({
-                where: {
-                    paid: true,
-                    tenant: { property: { ownerId: userId } }
-                },
-                _sum: { amount: true }
-            }),
-            // Real total bed count from DB
+            // Real total bed count from Bed records
             prisma.bed.count({
                 where: { room: { property: { ownerId: userId } }, deletedAt: null }
             }),
-            // Real occupied bed count from DB
+            // Real occupied bed count
             prisma.bed.count({
                 where: { status: 'OCCUPIED', room: { property: { ownerId: userId } }, deletedAt: null }
             }),
-            // Real payments for revenue chart - last 6 months
-            prisma.rentRecord.findMany({
+            // Pending booking requests
+            prisma.booking.count({
                 where: {
-                    paid: true,
-                    tenant: { property: { ownerId: userId } },
-                    paidOn: { not: null }
+                    property: { ownerId: userId },
+                    status: 'PENDING_APPROVAL'
+                }
+            }),
+            // Revenue from confirmed bookings — last 12 months
+            prisma.booking.findMany({
+                where: {
+                    property: { ownerId: userId },
+                    status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
+                    createdAt: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }
                 },
-                select: { paidOn: true, amount: true },
+                select: { createdAt: true, amount: true }
+            }),
+            // Fallback bed count from room configuration
+            prisma.room.aggregate({
+                where: { property: { ownerId: userId } },
+                _sum: { totalBeds: true }
             }),
         ]);
 
-        const totalRevenue = paidRecordSums._sum.amount || 0;
-
-        // Group paid records by month (real data)
+        // ── Revenue: group bookings by month ─────────────────────────────
         const monthMap: Record<string, number> = {};
-        for (const record of paidRecords) {
-            if (!record.paidOn) continue;
-            // paidOn is stored as string e.g. "02 Jan 2025"
-            try {
-                const date = new Date(record.paidOn);
-                if (isNaN(date.getTime())) continue;
-                const key = date.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-                monthMap[key] = (monthMap[key] || 0) + (record.amount || 0);
-            } catch { continue; }
+        for (const booking of confirmedBookings) {
+            const d = new Date(booking.createdAt);
+            const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+            monthMap[key] = (monthMap[key] || 0) + (booking.amount || 0);
         }
 
         // Last 6 months in order
@@ -69,12 +75,22 @@ export async function getOwnerDashboardStats() {
             return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
         });
 
-        // Real occupancy from actual bed counts
-        const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
-        const occupancyStats = [
-            { name: "Occupied Beds", value: occupiedBeds },
-            { name: "Vacant Beds", value: vacantBeds },
-        ];
+        const totalRevenue = confirmedBookings.reduce((s, b) => s + (b.amount || 0), 0);
+
+        // ── Occupancy: prefer real bed records; fallback to room config ────
+        const effectiveTotalBeds = totalBeds > 0 ? totalBeds : (roomTotalBeds._sum?.totalBeds ?? 0);
+        const effectiveOccupied = Math.min(occupiedBeds, effectiveTotalBeds);
+        const vacantBeds = Math.max(0, effectiveTotalBeds - effectiveOccupied);
+
+        // If NO beds at all, show a placeholder so chart isn't blank
+        const occupancyStats = effectiveTotalBeds > 0
+            ? [
+                { name: "Occupied Beds", value: effectiveOccupied },
+                { name: "Vacant Beds", value: vacantBeds },
+            ]
+            : [
+                { name: "No Beds Added", value: 1 },
+            ];
 
         const ownerUser = await prisma.user.findUnique({
             where: { id: userId },
@@ -94,6 +110,10 @@ export async function getOwnerDashboardStats() {
             propertyCount,
             tenantCount,
             totalRevenue,
+            totalBeds: effectiveTotalBeds,
+            availableBeds: vacantBeds,
+            occupiedBeds: effectiveOccupied,
+            pendingBookingCount,
             revenueHistory,
             occupancyStats,
             user: {
@@ -116,11 +136,17 @@ export async function getOwnerDashboardStats() {
             propertyCount: 0,
             tenantCount: 0,
             totalRevenue: 0,
+            totalBeds: 0,
+            availableBeds: 0,
+            occupiedBeds: 0,
+            pendingBookingCount: 0,
             revenueHistory: [],
             occupancyStats: []
         };
     }
 }
+
+
 
 
 export async function getOwnerInventory() {

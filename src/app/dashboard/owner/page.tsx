@@ -6,7 +6,8 @@ import Link from "next/link";
 import { 
     Building, Users, IndianRupee, RefreshCcw, TrendingUp, 
     User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, 
-    ListFilter, Activity, CreditCard, UserCheck, Lock 
+    ListFilter, Activity, CreditCard, UserCheck, Lock,
+    AlertCircle, DoorOpen, BarChart3
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,9 +19,10 @@ import { getOwnerStaff } from "@/actions/staff";
 import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
 import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
 import { OwnerPropertyPanel } from "@/components/dashboard/OwnerPropertyPanel";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, BarChart, Bar } from "recharts";
 
 const COLORS = ['#8b5cf6', '#e2e8f0'];
+const PIE_COLORS = ['#6366f1', '#e2e8f0', '#f59e0b'];
 
 export default function OwnerDashboard() {
     const [stats, setStats] = useState<any>(null);
@@ -145,98 +147,173 @@ export default function OwnerDashboard() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    {/* Stats Grid */}
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <Card>
+                    {/* ── KPI Cards ── */}
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                        <Card className="lg:col-span-1 border-l-4 border-l-emerald-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                                <IndianRupee className="h-4 w-4 text-emerald-500" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Total Revenue</CardTitle>
+                                <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <IndianRupee className="h-4 w-4 text-emerald-600" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
-                                <p className="text-xs text-muted-foreground mt-1 flex items-center text-emerald-600">
-                                    <TrendingUp className="h-3 w-3 mr-1" /> +12% from last month
+                                <div className="text-2xl font-black text-slate-900">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
+                                <p className="text-xs mt-1 flex items-center gap-1 text-emerald-600 font-bold">
+                                    <TrendingUp className="h-3 w-3" /> From confirmed bookings
                                 </p>
                             </CardContent>
                         </Card>
-                        <Card>
+
+                        <Card className="lg:col-span-1 border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Active Tenants</CardTitle>
-                                <Users className="h-4 w-4 text-blue-500" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Active Tenants</CardTitle>
+                                <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <Users className="h-4 w-4 text-blue-600" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">+{stats.tenantCount}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Across all your properties</p>
+                                <div className="text-2xl font-black text-slate-900">{stats.tenantCount ?? 0}</div>
+                                <p className="text-xs mt-1 text-slate-500 font-bold">Across all properties</p>
                             </CardContent>
                         </Card>
-                        <Card>
+
+                        <Card className="lg:col-span-1 border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Properties Listed</CardTitle>
-                                <Building className="h-4 w-4 text-purple-500" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Properties</CardTitle>
+                                <div className="h-8 w-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <Building className="h-4 w-4 text-purple-600" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{stats.propertyCount}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Active property listings</p>
+                                <div className="text-2xl font-black text-slate-900">{stats.propertyCount ?? 0}</div>
+                                <p className="text-xs mt-1 text-slate-500 font-bold">Active listings</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="lg:col-span-1 border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Vacant Beds</CardTitle>
+                                <div className="h-8 w-8 bg-teal-100 rounded-lg flex items-center justify-center">
+                                    <DoorOpen className="h-4 w-4 text-teal-600" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-black text-slate-900">{stats.availableBeds ?? 0}</div>
+                                <p className="text-xs mt-1 text-slate-500 font-bold">of {stats.totalBeds ?? 0} total beds</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className={`lg:col-span-1 border-l-4 hover:shadow-lg transition-shadow ${ (stats.pendingBookingCount ?? 0) > 0 ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-slate-300' }`}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Pending</CardTitle>
+                                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${ (stats.pendingBookingCount ?? 0) > 0 ? 'bg-amber-100' : 'bg-slate-100' }`}>
+                                    <AlertCircle className={`h-4 w-4 ${ (stats.pendingBookingCount ?? 0) > 0 ? 'text-amber-600' : 'text-slate-400' }`} />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-2xl font-black ${ (stats.pendingBookingCount ?? 0) > 0 ? 'text-amber-700' : 'text-slate-900' }`}>
+                                    {stats.pendingBookingCount ?? 0}
+                                </div>
+                                <p className="text-xs mt-1 text-slate-500 font-bold">Booking requests</p>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* Charts Section */}
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <Card className="md:col-span-2">
-                            <CardHeader>
-                                <CardTitle>Revenue Trends</CardTitle>
+                    {/* ── Charts ── */}
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {/* Revenue Trend Chart */}
+                        <Card className="md:col-span-2 hover:shadow-lg transition-shadow">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div>
+                                    <CardTitle className="text-base font-black">Revenue Trends</CardTitle>
+                                    <p className="text-xs text-slate-400 font-bold mt-0.5">Last 6 months · Confirmed bookings</p>
+                                </div>
+                                <BarChart3 className="h-5 w-5 text-slate-300" />
                             </CardHeader>
                             <CardContent>
-                                <div className="h-[250px] w-full mt-4">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={stats.revenueHistory ?? []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.3} />
-                                            <XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={10} />
-                                            <YAxis axisLine={false} tickLine={false} tickMargin={10} tickFormatter={(val) => `₹${val / 1000}k`} />
-                                            <Tooltip
-                                                formatter={(value: any) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                            />
-                                            <Area type="monotone" dataKey="revenue" stroke="#10b981" fillOpacity={1} fill="url(#colorRevenue)" />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
+                                {(stats.revenueHistory ?? []).every((r: any) => r.revenue === 0) ? (
+                                    <div className="h-[240px] flex flex-col items-center justify-center gap-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                        <BarChart3 className="h-10 w-10 text-slate-200" />
+                                        <p className="text-sm font-black text-slate-400">No revenue recorded yet</p>
+                                        <p className="text-xs text-slate-300">Revenue appears here once bookings are confirmed & paid</p>
+                                    </div>
+                                ) : (
+                                    <div className="h-[240px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={stats.revenueHistory ?? []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                                <XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={10} tick={{ fontSize: 12, fontWeight: 700 }} />
+                                                <YAxis axisLine={false} tickLine={false} tickMargin={10} tick={{ fontSize: 11 }} tickFormatter={(val) => val >= 1000 ? `₹${(val/1000).toFixed(0)}k` : `₹${val}`} />
+                                                <Tooltip
+                                                    formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Revenue']}
+                                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', fontWeight: 700 }}
+                                                />
+                                                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Occupancy Rate</CardTitle>
+                        {/* Occupancy Donut */}
+                        <Card className="hover:shadow-lg transition-shadow">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base font-black">Occupancy</CardTitle>
+                                <p className="text-xs text-slate-400 font-bold">
+                                    {stats.totalBeds ?? 0} total beds
+                                </p>
                             </CardHeader>
                             <CardContent className="flex flex-col items-center justify-center">
-                                <div className="h-[200px] w-full mt-2">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={stats.occupancyStats ?? []}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                {(stats.occupancyStats ?? []).map((entry: any, index: number) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
+                                {(stats.totalBeds ?? 0) === 0 ? (
+                                    <div className="h-[200px] flex flex-col items-center justify-center gap-3 w-full bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                        <Bed className="h-10 w-10 text-slate-200" />
+                                        <p className="text-sm font-black text-slate-400">No beds configured</p>
+                                        <p className="text-xs text-slate-300 text-center">Add rooms & beds to see occupancy</p>
+                                    </div>
+                                ) : (
+                                    <div className="relative h-[200px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={stats.occupancyStats ?? []}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={58}
+                                                    outerRadius={80}
+                                                    paddingAngle={3}
+                                                    dataKey="value"
+                                                    startAngle={90}
+                                                    endAngle={-270}
+                                                >
+                                                    {(stats.occupancyStats ?? []).map((entry: any, index: number) => (
+                                                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} strokeWidth={0} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value: any, name: any) => [value, name]}
+                                                    contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontWeight: 700 }}
+                                                />
+                                                <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={8}
+                                                    formatter={(value) => <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>{value}</span>}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        {/* Center label */}
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 36 }}>
+                                            <span className="text-2xl font-black text-indigo-600">
+                                                {stats.totalBeds > 0 ? Math.round(((stats.occupiedBeds ?? 0) / stats.totalBeds) * 100) : 0}%
+                                            </span>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Occupied</span>
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
