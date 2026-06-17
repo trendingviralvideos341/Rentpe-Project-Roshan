@@ -19,8 +19,10 @@ import {
     getPlatformRevenueTrends,
     getUserGrowthAnalytics,
     getBookingConversionAnalytics,
-    getOnboardedProperties
+    getOnboardedProperties,
+    getOwnersWithProperties
 } from "@/actions/superAdmin";
+import { AdminPropertyDashboardView } from "@/components/dashboard/AdminPropertyDashboardView";
 import { SuperAdminKPIs } from "@/components/dashboard/SuperAdminKPIs";
 import { formatDistanceToNow } from "date-fns";
 
@@ -39,6 +41,8 @@ export default function AdminDashboard() {
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [securityLogs, setSecurityLogs] = useState<any[]>([]);
     const [securityLoading, setSecurityLoading] = useState(false);
+    const [ownersWithProperties, setOwnersWithProperties] = useState<any[]>([]);
+    const [ownersLoading, setOwnersLoading] = useState(false);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -130,6 +134,25 @@ export default function AdminDashboard() {
         }
     }, [activeTab, fetchSecurityLogs]);
 
+    const fetchOwnersWithProperties = useCallback(async () => {
+        if (ownersWithProperties.length > 0) return; // already loaded
+        setOwnersLoading(true);
+        try {
+            const data = await getOwnersWithProperties();
+            setOwnersWithProperties(data || []);
+        } catch (error) {
+            console.error("fetchOwnersWithProperties Error:", error);
+        } finally {
+            setOwnersLoading(false);
+        }
+    }, [ownersWithProperties.length]);
+
+    useEffect(() => {
+        if (activeTab === "property-dashboard") {
+            fetchOwnersWithProperties();
+        }
+    }, [activeTab, fetchOwnersWithProperties]);
+
     const handleReviewAction = async (id: string, action: "PUBLISHED" | "HIDDEN") => {
         try {
             await updateReviewStatus(id, action);
@@ -170,12 +193,18 @@ export default function AdminDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full max-w-3xl mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
+                <TabsList className="flex flex-wrap h-auto w-full max-w-4xl mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
                     <TabsTrigger
                         value="overview"
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Activity className="h-4 w-4 mr-2" /> Dashboard
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="property-dashboard"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
+                    >
+                        <Building2 className="h-4 w-4 mr-2" /> Property Dashboard
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
@@ -205,6 +234,30 @@ export default function AdminDashboard() {
                         conversionAnalytics={conversion}
                         onboardedProperties={onboardedProperties}
                     />
+                </TabsContent>
+
+                {/* Property Dashboard Tab */}
+                <TabsContent value="property-dashboard" className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                <Building2 className="h-5 w-5 text-indigo-500" /> Property Dashboard Viewer
+                            </h2>
+                            <p className="text-slate-500 text-sm mt-1">
+                                Select any owner and property to view its complete operational dashboard — revenue, occupancy, rooms, tenants, and deposits.
+                            </p>
+                        </div>
+                    </div>
+                    {ownersLoading ? (
+                        <div className="flex items-center justify-center py-20 animate-pulse">
+                            <div className="text-center space-y-2">
+                                <Building2 className="h-8 w-8 text-indigo-400 mx-auto" />
+                                <p className="text-slate-500 font-semibold text-sm">Loading owners and properties...</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <AdminPropertyDashboardView initialOwners={ownersWithProperties} />
+                    )}
                 </TabsContent>
 
                 <TabsContent value="profile" className="animate-in fade-in slide-in-from-bottom-2 duration-300">

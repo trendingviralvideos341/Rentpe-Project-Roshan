@@ -520,3 +520,185 @@ export async function generateMasterBusinessReport() {
         healthReport,
     };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ADMIN PROPERTY DASHBOARD — Owners + properties dropdown seed
+//  Accessible to all ADMIN roles (not just super admin)
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getOwnersWithProperties() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const owners = await prisma.user.findMany({
+        where: { role: 'OWNER', deletedAt: null },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            displayId: true,
+            properties: {
+                where: { status: { in: ['LIVE', 'APPROVED', 'PENDING'] } },
+                select: { id: true, name: true, propertyType: true, city: true, status: true }
+            }
+        },
+        orderBy: { name: 'asc' }
+    });
+
+    // Only return owners who actually have properties
+    return owners
+        .filter((o: any) => o.properties.length > 0)
+        .map((o: any) => ({
+            id: o.id,
+            name: o.name || o.email,
+            email: o.email,
+            displayId: o.displayId,
+            properties: o.properties
+        }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ADMIN PROPERTY DASHBOARD — Full property-level dashboard for any property
+//  CA/GST Compliant: rent revenue separated from security deposits
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getAdminPropertyDashboard(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+    if (!propertyId) throw new Error('Property ID required');
+
+    // Fetch core property data
+    const property = await prisma.property.findUnique({
+        where: { id: propertyId },
+        include: {
+            owner: { select: { id: true, name: true, email: true, phone: true, displayId: true, createdAt: true } },
+            rooms: { include: { beds: { select: { id: true, status: true, bedNumber: true } } } },
+            _count: { select: { bookings: true, reviews: true } }
+        }
+    });
+    if (!property) throw new Error('Property not found');
+
+    const cutoff12m = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+    const [
+        activeTenants,
+        pendingBookings,
+        confirmedBookings,
+        upcomingMoveOuts,
+        avgRating,
+        ownerPropertyCount,
+        depositsHeld,
+        recentTenants,
+    ] = await Promise.all([
+        // Active tenants
+        (prisma.tenant as any).count({ where: { propertyId, status: 'ACTIVE_TENANT' } }),
+        // Pending booking requests
+        prisma.booking.count({ where: { propertyId, status: 'PENDING_APPROVAL' } }),
+        // Confirmed bookings last 12m — rent revenue only
+        prisma.booking.findMany({
+            where: {
+                propertyId,
+                status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'COMPLETED'] },
+                createdAt: { gte: cutoff12m }
+            },
+            select: { createdAt: true, amount: true, depositAmount: true }
+        }),
+        // Upcoming move-outs
+        (prisma.tenant as any).count({ where: { propertyId, status: 'MOVE_OUT_SCHEDULED' } }),
+        // Average review rating
+        prisma.review.aggregate({ where: { propertyId }, _avg: { rating: true } }),
+        // How many properties does this owner have total?
+        prisma.property.count({ where: { ownerId: property.ownerId } }),
+        // Security deposits held (net: collected - refunded)
+        (prisma as any).securityDeposit.findMany({
+            where: {
+                billingProfile: { propertyId },
+                status: 'PAID'
+            },
+            select: { amount: true, refundAmount: true }
+        }),
+        // Recent active tenants (for the tenant list)
+        (prisma.tenant as any).findMany({
+            where: { propertyId, status: { in: ['ACTIVE_TENANT', 'UPCOMING_MOVE_IN', 'MOVE_OUT_SCHEDULED'] } },
+            select: { id: true, name: true, phone: true, status: true, startDate: true, roomId: true },
+            orderBy: { startDate: 'desc' },
+            take: 20
+        }),
+    ]);
+
+    // ── Revenue: monthly map (rent only — CA compliant) ──────────────────────
+    const monthMap: Record<string, number> = {};
+    for (const b of confirmedBookings) {
+        const d = new Date(b.createdAt);
+        const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+        monthMap[key] = (monthMap[key] || 0) + Number(b.amount || 0);
+    }
+    const revenueHistory = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - (5 - i));
+        const key = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+        return { month: d.toLocaleString('en-IN', { month: 'short' }), revenue: monthMap[key] || 0 };
+    });
+    const totalRevenue = confirmedBookings.reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
+
+    // ── Deposits held (net liability) ────────────────────────────────────────
+    const totalDepositsHeld = (depositsHeld as any[]).reduce(
+        (sum: number, dep: any) => sum + Math.max(0, Number(dep.amount || 0) - Number(dep.refundAmount || 0)),
+        0
+    );
+
+    // ── Bed / Occupancy stats ────────────────────────────────────────────────
+    const allBeds = (property as any).rooms.flatMap((r: any) => r.beds || []);
+    const totalBeds = allBeds.length || (property as any).rooms.reduce((s: number, r: any) => s + (r.totalBeds || 0), 0);
+    const occupiedBeds = allBeds.filter((b: any) => b.status === 'OCCUPIED').length;
+    const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
+
+    // ── Rooms breakdown ──────────────────────────────────────────────────────
+    const roomsBreakdown = (property as any).rooms.map((r: any) => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        type: r.type,
+        price: r.price,
+        totalBeds: r.beds?.length || r.totalBeds || 0,
+        occupiedBeds: (r.beds || []).filter((b: any) => b.status === 'OCCUPIED').length,
+        vacantBeds: Math.max(0, (r.beds?.length || r.totalBeds || 0) - (r.beds || []).filter((b: any) => b.status === 'OCCUPIED').length),
+        status: r.status,
+        availability: r.availability,
+    }));
+
+    // ── Owner's other properties count ───────────────────────────────────────
+    return {
+        property: {
+            id: property.id,
+            displayId: (property as any).displayId,
+            name: property.name,
+            propertyType: (property as any).propertyType || 'PG',
+            address: property.address,
+            city: property.city,
+            status: property.status,
+            genderType: (property as any).genderType,
+            isVerified: (property as any).isVerified,
+            foodType: (property as any).foodType,
+            amenities: (property as any).amenities,
+            createdAt: property.createdAt,
+        },
+        owner: {
+            ...(property as any).owner,
+            totalPropertiesOwned: ownerPropertyCount,
+        },
+        kpis: {
+            totalRevenue: Math.round(totalRevenue * 100) / 100,
+            totalDepositsHeld: Math.round(totalDepositsHeld * 100) / 100,
+            activeTenants,
+            pendingBookings,
+            upcomingMoveOuts,
+            totalBeds,
+            occupiedBeds,
+            vacantBeds,
+            avgRating: Math.round(((avgRating._avg?.rating ?? 0)) * 10) / 10,
+            totalBookings: (property as any)._count.bookings,
+            totalReviews: (property as any)._count.reviews,
+        },
+        revenueHistory,
+        roomsBreakdown,
+        recentTenants,
+    };
+}
