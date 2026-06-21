@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
 import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate, markPhysicalKycVerified } from "@/actions/bookings";
@@ -50,6 +50,49 @@ function StatusBadge({ status }: { status: string }) {
     return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${badge.cls}`}>{badge.label}</span>;
 }
 
+// ── Token Deadline Chip for Owner bookings table (Note 4) ────────────────
+function TokenDeadlineChip({ deadline }: { deadline: string | Date | null | undefined }) {
+    const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, expired: false });
+
+    function calc() {
+        if (!deadline) return { h: 0, m: 0, s: 0, expired: true };
+        const diff = new Date(deadline).getTime() - Date.now();
+        if (diff <= 0) return { h: 0, m: 0, s: 0, expired: true };
+        const t = Math.floor(diff / 1000);
+        return { h: Math.floor(t / 3600), m: Math.floor((t % 3600) / 60), s: t % 60, expired: false };
+    }
+
+    useEffect(() => {
+        setTimeLeft(calc());
+        const id = setInterval(() => setTimeLeft(calc()), 1000);
+        return () => clearInterval(id);
+    }, [deadline]);
+
+    if (!deadline) return null;
+
+    const totalH = timeLeft.h + timeLeft.m / 60;
+    const isCritical = totalH < 6;
+
+    if (timeLeft.expired) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">
+                ⛔ Auto-cancelling
+            </span>
+        );
+    }
+
+    return (
+        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full border ${
+            isCritical
+                ? 'bg-red-100 text-red-700 border-red-300 animate-pulse'
+                : 'bg-amber-50 text-amber-800 border-amber-300'
+        }`}>
+            <Clock className="h-2.5 w-2.5" />
+            {String(timeLeft.h).padStart(2,'0')}h {String(timeLeft.m).padStart(2,'0')}m left
+        </span>
+    );
+}
+
 // ─── Action Badge Helper ────────────────────────────────────────────────────
 function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashPayment: boolean }) {
     const s = booking.status;
@@ -66,8 +109,11 @@ function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashP
         </span>
     );
     if (s === 'APPROVED_PENDING_TOKEN') return (
-        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">
-            ⏳ Awaiting ₹1,000 Token from Student
+        <span className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-300">
+                ⏳ Awaiting ₹1,000 Token from Student
+            </span>
+            <TokenDeadlineChip deadline={booking.tokenDeadline} />
         </span>
     );
     if (s === 'ROOM_RESERVED') return (

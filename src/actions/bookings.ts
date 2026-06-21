@@ -335,8 +335,8 @@ export async function approveBooking(id: string, data: {
 
     const existingBooking = await prisma.booking.findUnique({ where: { id } });
 
-    // When a bed is allocated (bedId present) â†’ advance to APPROVED_PENDING_TOKEN
-    // so student knows to pay â‚¹1,000 token. Otherwise just APPROVED (room not yet set).
+    // When a bed is allocated (bedId present) → advance to APPROVED_PENDING_TOKEN
+    // so student knows to pay ₹1,000 token. Otherwise just APPROVED (room not yet set).
     const newStatus = data.bedId ? 'APPROVED_PENDING_TOKEN' : 'APPROVED';
 
     const booking = await prisma.booking.update({
@@ -344,6 +344,13 @@ export async function approveBooking(id: string, data: {
         data: {
             status: newStatus,
             approvedAt: new Date(),
+            // ── 48-Hour Token Deadline (Note 4) ──────────────────────────────────
+            // When a bed is allocated, the student has exactly 48 hours to pay the
+            // ₹1,000 token. After that, the cron job auto-rejects and releases the bed.
+            tokenDeadline: newStatus === 'APPROVED_PENDING_TOKEN'
+                ? new Date(Date.now() + 48 * 60 * 60 * 1000)
+                : undefined,
+            // ─────────────────────────────────────────────────────────────────────
             roomId: data.roomId,
             amount: data.amount,
             occupancy: data.occupancy,

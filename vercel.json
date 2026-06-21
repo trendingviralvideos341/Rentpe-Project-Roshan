@@ -11,6 +11,10 @@
         {
             "path": "/api/cron/generate-rent",
             "schedule": "0 0 1 * *"
+        },
+        {
+            "path": "/api/cron/token-expiry",
+            "schedule": "0 * * * *"
         }
     ]
 }

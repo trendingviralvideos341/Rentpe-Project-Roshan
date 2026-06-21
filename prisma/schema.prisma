@@ -284,6 +284,7 @@ model Booking {
   tokenAmount                 Float?           @default(1000)
   tokenPaidAt                 DateTime?
   tokenPaymentId              String?
+  tokenDeadline               DateTime?        // Set to approvedAt + 48h when APPROVED_PENDING_TOKEN; cron auto-rejects after this
   reservationExpiresAt        DateTime?
   kycVerifiedAt               DateTime?
   kycRejectedAt               DateTime?

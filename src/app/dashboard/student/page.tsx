@@ -10,7 +10,7 @@ import { changeFoodPreference } from "@/actions/food";
 import { getPendingRentInvoice } from "@/actions/rent";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X, Clock } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -71,6 +71,146 @@ function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' |
                     {actionLabel}
                 </Button>
             )}
+        </div>
+    );
+}
+
+// ── Token Payment Countdown Banner (Note 4) ──────────────────────────────────
+// Live ticking countdown. Turns red in last 6 hours. Auto-hides when paid.
+function TokenCountdownBanner({
+    deadline,
+    bookingId,
+    roomAssigned,
+    tokenAmount = 1000,
+}: {
+    deadline: string | Date;
+    bookingId: string;
+    roomAssigned: string;
+    tokenAmount?: number;
+}) {
+    const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, expired: false });
+    const router = typeof window !== 'undefined' ? undefined : null; // SSR guard handled below
+
+    function calcRemaining() {
+        const diffMs = new Date(deadline).getTime() - Date.now();
+        if (diffMs <= 0) return { h: 0, m: 0, s: 0, expired: true };
+        const totalSec = Math.floor(diffMs / 1000);
+        return {
+            h: Math.floor(totalSec / 3600),
+            m: Math.floor((totalSec % 3600) / 60),
+            s: totalSec % 60,
+            expired: false,
+        };
+    }
+
+    useEffect(() => {
+        setTimeLeft(calcRemaining());
+        const id = setInterval(() => setTimeLeft(calcRemaining()), 1000);
+        return () => clearInterval(id);
+    }, [deadline]);
+
+    const totalHoursLeft = timeLeft.h + timeLeft.m / 60;
+    const isCritical = totalHoursLeft < 6;
+    const isWarning = totalHoursLeft < 24;
+
+    if (timeLeft.expired) {
+        return (
+            <div className="w-full bg-red-100 border-2 border-red-500 rounded-2xl p-4 text-center">
+                <p className="text-sm font-black text-red-700">⛔ Payment window expired. Your booking is being cancelled automatically.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className={`w-full rounded-2xl p-5 space-y-4 border-2 ${
+                isCritical
+                    ? 'bg-gradient-to-br from-red-50 to-rose-100 border-red-500 shadow-lg shadow-red-200'
+                    : isWarning
+                    ? 'bg-gradient-to-br from-amber-50 to-orange-100 border-orange-400'
+                    : 'bg-gradient-to-br from-amber-50 to-orange-50 border-orange-400'
+            }`}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                    <Lock className={`h-4 w-4 ${isCritical ? 'text-red-600' : 'text-orange-700'}`} />
+                    <span className={`text-sm font-black ${isCritical ? 'text-red-800' : 'text-orange-800'}`}>
+                        🔒 Pay Token to Reserve Bed — {isCritical ? '⚠️ URGENT' : 'Time Limited'}
+                    </span>
+                </div>
+                {isCritical && (
+                    <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse">
+                        🚨 CRITICAL
+                    </span>
+                )}
+            </div>
+
+            {/* Live Countdown Clock */}
+            <div
+                className={`flex items-center justify-center gap-3 rounded-xl py-4 border-2 ${
+                    isCritical ? 'bg-red-50 border-red-300' : 'bg-white/80 border-orange-200'
+                }`}
+            >
+                <Clock className={`h-5 w-5 ${isCritical ? 'text-red-500 animate-spin' : 'text-orange-500'}`} style={{ animationDuration: '2s' }} />
+                {/* Hours */}
+                <div className="text-center">
+                    <div className={`text-3xl font-black tabular-nums ${ isCritical ? 'text-red-700' : 'text-orange-800'}`}>
+                        {String(timeLeft.h).padStart(2, '0')}
+                    </div>
+                    <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">HRS</div>
+                </div>
+                <span className={`text-2xl font-black ${isCritical ? 'text-red-500 animate-pulse' : 'text-orange-400'}`}>:</span>
+                {/* Minutes */}
+                <div className="text-center">
+                    <div className={`text-3xl font-black tabular-nums ${ isCritical ? 'text-red-700' : 'text-orange-800'}`}>
+                        {String(timeLeft.m).padStart(2, '0')}
+                    </div>
+                    <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">MIN</div>
+                </div>
+                <span className={`text-2xl font-black ${isCritical ? 'text-red-500 animate-pulse' : 'text-orange-400'}`}>:</span>
+                {/* Seconds */}
+                <div className="text-center">
+                    <div className={`text-3xl font-black tabular-nums ${ isCritical ? 'text-red-700 animate-pulse' : 'text-orange-700'}`}>
+                        {String(timeLeft.s).padStart(2, '0')}
+                    </div>
+                    <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">SEC</div>
+                </div>
+            </div>
+
+            {/* Room & amount info */}
+            <div className={`rounded-xl p-3 border flex justify-between items-center ${
+                isCritical ? 'bg-white/80 border-red-200' : 'bg-white/80 border-orange-200'
+            }`}>
+                <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Room Allocated</span>
+                    <p className="text-xs font-black text-slate-800">{roomAssigned}</p>
+                </div>
+                <div className="text-right">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Token Amount</span>
+                    <p className="text-sm font-black text-slate-900">₹{tokenAmount.toLocaleString()}</p>
+                </div>
+            </div>
+
+            {/* Warning text */}
+            <p className={`text-[11px] font-bold text-center ${ isCritical ? 'text-red-700' : 'text-orange-700'}`}>
+                {isCritical
+                    ? '⚠️ Less than 6 hours left! If not paid in time, your booking will be auto-cancelled and the bed released.'
+                    : '⏰ Your bed is temporarily held. Pay the token before the countdown ends to confirm your reservation.'}
+            </p>
+
+            {/* CTA */}
+            <a href={`/secure/payment?id=${bookingId}&type=token`}>
+                <Button
+                    className={`w-full font-black h-12 rounded-2xl text-white shadow-md ${
+                        isCritical
+                            ? 'bg-red-600 hover:bg-red-700 shadow-red-300 animate-pulse'
+                            : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'
+                    }`}
+                >
+                    💳 Pay ₹{tokenAmount.toLocaleString()} Token Now
+                </Button>
+            </a>
         </div>
     );
 }
@@ -248,15 +388,12 @@ function BookingCard({
 
                 {/* ── Payment Cards ── */}
                 {isTokenPending && booking.roomAssigned && (
-                    <div className="w-full bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-orange-400 rounded-2xl p-5 space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-black text-orange-800"><Lock className="h-4 w-4" /> 🔒 Pay Token to Reserve Bed</div>
-                        <p className="text-xs text-orange-700 font-medium">Room <strong>{booking.roomAssigned}</strong> allocated! Pay ₹1,000 token to lock your bed.</p>
-                        <div className="bg-white/80 rounded-xl p-3 border border-orange-200 flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-600">Token Amount</span>
-                            <span className="text-sm font-black text-slate-900">₹1,000</span>
-                        </div>
-                        <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}&type=token`)}>💳 Pay ₹1,000 Token Now</Button>
-                    </div>
+                    <TokenCountdownBanner
+                        deadline={booking.tokenDeadline || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()}
+                        bookingId={booking.id}
+                        roomAssigned={booking.roomAssigned}
+                        tokenAmount={booking.tokenAmount || 1000}
+                    />
                 )}
 
                 {isTokenPaid && (
