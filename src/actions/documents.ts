@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -117,14 +117,14 @@ export async function getPendingDocuments() {
     if (session.role === 'OWNER' || session.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
             where: { id: userId },
-            include: { employeeProfile: true }
+            include: { staffProfile: true }
         });
         
         let propertyNames: string[] = [];
         
-        if (user?.employeeProfile) {
-            const assignments = await prisma.employeePropertyAssignment.findMany({
-                where: { employeeId: user.employeeProfile.id },
+        if (user?.staffProfile) {
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
                 include: { property: { select: { name: true } } }
             });
             propertyNames = assignments.map(a => a.property.name);
@@ -198,14 +198,14 @@ export async function getPendingDocumentsCount() {
     if (session.role === 'OWNER' || session.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
             where: { id: userId },
-            include: { employeeProfile: true }
+            include: { staffProfile: true }
         });
         
         let propertyNames: string[] = [];
         
-        if (user?.employeeProfile) {
-            const assignments = await prisma.employeePropertyAssignment.findMany({
-                where: { employeeId: user.employeeProfile.id },
+        if (user?.staffProfile) {
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
                 include: { property: { select: { name: true } } }
             });
             propertyNames = assignments.map(a => a.property.name);
@@ -335,3 +335,4 @@ export async function verifyDocument(docId: string, status: 'VERIFIED' | 'REJECT
     revalidatePath('/dashboard/admin/properties');
     return doc;
 }
+

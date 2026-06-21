@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
@@ -20,13 +20,13 @@ export async function getTenants() {
     if (session.role === 'OWNER' || session.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
             where: { id: userId },
-            include: { employeeProfile: true }
+            include: { staffProfile: true }
         });
         
-        if (user?.employeeProfile) {
+        if (user?.staffProfile) {
             // For staff, restrict to assigned properties
-            const assignments = await prisma.employeePropertyAssignment.findMany({
-                where: { employeeId: user.employeeProfile.id },
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
                 select: { propertyId: true }
             });
             whereClause.propertyId = { in: assignments.map(a => a.propertyId) };
@@ -93,7 +93,7 @@ export async function createTenantFromBooking(bookingId: string) {
     return await prisma.$transaction(async (tx) => {
         const tenantDisplayId = await generateSequentialId('TENANT');
 
-        // ── CRITICAL: startDate = agreement signing date (source of truth for all billing) ──
+        // â”€â”€ CRITICAL: startDate = agreement signing date (source of truth for all billing) â”€â”€
         // The day the tenant signs the agreement IS their stay start date.
         // All rent calculations (prorated first month, billing cycles, stay duration) flow from this.
         const agreementDate = (booking as any).agreementSignedAt
@@ -185,7 +185,7 @@ export async function confirmMoveIn(tenantId: string) {
 
         // UNIFIED CALENDAR BILLING
         // Billing is always anchored to the 1st of every calendar month.
-        // First month = prorated from agreement signing date → last day of that month.
+        // First month = prorated from agreement signing date â†’ last day of that month.
         // tenant.startDate IS the agreement signing date (set in signAgreement()).
         const BILLING_ANCHOR = 1;
 
@@ -205,12 +205,12 @@ export async function confirmMoveIn(tenantId: string) {
             }
         });
 
-        // ── Prorated first-month rent invoice ──
-        // Days charged = move-in day → last day of that month (inclusive)
+        // â”€â”€ Prorated first-month rent invoice â”€â”€
+        // Days charged = move-in day â†’ last day of that month (inclusive)
         const { firstMonthRent, proratedNote } = await import('@/utils/billingUtils');
         const firstMonthLabel = moveInDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
         const firstInvoiceAmount = firstMonthRent(rentAmount, moveInDate);
-        const note = proratedNote(moveInDate); // e.g. "Prorated — 28 May to 31 May (4 days)"
+        const note = proratedNote(moveInDate); // e.g. "Prorated â€” 28 May to 31 May (4 days)"
 
         await tx.rentRecord.create({
             data: {
@@ -238,7 +238,7 @@ export async function confirmMoveIn(tenantId: string) {
             actionType: 'UPDATE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Tenant ${tenant.name} moved in ${moveInDate.getDate()} ${firstMonthLabel}. First invoice: ₹${firstInvoiceAmount} (${note}). Billing anchor: 1st of every month.`,
+            description: `Tenant ${tenant.name} moved in ${moveInDate.getDate()} ${firstMonthLabel}. First invoice: â‚¹${firstInvoiceAmount} (${note}). Billing anchor: 1st of every month.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -356,10 +356,10 @@ export async function blockTenant(tenantId: string, note: string) {
 
         const settlementSummary = `
 EVICTION / BLOCK Summary:
-- Security Deposit: ₹${depositAmount.toLocaleString('en-IN')}
-- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')}
+- Security Deposit: â‚¹${depositAmount.toLocaleString('en-IN')}
+- Unpaid Rent: â‚¹${unpaidRent.toLocaleString('en-IN')}
 -------------------
-Final Refund Due: ₹${finalRefund.toLocaleString('en-IN')}
+Final Refund Due: â‚¹${finalRefund.toLocaleString('en-IN')}
 -------------------
 Block Reason: ${note}
 `.trim();
@@ -510,7 +510,7 @@ export async function generateNextRentRecord(tenantId: string, month: string) {
         actionType: 'CREATE',
         entityType: 'TENANT',
         entityId: tenantId,
-        description: `Generated rent invoice for ${month} (₹${tenant.rent})`,
+        description: `Generated rent invoice for ${month} (â‚¹${tenant.rent})`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
@@ -635,7 +635,7 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         const moveInDate = tenant.booking?.agreementSignedAt ? new Date(tenant.booking.agreementSignedAt) : new Date(tenant.startDate);
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
-        // 1. Prorated last-month rent — update/create the final month record
+        // 1. Prorated last-month rent â€” update/create the final month record
         const monthlyRent = typeof tenant.rent === 'number' ? tenant.rent : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, ''));
         const lastMonthLabel = moveOutDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
         const prorated = lastMonthRent(monthlyRent, moveOutDate);
@@ -644,11 +644,11 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         if (existingRecord) {
             await tx.rentRecord.update({
                 where: { id: existingRecord.id },
-                data: { amount: prorated, note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
+                data: { amount: prorated, note: `Prorated â€” move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
             });
         } else {
             await tx.rentRecord.create({
-                data: { tenantId, month: lastMonthLabel, amount: prorated, paid: false, note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
+                data: { tenantId, month: lastMonthLabel, amount: prorated, paid: false, note: `Prorated â€” move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
             });
         }
 
@@ -661,11 +661,11 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
 
         const settlementSummary = `
 Settlement Summary:
-- Security Deposit: ₹${depositAmount.toLocaleString('en-IN')}
-- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')} (incl. prorated move-out month)
-- Deductions: ₹${deductions.toLocaleString('en-IN')}
+- Security Deposit: â‚¹${depositAmount.toLocaleString('en-IN')}
+- Unpaid Rent: â‚¹${unpaidRent.toLocaleString('en-IN')} (incl. prorated move-out month)
+- Deductions: â‚¹${deductions.toLocaleString('en-IN')}
 -------------------
-Final Refund: ₹${finalRefund.toLocaleString('en-IN')}
+Final Refund: â‚¹${finalRefund.toLocaleString('en-IN')}
 -------------------
 Note: ${note}
 `.trim();
@@ -739,7 +739,7 @@ Note: ${note}
             actionType: 'DELETE',
             entityType: 'TENANT',
             entityId: tenantId,
-            description: `Move-out finalized. Settlement: Refund ₹${finalRefund}. Notice marked VACATED.`,
+            description: `Move-out finalized. Settlement: Refund â‚¹${finalRefund}. Notice marked VACATED.`,
         });
 
         revalidatePath('/dashboard/owner/tenants');
@@ -767,14 +767,14 @@ export async function getTenantsByCategory(ownerId: string, category: 'UPCOMING'
     // If owner/staff, get allowed properties
     const user = await prisma.user.findUnique({ 
         where: { id: session.userId },
-        include: { employeeProfile: true }
+        include: { staffProfile: true }
     });
     
     let pIds: string[] = [];
     
-    if (user?.employeeProfile) {
-        const assignments = await prisma.employeePropertyAssignment.findMany({
-            where: { employeeId: user.employeeProfile.id },
+    if (user?.staffProfile) {
+        const assignments = await prisma.staffPropertyAssignment.findMany({
+            where: { staffMemberId: user.staffProfile.id },
             select: { propertyId: true }
         });
         pIds = assignments.map(a => a.propertyId);
@@ -807,3 +807,4 @@ export async function getMoveInChecklist(bookingId: string) {
         where: { bookingId }
     });
 }
+

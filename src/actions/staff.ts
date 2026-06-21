@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 import crypto from "crypto";
 
 import prisma from "@/lib/prisma";
@@ -91,7 +91,7 @@ export async function addOwnerStaff(data: {
         });
 
         // 2. Create OwnerEmployee Profile (needed for property assignments)
-        const employee = await tx.ownerEmployee.create({
+        const employee = await tx.ownerStaffMember.create({
             data: {
                 displayId,
                 ownerId,
@@ -108,9 +108,9 @@ export async function addOwnerStaff(data: {
 
         // 3. Create Property Assignments
         if (data.propertyIds && data.propertyIds.length > 0) {
-            await tx.employeePropertyAssignment.createMany({
+            await tx.staffPropertyAssignment.createMany({
                 data: data.propertyIds.map(pid => ({
-                    employeeId: employee.id,
+                    staffMemberId: employee.id,
                     propertyId: pid,
                     assignedBy: ownerId
                 }))
@@ -204,3 +204,4 @@ export async function joinStaffTeam(token: string, passwordHash: string) {
         return { success: false, error: e.message };
     }
 }
+

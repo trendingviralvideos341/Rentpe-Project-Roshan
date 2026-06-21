@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -36,7 +36,7 @@ export async function createBooking(data: {
     const userId = session.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
-    // ─── SECURITY GUARD 1: Owner cannot book their own property ───────────────
+    // â”€â”€â”€ SECURITY GUARD 1: Owner cannot book their own property â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (data.propertyId) {
         const ownedProperty = await prisma.property.findUnique({
             where: { id: data.propertyId },
@@ -59,12 +59,12 @@ export async function createBooking(data: {
             throw new Error("You cannot book your own property.");
         }
 
-        // ─── SECURITY GUARD 2: Property must be LIVE ────────────────────────
+        // â”€â”€â”€ SECURITY GUARD 2: Property must be LIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (ownedProperty.status !== 'LIVE') {
             throw new Error("This property is not currently available for booking.");
         }
 
-        // ─── SECURITY GUARD 3: No duplicate active booking for same room ────
+        // â”€â”€â”€ SECURITY GUARD 3: No duplicate active booking for same room â”€â”€â”€â”€
         if (data.roomId) {
             const existingBooking = await prisma.booking.findFirst({
                 where: {
@@ -78,7 +78,7 @@ export async function createBooking(data: {
             }
         }
 
-        // ─── SECURITY GUARD 4: Previously Evicted/Blocked from this PG ──────
+        // â”€â”€â”€ SECURITY GUARD 4: Previously Evicted/Blocked from this PG â”€â”€â”€â”€â”€â”€
         const pastEviction = await prisma.tenant.findFirst({
             where: {
                 studentId: userId,
@@ -91,9 +91,9 @@ export async function createBooking(data: {
             throw new Error("You are not eligible to book this property.");
         }
     }
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // ─── FRAUD GATE (must run BEFORE writing anything to DB) ──────────────────
+    // â”€â”€â”€ FRAUD GATE (must run BEFORE writing anything to DB) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (data.propertyId) {
         // Record this fingerprint for future tracking
         await recordFingerprint(userId, {
@@ -117,7 +117,7 @@ export async function createBooking(data: {
         // Attach risk score to booking data for admin visibility
         (data as any)._fraudRiskScore = fraudCheck.riskScore;
     }
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     // Auto-fill from profile if not provided
     const guestName = data.guestName || user?.name || "Anonymous";
@@ -202,15 +202,15 @@ export async function getBookings() {
         if (role === 'OWNER' || role === 'STAFF') {
             const user = await prisma.user.findUnique({ 
                 where: { id: userId },
-                include: { employeeProfile: true }
+                include: { staffProfile: true }
             });
             
             let propertyIds: string[] = [];
             
-            if (user?.employeeProfile) {
+            if (user?.staffProfile) {
                 // For staff, get assigned properties
-                const assignments = await prisma.employeePropertyAssignment.findMany({
-                    where: { employeeId: user.employeeProfile.id },
+                const assignments = await prisma.staffPropertyAssignment.findMany({
+                    where: { staffMemberId: user.staffProfile.id },
                     select: { propertyId: true }
                 });
                 propertyIds = assignments.map(a => a.propertyId);
@@ -333,8 +333,8 @@ export async function approveBooking(id: string, data: {
 
     const existingBooking = await prisma.booking.findUnique({ where: { id } });
 
-    // When a bed is allocated (bedId present) → advance to APPROVED_PENDING_TOKEN
-    // so student knows to pay ₹1,000 token. Otherwise just APPROVED (room not yet set).
+    // When a bed is allocated (bedId present) â†’ advance to APPROVED_PENDING_TOKEN
+    // so student knows to pay â‚¹1,000 token. Otherwise just APPROVED (room not yet set).
     const newStatus = data.bedId ? 'APPROVED_PENDING_TOKEN' : 'APPROVED';
 
     const booking = await prisma.booking.update({
@@ -360,7 +360,7 @@ export async function approveBooking(id: string, data: {
             depositAmount: data.depositAmount || null,
             depositMonths: data.depositMonths || null,
             platformFeeAmount: data.platformFeeAmount ?? null,
-            // Section 5 — Lock food price at approval time (SECTION 8 — Billing: price immutable post-approval)
+            // Section 5 â€” Lock food price at approval time (SECTION 8 â€” Billing: price immutable post-approval)
             foodSelected: data.foodSelected ?? false,
             foodPriceApplied: data.foodPriceApplied ?? 0,
         } as any
@@ -396,7 +396,7 @@ export async function approveBooking(id: string, data: {
         }
     }
 
-    // Free old bed — find by lockedByBookingId (Booking has no bedId field)
+    // Free old bed â€” find by lockedByBookingId (Booking has no bedId field)
     const oldBed = await prisma.bed.findFirst({ where: { lockedByBookingId: id } }).catch(() => null);
     if (oldBed && oldBed.id !== data.bedId) {
         await prisma.bed.update({
@@ -424,7 +424,7 @@ export async function approveBooking(id: string, data: {
         newValue: { roomAssigned: data.roomAssigned, onboardingDate: data.onboardingDate }
     });
 
-    // Notify student — if bed allocated, prompt token payment; else just room allocation notice
+    // Notify student â€” if bed allocated, prompt token payment; else just room allocation notice
     try {
         if (booking.userId && data.roomAssigned) {
             await NotificationService.onRoomAllocated(
@@ -441,7 +441,7 @@ export async function approveBooking(id: string, data: {
                 userId: booking.userId,
                 type: 'BOOKING',
                 category: 'TOKEN_PAYMENT_REQUIRED',
-                message: `Your bed at ${booking.propertyName} has been reserved! Pay ₹1,000 token now to lock it. This amount is NON-REFUNDABLE.`,
+                message: `Your bed at ${booking.propertyName} has been reserved! Pay â‚¹1,000 token now to lock it. This amount is NON-REFUNDABLE.`,
                 targetRole: 'USER',
                 isPersistent: true,
             } as any);
@@ -549,10 +549,10 @@ export async function updateBookingStatus(id: string, status: string) {
     return booking;
 }
 
-// ─── Student registers cash payment intent (does NOT advance status) ──────────
+// â”€â”€â”€ Student registers cash payment intent (does NOT advance status) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // The booking stays in APPROVED state. The owner must separately click
 // "Mark Cash Paid" to confirm physical cash receipt, which then sets
-// status → MOVE_IN_SCHEDULED and unlocks the Agreement step for the student.
+// status â†’ MOVE_IN_SCHEDULED and unlocks the Agreement step for the student.
 export async function registerCashIntent(id: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
@@ -563,7 +563,7 @@ export async function registerCashIntent(id: string) {
         throw new Error("Booking is not in a payable state.");
     }
 
-    // Only record intent — do NOT change booking status to MOVE_IN_SCHEDULED
+    // Only record intent â€” do NOT change booking status to MOVE_IN_SCHEDULED
     const booking = await prisma.booking.update({
         where: { id },
         data: {
@@ -579,7 +579,7 @@ export async function registerCashIntent(id: string) {
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: id,
-        description: `Student registered cash payment intent. Status stays APPROVED — owner must confirm cash receipt.`,
+        description: `Student registered cash payment intent. Status stays APPROVED â€” owner must confirm cash receipt.`,
         newValue: { paymentStatus: 'CASH_PENDING', paymentMethod: 'CASH' }
     });
 
@@ -605,7 +605,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
     });
     if (!existingB) throw new Error('Booking not found');
 
-    // Determine if this is final joining payment (MOVE_IN_SCHEDULED or BOOKING_CONFIRMED) → auto-activate
+    // Determine if this is final joining payment (MOVE_IN_SCHEDULED or BOOKING_CONFIRMED) â†’ auto-activate
     const isFinalPayment = existingB.status === 'MOVE_IN_SCHEDULED' || existingB.status === 'BOOKING_CONFIRMED';
 
     const booking = await prisma.booking.update({
@@ -675,7 +675,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                                 roomNumber: room.roomNumber,
                                 roomType: room.type,
                                 rent: existingB.amount,
-                                // ── CRITICAL: startDate = agreement signing date (source of truth for all billing) ──
+                                // â”€â”€ CRITICAL: startDate = agreement signing date (source of truth for all billing) â”€â”€
                                 startDate: existingB.agreementSignedAt
                                     ? existingB.agreementSignedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                                     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -704,11 +704,11 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                             paidOn: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
                     });
 
-                    // ── AUTO-SETUP: BillingProfile + SecurityDeposit + First-Month Prorated Invoice ──
+                    // â”€â”€ AUTO-SETUP: BillingProfile + SecurityDeposit + First-Month Prorated Invoice â”€â”€
                     // UNIFIED CALENDAR BILLING:
-                    //   • BillingAnchor = 1st of every month (all tenants share same billing day)
-                    //   • First invoice = prorated from actual move-in date → last day of that month
-                    //   • From next month on: full-month invoice generated by cron on the 1st
+                    //   â€¢ BillingAnchor = 1st of every month (all tenants share same billing day)
+                    //   â€¢ First invoice = prorated from actual move-in date â†’ last day of that month
+                    //   â€¢ From next month on: full-month invoice generated by cron on the 1st
                     try {
                         const depositAmt = Number((existingB as any).depositAmount || existingB.amount);
                         const rentAmt = Number(existingB.amount);
@@ -753,7 +753,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                         }
 
                         // 3. First-month RentInvoice = PRORATED amount (marked PAID, since collected in joining)
-                        //    Amount = daily_rate × (move-in day → last day of month)
+                        //    Amount = daily_rate Ã— (move-in day â†’ last day of month)
                         const existingInvoice = await (prisma as any).rentInvoice.findFirst({ where: { tenantId: tenantId!, billingMonth } }).catch(() => null);
                         if (!existingInvoice) {
                             const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + 5);
@@ -777,7 +777,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                                     paidAt: new Date(),
                                     paymentMethod: method,
                                     confirmedBy: 'SYSTEM',
-                                    confirmedByName: `Auto — Joining Payment (${proratedNoteStr})`,
+                                    confirmedByName: `Auto â€” Joining Payment (${proratedNoteStr})`,
                                     lockedAt: new Date(),
                                 }
                             });
@@ -803,16 +803,16 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
 }
 
 /**
- * ─── Physical Check-in (Industry Standard: Zolo/Stanza/NestAway pattern) ────
+ * â”€â”€â”€ Physical Check-in (Industry Standard: Zolo/Stanza/NestAway pattern) â”€â”€â”€â”€
  *
- * NEW FLOW (v2):  ROOM_RESERVED → [Physical KYC] → PHYSICAL_VERIFIED → Agreement → ACTIVE
- * LEGACY FLOW:    BOOKING_CONFIRMED → MOVE_IN_SCHEDULED → ACTIVE (backward compat)
+ * NEW FLOW (v2):  ROOM_RESERVED â†’ [Physical KYC] â†’ PHYSICAL_VERIFIED â†’ Agreement â†’ ACTIVE
+ * LEGACY FLOW:    BOOKING_CONFIRMED â†’ MOVE_IN_SCHEDULED â†’ ACTIVE (backward compat)
  *
  * At physical check-in:
  *  1. Owner physically verifies original Aadhaar/passport/company ID in-person.
  *  2. A permanent TENANT-ID (REN-USER-XXXX) is atomically generated and stored.
  *  3. Booking transitions to PHYSICAL_VERIFIED.
- *  4. Student is prompted to sign the agreement — which now shows their Tenant ID.
+ *  4. Student is prompted to sign the agreement â€” which now shows their Tenant ID.
  *
  * Security: Serializable transaction prevents duplicate Tenant records even under
  * concurrent requests (bounty-hunter level race-condition protection).
@@ -824,7 +824,7 @@ export async function checkInBooking(id: string) {
     const booking = await prisma.booking.findUnique({ where: { id }, include: { documents: true } });
     if (!booking) throw new Error("Booking not found");
 
-    // ── Determine flow path ────────────────────────────────────────────────────
+    // â”€â”€ Determine flow path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const isNewFlow     = booking.status === 'ROOM_RESERVED';   // Physical KYC BEFORE agreement
     const isLegacyFinal = ['MOVE_IN_SCHEDULED', 'PAID', 'CASH_PAID'].includes(booking.status);
     const isLegacyPost  = booking.status === 'BOOKING_CONFIRMED'; // Physical KYC AFTER agreement (old flow)
@@ -838,10 +838,10 @@ export async function checkInBooking(id: string) {
         throw new Error("Agreement must be signed by the student before physical check-in.");
     }
 
-    // ── Determine next status ──────────────────────────────────────────────────
-    // NEW:    ROOM_RESERVED  → PHYSICAL_VERIFIED  (then student signs agreement)
-    // LEGACY: BOOKING_CONFIRMED → MOVE_IN_SCHEDULED (then student pays final)
-    // LEGACY: MOVE_IN_SCHEDULED/PAID → ACTIVE
+    // â”€â”€ Determine next status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // NEW:    ROOM_RESERVED  â†’ PHYSICAL_VERIFIED  (then student signs agreement)
+    // LEGACY: BOOKING_CONFIRMED â†’ MOVE_IN_SCHEDULED (then student pays final)
+    // LEGACY: MOVE_IN_SCHEDULED/PAID â†’ ACTIVE
     const newStatus = isNewFlow ? 'PHYSICAL_VERIFIED' : isLegacyFinal ? 'ACTIVE' : 'MOVE_IN_SCHEDULED';
 
     const updatedBooking = await prisma.booking.update({
@@ -853,16 +853,16 @@ export async function checkInBooking(id: string) {
         } as any
     });
 
-    // ── Notifications ──────────────────────────────────────────────────────────
+    // â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (isNewFlow && booking.userId) {
-        // NEW FLOW: Notify student that physical KYC done → sign agreement now
+        // NEW FLOW: Notify student that physical KYC done â†’ sign agreement now
         try {
             await NotificationService.trigger({
                 bookingId: booking.id,
                 userId: booking.userId,
                 type: 'BOOKING',
                 category: 'CHECKIN_CONFIRMED',
-                message: `✅ Your identity has been physically verified at ${booking.propertyName}! Your Tenant ID is now assigned. Please sign your digital rental agreement to proceed.`,
+                message: `âœ… Your identity has been physically verified at ${booking.propertyName}! Your Tenant ID is now assigned. Please sign your digital rental agreement to proceed.`,
                 targetRole: 'USER',
                 isPersistent: true,
             } as any);
@@ -879,14 +879,14 @@ export async function checkInBooking(id: string) {
                 userId: booking.userId,
                 type: 'BOOKING',
                 category: 'FINAL_PAYMENT_REQUIRED',
-                message: `Your ID has been physically verified at ${booking.propertyName}! Pay the joining amount of ₹${finalAmt.toLocaleString('en-IN')} (₹${tokenAmt.toLocaleString('en-IN')} token already deducted) to complete check-in.`,
+                message: `Your ID has been physically verified at ${booking.propertyName}! Pay the joining amount of â‚¹${finalAmt.toLocaleString('en-IN')} (â‚¹${tokenAmt.toLocaleString('en-IN')} token already deducted) to complete check-in.`,
                 targetRole: 'USER',
                 isPersistent: true,
             } as any);
         } catch (e) { console.error('Physical check-in notification error:', e); }
     }
 
-    // ── Tenant Record Creation ─────────────────────────────────────────────────
+    // â”€â”€ Tenant Record Creation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // NEW FLOW:    Create Tenant NOW (at physical check-in, before agreement).
     //             Status = 'Upcoming' (not yet fully onboarded).
     // LEGACY FLOW: Create Tenant if not already created (BOOKING_CONFIRMED path).
@@ -905,7 +905,7 @@ export async function checkInBooking(id: string) {
         });
         const user = studentUser!;
 
-        // ── Atomic Tenancy + Tenant creation (Serializable — race-condition proof) ──
+        // â”€â”€ Atomic Tenancy + Tenant creation (Serializable â€” race-condition proof) â”€â”€
         const tenancy = await prisma.$transaction(async (tx) => {
             const tenancyCount = await tx.tenancy.count({ where: { userId: user.id } });
             const tenancyNumber = tenancyCount + 1;
@@ -941,7 +941,7 @@ export async function checkInBooking(id: string) {
                 roomNumber: room.roomNumber,
                 roomType: room.type,
                 rent: booking.amount,
-                // ── CRITICAL: startDate = agreement signing date (source of truth for all billing) ──
+                // â”€â”€ CRITICAL: startDate = agreement signing date (source of truth for all billing) â”€â”€
                 // If tenant already signed before physical KYC (legacy), use that date.
                 // If not yet signed (new flow), will be updated when signAgreement() is called.
                 startDate: booking.agreementSignedAt
@@ -957,7 +957,7 @@ export async function checkInBooking(id: string) {
             data: { tenantId: tenant.id }
         });
 
-        // Mark bed as RESERVED (not OCCUPIED yet — tenant hasn't moved in for new flow)
+        // Mark bed as RESERVED (not OCCUPIED yet â€” tenant hasn't moved in for new flow)
         const bookingBedId = (booking as any).bedId;
         if (bookingBedId) {
             await prisma.bed.update({
@@ -1049,15 +1049,15 @@ export async function getPendingBookingsCount() {
 
         const user = await prisma.user.findUnique({ 
             where: { id: userId },
-            include: { employeeProfile: true }
+            include: { staffProfile: true }
         });
         
         let propertyIds: string[] = [];
         
-        if (user?.employeeProfile) {
+        if (user?.staffProfile) {
             // For staff, get assigned properties
-            const assignments = await prisma.employeePropertyAssignment.findMany({
-                where: { employeeId: user.employeeProfile.id },
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
                 select: { propertyId: true }
             });
             propertyIds = assignments.map(a => a.propertyId);
@@ -1100,7 +1100,7 @@ export async function cancelBooking(id: string, reason?: string) {
         }
     });
 
-    // ✅ AUTO-RELEASE BED: Free any bed locked/reserved/occupied for this booking
+    // âœ… AUTO-RELEASE BED: Free any bed locked/reserved/occupied for this booking
     const bedsToFree = await prisma.bed.findMany({
         where: {
             OR: [
@@ -1198,7 +1198,7 @@ export async function signAgreement(id: string, agreementMeta?: {
     if (booking.userId !== session.userId) throw new Error("Unauthorized to sign this agreement");
     if (booking.agreementSigned) throw new Error("Agreement has already been signed.");
 
-    // ── New flow guard: agreement must come AFTER physical check-in ───────────
+    // â”€â”€ New flow guard: agreement must come AFTER physical check-in â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // PHYSICAL_VERIFIED = KYC done, Tenant ID assigned, ready to sign.
     // ROOM_RESERVED = token paid but KYC not done yet (should not be able to sign).
     const newFlowStatuses = ['PHYSICAL_VERIFIED'];
@@ -1214,7 +1214,7 @@ export async function signAgreement(id: string, agreementMeta?: {
     }
 
 
-    // ─── Capture IP from Next.js request headers (real business practice) ────
+    // â”€â”€â”€ Capture IP from Next.js request headers (real business practice) â”€â”€â”€â”€
     let realIp = agreementMeta?.signedIp || 'unknown';
     try {
         const { headers } = await import('next/headers');
@@ -1229,7 +1229,7 @@ export async function signAgreement(id: string, agreementMeta?: {
     const signedAt = new Date();
     const AGREEMENT_VERSION = 'v1.0-2026'; // Bump when agreement terms change
 
-    // ─── Store full audit trail in DB ────────────────────────────────────────
+    // â”€â”€â”€ Store full audit trail in DB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // This is what holds up in court: WHO signed, WHAT they signed, WHEN, WHERE, on WHAT device.
     const updated = await prisma.booking.update({
         where: { id },
@@ -1246,12 +1246,12 @@ export async function signAgreement(id: string, agreementMeta?: {
         } as any
     });
 
-    // ─── CRITICAL: Set Tenant.startDate = Agreement Signing Date ─────────────
+    // â”€â”€â”€ CRITICAL: Set Tenant.startDate = Agreement Signing Date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Agreement signing date IS the stay start date. ALL rent calculations flow from this:
-    //   • Prorated first-month rent (days from signing → end of month)
-    //   • Billing anchor cycles
-    //   • Stay duration for settlements & move-out calculations
-    // This must be set HERE — at the moment of signing — not at check-in or payment.
+    //   â€¢ Prorated first-month rent (days from signing â†’ end of month)
+    //   â€¢ Billing anchor cycles
+    //   â€¢ Stay duration for settlements & move-out calculations
+    // This must be set HERE â€” at the moment of signing â€” not at check-in or payment.
     const tenantId = booking.tenant?.id || (booking as any).tenantId;
     if (tenantId) {
         const signedDateStr = signedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -1261,7 +1261,7 @@ export async function signAgreement(id: string, agreementMeta?: {
         }).catch(e => console.error('[signAgreement] Failed to update tenant startDate:', e));
     }
 
-    // ─── Notify owner to countersign ─────────────────────────────────────────
+    // â”€â”€â”€ Notify owner to countersign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (booking.propertyId) {
         const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
         if (property) {
@@ -1269,15 +1269,15 @@ export async function signAgreement(id: string, agreementMeta?: {
         }
     }
 
-    // ─── Send legal confirmation email to student ─────────────────────────────
-    // Real businesses send this immediately — it is the tenant's copy of the signed agreement.
+    // â”€â”€â”€ Send legal confirmation email to student â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Real businesses send this immediately â€” it is the tenant's copy of the signed agreement.
     try {
         const tenantEmail = booking.user?.email || booking.guestEmail;
         if (tenantEmail) {
             const { sendEmail } = await import('@/lib/email');
             await sendEmail({
                 to: tenantEmail,
-                subject: `✍️ Agreement Signed — ${booking.propertyName} [${agreementId}]`,
+                subject: `âœï¸ Agreement Signed â€” ${booking.propertyName} [${agreementId}]`,
                 html: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -1285,11 +1285,11 @@ export async function signAgreement(id: string, agreementMeta?: {
   <div style="max-width:580px;margin:0 auto;">
     <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
       <h1 style="color:#fff;margin:0;font-size:20px;font-weight:900;letter-spacing:-0.5px;">RentPe</h1>
-      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:13px;">Digital Agreement — Official Copy</p>
+      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:13px;">Digital Agreement â€” Official Copy</p>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:32px;">
       <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:14px 16px;margin-bottom:24px;text-align:center;">
-        <span style="font-size:20px;">✅</span>
+        <span style="font-size:20px;">âœ…</span>
         <p style="color:#065f46;font-weight:800;font-size:15px;margin:4px 0 0;">Agreement Successfully Signed</p>
         <p style="color:#047857;font-size:12px;margin:2px 0 0;">Your digital signature is legally binding under the Information Technology Act, 2000</p>
       </div>
@@ -1349,7 +1349,7 @@ export async function signAgreement(id: string, agreementMeta?: {
       </div>
 
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;margin-bottom:24px;">
-        <p style="color:#92400e;font-size:13px;font-weight:700;margin:0 0 4px;">⏳ Next Step — Owner Countersignature</p>
+        <p style="color:#92400e;font-size:13px;font-weight:700;margin:0 0 4px;">â³ Next Step â€” Owner Countersignature</p>
         <p style="color:#b45309;font-size:12px;margin:0;line-height:1.5;">
           Your agreement is under review. The property owner must countersign to make it fully active. 
           You will receive another email and an in-app notification when this is done.
@@ -1362,7 +1362,7 @@ export async function signAgreement(id: string, agreementMeta?: {
       </p>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:16px;">
-      © ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd. · Bangalore, Karnataka, India
+      Â© ${new Date().getFullYear()} RentPe Technologies Pvt. Ltd. Â· Bangalore, Karnataka, India
     </p>
   </div>
 </body>
@@ -1373,7 +1373,7 @@ export async function signAgreement(id: string, agreementMeta?: {
         console.error('Agreement confirmation email failed:', e);
     }
 
-    // ─── Immutable audit log — legally admissible record ─────────────────────
+    // â”€â”€â”€ Immutable audit log â€” legally admissible record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     logAuditEvent({
         actorId: session.userId,
         actorRole: session.role || 'USER',
@@ -1390,11 +1390,11 @@ export async function signAgreement(id: string, agreementMeta?: {
     return updated;
 }
 
-// ─── COUNTERSIGN AGREEMENT (Owner / Staff Manager) ───────────────────────────
+// â”€â”€â”€ COUNTERSIGN AGREEMENT (Owner / Staff Manager) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function countersignAgreement(bookingId: string) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
-        throw new Error("Unauthorized — only Owner or Staff Manager can countersign.");
+        throw new Error("Unauthorized â€” only Owner or Staff Manager can countersign.");
     }
 
     const booking = await prisma.booking.findUnique({
@@ -1413,9 +1413,9 @@ export async function countersignAgreement(bookingId: string) {
     const countersignerName = session.name || roleLabel;
     const countersignedAt = new Date();
 
-    // ── NEW FLOW: If physical KYC happened before agreement (PHYSICAL_VERIFIED path),
+    // â”€â”€ NEW FLOW: If physical KYC happened before agreement (PHYSICAL_VERIFIED path),
     //    countersigning moves to BOOKING_CONFIRMED (student pays final joining amount).
-    // ── LEGACY FLOW: Was AGREEMENT_PENDING → MOVE_IN_SCHEDULED → ACTIVE.
+    // â”€â”€ LEGACY FLOW: Was AGREEMENT_PENDING â†’ MOVE_IN_SCHEDULED â†’ ACTIVE.
     //    Keep backward compat: if already AGREEMENT_PENDING, use BOOKING_CONFIRMED.
     const newStatus = 'BOOKING_CONFIRMED';
 
@@ -1439,7 +1439,7 @@ export async function countersignAgreement(bookingId: string) {
             userId: booking.userId,
             type: 'BOOKING',
             category: 'AGREEMENT_COUNTERSIGNED',
-            message: `🎉 Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Pay the joining balance to activate your stay!`,
+            message: `ðŸŽ‰ Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Pay the joining balance to activate your stay!`,
             targetRole: 'USER',
             isPersistent: true,
         });
@@ -1451,17 +1451,17 @@ export async function countersignAgreement(bookingId: string) {
         if (tenantEmail) {
             await sendEmail({
                 to: tenantEmail,
-                subject: `✅ Agreement Fully Executed — ${booking.propertyName} [${booking.agreementId}]`,
+                subject: `âœ… Agreement Fully Executed â€” ${booking.propertyName} [${booking.agreementId}]`,
                 html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,sans-serif;background:#f8fafc;margin:0;padding:24px;">
   <div style="max-width:560px;margin:0 auto;">
     <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
       <h1 style="color:#fff;margin:0;font-size:20px;font-weight:900;">RentPe</h1>
-      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">Rental Agreement — Fully Executed</p>
+      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">Rental Agreement â€” Fully Executed</p>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:28px;">
       <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:14px;margin-bottom:20px;text-align:center;">
-        <p style="color:#065f46;font-weight:800;font-size:15px;margin:0;">✅ Both Parties Have Signed</p>
+        <p style="color:#065f46;font-weight:800;font-size:15px;margin:0;">âœ… Both Parties Have Signed</p>
         <p style="color:#047857;font-size:12px;margin:4px 0 0;">This agreement is legally binding under IT Act 2000</p>
       </div>
       <p style="color:#334155;font-size:14px;">Hi <strong>${booking.guestName}</strong>,</p>
@@ -1476,7 +1476,7 @@ export async function countersignAgreement(bookingId: string) {
         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned By</td><td style="padding:10px 16px;font-weight:700;">${countersignerName} (${roleLabel})</td></tr>
         <tr><td style="padding:10px 16px;color:#94a3b8;font-weight:700;">Countersigned At</td><td style="padding:10px 16px;font-weight:700;">${countersignedAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td></tr>
       </table>
-      <p style="color:#94a3b8;font-size:11px;margin-top:16px;">Ref: <strong>${booking.agreementId}</strong> · Keep this for your records.</p>
+      <p style="color:#94a3b8;font-size:11px;margin-top:16px;">Ref: <strong>${booking.agreementId}</strong> Â· Keep this for your records.</p>
     </div>
   </div>
 </body></html>`
@@ -1501,7 +1501,7 @@ export async function countersignAgreement(bookingId: string) {
     return { success: true, countersignedBy: `${countersignerName} (${roleLabel})` };
 }
 
-// ─── Get bookings awaiting Owner/Staff countersignature ──────────────────────
+// â”€â”€â”€ Get bookings awaiting Owner/Staff countersignature â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getPendingCountersignBookings() {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) {
@@ -1511,13 +1511,13 @@ export async function getPendingCountersignBookings() {
     // Resolve which properties this owner/staff has access to
     const user = await prisma.user.findUnique({
         where: { id: session.userId },
-        include: { employeeProfile: true }
+        include: { staffProfile: true }
     });
 
     let propertyIds: string[] = [];
-    if (user?.employeeProfile) {
-        const assignments = await prisma.employeePropertyAssignment.findMany({
-            where: { employeeId: user.employeeProfile.id },
+    if (user?.staffProfile) {
+        const assignments = await prisma.staffPropertyAssignment.findMany({
+            where: { staffMemberId: user.staffProfile.id },
             select: { propertyId: true }
         });
         propertyIds = assignments.map(a => a.propertyId);
@@ -1582,9 +1582,9 @@ export async function getAdminAlertCounts() {
     return { bookings: pendingBookings, verifications: pendingDocs };
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // NEW: PROFESSIONAL BOOKING LIFECYCLE ACTIONS
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Student pays token to lock the room */
 export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' | 'CASH' = 'ONLINE', paymentId?: string) {
@@ -1676,7 +1676,7 @@ export async function markTokenCashPaid(bookingId: string) {
     return updated;
 }
 
-/** Owner/Admin verifies all KYC → moves to AGREEMENT_PENDING */
+/** Owner/Admin verifies all KYC â†’ moves to AGREEMENT_PENDING */
 export async function verifyKycAndProceed(bookingId: string) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
@@ -1747,7 +1747,7 @@ export async function markKycFailed(bookingId: string, reason: string) {
 /** 
  * Owner/Admin countersigns the rental agreement.
  * Per Indian rental law, BOTH parties must sign for the agreement to be legally valid.
- * Student signs first (→ AGREEMENT_PENDING), then owner countersigns (→ BOOKING_CONFIRMED).
+ * Student signs first (â†’ AGREEMENT_PENDING), then owner countersigns (â†’ BOOKING_CONFIRMED).
  */
 export async function ownerCounterSignAgreement(bookingId: string) {
     const session = await getSession();
@@ -1943,7 +1943,7 @@ export async function completeVacate(bookingId: string) {
         const unpaidDues = tenant.rentRecords.filter(r => !r.paid);
         if (unpaidDues.length > 0) {
             const totalUnpaid = unpaidDues.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
-            throw new Error(`Cannot complete vacate. You have ₹${totalUnpaid.toLocaleString('en-IN')} in unpaid dues. Please pay all pending rent first.`);
+            throw new Error(`Cannot complete vacate. You have â‚¹${totalUnpaid.toLocaleString('en-IN')} in unpaid dues. Please pay all pending rent first.`);
         }
     }
 
@@ -2043,7 +2043,7 @@ export async function updateSharingType(bookingId: string, data: {
 
     const originalOccupancy = (existingBooking as any).originalOccupancy || existingBooking.occupancy;
 
-    // ── Atomic transaction: free old bed, lock new bed, update booking ──
+    // â”€â”€ Atomic transaction: free old bed, lock new bed, update booking â”€â”€
     const updated = await prisma.$transaction(async (tx) => {
         // Free the old bed inside transaction
         const oldBed = await tx.bed.findFirst({ where: { lockedByBookingId: bookingId } });
@@ -2062,7 +2062,7 @@ export async function updateSharingType(bookingId: string, data: {
             });
         }
 
-        // Update booking — NOTE: Booking has NO bedId column, do NOT include it
+        // Update booking â€” NOTE: Booking has NO bedId column, do NOT include it
         return tx.booking.update({
             where: { id: bookingId },
             data: {
@@ -2101,7 +2101,7 @@ export async function updateSharingType(bookingId: string, data: {
         actionType: 'UPDATE',
         entityType: 'BOOKING',
         entityId: bookingId,
-        description: `Sharing type updated from ${originalOccupancy} to ${data.newOccupancy}. New amount: ₹${data.newAmount || existingBooking.amount}.`,
+        description: `Sharing type updated from ${originalOccupancy} to ${data.newOccupancy}. New amount: â‚¹${data.newAmount || existingBooking.amount}.`,
         newValue: { occupancy: data.newOccupancy, amount: data.newAmount }
     });
 
@@ -2110,3 +2110,4 @@ export async function updateSharingType(bookingId: string, data: {
     revalidatePath('/dashboard/student');
     return updated;
 }
+

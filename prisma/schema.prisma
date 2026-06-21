@@ -87,8 +87,8 @@ model User {
   fraudFlags             FraudFlag[]
   linkedAsA              LinkedAccount[]      @relation("UserA")
   linkedAsB              LinkedAccount[]      @relation("UserB")
-  ownerEmployees         OwnerEmployee[]      @relation("OwnerEmployees")
-  employeeProfile        OwnerEmployee?       @relation("UserAsEmployee")
+  ownerStaffMembers      OwnerStaffMember[]   @relation("OwnerStaffMembers")
+  staffProfile           OwnerStaffMember?    @relation("UserAsStaffMember")
   uploadSessions         UploadSession[]
   fingerprints           UserFingerprint[]
 }
@@ -184,7 +184,7 @@ model Property {
   tenancies                  Tenancy[]
   tenants                    Tenant[]
   tickets                    Ticket[]
-  employeeAssignments        EmployeePropertyAssignment[]
+  staffAssignments            StaffPropertyAssignment[]
   foodPreferences            FoodPreference[]
   vacatingNotices            VacatingNotice[]
   maintenanceRequests        MaintenanceRequest[]
@@ -1061,45 +1061,45 @@ model RefundRecord {
   updatedAt    DateTime  @updatedAt
 }
 
-model OwnerEmployee {
-  id                String                       @id @default(uuid())
-  displayId         String                       @unique
+model OwnerStaffMember {
+  id                String                    @id @default(uuid())
+  displayId         String                    @unique
   ownerId           String
   name              String
-  email             String                       @unique
+  email             String                    @unique
   phone             String
-  role              String                       @default("Staff")
-  status            String                       @default("ACTIVE")
+  role              String                    @default("Staff")
+  status            String                    @default("ACTIVE")
   pincode           String?
   city              String?
   state             String?
   postOffice        String?
   address           String?
-  invitationToken   String?                      @unique
+  invitationToken   String?                   @unique
   invitationExpires DateTime?
-  createdAt         DateTime                     @default(now())
-  updatedAt         DateTime                     @updatedAt
-  userId            String?                      @unique
-  assignments       EmployeePropertyAssignment[]
-  owner             User                         @relation("OwnerEmployees", fields: [ownerId], references: [id])
-  user              User?                        @relation("UserAsEmployee", fields: [userId], references: [id])
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  userId            String?                   @unique
+  assignments       StaffPropertyAssignment[]
+  owner             User                      @relation("OwnerStaffMembers", fields: [ownerId], references: [id])
+  user              User?                     @relation("UserAsStaffMember", fields: [userId], references: [id])
 
-  @@map("owner_employees")
+  @@map("owner_staff_members")
 }
 
-model EmployeePropertyAssignment {
-  id         String        @id @default(uuid())
-  employeeId String
-  propertyId String
-  assignedBy String
-  status     String        @default("ACTIVE")
-  deletedAt  DateTime?
-  assignedAt DateTime      @default(now())
-  employee   OwnerEmployee @relation(fields: [employeeId], references: [id])
-  property   Property      @relation(fields: [propertyId], references: [id])
+model StaffPropertyAssignment {
+  id            String           @id @default(uuid())
+  staffMemberId String
+  propertyId    String
+  assignedBy    String
+  status        String           @default("ACTIVE")
+  deletedAt     DateTime?
+  assignedAt    DateTime         @default(now())
+  staffMember   OwnerStaffMember @relation(fields: [staffMemberId], references: [id])
+  property      Property         @relation(fields: [propertyId], references: [id])
 
-  @@unique([employeeId, propertyId])
-  @@map("employee_property_assignment")
+  @@unique([staffMemberId, propertyId])
+  @@map("staff_property_assignments")
 }
 
 model AdminEmployee {

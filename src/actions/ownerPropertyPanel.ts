@@ -8,8 +8,8 @@ import { getSession } from "@/lib/auth";
  * enriched with real bed counts, tenant counts, revenue, ratings,
  * pending bookings, and upcoming move-outs.
  *
- * - OWNER  → all properties where ownerId === userId
- * - STAFF  → only properties assigned via EmployeePropertyAssignment
+ * - OWNER  â†’ all properties where ownerId === userId
+ * - STAFF  â†’ only properties assigned via StaffPropertyAssignment
  */
 export async function getOwnerPropertyPanel() {
     const session = await getSession();
@@ -19,19 +19,19 @@ export async function getOwnerPropertyPanel() {
 
     const userId = (session as any).userId;
 
-    // ── 1. Resolve which properties this user can see ──────────────────────
+    // â”€â”€ 1. Resolve which properties this user can see â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let propertyWhere: any = {};
 
     if (session.role === 'STAFF') {
         // Staff: only assigned properties
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            include: { employeeProfile: true }
+            include: { staffProfile: true }
         });
-        if (!user?.employeeProfile) return [];
+        if (!user?.staffProfile) return [];
 
-        const assignments = await prisma.employeePropertyAssignment.findMany({
-            where: { employeeId: user.employeeProfile.id },
+        const assignments = await prisma.staffPropertyAssignment.findMany({
+            where: { staffMemberId: user.staffProfile.id },
             select: { propertyId: true }
         });
         const assignedIds = assignments.map((a: any) => a.propertyId);
@@ -42,7 +42,7 @@ export async function getOwnerPropertyPanel() {
         propertyWhere = { ownerId: userId };
     }
 
-    // ── 2. Fetch properties with rooms + beds ──────────────────────────────
+    // â”€â”€ 2. Fetch properties with rooms + beds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const properties = await prisma.property.findMany({
         where: propertyWhere,
         include: {
@@ -58,7 +58,7 @@ export async function getOwnerPropertyPanel() {
 
     const propIds = properties.map((p: any) => p.id);
 
-    // ── 3. Bulk queries (one per metric, not per property) ─────────────────
+    // â”€â”€ 3. Bulk queries (one per metric, not per property) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [tenantCounts, pendingBookings, upcomingMoveOuts, revenues, ratings, staffAssignments] = await Promise.all([
         // Active tenants per property
         (prisma.tenant as any).groupBy({
@@ -96,10 +96,10 @@ export async function getOwnerPropertyPanel() {
         }),
         // Staff assignments for this owner's properties (to show assigned staff per property)
         session.role === 'OWNER'
-            ? prisma.employeePropertyAssignment.findMany({
+            ? prisma.staffPropertyAssignment.findMany({
                 where: { propertyId: { in: propIds } },
                 include: {
-                    employee: {
+                    staffMember: {
                         select: { id: true, name: true, role: true, status: true, userId: true }
                     }
                 }
@@ -117,14 +117,14 @@ export async function getOwnerPropertyPanel() {
     );
 
 
-    // Staff assignments: map propertyId → list of staff
+    // Staff assignments: map propertyId â†’ list of staff
     const staffMap = new Map<string, any[]>();
     for (const assign of (staffAssignments as any[])) {
         if (!staffMap.has(assign.propertyId)) staffMap.set(assign.propertyId, []);
-        staffMap.get(assign.propertyId)!.push(assign.employee);
+        staffMap.get(assign.propertyId)!.push(assign.staffMember);
     }
 
-    // ── 4. Enrich each property ────────────────────────────────────────────
+    // â”€â”€ 4. Enrich each property â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     return properties.map((prop: any) => {
         // Accurate bed counts from actual bed records
         const allBeds = prop.rooms.flatMap((r: any) => r.beds);
@@ -185,3 +185,4 @@ export async function getOwnerPropertyPanel() {
         };
     });
 }
+

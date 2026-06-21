@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -103,10 +103,10 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                         </span>
                     </Link>
 
-                    {/* Desktop Navigation — context-aware based on active role */}
+                    {/* Desktop Navigation â€” context-aware based on active role */}
                     <div className="hidden lg:flex items-center gap-1.5 flex-1 justify-center max-w-4xl mx-auto">
                         {isOwner ? (
-                            // OWNER MODE — property management nav
+                            // OWNER MODE â€” property management nav
                             <>
                                 <Link
                                     href="/dashboard/owner/properties"
@@ -131,7 +131,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                 </Link>
                             </>
                         ) : isSuperAdmin ? (
-                            // SUPER ADMIN MODE — platform control quick-links
+                            // SUPER ADMIN MODE â€” platform control quick-links
                             <>
                                 <Link
                                     href="/dashboard/admin/property-approval"
@@ -152,7 +152,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group whitespace-nowrap"
                                 >
                                     <UserCog className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
-                                    Internal Platform Staff
+                                    Platform Employees
                                 </Link>
                                 <Link
                                     href="/dashboard/admin/tickets"
@@ -170,10 +170,10 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                 </Link>
                             </>
                         ) : (isAdminTeam || isOwnerStaff) ? (
-                            // ADMIN TEAM or OWNER TEAM (Staff) — no quick-links shown
+                            // ADMIN TEAM or OWNER TEAM (Staff) â€” no quick-links shown
                             null
                         ) : (
-                            // STUDENT / GUEST MODE — discovery nav
+                            // STUDENT / GUEST MODE â€” discovery nav
                             <>
                                 <Link
                                     href="/search"
@@ -213,13 +213,13 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                         className="flex items-center gap-0.5 bg-slate-100 hover:bg-slate-200 border-2 border-slate-200 rounded-xl p-1 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black transition-all ${!isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
-                                            🎓 Student
+                                            ðŸŽ“ Student
                                         </div>
                                         <div className="px-1">
                                             {isPending ? <Loader2 className="h-2.5 w-2.5 text-slate-400 animate-spin" /> : <ArrowLeftRight className="h-2.5 w-2.5 text-slate-400" />}
                                         </div>
                                         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black transition-all ${isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
-                                            🏠 Owner
+                                            ðŸ  Owner
                                         </div>
                                     </button>
                                 )}
@@ -274,7 +274,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                 {isOpen && (
                     <div className="md:hidden border-t bg-background p-4 space-y-3 animate-in slide-in-from-top-2">
                         {isOwner ? (
-                            // OWNER MODE — property management mobile nav
+                            // OWNER MODE â€” property management mobile nav
                             <>
                                 <Link href="/dashboard/owner/properties" className="block" onClick={() => setIsOpen(false)}>
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-violet-50 text-violet-700 border border-violet-200 shadow-sm">
@@ -296,7 +296,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                 </Link>
                             </>
                         ) : isSuperAdmin ? (
-                            // SUPER ADMIN MODE — platform control mobile quick-links
+                            // SUPER ADMIN MODE â€” platform control mobile quick-links
                             <>
                                 <Link href="/dashboard/admin/property-approval" className="block" onClick={() => setIsOpen(false)}>
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-violet-50 text-violet-700 border border-violet-200 shadow-sm">
@@ -313,7 +313,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                 <Link href="/dashboard/admin/staff" className="block" onClick={() => setIsOpen(false)}>
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
                                         <UserCog className="h-4 w-4" />
-                                        Internal Platform Staff
+                                        Platform Employees
                                     </div>
                                 </Link>
                                 <Link href="/dashboard/admin/tickets" className="block" onClick={() => setIsOpen(false)}>
@@ -330,10 +330,10 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                 </Link>
                             </>
                         ) : (isAdminTeam || isOwnerStaff) ? (
-                            // ADMIN TEAM or OWNER TEAM (Staff) — no quick-links shown
+                            // ADMIN TEAM or OWNER TEAM (Staff) â€” no quick-links shown
                             null
                         ) : (
-                            // STUDENT / GUEST MODE — discovery mobile nav
+                            // STUDENT / GUEST MODE â€” discovery mobile nav
                             <>
                                 <Link href="/search" className="block" onClick={() => setIsOpen(false)}>
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
@@ -400,3 +400,4 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
 };
 
 export default Navbar;
+

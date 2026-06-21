@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -8,11 +8,11 @@ import { logAuditEvent } from "@/lib/audit";
 import crypto from "crypto";
 import { encryptPassword } from "@/lib/auth";
 
-export async function getOwnerEmployees() {
+export async function getOwnerStaffMembers() {
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
-    return await prisma.ownerEmployee.findMany({
+    return await prisma.ownerStaffMember.findMany({
         where: { ownerId: user.id },
         include: {
             assignments: {
@@ -23,7 +23,7 @@ export async function getOwnerEmployees() {
     });
 }
 
-export async function createOwnerEmployee(data: {
+export async function createOwnerStaffMember(data: {
     name: string;
     email: string;
     phone: string;
@@ -41,7 +41,7 @@ export async function createOwnerEmployee(data: {
     const invitationToken = crypto.randomBytes(32).toString('hex');
     const invitationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    const employee = await prisma.ownerEmployee.create({
+    const employee = await prisma.ownerStaffMember.create({
         data: {
             ...data,
             displayId,
@@ -56,21 +56,21 @@ export async function createOwnerEmployee(data: {
         actorRole: "OWNER",
         actorName: user.name || "Owner",
         actionType: "CREATE",
-        entityType: "EMPLOYEE",
+        entityType: "STAFF_MEMBER",
         entityId: employee.id,
         entityName: employee.name,
         description: `Created new employee ${employee.name} (${employee.displayId})`
     });
 
-    revalidatePath("/dashboard/owner/employees");
+    revalidatePath("/dashboard/owner/staff");
     return employee;
 }
 
-export async function updateOwnerEmployee(id: string, data: any) {
+export async function updateOwnerStaffMember(id: string, data: any) {
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
-    const employee = await prisma.ownerEmployee.update({
+    const employee = await prisma.ownerStaffMember.update({
         where: { id, ownerId: user.id },
         data
     });
@@ -80,27 +80,27 @@ export async function updateOwnerEmployee(id: string, data: any) {
         actorRole: "OWNER",
         actorName: user.name || "Owner",
         actionType: "UPDATE",
-        entityType: "EMPLOYEE",
+        entityType: "STAFF_MEMBER",
         entityId: employee.id,
         entityName: employee.name,
         description: `Updated employee ${employee.name} details`
     });
 
-    revalidatePath("/dashboard/owner/employees");
+    revalidatePath("/dashboard/owner/staff");
     return employee;
 }
 
-export async function assignEmployeeToProperty(employeeId: string, propertyId: string) {
+export async function assignStaffMemberToProperty(staffMemberId: string, propertyId: string) {
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
-    const assignment = await prisma.employeePropertyAssignment.create({
+    const assignment = await prisma.staffPropertyAssignment.create({
         data: {
-            employeeId,
+            staffMemberId,
             propertyId,
             assignedBy: user.id
         },
-        include: { employee: true, property: true }
+        include: { staffMember: true, property: true }
     });
 
     await logAuditEvent({
@@ -108,29 +108,26 @@ export async function assignEmployeeToProperty(employeeId: string, propertyId: s
         actorRole: "OWNER",
         actorName: user.name || "Owner",
         actionType: "UPDATE",
-        entityType: "EMPLOYEE",
-        entityId: employeeId,
-        entityName: assignment.employee.name,
-        description: `Assigned employee ${assignment.employee.name} to property ${assignment.property.name}`
+        entityType: "STAFF_MEMBER",
+        entityId: staffMemberId,
+        entityName: assignment.staffMember.name,
+        description: `Assigned employee ${assignment.staffMember.name} to property ${assignment.property.name}`
     });
 
-    revalidatePath("/dashboard/owner/employees");
+    revalidatePath("/dashboard/owner/staff");
     return assignment;
 }
 
-export async function removeEmployeeFromProperty(employeeId: string, propertyId: string) {
+export async function removeStaffMemberFromProperty(staffMemberId: string, propertyId: string) {
     const user = await getCurrentUser() as any;
     if (!user || !user.isOwner) throw new Error("Unauthorized");
 
-    const assignment = await (prisma as any).employeePropertyAssignment.update({
+    const assignment = await (prisma as any).staffPropertyAssignment.update({
         where: {
-            employeeId_propertyId: {
-                employeeId,
-                propertyId
-            }
+            staffMemberId_propertyId: { staffMemberId, propertyId }
         },
         data: { status: 'CANCELLED', deletedAt: new Date() },
-        include: { employee: true, property: true }
+        include: { staffMember: true, property: true }
     });
 
     await logAuditEvent({
@@ -138,21 +135,21 @@ export async function removeEmployeeFromProperty(employeeId: string, propertyId:
         actorRole: "OWNER",
         actorName: user.name || "Owner",
         actionType: "UPDATE",
-        entityType: "EMPLOYEE",
-        entityId: employeeId,
-        entityName: assignment.employee.name,
-        description: `Removed employee ${assignment.employee.name} from property ${assignment.property.name}`
+        entityType: "STAFF_MEMBER",
+        entityId: staffMemberId,
+        entityName: assignment.staffMember.name,
+        description: `Removed employee ${assignment.staffMember.name} from property ${assignment.property.name}`
     });
 
-    revalidatePath("/dashboard/owner/employees");
+    revalidatePath("/dashboard/owner/staff");
     return assignment;
 }
 
-export async function getAdminEmployees() {
+export async function getAdminStaffMembers() {
     const user = await getCurrentUser() as any;
     if (!user || !user.isAdmin) throw new Error("Unauthorized");
 
-    return await prisma.ownerEmployee.findMany({
+    return await prisma.ownerStaffMember.findMany({
         include: {
             owner: true,
             assignments: {
@@ -167,7 +164,7 @@ export async function getAdminEmployees() {
  * Gets the list of property IDs assigned to a specific user (employee).
  */
 export async function getAssignedPropertyIds(userId: string): Promise<string[]> {
-    const employee = await prisma.ownerEmployee.findUnique({
+    const employee = await prisma.ownerStaffMember.findUnique({
         where: { userId },
         select: { assignments: { select: { propertyId: true } } }
     });
@@ -179,7 +176,7 @@ export async function getAssignedPropertyIds(userId: string): Promise<string[]> 
 export async function validateStaffInvite(token: string) {
     if (!token) throw new Error("Invalid invitation link");
 
-    const employee = await prisma.ownerEmployee.findUnique({
+    const employee = await prisma.ownerStaffMember.findUnique({
         where: { invitationToken: token },
         select: {
             id: true,
@@ -226,7 +223,7 @@ export async function activateStaffAccount(token: string, passwordPlain: string)
     });
 
     // Link User to Employee and invalidate token
-    await prisma.ownerEmployee.update({
+    await prisma.ownerStaffMember.update({
         where: { id: employee.id },
         data: {
             userId: newStaffUser.id,
@@ -302,3 +299,4 @@ export async function getStaffDashboardData() {
         openTickets
     };
 }
+

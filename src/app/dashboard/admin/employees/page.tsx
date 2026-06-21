@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminEmployees } from "@/actions/employees";
+import { getAdminStaffMembers } from "@/actions/employees";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export default function AdminEmployeesPage() {
 
     const fetchEmployees = async () => {
         try {
-            const data = await getAdminEmployees();
+            const data = await getAdminStaffMembers();
             setEmployees(data);
         } catch (error) {
             toast.error("Failed to load global employee data");

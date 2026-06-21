@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -199,7 +199,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "System & Settings",
             links: [
-                { href: "/dashboard/admin/fraud", label: "🛡️ Fraud Management", icon: Shield, reqPerm: ["super_admin", "audit"] },
+                { href: "/dashboard/admin/fraud", label: "ðŸ›¡ï¸ Fraud Management", icon: Shield, reqPerm: ["super_admin", "audit"] },
                 { href: "/dashboard/admin/audit-log", label: "Security Audit Log", icon: ClipboardList, reqPerm: ["super_admin", "audit"] },
                 { href: "/dashboard/admin/data-management", label: "System Maintenance", icon: Trash2, reqPerm: ["super_admin"] },
                 { href: "/dashboard/admin/settings", label: "Platform Settings", icon: Settings, reqPerm: ["super_admin"] },
@@ -301,7 +301,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 </h2>
                 {props.displayId && (
                     <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest mt-1 group-hover:text-primary transition-colors">
-                        🆔 {props.displayId}
+                        ðŸ†” {props.displayId}
                     </p>
                 )}
             </div>
@@ -404,4 +404,5 @@ export default function DashboardSidebar(props: SidebarProps) {
         </>
     );
 }
+
 

@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -8,7 +8,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { NotificationService } from "@/lib/notifications";
 import { generateMasterId } from "@/lib/ids";
 
-// ─── VACATING NOTICE ACTIONS ─────────────────────────────
+// â”€â”€â”€ VACATING NOTICE ACTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function fileVacatingNotice(data: {
     bookingId: string;
@@ -57,16 +57,16 @@ export async function fileVacatingNotice(data: {
         }
     });
 
-    // Notify owner — flag if tenant is requesting early move-out
+    // Notify owner â€” flag if tenant is requesting early move-out
     const earlyLeaveNote = data.tenantComment?.trim()
-        ? ` ⚠️ Tenant has also requested an early move-out: "${data.tenantComment.trim()}"`
+        ? ` âš ï¸ Tenant has also requested an early move-out: "${data.tenantComment.trim()}"`
         : '';
     await prisma.notification.create({
         data: {
             userId: booking.property!.ownerId,
             type: 'VACATING_NOTICE',
             category: 'NOTICE',
-            message: `📋 ${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.${earlyLeaveNote}`,
+            message: `ðŸ“‹ ${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.${earlyLeaveNote}`,
             isPersistent: true,
             metadata: JSON.stringify({ noticeId: notice.id, bookingId: data.bookingId }),
         }
@@ -154,7 +154,7 @@ export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: st
             userId: notice.userId,
             type: 'VACATING_NOTICE_ACKNOWLEDGED',
             category: 'NOTICE',
-            message: `✅ Your vacating notice (${notice.displayId}) has been acknowledged by the owner.${ownerNote ? ` Note: ${ownerNote}` : ''}`,
+            message: `âœ… Your vacating notice (${notice.displayId}) has been acknowledged by the owner.${ownerNote ? ` Note: ${ownerNote}` : ''}`,
             isPersistent: true,
         }
     });
@@ -187,7 +187,7 @@ export async function getOwnerVacatingNotices() {
     if (!session) throw new Error("Unauthorized");
     const userId = (session as any).userId;
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, include: { employeeProfile: true } });
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { staffProfile: true } });
     const ownerId = user?.parentOwnerId || userId;
 
     return await prisma.vacatingNotice.findMany({
@@ -208,7 +208,7 @@ export async function getPendingVacatingNoticesCount(): Promise<number> {
     });
 }
 
-// ─── getTenantForSettlement ──────────────────────────────────────────────────
+// â”€â”€â”€ getTenantForSettlement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Fetches full tenant data (rent, rentRecords, phone) from a bookingId so the
 // SettlementModal can compute pro-rata and security-deposit figures.
 export async function getTenantForSettlement(bookingId: string) {
@@ -273,7 +273,7 @@ export async function getTenantForSettlement(bookingId: string) {
     };
 }
 
-// ─── getSettlementForNotice ──────────────────────────────────────────────────
+// â”€â”€â”€ getSettlementForNotice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getSettlementForNotice(bookingId: string) {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
@@ -318,7 +318,7 @@ export async function getSettlementForNotice(bookingId: string) {
 
     const sr = (tenant as any).settlementRecord;
 
-    // ── Pro-rata computation ─────────────────────────────────────────────────
+    // â”€â”€ Pro-rata computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const moveOutDate = tenant.actualMoveOutDate
         ? new Date(tenant.actualMoveOutDate)
         : vacatingNotice?.plannedMoveOut
@@ -330,23 +330,23 @@ export async function getSettlementForNotice(bookingId: string) {
     const dailyRate   = Math.round(monthlyRent / daysInMonth);
     const proRataAmt  = dailyRate * moveOutDay;
 
-    // ── Unpaid rent records (itemized) ───────────────────────────────────────
+    // â”€â”€ Unpaid rent records (itemized) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const unpaidRecords = ((tenant as any).rentRecords || [])
         .filter((r: any) => !r.paid)
         .map((r: any) => ({ month: r.month, amount: Number(r.amount), note: r.note || null }));
 
-    // ── Parse deduction items from notes ─────────────────────────────────────
-    // confirmMoveOut saves notes in format: "Deductions: Broken AC ₹500, Wall damage ₹500 | Owner note"
+    // â”€â”€ Parse deduction items from notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // confirmMoveOut saves notes in format: "Deductions: Broken AC â‚¹500, Wall damage â‚¹500 | Owner note"
     let deductionItems: { description: string; amount: number }[] = [];
     const noteText = sr?.notes || '';
     const dedMatch = noteText.match(/Deductions:\s*(.+?)(?:\s*\||\s*$)/i);
     if (dedMatch) {
         const parts = dedMatch[1].split(',').map((p: string) => p.trim());
         for (const part of parts) {
-            const amtMatch = part.match(/₹?([\d,]+)\s*$/);
+            const amtMatch = part.match(/â‚¹?([\d,]+)\s*$/);
             if (amtMatch) {
                 const amount = parseFloat(amtMatch[1].replace(/,/g, '')) || 0;
-                const description = part.replace(/₹?[\d,]+\s*$/, '').trim();
+                const description = part.replace(/â‚¹?[\d,]+\s*$/, '').trim();
                 if (description) deductionItems.push({ description, amount });
             }
         }
@@ -397,4 +397,5 @@ export async function getSettlementForNotice(bookingId: string) {
         settlementNotes: noteText.split('|').slice(1).join('|').trim() || null,
     };
 }
+
 
