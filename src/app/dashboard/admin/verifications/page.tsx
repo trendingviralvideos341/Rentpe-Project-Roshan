@@ -309,28 +309,10 @@ function PhysicalKycCard({ booking, onMarkVerified }: { booking: any; onMarkVeri
     );
 }
 
-function TenantDocsTab() {
-    const [subTab, setSubTab] = useState<'online' | 'physical'>('online');
-    // Online Docs state
-    const [docs, setDocs] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
-    const [selectedBooking, setSelectedBooking] = useState<any>(null);
-    const [rejectNote, setRejectNote] = useState("");
-    const [rejectTarget, setRejectTarget] = useState<string | null>(null);
-    const [previewDoc, setPreviewDoc] = useState<any>(null);
-    // Physical KYC state
+function TenantPhysicalKycTab() {
     const [kycBookings, setKycBookings] = useState<any[]>([]);
-    const [kycLoading, setKycLoading] = useState(false);
+    const [kycLoading, setKycLoading] = useState(true);
     const [kycSearch, setKycSearch] = useState("");
-
-    const fetchDocs = async () => {
-        setLoading(true);
-        try { const data = await getPendingDocuments(); setDocs(data); }
-        catch { toast.error("Failed to load documents"); }
-        finally { setLoading(false); }
-    };
 
     const fetchKyc = async () => {
         setKycLoading(true);
@@ -339,8 +321,7 @@ function TenantDocsTab() {
         finally { setKycLoading(false); }
     };
 
-    useEffect(() => { fetchDocs(); }, []);
-    useEffect(() => { if (subTab === 'physical') fetchKyc(); }, [subTab]);
+    useEffect(() => { fetchKyc(); }, []);
 
     const handleMarkKycVerified = async (bookingId: string) => {
         try {
@@ -348,32 +329,6 @@ function TenantDocsTab() {
             toast.success("✅ Physical KYC Verified", { description: "Audit log saved." });
             fetchKyc();
         } catch { toast.error("Verification failed."); }
-    };
-
-    const handleVerifyUpdate = async (docId: string, status: 'VERIFIED' | 'REJECTED', note?: string) => {
-        try {
-            await verifyTenantDoc(docId, status, note);
-            toast.success(status === 'VERIFIED' ? "Document Verified" : "Reupload Requested");
-            if (status === 'REJECTED') { setRejectTarget(null); setRejectNote(""); }
-            fetchDocs();
-        } catch { toast.error("Action Failed"); }
-    };
-
-    const filteredDocs = docs.filter(doc => {
-        if (dateFilter !== "ALL") {
-            const diff = (Date.now() - new Date(doc.createdAt || doc.updatedAt).getTime()) / 86400000;
-            if (dateFilter === "7D" && diff > 7) return false;
-            if (dateFilter === "30D" && diff > 30) return false;
-        }
-        const q = search.toLowerCase();
-        return doc.booking?.guestName?.toLowerCase().includes(q) || doc.booking?.displayId?.toLowerCase().includes(q) || doc.booking?.propertyName?.toLowerCase().includes(q);
-    });
-
-    const statusGroups = ['PENDING', 'VERIFIED', 'REJECTED'];
-    const STATUS_MAP: any = {
-        PENDING: { label: "PENDING DOCUMENTS", color: "text-red-600", bg: "bg-red-500", icon: <Clock className="w-4 h-4" /> },
-        VERIFIED: { label: "VERIFIED DOCUMENTS", color: "text-emerald-600", bg: "bg-emerald-500", icon: <CheckCircle className="w-4 h-4" /> },
-        REJECTED: { label: "REJECTED DOCUMENTS", color: "text-slate-500", bg: "bg-slate-400", icon: <XCircle className="w-4 h-4" /> },
     };
 
     const filteredKyc = kycBookings.filter(b => {
@@ -390,271 +345,83 @@ function TenantDocsTab() {
     const unverifiedKyc = filteredKyc.filter(b => !b.kycVerified);
 
     return (
-        <div className="space-y-4">
-            {/* Sub-tab switcher */}
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 w-fit">
-                <button onClick={() => setSubTab('online')}
-                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                        subTab === 'online' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'
-                    }`}>
-                    <FileText className="w-3.5 h-3.5" /> Online Docs
-                </button>
-                <button onClick={() => setSubTab('physical')}
-                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                        subTab === 'physical' ? 'bg-white text-green-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'
-                    }`}>
-                    <ShieldCheck className="w-3.5 h-3.5" /> Physical KYC Log
-                    {kycBookings.filter(b => !b.kycVerified).length > 0 && (
-                        <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
-                            {kycBookings.filter(b => !b.kycVerified).length}
-                        </span>
-                    )}
-                </button>
-            </div>
-
-            {/* ── ONLINE DOCS ── */}
-            {subTab === 'online' && (
-            <div className="space-y-4">
-            <div className="bg-white p-4 rounded-2xl border shadow-sm space-y-3">
+        <div className="space-y-6">
+            {/* Search + stats bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input placeholder="Search by name, booking ID, property..." className="pl-11 rounded-xl" value={search} onChange={e => setSearch(e.target.value)} />
+                    <Input
+                        placeholder="Search by student name, booking ID, tenant ID or property..."
+                        className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm"
+                        value={kycSearch}
+                        onChange={e => setKycSearch(e.target.value)}
+                    />
                 </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
-                        {(["7D", "30D", "ALL"] as const).map(val => (
-                            <button key={val} onClick={() => setDateFilter(val)}
-                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all uppercase tracking-widest ${dateFilter === val ? "bg-indigo-600 text-white shadow-md" : "text-slate-500"}`}>
-                                {val === "7D" ? "Last 7 Days" : val === "30D" ? "Last 30 Days" : "Lifetime"}
-                            </button>
-                        ))}
+                <div className="flex items-center gap-6 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-500" />
+                        <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
                     </div>
-                    <Button variant="outline" size="sm" onClick={fetchDocs} disabled={loading} className="rounded-xl text-xs">
-                        <RefreshCcw className={`h-3 w-3 mr-2 ${loading ? "animate-spin" : ""}`} />Refresh
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending</span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={fetchKyc} disabled={kycLoading} className="ml-auto rounded-xl text-xs">
+                        <RefreshCcw className={`h-3 w-3 mr-2 ${kycLoading ? 'animate-spin' : ''}`} />Refresh
                     </Button>
                 </div>
             </div>
 
-            {loading ? (
-                <div className="grid gap-3">{[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
-            ) : docs.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed rounded-xl"><FileCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" /><p className="font-bold text-slate-500">No submissions found.</p></div>
+            {kycLoading ? (
+                <div className="flex flex-col items-center justify-center min-h-[280px] gap-4">
+                    <div className="w-11 h-11 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Physical KYC Log...</p>
+                </div>
+            ) : kycBookings.length === 0 ? (
+                <div className="py-20 text-center border-2 border-dashed rounded-xl">
+                    <ShieldCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                    <p className="font-bold text-slate-500">No active bookings found for Physical KYC.</p>
+                </div>
             ) : (
                 <div className="space-y-8">
-                    {statusGroups.map(status => {
-                        const grouped: Record<string, { booking: any; docs: any[]; overallStatus: string }> = {};
-                        filteredDocs.forEach(doc => {
-                            const bid = doc.booking?.id || 'unknown';
-                            if (!grouped[bid]) grouped[bid] = { booking: doc.booking, docs: [], overallStatus: 'VERIFIED' };
-                            grouped[bid].docs.push(doc);
-                        });
-                        Object.values(grouped).forEach(g => {
-                            if (g.docs.some(d => d.status === 'REJECTED')) g.overallStatus = 'REJECTED';
-                            else if (g.docs.some(d => d.status === 'PENDING')) g.overallStatus = 'PENDING';
-                        });
-                        const groups = Object.values(grouped).filter(g => g.overallStatus === status);
-                        if (groups.length === 0) return null;
-                        const cfg = STATUS_MAP[status];
-                        return (
-                            <div key={status}>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className={`p-2 rounded-lg ${cfg.bg} text-white`}>{cfg.icon}</div>
-                                    <h2 className={`text-sm font-black tracking-widest uppercase ${cfg.color}`}>{cfg.label} ({groups.length})</h2>
+                    {/* Unverified first — high priority */}
+                    {unverifiedKyc.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 rounded-lg bg-red-500 text-white shadow-sm">
+                                    <XCircle className="w-4 h-4" />
                                 </div>
-                                <div className="space-y-3">
-                                    {groups.map((group: any) => {
-                                        const uploadedTypes = [...new Set(group.docs.map((d: any) => d.type))] as string[];
-                                        const getStatus = (type: string) => {
-                                            const doc = group.docs.find((d: any) => d.type === type);
-                                            if (!doc) return { color: 'bg-slate-100', icon: <div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> };
-                                            if (doc.status === 'VERIFIED') return { color: 'bg-emerald-500', icon: <CheckCircle className="w-2.5 h-2.5 text-white" /> };
-                                            if (doc.status === 'REJECTED') return { color: 'bg-rose-500', icon: <XCircle className="w-2.5 h-2.5 text-white" /> };
-                                            return { color: 'bg-amber-500', icon: <Clock className="w-2.5 h-2.5 text-white" /> };
-                                        };
-                                        return (
-                                            <Card key={group.booking?.id} className="border-none shadow-md hover:shadow-xl transition-all bg-white rounded-2xl">
-                                                <CardContent className="p-5">
-                                                    <div className="flex flex-wrap items-center justify-between gap-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-12 h-12 rounded-2xl bg-slate-100 border flex items-center justify-center font-black text-slate-400 text-lg">
-                                                                {group.booking?.guestName?.[0] || 'U'}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-black text-slate-900">{group.booking?.guestName}</p>
-                                                                <p className="text-xs text-slate-500 flex items-center gap-2">
-                                                                    <MapPin className="w-3 h-3" />{group.booking?.propertyName}
-                                                                    <Phone className="w-3 h-3 ml-2" />{group.booking?.guestPhone}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 px-4 border-x border-slate-100">
-                                                                {uploadedTypes.map(type => {
-                                                                    const s = getStatus(type);
-                                                                    const c = TYPE_CONFIG[type];
-                                                                    return (
-                                                                        <div key={type} className="flex flex-col items-center gap-1" title={`${c?.label}: ${s.color}`}>
-                                                                            <div className={`w-7 h-7 rounded-xl ${s.color} flex items-center justify-center`}>{s.icon}</div>
-                                                                            <span className="text-[8px] font-black text-slate-400 uppercase">{c?.label?.split(' ')[0] || type}</span>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                        <Button variant="outline" onClick={() => setSelectedBooking({ booking: group.booking, docs: group.docs })} className="rounded-xl text-xs">
-                                                            <FileText className="w-4 h-4 mr-2" />View Documents
-                                                        </Button>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        );
-                                    })}
-                                </div>
+                                <h2 className="text-sm font-black tracking-widest uppercase text-red-600">
+                                    ❌ NOT VERIFIED — Pending Check ({unverifiedKyc.length})
+                                </h2>
                             </div>
-                        );
-                    })}
+                            <div className="space-y-3">
+                                {unverifiedKyc.map(b => (
+                                    <PhysicalKycCard key={b.id} booking={b} onMarkVerified={handleMarkKycVerified} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {/* Verified — sorted latest first from server */}
+                    {verifiedKyc.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 rounded-lg bg-green-600 text-white shadow-sm">
+                                    <CheckCircle className="w-4 h-4" />
+                                </div>
+                                <h2 className="text-sm font-black tracking-widest uppercase text-green-700">
+                                    ✅ PHYSICALLY VERIFIED ({verifiedKyc.length})
+                                </h2>
+                            </div>
+                            <div className="space-y-3">
+                                {verifiedKyc.map(b => (
+                                    <PhysicalKycCard key={b.id} booking={b} onMarkVerified={handleMarkKycVerified} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
-
-            {/* Document Detail Dialog */}
-            <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-                <DialogContent className="!fixed !inset-0 !max-w-none !w-screen !h-screen !m-0 !rounded-none z-[100] !p-0 flex flex-col">
-                    <div className="sr-only"><DialogTitle>Document Verification Details</DialogTitle><DialogDescription>Review tenants uploaded documents</DialogDescription></div>
-                    {selectedBooking && (<>
-                        <div className="p-6 border-b flex justify-between items-center bg-white sticky top-0 z-20 shadow-sm">
-                            <div><h2 className="text-2xl font-black">{selectedBooking.booking.guestName}</h2>
-                                <p className="text-sm text-slate-500">{selectedBooking.booking.propertyName} · Room {selectedBooking.booking.roomAssigned || "TBD"}</p></div>
-                            <Button variant="ghost" size="icon" onClick={() => setSelectedBooking(null)} className="rounded-2xl h-12 w-12"><XCircle className="w-7 h-7" /></Button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                                {Object.keys(TYPE_LABELS).map(type => {
-                                    const doc = selectedBooking.docs.find((d: any) => d.type === type);
-                                    const cfg = TYPE_CONFIG[type] || { label: type, icon: <FileText className="w-5 h-5" />, colorClass: 'text-slate-600', bgClass: 'bg-slate-50', borderClass: 'border-slate-200' };
-                                    const isVerified = doc?.status === "VERIFIED"; const isRejected = doc?.status === "REJECTED";
-                                    return (
-                                        <div key={type} className={`border-2 ${cfg.borderClass} rounded-3xl p-5 bg-white shadow-md ${isVerified ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`}>
-                                            <div className="flex items-center gap-3 mb-4">
-                                                <div className={`p-2 ${cfg.bgClass} rounded-xl ${cfg.colorClass}`}>{cfg.icon}</div>
-                                                <div><h4 className="font-black text-slate-900 uppercase text-sm">{cfg.label}</h4></div>
-                                                {isVerified && <div className="ml-auto bg-emerald-500 text-white p-1.5 rounded-xl"><CheckCircle className="w-4 h-4" /></div>}
-                                            </div>
-                                            {doc ? (
-                                                <div className="relative group h-48 rounded-2xl overflow-hidden border bg-slate-950">
-                                                    {doc.fileData?.startsWith("data:image") ? <img src={doc.fileData} className="w-full h-full object-contain p-1" alt="Doc" /> : <div className="w-full h-full flex items-center justify-center text-slate-500"><FileText className="w-12 h-12 opacity-20" /></div>}
-                                                    <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t flex opacity-0 group-hover:opacity-100 transition-all divide-x">
-                                                        {!isVerified && (<>
-                                                            <button onClick={() => handleVerifyUpdate(doc.id, 'VERIFIED')} className="flex-1 py-3 flex items-center justify-center gap-1 text-[10px] font-black uppercase hover:bg-emerald-50 text-emerald-700"><ShieldCheck className="w-3.5 h-3.5" />Verify</button>
-                                                            <button onClick={() => setRejectTarget(doc.id)} className="flex-1 py-3 flex items-center justify-center gap-1 text-[10px] font-black uppercase hover:bg-rose-50 text-rose-700"><RefreshCcw className="w-3.5 h-3.5" />Reupload</button>
-                                                        </>)}
-                                                        <button onClick={() => setPreviewDoc(doc)} className="flex-1 py-3 flex items-center justify-center gap-1 text-[10px] font-black uppercase hover:bg-slate-50 text-slate-600"><Eye className="w-3.5 h-3.5" />View</button>
-                                                    </div>
-                                                    {isRejected && doc.rejectedNote && <div className="absolute top-2 left-2 right-2 bg-rose-600/90 p-2 rounded-xl"><p className="text-[10px] font-black text-white">{doc.rejectedNote}</p></div>}
-                                                </div>
-                                            ) : <div className="h-48 border-4 border-dashed border-slate-100 rounded-2xl flex items-center justify-center bg-slate-50 opacity-40"><Upload className="w-8 h-8 text-slate-300" /></div>}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </>)}
-                </DialogContent>
-            </Dialog>
-
-            {/* Reject Dialog */}
-            <Dialog open={!!rejectTarget} onOpenChange={() => setRejectTarget(null)}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader><DialogTitle className="flex items-center gap-2 text-red-600 font-black text-sm uppercase"><AlertCircle className="w-5 h-5" />Request Re-upload</DialogTitle>
-                        <DialogDescription className="font-bold text-xs">Provide a clear reason. The tenant will be prompted to re-upload.</DialogDescription></DialogHeader>
-                    <div className="py-4"><Textarea placeholder="e.g., Image is blurry, wrong document type..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} className="min-h-[100px] rounded-xl" /></div>
-                    <DialogFooter className="gap-3">
-                        <button onClick={() => setRejectTarget(null)} className="px-6 py-2.5 text-xs font-black bg-indigo-100 text-indigo-800 rounded-full">CANCEL</button>
-                        <button className="bg-red-600 text-white font-black text-xs px-8 py-2.5 rounded-full" onClick={() => handleVerifyUpdate(rejectTarget!, 'REJECTED', rejectNote)}>REQUEST REUPLOAD</button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-            </div>
-            )} {/* end subTab === 'online' */}
-
-            {/* ── PHYSICAL KYC LOG ── */}
-            {subTab === 'physical' && (
-            <div className="space-y-6">
-                {/* Search + stats bar */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Search by student name, booking ID, tenant ID or property..."
-                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm"
-                            value={kycSearch}
-                            onChange={e => setKycSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex items-center gap-6 pt-2 border-t border-slate-100">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500" />
-                            <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                            <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending</span>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={fetchKyc} disabled={kycLoading} className="ml-auto rounded-xl text-xs">
-                            <RefreshCcw className={`h-3 w-3 mr-2 ${kycLoading ? 'animate-spin' : ''}`} />Refresh
-                        </Button>
-                    </div>
-                </div>
-
-                {kycLoading ? (
-                    <div className="flex flex-col items-center justify-center min-h-[280px] gap-4">
-                        <div className="w-11 h-11 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Physical KYC Log...</p>
-                    </div>
-                ) : kycBookings.length === 0 ? (
-                    <div className="py-20 text-center border-2 border-dashed rounded-xl">
-                        <ShieldCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                        <p className="font-bold text-slate-500">No active bookings found for Physical KYC.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-8">
-                        {/* Unverified first — high priority */}
-                        {unverifiedKyc.length > 0 && (
-                            <div>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 rounded-lg bg-red-500 text-white shadow-sm">
-                                        <XCircle className="w-4 h-4" />
-                                    </div>
-                                    <h2 className="text-sm font-black tracking-widest uppercase text-red-600">
-                                        ❌ NOT VERIFIED — Pending Check ({unverifiedKyc.length})
-                                    </h2>
-                                </div>
-                                <div className="space-y-3">
-                                    {unverifiedKyc.map(b => (
-                                        <PhysicalKycCard key={b.id} booking={b} onMarkVerified={handleMarkKycVerified} />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {/* Verified — sorted latest first from server */}
-                        {verifiedKyc.length > 0 && (
-                            <div>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 rounded-lg bg-green-600 text-white shadow-sm">
-                                        <CheckCircle className="w-4 h-4" />
-                                    </div>
-                                    <h2 className="text-sm font-black tracking-widest uppercase text-green-700">
-                                        ✅ PHYSICALLY VERIFIED ({verifiedKyc.length})
-                                    </h2>
-                                </div>
-                                <div className="space-y-3">
-                                    {verifiedKyc.map(b => (
-                                        <PhysicalKycCard key={b.id} booking={b} onMarkVerified={handleMarkKycVerified} />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-            )} {/* end subTab === 'physical' */}
         </div>
     );
 }
@@ -679,7 +446,7 @@ export default function AdminVerificationsPage() {
                     <h1 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
                         <Shield className="h-7 w-7 text-indigo-600" /> Verification Centre
                     </h1>
-                    <p className="text-muted-foreground text-sm mt-1">Owner KYC & Tenant Document Verification</p>
+                    <p className="text-muted-foreground text-sm mt-1">Owner KYC & Tenant Physical KYC</p>
                 </div>
             </div>
 
@@ -696,7 +463,7 @@ export default function AdminVerificationsPage() {
             <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
                 {[
                     { id: "owner", label: "🏠 Owner KYC Queue" },
-                    { id: "tenant", label: "🎓 Tenant Docs" },
+                    { id: "tenant", label: "🎓 Tenant Physical KYC" },
                 ].map(t => (
                     <button key={t.id} onClick={() => switchTab(t.id)}
                         className={`px-5 py-2 rounded-lg text-xs font-black transition-all uppercase tracking-wider ${activeTab === t.id ? "bg-indigo-600 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}>
@@ -705,7 +472,7 @@ export default function AdminVerificationsPage() {
                 ))}
             </div>
 
-            {activeTab === "owner" ? <OwnerKYCTab /> : <TenantDocsTab />}
+            {activeTab === "owner" ? <OwnerKYCTab /> : <TenantPhysicalKycTab />}
         </div>
     );
 }
