@@ -230,6 +230,7 @@ export async function getBookings() {
                     user: { select: { name: true, email: true } },
                     property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
                     tenant: { select: { id: true, displayId: true } },
+                    kycVerifier: { select: { name: true, role: true } },
                 }
             }).then(bookings => bookings.map(b => ({
                 ...b,
@@ -294,6 +295,7 @@ export async function getAdminBookings() {
             user: { select: { name: true, email: true, displayId: true } },
             property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
             tenant: { select: { id: true, displayId: true } },
+            kycVerifier: { select: { name: true, role: true } },
         },
         orderBy: { createdAt: 'desc' }
     });

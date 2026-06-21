@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate } from "@/actions/bookings";
+import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate, markPhysicalKycVerified } from "@/actions/bookings";
 import { getCashPaymentEnabled } from "@/actions/platform";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
@@ -111,41 +111,18 @@ function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashP
 }
 
 // ─── BookingDetail (Expanded Panel) ────────────────────────────────────────
+function formatDateTime(date: string | Date | null | undefined) {
+    if (!date) return '—';
+    return new Date(date).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    });
+}
+
 function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
     const [tab, setTab] = useState<"onboarding" | "documents">("onboarding");
-    const [docs, setDocs] = useState<any[]>([]);
-    const [docsLoading, setDocsLoading] = useState(false);
-    const [rejectTarget, setRejectTarget] = useState<string | null>(null);
-    const [rejectNote, setRejectNote] = useState("");
-    const [previewDoc, setPreviewDoc] = useState<any>(null);
     const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
     const [foodChanging, setFoodChanging] = useState(false);
-
-    const fetchDocs = async () => {
-        setDocsLoading(true);
-        try { const d = await getTenantDocuments(booking.id); setDocs(d); }
-        catch { } finally { setDocsLoading(false); }
-    };
-
-    useEffect(() => { if (tab === "documents") fetchDocs(); }, [tab]);
-
-    const handleVerify = async (docId: string) => {
-        try { await verifyDocument(docId, "VERIFIED"); fetchDocs(); toast.success("Document Verified"); }
-        catch { toast.error("Failed to verify."); }
-    };
-
-    const handleRejectDoc = async (docId: string) => {
-        if (!rejectNote.trim()) { toast.error("Enter rejection reason."); return; }
-        try {
-            await verifyDocument(docId, "REJECTED", rejectNote);
-            setRejectTarget(null); setRejectNote(""); fetchDocs();
-            toast.success("Document Rejected");
-        } catch { toast.error("Failed to reject."); }
-    };
-
-    const pendingDocs = docs.filter(d => d.status === "PENDING");
-    const verifiedDocs = docs.filter(d => d.status === "VERIFIED");
-    const rejectedDocs = docs.filter(d => d.status === "REJECTED");
 
     return (
         <tr>
@@ -157,12 +134,9 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "onboarding" ? "border-purple-600 text-purple-700 bg-purple-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
                             <ClipboardList className="h-4 w-4" /> Onboarding
                         </button>
-                        <button onClick={() => { setTab("documents"); fetchDocs(); }}
+                        <button onClick={() => setTab("documents")}
                             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "documents" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                            <FileText className="h-4 w-4" /> Verify Documents
-                            {pendingDocs.length > 0 && tab === "documents" && (
-                                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">{pendingDocs.length}</span>
-                            )}
+                            <ShieldCheck className="h-4 w-4" /> Physical KYC
                         </button>
                     </div>
 
@@ -279,94 +253,55 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                         </div>
                     )}
 
-                    {/* DOCUMENTS TAB */}
+                    {/* PHYSICAL KYC TAB */}
                     {tab === "documents" && (
-                        <div className="space-y-3">
-                            {docsLoading && <p className="text-sm text-center text-muted-foreground py-4 animate-pulse">Loading documents...</p>}
-                            {pendingDocs.length > 0 && (
-                                <div className="bg-red-50 border-2 border-red-400 rounded-lg p-3">
-                                    <div className="text-red-700 font-bold text-sm mb-2">🔴 {pendingDocs.length} Pending Review</div>
-                                    <div className="space-y-2">
-                                        {pendingDocs.map(doc => (
-                                            <div key={doc.id} className="bg-white border border-red-200 rounded p-2 flex items-center justify-between gap-2 flex-wrap">
-                                                <div>
-                                                    <div className="font-semibold text-sm">{TYPE_LABELS[doc.type] || doc.type}</div>
-                                                    <div className="text-[10px] text-muted-foreground">{doc.fileName}</div>
-                                                </div>
-                                                <div className="flex gap-1.5 items-center flex-wrap">
-                                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPreviewDoc(doc)}><Eye className="h-3 w-3 mr-1" />View</Button>
-                                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleVerify(doc.id)}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>
-                                                    {rejectTarget === doc.id ? (
-                                                        <div className="flex gap-1 items-center">
-                                                            <input className="border rounded px-2 py-1 text-xs w-36" placeholder="Reason..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} />
-                                                            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleRejectDoc(doc.id)}>Reject</Button>
-                                                            <button className="text-[10px] px-2 py-1 bg-slate-200 rounded" onClick={() => { setRejectTarget(null); setRejectNote(""); }}>✕</button>
-                                                        </div>
-                                                    ) : (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600" onClick={() => setRejectTarget(doc.id)}><XCircle className="h-3 w-3 mr-1" />Decline</Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                        <div className="space-y-3 max-w-xl">
+                            {booking.kycVerified ? (
+                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                                    <div className="flex items-center gap-2 text-green-700 font-black text-sm">
+                                        <CheckCircle className="h-5 w-5 text-green-600" />
+                                        ✅ PHYSICAL KYC VERIFIED
                                     </div>
-                                </div>
-                            )}
-                            {verifiedDocs.length > 0 && (
-                                <div className="space-y-1">
-                                    <div className="text-xs font-bold text-green-700">✅ Verified</div>
-                                    {verifiedDocs.map(doc => (
-                                        <div key={doc.id} className="bg-green-50 border border-green-200 rounded p-2 flex items-center justify-between">
-                                            <span className="font-medium text-sm">{TYPE_LABELS[doc.type] || doc.type}</span>
-                                            <div className="flex gap-1.5">
-                                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">✅ Approved</span>
-                                                <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setPreviewDoc(doc)}>View</Button>
-                                            </div>
+                                    <p className="text-xs text-green-800 font-medium">
+                                        This student's physical documents (ID proof, address proof) have been verified.
+                                    </p>
+                                    {booking.kycVerifiedAt && (
+                                        <div className="text-[10px] text-green-600 font-bold bg-white/60 border border-green-100 rounded px-2.5 py-1.5 mt-2">
+                                            Verified by: <span className="font-black">{booking.kycVerifier?.name || 'Owner'}</span>
+                                            {booking.kycVerifier?.role ? ` (${booking.kycVerifier.role === 'OWNER' ? 'Owner' : booking.kycVerifier.role === 'STAFF' ? 'Staff' : 'Admin'})` : ''}
+                                            {' '}on {formatDateTime(booking.kycVerifiedAt)}
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
-                            )}
-                            {rejectedDocs.length > 0 && (
-                                <div className="space-y-1">
-                                    <div className="text-xs font-bold text-red-700">❌ Rejected — Awaiting Re-upload</div>
-                                    {rejectedDocs.map(doc => (
-                                        <div key={doc.id} className="bg-red-50 border border-red-300 rounded p-2 flex items-center justify-between">
-                                            <div>
-                                                <span className="font-medium text-sm">{TYPE_LABELS[doc.type] || doc.type}</span>
-                                                {doc.rejectedNote && <div className="text-[10px] text-red-600">Reason: {doc.rejectedNote}</div>}
-                                            </div>
-                                            <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setPreviewDoc(doc)}>View</Button>
-                                        </div>
-                                    ))}
+                            ) : (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+                                    <div className="flex items-center gap-2 text-red-700 font-black text-sm">
+                                        <XCircle className="h-5 w-5 text-red-500 animate-pulse" />
+                                        ❌ PHYSICAL KYC PENDING
+                                    </div>
+                                    <p className="text-xs text-red-800 font-medium">
+                                        Awaiting physical document verification (ID & Address Proofs) in person at check-in.
+                                    </p>
+                                    <Button
+                                        size="sm"
+                                        className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl h-8 text-xs"
+                                        onClick={async () => {
+                                            try {
+                                                await markPhysicalKycVerified(booking.id);
+                                                toast.success("✅ Physical KYC Marked Verified");
+                                                onRefresh();
+                                            } catch (e) {
+                                                toast.error("Failed to verify KYC.");
+                                            }
+                                        }}
+                                    >
+                                        <ShieldCheck className="h-4 w-4 mr-1" /> Mark Physical KYC Verified
+                                    </Button>
                                 </div>
-                            )}
-                            {docs.length === 0 && !docsLoading && (
-                                <div className="text-center text-sm text-muted-foreground py-4 bg-white border rounded">No documents uploaded yet.</div>
                             )}
                         </div>
                     )}
                 </div>
-
-                {/* Doc Preview Modal */}
-                {previewDoc && (
-                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
-                        <div className="bg-white rounded-xl p-6 w-full max-w-lg space-y-4" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-lg font-bold">{TYPE_LABELS[previewDoc.type] || previewDoc.type}</h2>
-                                <Button variant="ghost" size="sm" onClick={() => setPreviewDoc(null)}>✕</Button>
-                            </div>
-                            {previewDoc.fileData?.startsWith("data:image") ? (
-                                <img src={previewDoc.fileData} alt="Document" className="w-full rounded-lg border max-h-96 object-contain" />
-                            ) : previewDoc.fileData?.startsWith("data:application/pdf") ? (
-                                <div className="p-4 bg-muted rounded text-center text-sm">
-                                    📄 PDF — <a href={previewDoc.fileData} download={previewDoc.fileName} className="text-blue-600 underline">Download</a>
-                                </div>
-                            ) : (
-                                <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
-                            )}
-                            <Button className="w-full" onClick={() => setPreviewDoc(null)}>Close</Button>
-                        </div>
-                    </div>
-                )}
             </td>
         </tr>
     );
