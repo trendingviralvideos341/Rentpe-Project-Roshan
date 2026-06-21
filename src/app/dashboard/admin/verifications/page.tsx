@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getKYCQueue, verifyDocument as verifyOwnerDoc, rejectDocument } from "@/actions/adminPhase2";
 import { getPendingDocuments, verifyDocument as verifyTenantDoc } from "@/actions/documents";
+import { getPhysicalKycBookings, markPhysicalKycVerified } from "@/actions/bookings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -219,7 +220,98 @@ const TYPE_CONFIG: any = {
     SELFIE: { label: 'Current Selfie', icon: <Camera className="w-5 h-5" />, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200' },
 };
 
+// ── Physical KYC Log Card ─────────────────────────────────────────────────────
+function formatDT(date: string | Date | null | undefined) {
+    if (!date) return '—';
+    return new Date(date).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    });
+}
+
+function PhysicalKycCard({ booking, onMarkVerified }: { booking: any; onMarkVerified: (id: string) => void }) {
+    const isVerified = !!booking.kycVerified;
+    const tenantId = booking.tenant?.displayId || null;
+    const verifierName = booking.kycVerifier?.name || '—';
+    const verifierRole = booking.kycVerifier?.role || '';
+
+    return (
+        <div className={`rounded-2xl border-2 p-4 transition-all duration-300 ${
+            isVerified ? 'bg-green-50/50 border-green-200' : 'bg-red-50/50 border-red-200'
+        }`}>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base shrink-0 ${
+                        isVerified ? 'bg-green-600' : 'bg-red-500'
+                    }`}>
+                        {booking.guestName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-slate-900 text-sm">{booking.guestName}</span>
+                            {tenantId && (
+                                <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
+                                    {tenantId}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <Building2 className="w-3 h-3 text-slate-400" />
+                            <span className="text-[11px] text-slate-600 font-medium">
+                                {booking.property?.name || booking.propertyName}
+                            </span>
+                            {(booking.room?.roomNumber || booking.roomAssigned) && (
+                                <span className="text-[11px] text-slate-600 font-medium">
+                                    · Room {booking.room?.roomNumber || booking.roomAssigned}
+                                </span>
+                            )}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold mt-0.5">Booking: {booking.displayId}</div>
+                    </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                    {isVerified ? (
+                        <span className="flex items-center gap-1.5 bg-green-600 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-md">
+                            <CheckCircle className="w-3.5 h-3.5" /> ✅ VERIFIED
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5 bg-red-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-md animate-pulse">
+                            <XCircle className="w-3.5 h-3.5" /> ❌ NOT VERIFIED
+                        </span>
+                    )}
+                    {!isVerified && (
+                        <Button size="sm"
+                            className="h-7 text-[10px] bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-3"
+                            onClick={() => onMarkVerified(booking.id)}
+                        >
+                            <ShieldCheck className="w-3 h-3 mr-1" /> Mark Verified
+                        </Button>
+                    )}
+                </div>
+            </div>
+            <div className={`mt-3 pt-3 border-t flex items-center gap-2 flex-wrap ${
+                isVerified ? 'border-green-200' : 'border-red-200'
+            }`}>
+                <Shield className={`w-3.5 h-3.5 ${isVerified ? 'text-green-600' : 'text-red-500'}`} />
+                {isVerified ? (
+                    <span className="text-[11px] font-bold text-green-700">
+                        Verified by: <span className="font-black">{verifierName}</span>
+                        {verifierRole ? ` (${verifierRole === 'OWNER' ? 'Owner' : verifierRole === 'STAFF' ? 'Staff' : 'Admin'})` : ''}
+                        {' · '}{formatDT(booking.kycVerifiedAt)}
+                    </span>
+                ) : (
+                    <span className="text-[11px] font-bold text-red-600">
+                        Awaiting physical verification at check-in
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function TenantDocsTab() {
+    const [subTab, setSubTab] = useState<'online' | 'physical'>('online');
+    // Online Docs state
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -228,6 +320,10 @@ function TenantDocsTab() {
     const [rejectNote, setRejectNote] = useState("");
     const [rejectTarget, setRejectTarget] = useState<string | null>(null);
     const [previewDoc, setPreviewDoc] = useState<any>(null);
+    // Physical KYC state
+    const [kycBookings, setKycBookings] = useState<any[]>([]);
+    const [kycLoading, setKycLoading] = useState(false);
+    const [kycSearch, setKycSearch] = useState("");
 
     const fetchDocs = async () => {
         setLoading(true);
@@ -236,7 +332,23 @@ function TenantDocsTab() {
         finally { setLoading(false); }
     };
 
+    const fetchKyc = async () => {
+        setKycLoading(true);
+        try { const data = await getPhysicalKycBookings(); setKycBookings(data); }
+        catch { toast.error("Failed to load Physical KYC log"); }
+        finally { setKycLoading(false); }
+    };
+
     useEffect(() => { fetchDocs(); }, []);
+    useEffect(() => { if (subTab === 'physical') fetchKyc(); }, [subTab]);
+
+    const handleMarkKycVerified = async (bookingId: string) => {
+        try {
+            await markPhysicalKycVerified(bookingId);
+            toast.success("✅ Physical KYC Verified", { description: "Audit log saved." });
+            fetchKyc();
+        } catch { toast.error("Verification failed."); }
+    };
 
     const handleVerifyUpdate = async (docId: string, status: 'VERIFIED' | 'REJECTED', note?: string) => {
         try {
@@ -264,8 +376,45 @@ function TenantDocsTab() {
         REJECTED: { label: "REJECTED DOCUMENTS", color: "text-slate-500", bg: "bg-slate-400", icon: <XCircle className="w-4 h-4" /> },
     };
 
+    const filteredKyc = kycBookings.filter(b => {
+        const q = kycSearch.toLowerCase();
+        return (
+            b.guestName?.toLowerCase().includes(q) ||
+            b.displayId?.toLowerCase().includes(q) ||
+            b.propertyName?.toLowerCase().includes(q) ||
+            b.tenant?.displayId?.toLowerCase().includes(q) ||
+            b.property?.name?.toLowerCase().includes(q)
+        );
+    });
+    const verifiedKyc = filteredKyc.filter(b => b.kycVerified);
+    const unverifiedKyc = filteredKyc.filter(b => !b.kycVerified);
+
     return (
         <div className="space-y-4">
+            {/* Sub-tab switcher */}
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 w-fit">
+                <button onClick={() => setSubTab('online')}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
+                        subTab === 'online' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'
+                    }`}>
+                    <FileText className="w-3.5 h-3.5" /> Online Docs
+                </button>
+                <button onClick={() => setSubTab('physical')}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
+                        subTab === 'physical' ? 'bg-white text-green-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'
+                    }`}>
+                    <ShieldCheck className="w-3.5 h-3.5" /> Physical KYC Log
+                    {kycBookings.filter(b => !b.kycVerified).length > 0 && (
+                        <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                            {kycBookings.filter(b => !b.kycVerified).length}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* ── ONLINE DOCS ── */}
+            {subTab === 'online' && (
+            <div className="space-y-4">
             <div className="bg-white p-4 rounded-2xl border shadow-sm space-y-3">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -422,6 +571,90 @@ function TenantDocsTab() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            </div>
+            )} {/* end subTab === 'online' */}
+
+            {/* ── PHYSICAL KYC LOG ── */}
+            {subTab === 'physical' && (
+            <div className="space-y-6">
+                {/* Search + stats bar */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Search by student name, booking ID, tenant ID or property..."
+                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm"
+                            value={kycSearch}
+                            onChange={e => setKycSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-6 pt-2 border-t border-slate-100">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-green-500" />
+                            <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending</span>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={fetchKyc} disabled={kycLoading} className="ml-auto rounded-xl text-xs">
+                            <RefreshCcw className={`h-3 w-3 mr-2 ${kycLoading ? 'animate-spin' : ''}`} />Refresh
+                        </Button>
+                    </div>
+                </div>
+
+                {kycLoading ? (
+                    <div className="flex flex-col items-center justify-center min-h-[280px] gap-4">
+                        <div className="w-11 h-11 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Physical KYC Log...</p>
+                    </div>
+                ) : kycBookings.length === 0 ? (
+                    <div className="py-20 text-center border-2 border-dashed rounded-xl">
+                        <ShieldCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        <p className="font-bold text-slate-500">No active bookings found for Physical KYC.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-8">
+                        {/* Unverified first — high priority */}
+                        {unverifiedKyc.length > 0 && (
+                            <div>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 rounded-lg bg-red-500 text-white shadow-sm">
+                                        <XCircle className="w-4 h-4" />
+                                    </div>
+                                    <h2 className="text-sm font-black tracking-widest uppercase text-red-600">
+                                        ❌ NOT VERIFIED — Pending Check ({unverifiedKyc.length})
+                                    </h2>
+                                </div>
+                                <div className="space-y-3">
+                                    {unverifiedKyc.map(b => (
+                                        <PhysicalKycCard key={b.id} booking={b} onMarkVerified={handleMarkKycVerified} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {/* Verified — sorted latest first from server */}
+                        {verifiedKyc.length > 0 && (
+                            <div>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 rounded-lg bg-green-600 text-white shadow-sm">
+                                        <CheckCircle className="w-4 h-4" />
+                                    </div>
+                                    <h2 className="text-sm font-black tracking-widest uppercase text-green-700">
+                                        ✅ PHYSICALLY VERIFIED ({verifiedKyc.length})
+                                    </h2>
+                                </div>
+                                <div className="space-y-3">
+                                    {verifiedKyc.map(b => (
+                                        <PhysicalKycCard key={b.id} booking={b} onMarkVerified={handleMarkKycVerified} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+            )} {/* end subTab === 'physical' */}
         </div>
     );
 }
