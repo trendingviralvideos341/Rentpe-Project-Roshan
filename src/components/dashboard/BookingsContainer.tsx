@@ -120,7 +120,6 @@ function formatDateTime(date: string | Date | null | undefined) {
 }
 
 function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
-    const [tab, setTab] = useState<"onboarding" | "documents">("onboarding");
     const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
     const [foodChanging, setFoodChanging] = useState(false);
 
@@ -128,179 +127,115 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
         <tr>
             <td colSpan={7} className="bg-slate-50 border-b">
                 <div className="p-4 space-y-3">
-                    {/* Tab switcher */}
-                    <div className="flex gap-2 border-b pb-2">
-                        <button onClick={() => setTab("onboarding")}
-                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "onboarding" ? "border-purple-600 text-purple-700 bg-purple-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                            <ClipboardList className="h-4 w-4" /> Onboarding
-                        </button>
-                        <button onClick={() => setTab("documents")}
-                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "documents" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                            <ShieldCheck className="h-4 w-4" /> Physical KYC
-                        </button>
-                    </div>
-
-                    {/* ONBOARDING TAB */}
-                    {tab === "onboarding" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <div className="text-xs font-bold uppercase text-purple-700 mb-2">📋 Guest / Onboarding Details</div>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    {[
-                                        ["Full Name", booking.guestName],
-                                        ["Email", booking.guestEmail || "—"],
-                                        ["Phone", booking.guestPhone || "—"],
-                                        ["Occupation", booking.occupationType ? `${booking.occupationType} - ${booking.occupationDetail || ""}` : "—"],
-                                        ["Move-in Date", booking.onboardingDate || booking.moveInDate || "—"],
-                                        ["Address", booking.guestAddress ? `${booking.guestAddress}, ${booking.guestCity} - ${booking.guestPincode}` : "—"],
-                                    ].map(([label, value]) => (
-                                        <div key={label} className="bg-white border rounded p-2">
-                                            <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
-                                            <div className="text-sm font-medium">{value}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="text-xs font-bold uppercase text-green-700 mb-2">🏠 Booking & Room Info</div>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    {[
-                                        ["PG / Property", booking.propertyName || "—"],
-                                        ["Requested Type", booking.occupancy || "—"],
-                                        ["Allocated Room", booking.roomAssigned || "Not Allocated Yet"],
-                                        ["Monthly Rent", booking.amount ? `₹${Number(booking.amount).toLocaleString('en-IN')}` : "—"],
-                                        ["Security Deposit", booking.depositAmount ? `₹${Number(booking.depositAmount).toLocaleString('en-IN')} (${booking.depositMonths || 2}m)` : "—"],
-                                        ["Booking Ref", booking.displayId],
-                                    ].map(([label, value]) => (
-                                        <div key={label} className="bg-white border rounded p-2">
-                                            <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
-                                            <div className="text-sm font-medium">{value}</div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Token Payment Info — shown whenever tokenPaidAt is set */}
-                                {booking.tokenPaidAt && (
-                                    <div className="mt-3 p-3 rounded-xl border-2 bg-teal-50 border-teal-200 space-y-2">
-                                        <div className="text-xs font-black text-teal-700 uppercase flex items-center gap-2">🔐 Token / Room-Lock Payment</div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="bg-white border border-teal-100 rounded p-2">
-                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Amount Paid</div>
-                                                <div className="text-sm font-black text-teal-800">₹{Number(booking.tokenAmount || 1000).toLocaleString('en-IN')}</div>
-                                            </div>
-                                            <div className="bg-white border border-teal-100 rounded p-2">
-                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Paid On</div>
-                                                <div className="text-sm font-medium text-teal-800">
-                                                    {new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </div>
-                                            </div>
-                                            <div className="bg-white border border-teal-100 rounded p-2">
-                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Method</div>
-                                                <div className="text-sm font-medium text-teal-800">
-                                                    {booking.paymentMethod === 'CASH' ? '💵 Cash (Owner Confirmed)' : '🌐 Razorpay (Online)'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-white border border-teal-100 rounded p-2">
-                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Status</div>
-                                                <div className="text-sm font-black text-green-700">✅ PAID & VERIFIED</div>
-                                            </div>
-                                        </div>
-                                        {booking.tokenPaymentId && (
-                                            <div className="bg-white border border-teal-100 rounded p-2">
-                                                <div className="text-[10px] text-teal-600 uppercase font-bold">Razorpay Payment ID</div>
-                                                <div className="text-xs font-mono text-blue-700 break-all">{booking.tokenPaymentId}</div>
-                                            </div>
-                                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <div className="text-xs font-bold uppercase text-purple-700 mb-2">📋 Guest / Onboarding Details</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                {[
+                                    ["Full Name", booking.guestName],
+                                    ["Email", booking.guestEmail || "—"],
+                                    ["Phone", booking.guestPhone || "—"],
+                                    ["Occupation", booking.occupationType ? `${booking.occupationType} - ${booking.occupationDetail || ""}` : "—"],
+                                    ["Move-in Date", booking.onboardingDate || booking.moveInDate || "—"],
+                                    ["Address", booking.guestAddress ? `${booking.guestAddress}, ${booking.guestCity} - ${booking.guestPincode}` : "—"],
+                                ].map(([label, value]) => (
+                                    <div key={label} className="bg-white border rounded p-2">
+                                        <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
+                                        <div className="text-sm font-medium">{value}</div>
                                     </div>
-                                )}
-
-                                {/* Food Service */}
-                                {booking.property?.foodType !== 'NOT_AVAILABLE' && booking.property?.foodType && (
-                                    <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">
-                                        <div className="text-xs font-black text-orange-700 uppercase flex items-center gap-2">🍽 Food & Mess Service</div>
-                                        {booking.property?.foodType === 'INCLUDED' && (
-                                            <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">✅ Included in Rent</span>
-                                        )}
-                                        {booking.property?.foodType === 'OPTIONAL' && (
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-slate-600">{foodEnabled ? '🍽 Food ACTIVE' : '🚫 Food INACTIVE'}</span>
-                                                {(booking.status === 'APPROVED' || booking.status === 'CHECKIN_CONFIRMED') && (
-                                                    <button type="button" disabled={foodChanging}
-                                                        onClick={() => {
-                                                            const newVal = !foodEnabled;
-                                                            toast(`${newVal ? 'Enable' : 'Disable'} food for this tenant?`, {
-                                                                action: {
-                                                                    label: "Confirm",
-                                                                    onClick: async () => {
-                                                                        setFoodChanging(true);
-                                                                        const result = await changeFoodPreference(booking.id, newVal, 'Changed by owner');
-                                                                        if (result.success) { setFoodEnabled(newVal); toast.success(`Food ${newVal ? 'enabled' : 'disabled'}.`); onRefresh(); }
-                                                                        else toast.error(result.error || 'Failed.');
-                                                                        setFoodChanging(false);
-                                                                    }
-                                                                }
-                                                            });
-                                                        }}
-                                                        className="text-[10px] px-3 py-1.5 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 disabled:opacity-50">
-                                                        {foodChanging ? '...' : foodEnabled ? '🚫 Disable' : '🍽 Enable'}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </div>
-                    )}
-
-                    {/* PHYSICAL KYC TAB */}
-                    {tab === "documents" && (
-                        <div className="space-y-3 max-w-xl">
-                            {booking.kycVerified ? (
-                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-                                    <div className="flex items-center gap-2 text-green-700 font-black text-sm">
-                                        <CheckCircle className="h-5 w-5 text-green-600" />
-                                        ✅ PHYSICAL KYC VERIFIED
+                        <div className="space-y-2">
+                            <div className="text-xs font-bold uppercase text-green-700 mb-2">🏠 Booking & Room Info</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                {[
+                                    ["PG / Property", booking.propertyName || "—"],
+                                    ["Requested Type", booking.occupancy || "—"],
+                                    ["Allocated Room", booking.roomAssigned || "Not Allocated Yet"],
+                                    ["Monthly Rent", booking.amount ? `₹${Number(booking.amount).toLocaleString('en-IN')}` : "—"],
+                                    ["Security Deposit", booking.depositAmount ? `₹${Number(booking.depositAmount).toLocaleString('en-IN')} (${booking.depositMonths || 2}m)` : "—"],
+                                    ["Booking Ref", booking.displayId],
+                                ].map(([label, value]) => (
+                                    <div key={label} className="bg-white border rounded p-2">
+                                        <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
+                                        <div className="text-sm font-medium">{value}</div>
                                     </div>
-                                    <p className="text-xs text-green-800 font-medium">
-                                        This student's physical documents (ID proof, address proof) have been verified.
-                                    </p>
-                                    {booking.kycVerifiedAt && (
-                                        <div className="text-[10px] text-green-600 font-bold bg-white/60 border border-green-100 rounded px-2.5 py-1.5 mt-2">
-                                            Verified by: <span className="font-black">{booking.kycVerifier?.name || 'Owner'}</span>
-                                            {booking.kycVerifier?.role ? ` (${booking.kycVerifier.role === 'OWNER' ? 'Owner' : booking.kycVerifier.role === 'STAFF' ? 'Staff' : 'Admin'})` : ''}
-                                            {' '}on {formatDateTime(booking.kycVerifiedAt)}
+                                ))}
+                            </div>
+
+                            {/* Token Payment Info — shown whenever tokenPaidAt is set */}
+                            {booking.tokenPaidAt && (
+                                <div className="mt-3 p-3 rounded-xl border-2 bg-teal-50 border-teal-200 space-y-2">
+                                    <div className="text-xs font-black text-teal-700 uppercase flex items-center gap-2">🔐 Token / Room-Lock Payment</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-white border border-teal-100 rounded p-2">
+                                            <div className="text-[10px] text-teal-600 uppercase font-bold">Amount Paid</div>
+                                            <div className="text-sm font-black text-teal-800">₹{Number(booking.tokenAmount || 1000).toLocaleString('en-IN')}</div>
+                                        </div>
+                                        <div className="bg-white border border-teal-100 rounded p-2">
+                                            <div className="text-[10px] text-teal-600 uppercase font-bold">Paid On</div>
+                                            <div className="text-sm font-medium text-teal-800">
+                                                {new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white border border-teal-100 rounded p-2">
+                                            <div className="text-[10px] text-teal-600 uppercase font-bold">Method</div>
+                                            <div className="text-sm font-medium text-teal-800">
+                                                {booking.paymentMethod === 'CASH' ? '💵 Cash (Owner Confirmed)' : '🌐 Razorpay (Online)'}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white border border-teal-100 rounded p-2">
+                                            <div className="text-[10px] text-teal-600 uppercase font-bold">Status</div>
+                                            <div className="text-sm font-black text-green-700">✅ PAID & VERIFIED</div>
+                                        </div>
+                                    </div>
+                                    {booking.tokenPaymentId && (
+                                        <div className="bg-white border border-teal-100 rounded p-2">
+                                            <div className="text-[10px] text-teal-600 uppercase font-bold">Razorpay Payment ID</div>
+                                            <div className="text-xs font-mono text-blue-700 break-all">{booking.tokenPaymentId}</div>
                                         </div>
                                     )}
                                 </div>
-                            ) : (
-                                <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
-                                    <div className="flex items-center gap-2 text-red-700 font-black text-sm">
-                                        <XCircle className="h-5 w-5 text-red-500 animate-pulse" />
-                                        ❌ PHYSICAL KYC PENDING
-                                    </div>
-                                    <p className="text-xs text-red-800 font-medium">
-                                        Awaiting physical document verification (ID & Address Proofs) in person at check-in.
-                                    </p>
-                                    <Button
-                                        size="sm"
-                                        className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl h-8 text-xs"
-                                        onClick={async () => {
-                                            try {
-                                                await markPhysicalKycVerified(booking.id);
-                                                toast.success("✅ Physical KYC Marked Verified");
-                                                onRefresh();
-                                            } catch (e) {
-                                                toast.error("Failed to verify KYC.");
-                                            }
-                                        }}
-                                    >
-                                        <ShieldCheck className="h-4 w-4 mr-1" /> Mark Physical KYC Verified
-                                    </Button>
+                            )}
+
+                            {/* Food Service */}
+                            {booking.property?.foodType !== 'NOT_AVAILABLE' && booking.property?.foodType && (
+                                <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">
+                                    <div className="text-xs font-black text-orange-700 uppercase flex items-center gap-2">🍽 Food & Mess Service</div>
+                                    {booking.property?.foodType === 'INCLUDED' && (
+                                        <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">✅ Included in Rent</span>
+                                    )}
+                                    {booking.property?.foodType === 'OPTIONAL' && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-slate-600">{foodEnabled ? '🍽 Food ACTIVE' : '🚫 Food INACTIVE'}</span>
+                                            {(booking.status === 'APPROVED' || booking.status === 'CHECKIN_CONFIRMED') && (
+                                                <button type="button" disabled={foodChanging}
+                                                    onClick={() => {
+                                                        const newVal = !foodEnabled;
+                                                        toast(`${newVal ? 'Enable' : 'Disable'} food for this tenant?`, {
+                                                            action: {
+                                                                label: "Confirm",
+                                                                onClick: async () => {
+                                                                    setFoodChanging(true);
+                                                                    const result = await changeFoodPreference(booking.id, newVal, 'Changed by owner');
+                                                                    if (result.success) { setFoodEnabled(newVal); toast.success(`Food ${newVal ? 'enabled' : 'disabled'}.`); onRefresh(); }
+                                                                    else toast.error(result.error || 'Failed.');
+                                                                    setFoodChanging(false);
+                                                                }
+                                                            }
+                                                        });
+                                                    }}
+                                                    className="text-[10px] px-3 py-1.5 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 disabled:opacity-50">
+                                                    {foodChanging ? '...' : foodEnabled ? '🚫 Disable' : '🍽 Enable'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </td>
         </tr>
