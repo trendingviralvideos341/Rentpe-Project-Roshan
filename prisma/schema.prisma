@@ -66,6 +66,7 @@ model User {
   actionNotes            ActionNote[]         @relation("TargetUser")
   auditLogs              AuditLog[]           @relation("PerformedBy")
   bookings               Booking[]
+  verifiedBookings       Booking[]            @relation("KycVerifier")
   fraudAlerts            FraudAlert[]
   loginLogs              LoginLog[]
   receivedMessages       Message[]            @relation("ReceivedMessages")
@@ -287,6 +288,8 @@ model Booking {
   kycVerifiedAt               DateTime?
   kycRejectedAt               DateTime?
   kycNotes                    String?
+  kycVerified                 Boolean          @default(false)
+  kycVerifiedBy               String?
   rejectionReason             String?
   cancelReason                String?
   createdAt                   DateTime         @default(now())
@@ -308,6 +311,7 @@ model Booking {
   property                    Property?        @relation(fields: [propertyId], references: [id])
   room                        Room?            @relation(fields: [roomId], references: [id])
   user                        User             @relation(fields: [userId], references: [id])
+  kycVerifier                 User?            @relation("KycVerifier", fields: [kycVerifiedBy], references: [id])
   payments                    Payment[]
   platformFee                 PlatformFee?
   invoices                    RentInvoice[]    @relation("BookingInvoices")

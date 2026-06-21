@@ -849,7 +849,11 @@ export async function checkInBooking(id: string) {
         data: {
             status: newStatus,
             ...(newStatus === 'ACTIVE' ? { activeAt: new Date() } : {}),
-            onboardingDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            onboardingDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            // ── Physical KYC stamp ────────────────────────────────────────
+            kycVerified: true,
+            kycVerifiedAt: new Date(),
+            kycVerifiedBy: session.userId,
         } as any
     });
 
@@ -1683,7 +1687,12 @@ export async function verifyKycAndProceed(bookingId: string) {
 
     const updated = await prisma.booking.update({
         where: { id: bookingId },
-        data: { status: 'AGREEMENT_PENDING', kycVerifiedAt: new Date() }
+        data: {
+            status: 'AGREEMENT_PENDING',
+            kycVerifiedAt: new Date(),
+            kycVerified: true,
+            kycVerifiedBy: session.userId,
+        }
     });
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
@@ -2111,3 +2120,97 @@ export async function updateSharingType(bookingId: string, data: {
     return updated;
 }
 
+// ── Physical KYC Log Actions ──────────────────────────────────────────────────
+/** Fetch all bookings for owner's properties for the Physical KYC Log.
+ *  Includes kycVerifier, user (student), property, room, tenant.
+ *  Sorted by kycVerifiedAt desc (most recently verified at top) then createdAt desc.
+ */
+export async function getPhysicalKycBookings() {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error('Unauthorized');
+
+    const userId = session.userId;
+    let propertyIds: string[] = [];
+
+    if (session.role === 'ADMIN') {
+        const allProperties = await prisma.property.findMany({ select: { id: true } });
+        propertyIds = allProperties.map((p: any) => p.id);
+    } else {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { staffProfile: true }
+        });
+        if (user?.staffProfile) {
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
+                select: { propertyId: true }
+            });
+            propertyIds = assignments.map((a: any) => a.propertyId);
+        } else {
+            const ownerProperties = await prisma.property.findMany({
+                where: { ownerId: user?.parentOwnerId || userId },
+                select: { id: true }
+            });
+            propertyIds = ownerProperties.map((p: any) => p.id);
+        }
+    }
+
+    return await prisma.booking.findMany({
+        where: {
+            propertyId: { in: propertyIds },
+            deletedAt: null,
+            status: {
+                in: [
+                    'APPROVED_PENDING_TOKEN', 'ROOM_RESERVED', 'PHYSICAL_VERIFIED',
+                    'AGREEMENT_PENDING', 'BOOKING_CONFIRMED', 'MOVE_IN_SCHEDULED',
+                    'ACTIVE', 'KYC_PENDING', 'KYC_FAILED', 'APPROVED'
+                ]
+            }
+        },
+        include: {
+            user: { select: { id: true, name: true, email: true, displayId: true } },
+            property: { select: { id: true, name: true, displayId: true } },
+            room: { select: { id: true, roomNumber: true, type: true } },
+            tenant: { select: { id: true, displayId: true, status: true } },
+            kycVerifier: { select: { id: true, name: true, role: true } },
+        },
+        orderBy: [
+            { kycVerifiedAt: 'desc' },
+            { createdAt: 'desc' }
+        ]
+    });
+}
+
+/** Owner/Staff manually marks a booking as Physically KYC Verified from the log page */
+export async function markPhysicalKycVerified(bookingId: string) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error('Unauthorized');
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking) throw new Error('Booking not found');
+
+    const updated = await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+            kycVerified: true,
+            kycVerifiedAt: new Date(),
+            kycVerifiedBy: session.userId,
+        }
+    });
+
+    logAuditEvent({
+        actorId: session.userId,
+        actorRole: session.role as string,
+        actorName: session.name || 'Owner',
+        actionType: 'APPROVE',
+        entityType: 'BOOKING',
+        entityId: bookingId,
+        description: `Physical KYC manually marked as verified for ${booking.guestName} (Booking: ${booking.displayId}).`,
+        newValue: { kycVerified: true, kycVerifiedBy: session.userId }
+    });
+
+    revalidatePath('/dashboard/owner/verifications');
+    revalidatePath('/dashboard/staff/verifications');
+    revalidatePath('/dashboard/admin/verifications');
+    return updated;
+}
