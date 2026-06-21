@@ -20,7 +20,8 @@ import {
     getUserGrowthAnalytics,
     getBookingConversionAnalytics,
     getOnboardedProperties,
-    getOwnersWithProperties
+    getOwnersWithProperties,
+    getRecentPlatformActivity
 } from "@/actions/superAdmin";
 import { AdminPropertyDashboardView } from "@/components/dashboard/AdminPropertyDashboardView";
 import { SuperAdminKPIs } from "@/components/dashboard/SuperAdminKPIs";
@@ -32,6 +33,7 @@ export default function AdminDashboard() {
     const [userGrowth, setUserGrowth] = useState<any>(null);
     const [conversion, setConversion] = useState<any>(null);
     const [onboardedProperties, setOnboardedProperties] = useState<any[]>([]);
+    const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const searchParams = useSearchParams();
@@ -68,6 +70,7 @@ export default function AdminDashboard() {
                 const props = await getOnboardedProperties().catch(() => []);
                 setOnboardedProperties(props || []);
             } catch (e) {
+                // no-op — handled below
                 console.warn("User is not a Super Admin, limited dashboard access.", e);
                 // If snap failed, use basicStats data to fill the snapshot for the UI
                 snap = {
@@ -75,6 +78,10 @@ export default function AdminDashboard() {
                     user: basicStats.user
                 };
             }
+
+            // Fetch activity feed — available to all admins
+            const activity = await getRecentPlatformActivity(25).catch(() => []);
+            setRecentActivity(activity || []);
 
             setSnapshot(snap);
             setRevenueTrends(rev);
@@ -233,6 +240,7 @@ export default function AdminDashboard() {
                         userGrowth={userGrowth}
                         conversionAnalytics={conversion}
                         onboardedProperties={onboardedProperties}
+                        recentActivity={recentActivity}
                     />
                 </TabsContent>
 

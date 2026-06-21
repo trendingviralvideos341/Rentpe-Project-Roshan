@@ -702,3 +702,38 @@ export async function getAdminPropertyDashboard(propertyId: string) {
         recentTenants,
     };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  RECENT PLATFORM ACTIVITY — Latest audit log entries for the activity feed
+//  Accessible to ALL ADMIN roles (not just super admin)
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getRecentPlatformActivity(limit: number = 25) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const logs = await prisma.auditLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        select: {
+            id: true,
+            actorName: true,
+            actorRole: true,
+            actionType: true,
+            entityType: true,
+            entityName: true,
+            description: true,
+            createdAt: true,
+        },
+    });
+
+    return logs.map((log) => ({
+        id: log.id,
+        actorName: log.actorName,
+        actorRole: log.actorRole,
+        actionType: log.actionType,
+        entityType: log.entityType,
+        entityName: log.entityName ?? '',
+        description: log.description,
+        createdAt: log.createdAt.toISOString(),
+    }));
+}

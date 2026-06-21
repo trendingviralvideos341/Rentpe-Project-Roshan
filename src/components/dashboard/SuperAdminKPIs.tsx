@@ -8,16 +8,19 @@ import {
     TrendingUp, Users, Home, CreditCard, 
     AlertTriangle, Shield, CheckCircle2, 
     BarChart3, PieChart as PieChartIcon, 
-    ArrowUpRight, ArrowDownRight, Activity,
+    ArrowUpRight, Activity,
     Building2, MapPin, Star, Bed, DoorOpen,
     ChevronDown, Filter, UserCheck, IndianRupee,
-    Phone, Mail, Calendar, BadgeCheck
+    Phone, Mail, Calendar, BadgeCheck,
+    Clock, Zap, BellRing, FileWarning, UserPlus,
+    TrendingDown, Layers
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, 
     Tooltip, ResponsiveContainer, BarChart, Bar, 
-    PieChart, Pie, Cell, Legend 
+    PieChart, Pie, Cell, Legend, LineChart, Line
 } from "recharts";
+import { formatDistanceToNow } from "date-fns";
 
 interface SuperAdminKPIsProps {
     snapshot: any;
@@ -25,6 +28,7 @@ interface SuperAdminKPIsProps {
     userGrowth: any;
     conversionAnalytics: any;
     onboardedProperties?: any[];
+    recentActivity?: any[];
 }
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -50,7 +54,40 @@ const GENDER_LABELS: Record<string, string> = {
     COED: 'Co-Ed',
 };
 
-export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversionAnalytics, onboardedProperties = [] }: SuperAdminKPIsProps) {
+// Maps audit action types to human-readable labels + colours
+const ACTION_META: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+    USER_CREATED:       { label: 'New User Registered',    color: 'text-emerald-600', bg: 'bg-emerald-50',  icon: UserPlus },
+    BOOKING_CONFIRMED:  { label: 'Booking Confirmed',       color: 'text-indigo-600',  bg: 'bg-indigo-50',   icon: CheckCircle2 },
+    PROPERTY_APPROVED:  { label: 'Property Approved',       color: 'text-blue-600',    bg: 'bg-blue-50',     icon: Building2 },
+    PROPERTY_SUSPENDED: { label: 'Property Suspended',      color: 'text-red-600',     bg: 'bg-red-50',      icon: AlertTriangle },
+    DISPUTE_OPENED:     { label: 'Dispute Opened',          color: 'text-amber-600',   bg: 'bg-amber-50',    icon: FileWarning },
+    DISPUTE_RESOLVED:   { label: 'Dispute Resolved',        color: 'text-emerald-600', bg: 'bg-emerald-50',  icon: CheckCircle2 },
+    FRAUD_FLAGGED:      { label: 'Fraud Alert Flagged',     color: 'text-red-600',     bg: 'bg-red-50',      icon: Shield },
+    REVIEW_MODERATED:   { label: 'Review Moderated',        color: 'text-purple-600',  bg: 'bg-purple-50',   icon: Star },
+    PAYOUT_PROCESSED:   { label: 'Payout Processed',        color: 'text-teal-600',    bg: 'bg-teal-50',     icon: IndianRupee },
+    ROLE_UPGRADE:       { label: 'Role Upgraded',           color: 'text-violet-600',  bg: 'bg-violet-50',   icon: TrendingUp },
+};
+
+function getActionMeta(actionType: string) {
+    return ACTION_META[actionType] || { label: actionType.replace(/_/g, ' '), color: 'text-slate-600', bg: 'bg-slate-50', icon: Activity };
+}
+
+// Empty state placeholder component for charts
+function ChartEmptyState({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle: string }) {
+    return (
+        <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+            <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+                <Icon className="h-7 w-7 text-slate-300" />
+            </div>
+            <div>
+                <p className="text-sm font-black text-slate-500">{title}</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-[200px]">{subtitle}</p>
+            </div>
+        </div>
+    );
+}
+
+export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversionAnalytics, onboardedProperties = [], recentActivity = [] }: SuperAdminKPIsProps) {
     const safe = (val: any, fallback: any = 0) => val ?? fallback;
     const safeDiv = (a: any, b: any) => b ? Math.round((safe(a) / safe(b, 1)) * 100) : 0;
 
@@ -78,7 +115,47 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
 
     if (!snapshot) return null;
 
-    const healthStatus = safe(snapshot.revenue?.platformEarned) > 0 ? "EXCELLENT" : "STABLE";
+    // Derive data for empty-state detection
+    const hasRevenueData = (revenueTrends?.monthly ?? []).some((m: any) => (m.platformEarned ?? 0) > 0 || (m.grossVolume ?? 0) > 0);
+    const hasInventoryData = (safe(snapshot.inventory?.occupied) + safe(snapshot.inventory?.available) + safe(snapshot.inventory?.reserved) + safe(snapshot.inventory?.maintenance)) > 0;
+    const hasUserGrowthData = (userGrowth ?? []).length > 0;
+    const hasConversionData = (conversionAnalytics ?? []).length > 0;
+
+    // Pending actions derived from snapshot
+    const pendingActions = [
+        {
+            label: 'Open Disputes',
+            count: safe(snapshot.disputes?.open),
+            color: 'text-amber-600',
+            bg: 'bg-amber-50 border-amber-100',
+            icon: FileWarning,
+            urgent: safe(snapshot.disputes?.open) > 0,
+        },
+        {
+            label: 'Fraud Alerts',
+            count: safe(snapshot.fraud?.open),
+            color: 'text-red-600',
+            bg: 'bg-red-50 border-red-100',
+            icon: Shield,
+            urgent: safe(snapshot.fraud?.open) > 0,
+        },
+        {
+            label: 'Properties Pending',
+            count: Math.max(0, safe(snapshot.properties?.total) - safe(snapshot.properties?.live)),
+            color: 'text-indigo-600',
+            bg: 'bg-indigo-50 border-indigo-100',
+            icon: Building2,
+            urgent: false,
+        },
+        {
+            label: 'Support Tickets',
+            count: safe(snapshot.support?.tickets),
+            color: 'text-purple-600',
+            bg: 'bg-purple-50 border-purple-100',
+            icon: BellRing,
+            urgent: false,
+        },
+    ];
 
     return (
         <div className="space-y-8 pb-12">
@@ -96,9 +173,8 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         <div className="text-4xl font-black tracking-tight">₹{safe(snapshot.revenue?.platformEarned).toLocaleString('en-IN')}</div>
                         <div className="flex items-center gap-1.5 mt-3">
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
-                                <ArrowUpRight className="h-3 w-3" /> 18.5%
+                                <ArrowUpRight className="h-3 w-3" /> Total Earned
                             </div>
-                            <span className="text-[10px] font-bold text-indigo-100/60 uppercase tracking-tighter">vs Last Month</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -117,7 +193,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black text-white border border-white/20">
                                 <Activity className="h-3 w-3 text-emerald-200" /> STABLE
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-100/60 uppercase tracking-tighter">Live across {safe(snapshot.properties?.live)} PG Properties</span>
+                            <span className="text-[10px] font-bold text-emerald-100/60 uppercase tracking-tighter">Live across {safe(snapshot.properties?.live)} Properties</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -136,7 +212,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-700/50 backdrop-blur-md rounded-full text-[10px] font-black text-slate-300 border border-slate-700">
                                 <CheckCircle2 className="h-3 w-3 text-slate-400" /> {safe(snapshot.bookings?.confirmed)}
                             </div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Total confirmed bookings</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Confirmed bookings</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -154,7 +230,104 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                 </Card>
             </div>
 
-            {/* ── Visual Analytics ── */}
+            {/* ── Pending Actions + Activity Feed ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Pending Actions Panel */}
+                <Card className="lg:col-span-2 border-none shadow-xl bg-white overflow-hidden">
+                    <CardHeader className="border-b bg-gradient-to-r from-rose-50 to-amber-50 p-5">
+                        <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center">
+                                <Zap className="h-4 w-4 text-rose-600" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-sm font-black text-slate-800">Requires Your Attention</CardTitle>
+                                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Open action items</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-3">
+                        {pendingActions.map(({ label, count, color, bg, icon: Icon, urgent }) => (
+                            <div key={label} className={`flex items-center justify-between p-3 rounded-xl border ${bg} transition-all hover:scale-[1.01]`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${bg}`}>
+                                        <Icon className={`h-4 w-4 ${color}`} />
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700">{label}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {urgent && count > 0 && (
+                                        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    )}
+                                    <span className={`text-xl font-black ${color}`}>{count}</span>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="pt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between text-xs text-slate-400">
+                                <span className="font-bold uppercase tracking-widest">Total Users</span>
+                                <span className="font-black text-slate-700">{safe(snapshot.users?.total).toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
+                                <span className="font-bold uppercase tracking-widest">Attendance Today</span>
+                                <span className="font-black text-slate-700">{safe(snapshot.support?.attendanceToday)}</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Activity Feed */}
+                <Card className="lg:col-span-3 border-none shadow-xl bg-white overflow-hidden">
+                    <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-purple-50 p-5">
+                        <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-xl bg-indigo-100 flex items-center justify-center">
+                                <Clock className="h-4 w-4 text-indigo-600" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-sm font-black text-slate-800">Platform Activity Feed</CardTitle>
+                                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent events across the platform</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {recentActivity.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                                <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+                                    <Activity className="h-6 w-6 text-slate-300" />
+                                </div>
+                                <p className="text-sm font-black text-slate-500">No Activity Yet</p>
+                                <p className="text-xs text-slate-400 mt-1">Platform events will appear here as they happen — bookings, registrations, approvals, and more.</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-slate-50 max-h-[320px] overflow-y-auto">
+                                {recentActivity.map((item: any) => {
+                                    const meta = getActionMeta(item.actionType);
+                                    const Icon = meta.icon;
+                                    return (
+                                        <div key={item.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50/60 transition-colors">
+                                            <div className={`mt-0.5 h-7 w-7 rounded-lg ${meta.bg} flex items-center justify-center shrink-0`}>
+                                                <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-black text-slate-800 truncate">{item.description || meta.label}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[10px] text-slate-400 font-bold">{item.actorName}</span>
+                                                    <span className="text-[10px] text-slate-300">·</span>
+                                                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${meta.bg} ${meta.color}`}>{item.actorRole}</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[9px] text-slate-400 font-bold shrink-0 mt-1">
+                                                {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* ── Visual Analytics Row 1: Revenue + Inventory ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Revenue & Growth Chart */}
                 <Card className="lg:col-span-2 border-none shadow-xl bg-white">
@@ -168,26 +341,34 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardHeader>
                     <CardContent className="p-6">
-                        <div className="h-[300px] w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={revenueTrends?.monthly ?? []}>
-                                    <defs>
-                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} tickFormatter={(val) => `₹${val/1000}k`} />
-                                    <Tooltip 
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                                        labelStyle={{ fontWeight: 'black', marginBottom: '4px' }}
-                                    />
-                                    <Area type="monotone" dataKey="platformEarned" name="Net Revenue" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
-                                    <Area type="monotone" dataKey="grossVolume" name="Gross Volume" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" fill="transparent" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                        <div className="h-[280px] w-full mt-4">
+                            {hasRevenueData ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={revenueTrends?.monthly ?? []}>
+                                        <defs>
+                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
+                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} tickFormatter={(val) => `₹${val/1000}k`} />
+                                        <Tooltip 
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                            labelStyle={{ fontWeight: 'black', marginBottom: '4px' }}
+                                        />
+                                        <Area type="monotone" dataKey="platformEarned" name="Net Revenue" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
+                                        <Area type="monotone" dataKey="grossVolume" name="Gross Volume" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" fill="transparent" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ChartEmptyState
+                                    icon={TrendingUp}
+                                    title="No Revenue Data Yet"
+                                    subtitle="Revenue charts will populate once bookings start generating platform fees."
+                                />
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -204,39 +385,135 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardHeader>
                     <CardContent className="p-6 flex flex-col items-center">
-                        <div className="h-[250px] w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={[
-                                            { name: 'Occupied', value: safe(snapshot.inventory?.occupied) },
-                                            { name: 'Available', value: safe(snapshot.inventory?.available) },
-                                            { name: 'Reserved', value: safe(snapshot.inventory?.reserved) },
-                                            { name: 'Maintenance', value: safe(snapshot.inventory?.maintenance) },
-                                        ].filter(d => d.value > 0)}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={8}
-                                        dataKey="value"
-                                    >
-                                        {COLORS.map((color, index) => (
-                                            <Cell key={`cell-${index}`} fill={color} stroke="none" />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                        <div className="h-[220px] w-full mt-4">
+                            {hasInventoryData ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'Occupied', value: safe(snapshot.inventory?.occupied) },
+                                                { name: 'Available', value: safe(snapshot.inventory?.available) },
+                                                { name: 'Reserved', value: safe(snapshot.inventory?.reserved) },
+                                                { name: 'Maintenance', value: safe(snapshot.inventory?.maintenance) },
+                                            ].filter(d => d.value > 0)}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={8}
+                                            dataKey="value"
+                                        >
+                                            {COLORS.map((color, index) => (
+                                                <Cell key={`cell-${index}`} fill={color} stroke="none" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ChartEmptyState
+                                    icon={Bed}
+                                    title="No Bed Data Yet"
+                                    subtitle="Inventory breakdown will appear once rooms and beds are configured."
+                                />
+                            )}
                         </div>
-                        <div className="w-full mt-6 space-y-4">
+                        <div className="w-full mt-4 space-y-2">
                             <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-dotted">
                                 <span className="text-[10px] font-black uppercase text-slate-400">Occupancy Rate</span>
                                 <span className="text-sm font-black text-indigo-600">
                                     {safeDiv(snapshot.inventory?.occupied, snapshot.inventory?.beds)}%
                                 </span>
                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* ── Visual Analytics Row 2: User Growth + Conversion Funnel ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* User Growth Chart */}
+                <Card className="border-none shadow-xl bg-white">
+                    <CardHeader className="border-b bg-slate-50/50 p-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-lg font-black text-slate-800">User Growth</CardTitle>
+                                <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Students & Owners joining over time</CardDescription>
+                            </div>
+                            <Users className="h-5 w-5 text-emerald-500" />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <div className="h-[260px] w-full mt-2">
+                            {hasUserGrowthData ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={userGrowth ?? []}>
+                                        <defs>
+                                            <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
+                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} allowDecimals={false} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                            labelStyle={{ fontWeight: 'black', marginBottom: '4px' }}
+                                        />
+                                        <Legend verticalAlign="top" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', paddingBottom: '8px' }} />
+                                        <Line type="monotone" dataKey="newStudents" name="Students" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1', stroke: 'white', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="newOwners" name="Owners" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', stroke: 'white', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ChartEmptyState
+                                    icon={UserPlus}
+                                    title="No Growth Data Yet"
+                                    subtitle="User growth trends will appear as students and owners join the platform."
+                                />
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Booking Conversion Funnel */}
+                <Card className="border-none shadow-xl bg-white">
+                    <CardHeader className="border-b bg-slate-50/50 p-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-lg font-black text-slate-800">Booking Funnel</CardTitle>
+                                <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Requested → Accepted → Confirmed</CardDescription>
+                            </div>
+                            <Layers className="h-5 w-5 text-amber-500" />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <div className="h-[260px] w-full mt-2">
+                            {hasConversionData ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={conversionAnalytics ?? []} barCategoryGap="30%">
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} allowDecimals={false} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                            labelStyle={{ fontWeight: 'black', marginBottom: '4px' }}
+                                        />
+                                        <Legend verticalAlign="top" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', paddingBottom: '8px' }} />
+                                        <Bar dataKey="requested" name="Requested" fill="#e2e8f0" radius={[4,4,0,0]} />
+                                        <Bar dataKey="accepted" name="Accepted" fill="#818cf8" radius={[4,4,0,0]} />
+                                        <Bar dataKey="confirmed" name="Confirmed" fill="#6366f1" radius={[4,4,0,0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ChartEmptyState
+                                    icon={TrendingDown}
+                                    title="No Booking Data Yet"
+                                    subtitle="Booking conversion funnel will show as guests start making booking requests."
+                                />
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -284,17 +561,19 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
                             <ArrowUpRight className="h-4 w-4 text-amber-500" />
-                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-400">User Growth</CardTitle>
+                            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-400">User Base</CardTitle>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
                                 <div className="text-2xl font-black text-slate-800">{safe(snapshot.users?.total).toLocaleString()}</div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase">Registered Base</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Total Registered</p>
                             </div>
-                            <div className="text-right">
-                                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none text-[9px] font-bold">MoM +8%</Badge>
+                            <div className="text-right space-y-1">
+                                <div className="text-[9px] font-black text-slate-400">Students: <span className="text-indigo-600">{safe(snapshot.users?.students)}</span></div>
+                                <div className="text-[9px] font-black text-slate-400">Owners: <span className="text-emerald-600">{safe(snapshot.users?.owners)}</span></div>
+                                <div className="text-[9px] font-black text-slate-400">Admins: <span className="text-purple-600">{safe(snapshot.users?.admins)}</span></div>
                             </div>
                         </div>
                     </CardContent>
@@ -303,7 +582,6 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
 
             {/* ══════════════════════════════════════════════════════════════════════════
                 ONBOARDED PROPERTIES PANEL
-                Shows all LIVE / APPROVED properties with dropdown + type filter
             ══════════════════════════════════════════════════════════════════════════ */}
             <Card className="border-none shadow-2xl bg-white overflow-hidden">
                 {/* Header */}
@@ -609,12 +887,14 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                                 </div>
 
                                                 {/* Owner row */}
-                                                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <div className="h-6 w-6 rounded-lg bg-indigo-100 flex items-center justify-center font-black text-indigo-700 text-xs shrink-0">
+                                                <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
+                                                    <div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-600 text-xs shrink-0">
                                                         {prop.owner?.name?.charAt(0)?.toUpperCase() || 'O'}
                                                     </div>
-                                                    <span className="text-xs font-bold text-slate-600 truncate">{prop.owner?.name || 'Unknown Owner'}</span>
-                                                    <span className="ml-auto text-[10px] font-black text-indigo-500 group-hover:underline">View →</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-bold text-slate-600 truncate">{prop.owner?.name || 'Unknown Owner'}</p>
+                                                    </div>
+                                                    <Badge className="text-[9px] font-black bg-slate-100 text-slate-500 hover:bg-slate-100 border-none">Owner</Badge>
                                                 </div>
                                             </div>
                                         </div>
