@@ -1,11 +1,11 @@
 # Project Rules & Model Selection Guidelines
 
 ## Model Selection Rule
-At the start of every new task, the AI agent must explicitly ask:
+At the start of every task, the AI agent must explicitly ask:
 **"Which model for this — Flash or Pro+Claude?"**
-- Never assume the model.
-- Use Flash for routine tasks.
-- Use Pro/Claude for complex logic, security, and payments.
+- Never assume.
+- Use Gemini Flash for all routine tasks.
+- Use Pro/Claude only for complex logic, security, and payments.
 
 ## Codebase Modification Rules
 - Never rewrite entire files — only edit specific lines using targeted replacement.
