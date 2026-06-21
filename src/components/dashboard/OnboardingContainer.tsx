@@ -478,19 +478,6 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                                 </div>
                             ))}
 
-                            {/* Self Upload */}
-                            <div className="p-5 rounded-3xl bg-indigo-50/50 border-2 border-dashed border-indigo-200/50">
-                                <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4">MANAGER ACTIONS: QUICK UPLOAD</div>
-                                <div className="flex gap-2 items-center flex-wrap">
-                                    <select className="h-10 px-4 rounded-xl border-2 border-white bg-white font-bold text-xs outline-none focus:border-indigo-300 transition-all text-slate-700" value={uploadType} onChange={e => setUploadType(e.target.value)}>
-                                        {DOC_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t].split(' ')[1]}</option>)}
-                                    </select>
-                                    <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />
-                                    <Button size="sm" className="h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 px-6 text-[10px] tracking-widest uppercase shadow-lg shadow-indigo-100" onClick={() => fileRef.current?.click()} disabled={uploadingCount > 0}>
-                                        {uploadingCount > 0 ? "UPLOADING..." : "UPLOAD DOCUMENT"}
-                                    </Button>
-                                </div>
-                            </div>
                         </div>
                     )}
                 </div>
