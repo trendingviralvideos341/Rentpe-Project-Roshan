@@ -25,6 +25,7 @@ import { BookingFeeBreakdown } from "@/components/booking/BookingFeeBreakdown";
 import { toast } from "sonner";
 import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
+import { MyDepositSection } from "@/components/deposit/MyDepositSection";
 
 const TYPE_LABELS: Record<string, any> = {
     ID_PROOF: "ID Proof",
@@ -998,6 +999,10 @@ export default function StudentDashboardPage() {
                             </div>
                         );
                     })()}
+
+                    {/* ── Component 4: My Deposit Section ── */}
+                    <MyDepositSection />
+
                 </TabsContent>
 
                 <TabsContent value="bookings" className="space-y-6">

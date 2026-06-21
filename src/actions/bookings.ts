@@ -2088,6 +2088,22 @@ export async function completeVacate(bookingId: string) {
         }
     }
 
+    // ── COMPONENT 3: Set 15-day refund deadline on deposit (Rent Withholding Shield) ──
+    try {
+        const billingProfile = await prisma.billingProfile.findFirst({
+            where: { tenantId: tenant?.id },
+            select: { deposit: { select: { id: true, status: true } } }
+        });
+        if (billingProfile?.deposit?.id && billingProfile.deposit.status === 'PAID') {
+            const refundDueBy = new Date();
+            refundDueBy.setDate(refundDueBy.getDate() + 15); // 15-day grace period for owner
+            await (prisma as any).securityDeposit.update({
+                where: { id: billingProfile.deposit.id },
+                data: { refundDueBy }
+            });
+        }
+    } catch (e) { console.error('[REFUND DUE BY] Error setting refund deadline:', e); }
+
     // Notify owner
     try {
         await prisma.notification.create({

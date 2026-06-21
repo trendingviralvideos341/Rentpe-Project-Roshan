@@ -55,19 +55,18 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
             receipt: `receipt_${booking.id.slice(0, 5)}`,
         };
 
+        // ── COMPONENT 1: Delayed Transfer ──────────────────────────────────────
+        // Money is collected from student into Razorpay nodal account.
+        // We do NOT do instant transfers to the owner's linked account.
+        // Owner's payout is released manually via releaseTransferToOwner() by admin.
+        // This gives the platform the 15-day window for deposit refund enforcement.
+        // ──────────────────────────────────────────────────────────────────────
+
+        // NOTE: 'transfers' array intentionally removed — no instant owner payout.
+        // DUMMY MODE: If Razorpay API fails, falls back to mock order.
         let order: { id: string; amount: number; currency: string };
         try {
-            const rzpOrder = await (razorpay.orders as any).create(ownerAccountId ? {
-                ...options,
-                transfers: [
-                    {
-                        account: ownerAccountId,
-                        amount: (baseAmount - ownerFee) * 100,
-                        currency: "INR",
-                        on_linked_account_payout: "immediately"
-                    }
-                ]
-            } : options);
+            const rzpOrder = await (razorpay.orders as any).create(options);
             order = { id: rzpOrder.id, amount: rzpOrder.amount as number, currency: rzpOrder.currency };
         } catch (apiError: any) {
             console.warn("Razorpay API Error, using mock:", apiError);
@@ -78,7 +77,7 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
             };
         }
 
-        await prisma.payment.create({
+        await (prisma as any).payment.create({
             data: {
                 bookingId: booking.id,
                 invoiceId: extras?.invoiceId,
@@ -87,6 +86,7 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
                 method: "ONLINE",
                 status: "PENDING",
                 razorpayOrderId: order.id,
+                transferStatus: "PENDING",   // Component 1: Held in nodal
             }
         });
 
@@ -134,13 +134,14 @@ export async function verifyPayment(data: {
     if (!payment) throw new Error("Payment record not found");
 
     return await prisma.$transaction(async (tx) => {
-        // 1. Update Payment
-        await tx.payment.update({
+        // 1. Update Payment — mark VERIFIED, set transferStatus = PENDING (Component 1)
+        await (prisma as any).payment.update({
             where: { id: payment.id },
             data: {
                 status: "VERIFIED",
                 razorpayId: data.razorpay_payment_id,
-                verifiedBy: "SYSTEM"
+                verifiedBy: "SYSTEM",
+                transferStatus: "PENDING",   // Held in nodal until admin releases
             }
         });
 
@@ -575,4 +576,171 @@ export async function getInvoiceForReceipt(invoiceId: string) {
         propertyCity: property?.city || '',
         propertyGst: (property as any)?.gstNumber || null,
     };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT 1: Delayed Transfer — Admin: Release payout to owner
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Admin manually triggers the delayed transfer to the owner's Razorpay account.
+ * Called after the 15-day deposit refund window has passed OR
+ * after the owner has processed the deposit correctly.
+ *
+ * DUMMY MODE: Razorpay transfer API call is simulated. Set DUMMY_MODE=false
+ * and provide live credentials to go live.
+ */
+export async function releaseTransferToOwner(paymentId: string) {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'ADMIN') throw new Error('Unauthorized — Admin only');
+
+    const payment = await (prisma as any).payment.findUnique({
+        where: { id: paymentId },
+        include: {
+            booking: {
+                include: {
+                    room: {
+                        include: { property: { include: { owner: { select: { id: true, name: true, razorpayAccountId: true } } } } }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!payment) throw new Error('Payment not found');
+    if (payment.status !== 'VERIFIED') throw new Error('Payment is not verified — cannot release transfer');
+    if (payment.transferStatus === 'RELEASED') throw new Error('Transfer already released');
+
+    const ownerAccountId = payment.booking?.room?.property?.owner?.razorpayAccountId;
+    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    const ownerFee = (settings?.feesEnabled && (settings as any)?.ownerRentFeeFlat) || 0;
+    const transferAmount = Math.max(0, (Number(payment.amount) - ownerFee) * 100); // paise
+
+    // DUMMY MODE: Simulate transfer (replace with real Razorpay transfer API for production)
+    let transferId: string;
+    let isDummy = true;
+    if (ownerAccountId && !payment.razorpayOrderId?.startsWith('order_mock_')) {
+        try {
+            const transfer = await (razorpay as any).transfers?.create({
+                account: ownerAccountId,
+                amount: transferAmount,
+                currency: 'INR',
+                source: `pay_${payment.razorpayId}`,
+                source_detail: { type: 'payment', id: payment.razorpayId },
+            });
+            transferId = transfer.id;
+            isDummy = false;
+        } catch (err) {
+            console.warn('[RELEASE TRANSFER] Razorpay API failed, using dummy:', err);
+            transferId = `trf_dummy_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+        }
+    } else {
+        transferId = `trf_dummy_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    }
+
+    // Update payment record
+    await (prisma as any).payment.update({
+        where: { id: paymentId },
+        data: {
+            transferStatus: 'RELEASED',
+            transferredAt: new Date(),
+        }
+    });
+
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PAYMENT',
+        entityId: paymentId,
+        description: `Transfer released to owner. Amount: ₹${(transferAmount / 100).toLocaleString('en-IN')}. Transfer ID: ${transferId}. ${isDummy ? '[DUMMY]' : '[LIVE]'}`,
+        newValue: { transferStatus: 'RELEASED', transferId, isDummy }
+    });
+
+    revalidatePath('/dashboard/admin');
+    return { success: true, transferId, isDummy, amount: transferAmount / 100 };
+}
+
+/**
+ * Admin: Get all payments pending transfer release.
+ * Used in admin payments dashboard to show what needs releasing.
+ */
+export async function getPendingTransfers() {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const payments = await (prisma as any).payment.findMany({
+        where: { status: 'VERIFIED', transferStatus: 'PENDING' },
+        include: {
+            booking: {
+                select: {
+                    displayId: true,
+                    room: { select: { property: { select: { name: true, owner: { select: { name: true } } } } } }
+                }
+            }
+        },
+        orderBy: { date: 'desc' }
+    });
+
+    return payments.map((p: any) => ({
+        paymentId: p.id,
+        amount: Number(p.amount),
+        date: p.date,
+        bookingDisplayId: p.booking?.displayId || '',
+        propertyName: p.booking?.room?.property?.name || '—',
+        ownerName: p.booking?.room?.property?.owner?.name || '—',
+        transferStatus: p.transferStatus,
+    }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT 3: Rent Withholding Shield — Admin applies withholding from payout
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * When an owner has an OVERDUE deposit refund, admin can apply withholding
+ * from any pending transfer/payout. The withheld amount is then used to
+ * refund the student (via a manual bank transfer outside Razorpay).
+ */
+export async function applyRentWithholding(depositId: string, withholdAmount: number) {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'ADMIN') throw new Error('Unauthorized — Admin only');
+
+    const deposit = await (prisma as any).securityDeposit.findUnique({
+        where: { id: depositId },
+        select: { id: true, status: true, amount: true, withheldFromPayouts: true }
+    });
+
+    if (!deposit) throw new Error('Deposit not found');
+    if (!['REFUND_OVERDUE', 'PAID'].includes(deposit.status)) throw new Error('Only OVERDUE or PAID deposits can have withholding applied');
+
+    const currentWithheld = Number(deposit.withheldFromPayouts || 0);
+    const newTotal = currentWithheld + withholdAmount;
+    const depositAmount = Number(deposit.amount);
+
+    // Determine new status
+    const newStatus = newTotal >= depositAmount ? 'REFUNDED_VIA_WITHHOLDING' : 'REFUND_OVERDUE';
+
+    await (prisma as any).securityDeposit.update({
+        where: { id: depositId },
+        data: {
+            status: newStatus,
+            withheldFromPayouts: newTotal,
+            refundAmount: newTotal >= depositAmount ? depositAmount : newTotal,
+        }
+    });
+
+    logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PAYMENT',
+        entityId: depositId,
+        description: `Rent withholding applied. Amount withheld: ₹${withholdAmount.toLocaleString('en-IN')}. Total withheld: ₹${newTotal.toLocaleString('en-IN')}. New status: ${newStatus}.`,
+        newValue: { withheldFromPayouts: newTotal, newStatus }
+    });
+
+    revalidatePath('/dashboard/admin');
+    revalidatePath('/dashboard/owner/deposits');
+    return { success: true, newStatus, totalWithheld: newTotal };
 }

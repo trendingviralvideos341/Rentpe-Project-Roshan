@@ -499,36 +499,172 @@ export async function getOwnerDeposits() {
     };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT 2: Move-Out Settlement Wizard — Enhanced updateDepositStatus
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SettlementDeductions {
+    damages: number;        // Room damage deductions (walls, floor, furniture, etc.)
+    utilities: number;      // Unpaid utility charges
+    unpaidRent: number;     // Unpaid rent arrears (auto-calculated from invoices)
+    noticePeriod: number;   // Notice period default penalty
+    other: number;          // Any other deductions
+    notes: string;          // Owner's notes
+}
+
+export async function processDepositSettlement(
+    depositId: string,
+    action: 'REFUNDED' | 'FORFEITED' | 'PARTIALLY_REFUNDED',
+    deductions: SettlementDeductions
+) {
+    const { userId, user: actorUser } = await getOwnerSession();
+
+    // Fetch the deposit with tenant info for email notification
+    const deposit = await prisma.securityDeposit.findUnique({
+        where: { id: depositId },
+        include: {
+            billingProfile: {
+                include: {
+                    tenant: {
+                        select: { name: true, email: true, phone: true, roomNumber: true }
+                    },
+                    invoices: {
+                        where: { status: { not: 'PAID' } },
+                        select: { id: true, amount: true, paidAmount: true, month: true }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!deposit) throw new Error('Deposit record not found');
+
+    // Calculate total deductions
+    const totalDeductions = (deductions.damages || 0)
+        + (deductions.utilities || 0)
+        + (deductions.unpaidRent || 0)
+        + (deductions.noticePeriod || 0)
+        + (deductions.other || 0);
+
+    const depositAmount = Number(deposit.amount);
+    const refundAmount = Math.max(0, depositAmount - totalDeductions);
+
+    // Determine final status
+    let finalStatus: string = action;
+    if (action === 'REFUNDED' && totalDeductions > 0) {
+        finalStatus = refundAmount > 0 ? 'PARTIALLY_REFUNDED' : 'FORFEITED';
+    }
+
+    const tenant = deposit.billingProfile?.tenant;
+    const actorName = actorUser?.name || 'Owner';
+    const actorRole = actorUser?.parentOwnerId ? 'STAFF' : 'OWNER';
+
+    // Build deductionReason summary string
+    const deductionLines: string[] = [];
+    if (deductions.damages > 0) deductionLines.push(`Room Damages: ₹${deductions.damages.toLocaleString('en-IN')}`);
+    if (deductions.utilities > 0) deductionLines.push(`Unpaid Utilities: ₹${deductions.utilities.toLocaleString('en-IN')}`);
+    if (deductions.unpaidRent > 0) deductionLines.push(`Unpaid Rent: ₹${deductions.unpaidRent.toLocaleString('en-IN')}`);
+    if (deductions.noticePeriod > 0) deductionLines.push(`Notice Period Default: ₹${deductions.noticePeriod.toLocaleString('en-IN')}`);
+    if (deductions.other > 0) deductionLines.push(`Other: ₹${deductions.other.toLocaleString('en-IN')}`);
+    const deductionSummary = deductionLines.join(', ') || 'None';
+
+    // Update the deposit record with structured deductions
+    await (prisma as any).securityDeposit.update({
+        where: { id: depositId },
+        data: {
+            status: finalStatus,
+            refundAmount,
+            deductionAmount: totalDeductions,
+            deductionReason: deductionSummary + (deductions.notes ? ` — Notes: ${deductions.notes}` : ''),
+            deductionDamages: deductions.damages || 0,
+            deductionUtilities: deductions.utilities || 0,
+            deductionRent: deductions.unpaidRent || 0,
+            deductionNotice: deductions.noticePeriod || 0,
+            deductionOther: deductions.other || 0,
+            settlementNotes: deductions.notes || null,
+            settlementDate: new Date(),
+            refundDueBy: null,
+        }
+    });
+
+    // ── Send settlement email to tenant ──────────────────────────────────────
+    if (tenant?.email) {
+        const fmtAmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+        sendEmail({
+            to: tenant.email,
+            subject: `🏠 Security Deposit Settlement — RentPe`,
+            html: `
+            <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+              <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:28px 24px;text-align:center;">
+                <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;">🏠 RentPe</h1>
+                <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">Security Deposit Settlement Notice</p>
+              </div>
+              <div style="padding:28px 24px;">
+                <p style="color:#374151;font-size:15px;margin:0 0 8px;">Hi <strong>${tenant.name || 'there'}</strong>,</p>
+                <p style="color:#6b7280;font-size:14px;margin:0 0 20px;">Your security deposit has been settled. Here is the full breakdown:</p>
+                <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:20px;">
+                  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                    <tr><td style="padding:6px 0;color:#6b7280;">Original Deposit</td><td style="text-align:right;font-weight:700;color:#1f2937;">${fmtAmt(depositAmount)}</td></tr>
+                    ${deductions.damages > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Room Damage Deductions</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.damages)}</td></tr>` : ''}
+                    ${deductions.utilities > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Unpaid Utilities</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.utilities)}</td></tr>` : ''}
+                    ${deductions.unpaidRent > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Unpaid Rent Arrears</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.unpaidRent)}</td></tr>` : ''}
+                    ${deductions.noticePeriod > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Notice Period Default</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.noticePeriod)}</td></tr>` : ''}
+                    ${deductions.other > 0 ? `<tr><td style="padding:6px 0;color:#ef4444;">− Other Deductions</td><td style="text-align:right;color:#ef4444;font-weight:600;">${fmtAmt(deductions.other)}</td></tr>` : ''}
+                    <tr style="border-top:2px solid #e2e8f0;">
+                      <td style="padding:12px 0 0;font-weight:800;color:#059669;font-size:16px;">Refund Amount</td>
+                      <td style="text-align:right;font-weight:800;color:#059669;font-size:16px;padding-top:12px;">${fmtAmt(refundAmount)}</td>
+                    </tr>
+                  </table>
+                </div>
+                ${deductions.notes ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;"><p style="color:#92400e;font-size:13px;margin:0;"><strong>Owner's Note:</strong> ${deductions.notes}</p></div>` : ''}
+                <p style="color:#6b7280;font-size:13px;">If you believe there is an error, raise a dispute from your student dashboard within 15 days.</p>
+                <a href="https://rentpe.in/dashboard/student" style="display:inline-block;background:#6366f1;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">View My Deposit Status →</a>
+              </div>
+              <div style="border-top:1px solid #f1f5f9;padding:16px 24px;text-align:center;">
+                <p style="color:#d1d5db;font-size:11px;margin:0;">© 2025 RentPe · India's Trusted PG & Hostel Platform · support@rentpe.in</p>
+              </div>
+            </div>`
+        }).catch(err => console.error('[SETTLEMENT EMAIL] Failed:', err));
+    }
+
+    logAuditEvent({
+        actorId: userId,
+        actorRole,
+        actorName,
+        actionType: 'UPDATE',
+        entityType: 'PAYMENT',
+        entityId: depositId,
+        description: `Settlement processed: ${finalStatus}. Deposit: ₹${depositAmount}. Deductions: ${deductionSummary}. Refund: ₹${refundAmount}.`,
+        newValue: { status: finalStatus, refundAmount, totalDeductions },
+    });
+
+    revalidatePath('/dashboard/owner/deposits');
+    return { success: true, finalStatus, refundAmount, totalDeductions };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT 2 (Legacy): updateDepositStatus — wraps processDepositSettlement
+// Kept for backward compat with old Refund/Forfeit button
+// ─────────────────────────────────────────────────────────────────────────────
 export async function updateDepositStatus(
     depositId: string,
     action: 'REFUNDED' | 'FORFEITED' | 'PARTIALLY_REFUNDED',
     data: { refundAmount?: number; reason?: string }
 ) {
-    const { userId, user: actorUser } = await getOwnerSession();
+    // For simple refund: treat the shortfall as "other" deduction
+    const deposit = await (prisma as any).securityDeposit.findUnique({ where: { id: depositId }, select: { amount: true } });
+    const depositAmount = Number(deposit?.amount || 0);
+    const refundAmt = data.refundAmount !== undefined ? data.refundAmount : depositAmount;
+    const otherDeduction = Math.max(0, depositAmount - refundAmt);
 
-    await prisma.securityDeposit.update({
-        where: { id: depositId },
-        data: {
-            status: action,
-            refundAmount: data.refundAmount,
-            deductionReason: data.reason,
-            deductionAmount: action === 'FORFEITED' ? undefined : undefined,
-        }
+    return processDepositSettlement(depositId, action, {
+        damages: 0, utilities: 0, unpaidRent: 0, noticePeriod: 0,
+        other: otherDeduction,
+        notes: data.reason || '',
     });
-
-    logAuditEvent({
-        actorId: userId,
-        actorRole: actorUser?.parentOwnerId ? 'STAFF' : 'OWNER',
-        actorName: actorUser?.name || 'Owner',
-        actionType: 'UPDATE',
-        entityType: 'PAYMENT',
-        entityId: depositId,
-        description: `Security deposit ${action}. Refund: ₹${data.refundAmount || 0}. Reason: ${data.reason || 'None'}`,
-    });
-
-    revalidatePath('/dashboard/owner/deposits');
-    return { success: true };
 }
+
+
 
 // ────────────────────────────────────────────────────────
 // TASK 5 — BULK INVOICE GENERATION
@@ -768,4 +904,206 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
         .map(([, v]) => v);
 
     return { perProperty, monthly, properties };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT 3: Rent Withholding Shield — Compliance Checker & Overdue Counter
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Scans all deposits with status=PAID where refundDueBy < now.
+ * Flags them as REFUND_OVERDUE and sends admin notification.
+ * Called by: admin cron job or manual admin trigger.
+ */
+export async function checkDepositRefundCompliance() {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+    if ((session as any).role !== 'ADMIN') throw new Error('Forbidden: Admin only');
+
+    const now = new Date();
+    const overdueDeposits = await (prisma as any).securityDeposit.findMany({
+        where: { status: 'PAID', refundDueBy: { lt: now } },
+        include: {
+            billingProfile: {
+                include: { tenant: { select: { name: true, email: true } } }
+            }
+        }
+    });
+
+    const results: { depositId: string; tenantName: string; status: string }[] = [];
+
+    for (const dep of overdueDeposits) {
+        try {
+            await (prisma as any).securityDeposit.update({
+                where: { id: dep.id },
+                data: { status: 'REFUND_OVERDUE', escalatedAt: now }
+            });
+            await prisma.notification.create({
+                data: {
+                    userId: (session as any).userId,
+                    type: 'PAYMENT',
+                    category: 'SYSTEM_ALERT',
+                    message: `⚠️ Deposit refund OVERDUE for ${dep.billingProfile?.tenant?.name || 'Tenant'}. ID: ${dep.id}. Rent withholding will activate on next payout.`,
+                    isPersistent: true,
+                }
+            }).catch(() => {});
+            logAuditEvent({
+                actorId: (session as any).userId,
+                actorRole: 'ADMIN',
+                actorName: 'System Auto-Compliance',
+                actionType: 'UPDATE',
+                entityType: 'PAYMENT',
+                entityId: dep.id,
+                description: `Deposit OVERDUE — escalated. Tenant: ${dep.billingProfile?.tenant?.name}. Was due: ${dep.refundDueBy}`,
+                newValue: { status: 'REFUND_OVERDUE', escalatedAt: now }
+            });
+            results.push({ depositId: dep.id, tenantName: dep.billingProfile?.tenant?.name || 'Unknown', status: 'ESCALATED' });
+        } catch (err) {
+            results.push({ depositId: dep.id, tenantName: dep.billingProfile?.tenant?.name || 'Unknown', status: 'ERROR' });
+            console.error('[COMPLIANCE CHECK] Error for deposit:', dep.id, err);
+        }
+    }
+
+    revalidatePath('/dashboard/owner/deposits');
+    revalidatePath('/dashboard/admin');
+    return { processed: overdueDeposits.length, results };
+}
+
+/**
+ * Get count of REFUND_OVERDUE deposits for the current owner.
+ * Used to show/hide the warning banner on owner dashboard.
+ */
+export async function getOwnerOverdueDepositCount() {
+    try {
+        const { properties } = await getOwnerSession();
+        const propertyIds = properties.map((p: any) => p.id);
+
+        const profiles = await prisma.billingProfile.findMany({
+            where: { propertyId: { in: propertyIds } },
+            select: {
+                deposit: {
+                    select: { id: true, status: true, amount: true, refundDueBy: true }
+                },
+                tenant: { select: { name: true, roomNumber: true } }
+            }
+        });
+
+        const overdueDeposits = profiles
+            .filter((p: any) => p.deposit?.status === 'REFUND_OVERDUE')
+            .map((p: any) => ({
+                depositId: p.deposit?.id,
+                amount: Number(p.deposit?.amount || 0),
+                refundDueBy: p.deposit?.refundDueBy,
+                tenantName: p.tenant?.name || 'Unknown',
+                roomNumber: p.tenant?.roomNumber || '',
+            }));
+
+        return {
+            count: overdueDeposits.length,
+            totalAmount: overdueDeposits.reduce((s: number, d: any) => s + d.amount, 0),
+            deposits: overdueDeposits,
+        };
+    } catch {
+        return { count: 0, totalAmount: 0, deposits: [] };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT 4 (Student Side): Get My Deposit Status
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Student-facing: Returns their security deposit status, settlement breakdown,
+ * refund timeline, days remaining, and any active disputes.
+ */
+export async function getMyDepositStatus() {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+    const userId = (session as any).userId;
+
+    // Find email from user
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user?.email) return null;
+
+    // Find tenant by email
+    const tenant = await prisma.tenant.findFirst({
+        where: { email: user.email },
+        include: {
+            billingProfile: {
+                include: {
+                    deposit: {
+                        select: {
+                            id: true, amount: true, status: true,
+                            paidAt: true, refundAmount: true,
+                            deductionAmount: true, deductionReason: true,
+                            deductionDamages: true as any, deductionUtilities: true as any,
+                            deductionRent: true as any, deductionNotice: true as any,
+                            deductionOther: true as any, settlementNotes: true as any,
+                            settlementDate: true as any, refundDueBy: true as any,
+                            escalatedAt: true as any,
+                        }
+                    }
+                }
+            },
+            property: { select: { name: true } }
+        }
+    });
+
+    if (!tenant || !tenant.billingProfile?.deposit) return null;
+
+    const dep = tenant.billingProfile.deposit as any;
+    const now = new Date();
+
+    // Calculate days remaining until refundDueBy
+    let daysRemaining: number | null = null;
+    let isOverdue = false;
+    if (dep.refundDueBy) {
+        const due = new Date(dep.refundDueBy);
+        const diff = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        daysRemaining = diff;
+        isOverdue = diff < 0;
+    }
+
+    // Check for active dispute
+    const activeDispute = await (prisma as any).dispute.findFirst({
+        where: {
+            tenantId: tenant.id,
+            type: 'DEPOSIT_DISPUTE',
+            status: { in: ['OPEN', 'IN_REVIEW', 'ESCALATED'] }
+        },
+        select: { id: true, displayId: true, status: true, createdAt: true, resolution: true }
+    });
+
+    // Determine if student can raise a dispute:
+    // - Booking completed AND deposit not yet refunded AND status is PAID or REFUND_OVERDUE
+    const canRaiseDispute = ['PAID', 'REFUND_OVERDUE'].includes(dep.status)
+        && tenant.status === 'Checked Out'
+        && !activeDispute;
+
+    return {
+        depositId: dep.id,
+        depositAmount: Number(dep.amount),
+        status: dep.status,
+        paidAt: dep.paidAt,
+        refundAmount: dep.refundAmount !== null ? Number(dep.refundAmount) : null,
+        deductionAmount: dep.deductionAmount !== null ? Number(dep.deductionAmount) : null,
+        deductionReason: dep.deductionReason,
+        deductionBreakdown: {
+            damages: Number(dep.deductionDamages || 0),
+            utilities: Number(dep.deductionUtilities || 0),
+            unpaidRent: Number(dep.deductionRent || 0),
+            noticePeriod: Number(dep.deductionNotice || 0),
+            other: Number(dep.deductionOther || 0),
+        },
+        settlementNotes: dep.settlementNotes,
+        settlementDate: dep.settlementDate,
+        refundDueBy: dep.refundDueBy,
+        daysRemaining,
+        isOverdue,
+        propertyName: tenant.property?.name || '',
+        roomNumber: tenant.roomNumber || '',
+        tenantStatus: tenant.status,
+        activeDispute,
+        canRaiseDispute,
+    };
 }

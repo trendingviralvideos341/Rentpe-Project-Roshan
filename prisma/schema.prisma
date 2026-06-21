@@ -440,20 +440,33 @@ model RentInvoice {
 
 
 model SecurityDeposit {
-  id               String         @id @default(uuid())
-  billingProfileId String         @unique
-  tenantId         String
-  amount           Float
-  status           String         @default("PENDING")
-  paidAt           DateTime?
-  refundStatus     String?
-  refundAmount     Float?
-  deductionAmount  Float?
-  deductionReason  String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  payments         Payment[]      @relation("DepositPayments")
-  billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
+  id                  String         @id @default(uuid())
+  billingProfileId    String         @unique
+  tenantId            String
+  amount              Float
+  status              String         @default("PENDING")
+  // status values: PENDING | PAID | REFUND_PENDING | REFUNDED | PARTIALLY_REFUNDED | FORFEITED | REFUND_OVERDUE | REFUNDED_VIA_WITHHOLDING
+  paidAt              DateTime?
+  refundStatus        String?
+  refundAmount        Float?
+  deductionAmount     Float?
+  deductionReason     String?
+  // ── Structured deductions from Settlement Wizard (Component 2) ──
+  deductionDamages    Float?         // Room damage deductions
+  deductionUtilities  Float?         // Unpaid utility charges
+  deductionRent       Float?         // Unpaid rent arrears
+  deductionNotice     Float?         // Notice period default
+  deductionOther      Float?         // Any other deductions
+  settlementNotes     String?        // Owner's notes during settlement
+  settlementDate      DateTime?      // When settlement wizard was completed
+  // ── Rent Withholding Shield (Component 3) ──
+  refundDueBy         DateTime?      // 15 days after checkout (deadline for owner to process)
+  escalatedAt         DateTime?      // When overdue auto-escalation kicked in
+  withheldFromPayouts Float?         // Running total withheld from owner payouts
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  payments            Payment[]      @relation("DepositPayments")
+  billingProfile      BillingProfile @relation(fields: [billingProfileId], references: [id])
 }
 
 model SettlementRecord {
@@ -561,6 +574,10 @@ model Payment {
   razorpayId      String?
   verifiedBy      String?
   date            DateTime         @default(now())
+  // ── Delayed Transfer (Component 1) ──
+  // transferStatus: PENDING (money held in Razorpay nodal) | RELEASED (sent to owner) | REFUNDED (sent back to student)
+  transferStatus  String           @default("PENDING")
+  transferredAt   DateTime?        // When the delayed transfer to owner was released
   booking         Booking          @relation(fields: [bookingId], references: [id])
   deposit         SecurityDeposit? @relation("DepositPayments", fields: [depositId], references: [id])
   invoice         RentInvoice?     @relation("InvoicePayments", fields: [invoiceId], references: [id])
