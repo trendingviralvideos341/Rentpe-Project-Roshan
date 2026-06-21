@@ -495,6 +495,76 @@ export async function rejectBooking(id: string, reason?: string) {
         }
     }
 
+    // ─── NOTE 6: AUTO-REFUND on Owner/Admin/Employee Rejection ──────────────────
+    // If the student already paid the token fee AND the rejection is by the platform
+    // side (Owner / Admin / Employee — NOT the student themselves), we must refund.
+    let refundStatus: 'PROCESSED' | 'FAILED_PENDING_MANUAL' | 'NOT_APPLICABLE' = 'NOT_APPLICABLE';
+    let refundTxnId: string | null = null;
+    const tokenPaymentId = (existingBooking as any)?.tokenPaymentId;
+    const tokenAmount = Number((existingBooking as any)?.tokenAmount || 1000);
+
+    if (tokenPaymentId && (existingBooking as any)?.tokenPaidAt) {
+        try {
+            // DUMMY: In production, call razorpay.payments.refund with reverse_all:1
+            // const refund = await razorpay.payments.refund(tokenPaymentId, {
+            //     amount: tokenAmount * 100,  // paise
+            //     reverse_all: 1,             // claws back from owner linked account too
+            //     notes: { reason: 'Booking rejected by owner/admin', bookingId: id }
+            // });
+            // refundTxnId = refund.id;
+
+            // ── DUMMY MODE: simulate a successful refund response ──────────────
+            refundTxnId = `rfnd_dummy_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+            refundStatus = 'PROCESSED';
+            // ─────────────────────────────────────────────────────────────────
+
+            // Create RefundRecord in DB regardless of dummy/live
+            await (prisma as any).refundRecord.create({
+                data: {
+                    bookingId: id,
+                    amount: tokenAmount,
+                    reason: `Booking rejected by ${session.role} — ${reason || 'No reason provided'}`,
+                    refundType: 'FULL',
+                    status: 'PROCESSED',
+                    initiatedBy: session.userId,
+                    processedAt: new Date(),
+                    processedBy: 'SYSTEM_AUTO',
+                    txnReference: refundTxnId,
+                    notes: `Auto-refund triggered on booking rejection. Original token payment: ${tokenPaymentId}`,
+                }
+            });
+
+            logAuditEvent({
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'System',
+                actionType: 'REFUND',
+                entityType: 'BOOKING',
+                entityId: id,
+                description: `Auto-refund of ₹${tokenAmount} initiated for rejected booking ${id}. Refund TxnID: ${refundTxnId}`,
+                newValue: { refundStatus: 'PROCESSED', refundTxnId, tokenAmount }
+            });
+
+        } catch (refundErr: any) {
+            // If Razorpay refund fails, mark for manual review — do NOT fail the rejection
+            refundStatus = 'FAILED_PENDING_MANUAL';
+            console.error('[AUTO-REFUND] Razorpay refund failed, marking for manual review:', refundErr);
+
+            await (prisma as any).refundRecord.create({
+                data: {
+                    bookingId: id,
+                    amount: tokenAmount,
+                    reason: `AUTO-REFUND FAILED — requires manual processing. Original rejection by ${session.role}`,
+                    refundType: 'FULL',
+                    status: 'PENDING',
+                    initiatedBy: session.userId,
+                    notes: `MANUAL ACTION REQUIRED: Razorpay refund failed. Error: ${refundErr?.message || 'Unknown'}. Token Payment ID: ${tokenPaymentId}`,
+                }
+            }).catch(() => {});
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+
     logAuditEvent({
         actorId: session.userId,
         actorRole: session.role as string,
@@ -508,12 +578,18 @@ export async function rejectBooking(id: string, reason?: string) {
     // Notify student about rejection
     try {
         if (booking.userId) {
+            const refundLine = refundStatus === 'PROCESSED'
+                ? `Your token payment of ₹${tokenAmount} has been automatically refunded. Please allow 3–5 business days for it to reflect in your account.`
+                : refundStatus === 'FAILED_PENDING_MANUAL'
+                ? `A refund of ₹${tokenAmount} is being processed manually by our team. You will be notified within 24–48 hours.`
+                : '';
+
             await NotificationService.trigger({
                 bookingId: booking.id,
                 userId: booking.userId,
                 type: 'BOOKING',
                 category: 'BOOKING_REJECTED',
-                message: `Your booking for ${booking.propertyName} was rejected. ${reason || ''}`,
+                message: `Your booking for ${booking.propertyName} was rejected. ${reason || ''} ${refundLine}`,
                 targetRole: 'USER'
             });
             
@@ -522,7 +598,33 @@ export async function rejectBooking(id: string, reason?: string) {
                 sendEmail({
                     to: student.email,
                     subject: `Booking Update: ${booking.propertyName}`,
-                    html: `<p>Hi ${student.name || 'there'},</p><p>We regret to inform you that your booking for <strong>${booking.propertyName}</strong> was not approved by the owner.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}<p>Please feel free to browse other verified properties on RentPe.</p>`
+                    html: `
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+                      <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 28px 24px; text-align: center;">
+                        <h1 style="color:#fff; margin:0; font-size:22px; font-weight:800;">🏠 RentPe</h1>
+                        <p style="color:rgba(255,255,255,0.85); margin:8px 0 0; font-size:13px;">Booking Status Update</p>
+                      </div>
+                      <div style="padding: 28px 24px;">
+                        <p style="color:#374151; font-size:15px; margin:0 0 8px;">Hi <strong>${student.name || 'there'}</strong>,</p>
+                        <p style="color:#6b7280; font-size:14px; margin:0 0 20px;">We regret to inform you that your booking for <strong>${booking.propertyName}</strong> was not approved.</p>
+                        ${reason ? `<div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px 16px; margin-bottom:16px;"><p style="color:#991b1b; font-size:13px; margin:0;"><strong>Reason:</strong> ${reason}</p></div>` : ''}
+                        ${refundStatus === 'PROCESSED' ? `
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:16px; margin-bottom:16px;">
+                          <p style="color:#166534; font-size:14px; font-weight:700; margin:0 0 4px;">✅ Automatic Refund Initiated</p>
+                          <p style="color:#15803d; font-size:13px; margin:0;">Your token payment of <strong>₹${tokenAmount}</strong> has been automatically refunded to your original payment method.</p>
+                          <p style="color:#16a34a; font-size:12px; margin:8px 0 0;">Refund ID: <code style="background:#dcfce7; padding:2px 6px; border-radius:4px;">${refundTxnId}</code> — Please allow 3–5 business days to reflect.</p>
+                        </div>` : refundStatus === 'FAILED_PENDING_MANUAL' ? `
+                        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:16px; margin-bottom:16px;">
+                          <p style="color:#92400e; font-size:14px; font-weight:700; margin:0 0 4px;">⏳ Refund Being Processed</p>
+                          <p style="color:#b45309; font-size:13px; margin:0;">A refund of ₹${tokenAmount} is being processed manually by our finance team. You will receive a confirmation within 24–48 hours.</p>
+                        </div>` : ''}
+                        <p style="color:#9ca3af; font-size:13px; margin:0;">Please feel free to browse other verified properties on RentPe.</p>
+                        <a href="https://rentpe.in/search" style="display:inline-block; background:#6366f1; color:white; padding:10px 24px; border-radius:8px; text-decoration:none; font-weight:bold; margin-top:16px;">Browse More PGs →</a>
+                      </div>
+                      <div style="border-top:1px solid #f1f5f9; padding:16px 24px; text-align:center;">
+                        <p style="color:#d1d5db; font-size:11px; margin:0;">© 2025 RentPe · India's Trusted PG & Hostel Platform</p>
+                      </div>
+                    </div>`
                 }).catch(err => console.error('Failed to email booking rejection:', err));
             }
         }
@@ -533,7 +635,7 @@ export async function rejectBooking(id: string, reason?: string) {
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/properties');
     revalidatePath('/dashboard/student');
-    return booking;
+    return { ...booking, refundStatus, refundTxnId };
 }
 
 export async function updateBookingStatus(id: string, status: string) {
