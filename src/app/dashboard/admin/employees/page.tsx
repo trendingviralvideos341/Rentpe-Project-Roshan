@@ -131,7 +131,7 @@ export default function AdminEmployeesPage() {
                                                 <div>
                                                     <div className="flex items-center gap-3 flex-wrap">
                                                         <h3 className="text-2xl font-black tracking-tight">{emp.name}</h3>
-                                                        <span className="font-mono text-[11px] bg-primary/10 text-primary px-3 py-1 rounded-lg border-2 border-primary/10 font-black tracking-widest uppercase shadow-sm">🆔 {emp.displayId}</span>
+                                                        <span className="font-mono text-[11px] bg-primary/10 text-primary px-3 py-1 rounded-lg border-2 border-primary/10 font-black tracking-widest uppercase shadow-sm">ID: {emp.displayId}</span>
                                                         <Badge variant={emp.status === 'ACTIVE' ? 'default' : 'destructive'} className="font-black h-6 px-3 rounded-full text-[10px] uppercase">
                                                             {emp.status}
                                                         </Badge>

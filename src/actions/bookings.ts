@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -1439,7 +1439,7 @@ export async function countersignAgreement(bookingId: string) {
             userId: booking.userId,
             type: 'BOOKING',
             category: 'AGREEMENT_COUNTERSIGNED',
-            message: `ðŸŽ‰ Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Pay the joining balance to activate your stay!`,
+            message: `Your agreement for ${booking.propertyName} has been countersigned by ${countersignerName} (${roleLabel}). Pay the joining balance to activate your stay!`,
             targetRole: 'USER',
             isPersistent: true,
         });

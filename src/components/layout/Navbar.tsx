@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -213,13 +213,13 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                         className="flex items-center gap-0.5 bg-slate-100 hover:bg-slate-200 border-2 border-slate-200 rounded-xl p-1 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black transition-all ${!isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
-                                            ðŸŽ“ Student
+                                            Student
                                         </div>
                                         <div className="px-1">
                                             {isPending ? <Loader2 className="h-2.5 w-2.5 text-slate-400 animate-spin" /> : <ArrowLeftRight className="h-2.5 w-2.5 text-slate-400" />}
                                         </div>
                                         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black transition-all ${isOwner ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
-                                            ðŸ  Owner
+                                            Owner
                                         </div>
                                     </button>
                                 )}

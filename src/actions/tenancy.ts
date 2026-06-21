@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -66,7 +66,7 @@ export async function fileVacatingNotice(data: {
             userId: booking.property!.ownerId,
             type: 'VACATING_NOTICE',
             category: 'NOTICE',
-            message: `ðŸ“‹ ${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.${earlyLeaveNote}`,
+            message: `${booking.guestName} has filed a vacating notice for ${booking.propertyName}. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}.${earlyLeaveNote}`,
             isPersistent: true,
             metadata: JSON.stringify({ noticeId: notice.id, bookingId: data.bookingId }),
         }
@@ -154,7 +154,7 @@ export async function acknowledgeVacatingNotice(noticeId: string, ownerNote?: st
             userId: notice.userId,
             type: 'VACATING_NOTICE_ACKNOWLEDGED',
             category: 'NOTICE',
-            message: `âœ… Your vacating notice (${notice.displayId}) has been acknowledged by the owner.${ownerNote ? ` Note: ${ownerNote}` : ''}`,
+            message: `Your vacating notice (${notice.displayId}) has been acknowledged by the owner.${ownerNote ? ` Note: ${ownerNote}` : ''}`,
             isPersistent: true,
         }
     });
@@ -343,10 +343,10 @@ export async function getSettlementForNotice(bookingId: string) {
     if (dedMatch) {
         const parts = dedMatch[1].split(',').map((p: string) => p.trim());
         for (const part of parts) {
-            const amtMatch = part.match(/â‚¹?([\d,]+)\s*$/);
+            const amtMatch = part.match(/₹?([\d,]+)\s*$/);
             if (amtMatch) {
                 const amount = parseFloat(amtMatch[1].replace(/,/g, '')) || 0;
-                const description = part.replace(/â‚¹?[\d,]+\s*$/, '').trim();
+                const description = part.replace(/₹?[\d,]+\s*$/, '').trim();
                 if (description) deductionItems.push({ description, amount });
             }
         }

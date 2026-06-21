@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { unstable_noStore as noStore } from 'next/cache';
 
@@ -107,29 +107,29 @@ export async function deleteRoomByOwner(roomId: string) {
     if (room.property.ownerId !== session.userId) throw new Error("You do not own this room.");
     if (room.property.status !== 'APPROVED') throw new Error("Rooms can only be deleted from approved properties.");
 
-    // ðŸš« Block 1: Active tenants living in this room
+    // Block 1: Active tenants living in this room
     if (room.tenants.length > 0) {
         throw new Error(`This room has ${room.tenants.length} active tenant(s). Move them out before deleting.`);
     }
 
-    // ðŸš« Block 2: Pending/confirmed bookings for this room
+    // Block 2: Pending/confirmed bookings for this room
     if (room.bookings.length > 0) {
         throw new Error(`This room has ${room.bookings.length} active booking(s). Cancel them before deleting.`);
     }
 
-    // ðŸš« Block 3: Any bed currently occupied/locked
+    // Block 3: Any bed currently occupied/locked
     if (room.beds.length > 0) {
         throw new Error(`One or more beds in this room are occupied or reserved. Free all beds first.`);
     }
 
-    // âœ… Industry Standard: delete child Bed records first (cascade), then delete the Room
+    // Industry Standard: delete child Bed records first (cascade), then delete the Room
     // This prevents Prisma P2003 (Foreign key constraint violated on Bed_roomId_fkey)
     await prisma.$transaction([
         prisma.bed.deleteMany({ where: { roomId } }),
         prisma.room.delete({ where: { id: roomId } }),
     ]);
 
-    // âœ… Audit Log: captured in BOTH Owner Activity Log + Admin System Audit Log
+    // Audit Log: captured in BOTH Owner Activity Log + Admin System Audit Log
     logAuditEvent({
         actorId: session.userId,
         actorRole: session.role,
@@ -197,7 +197,7 @@ export async function updateRoomByOwner(roomId: string, data: {
         }
     });
 
-    // âœ… Audit Log: update room â€” captured in Owner Activity Log + Admin Audit Log
+    // Audit Log: update room — captured in Owner Activity Log + Admin Audit Log
     logAuditEvent({
         actorId: session.userId,
         actorRole: session.role,
@@ -205,7 +205,7 @@ export async function updateRoomByOwner(roomId: string, data: {
         actionType: 'UPDATE',
         entityType: 'ROOM',
         entityId: roomId,
-        description: `Room "${data.roomNumber}" updated by ${session.role}. Type: ${data.type}, Price: â‚¹${data.price}, Beds: ${data.availability}.`,
+        description: `Room "${data.roomNumber}" updated by ${session.role}. Type: ${data.type}, Price: ₹${data.price}, Beds: ${data.availability}.`,
         previousValue: { roomNumber: room.roomNumber, type: room.type, price: (room as any).price, availability: room.availability },
         newValue: data as any,
     });

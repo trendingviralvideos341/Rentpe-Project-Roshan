@@ -27,10 +27,10 @@ import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
 
 const TYPE_LABELS: Record<string, any> = {
-    ID_PROOF: "🆔 ID Proof",
-    ADDRESS_PROOF: "🏠 Address Proof",
-    COLLEGE_COMPANY: "🎓 College / Company Letter",
-    SELFIE: "📸 Current Selfie",
+    ID_PROOF: "ID Proof",
+    ADDRESS_PROOF: "Address Proof",
+    COLLEGE_COMPANY: "College / Company Letter",
+    SELFIE: "Current Selfie",
 };
 const DOC_TYPES = ["ID_PROOF", "ADDRESS_PROOF", "COLLEGE_COMPANY", "SELFIE"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -217,17 +217,17 @@ function BookingCard({
                 {!isCompleted && (
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">Stage:</span>
-                    {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>}
-                    {isKycPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">📋 KYC — Bring Docs at Check-In</span>}
-                    {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🔒 Token Payment Pending</span>}
-                    {isTokenPaid && !isPhysicalVerified && <span className="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Visit Property with Docs</span>}
-                    {isPhysicalVerified && <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🆔 ID Verified — Sign Agreement Now</span>}
-                    {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
-                    {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Signed — Awaiting Owner Countersign</span>}
-                    {isFinalPaymentPending && <span className="bg-red-100 text-red-800 text-xs font-black px-2 py-1 rounded animate-pulse">🔴 Final Payment Due — Pay Now</span>}
-                    {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">✍️ Sign Agreement</span>}
-                    {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">📅 Ready for Move-in</span>}
-                    {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">🏠 Checked-in & Active</span>}
+                    {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">Waiting for Approval</span>}
+                    {isKycPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">KYC - Bring Docs at Check-In</span>}
+                    {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">Token Payment Pending</span>}
+                    {isTokenPaid && !isPhysicalVerified && <span className="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">Token Paid - Visit Property with Docs</span>}
+                    {isPhysicalVerified && <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded animate-pulse">ID Verified - Sign Agreement Now</span>}
+                    {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">Payment Pending</span>}
+                    {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">Signed - Awaiting Owner Countersign</span>}
+                    {isFinalPaymentPending && <span className="bg-red-100 text-red-800 text-xs font-black px-2 py-1 rounded animate-pulse">Final Payment Due - Pay Now</span>}
+                    {isPaid && !booking.agreementSigned && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">Sign Agreement</span>}
+                    {isPaid && booking.agreementSigned && <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded">Ready for Move-in</span>}
+                    {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">Checked-in & Active</span>}
                 </div>
                 )}
                 {/* ── Permanent ID Badges (show after physical KYC and beyond) ── */}

@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -310,7 +310,7 @@ export async function replyToTicket(id: string, message: string) {
                 userId: ticket.userId,
                 type: 'TICKET_REPLY',
                 category: 'SUPPORT',
-                message: `ðŸ’¬ New reply on your ticket ${ticket.displayId}: "${message.slice(0, 80)}${message.length > 80 ? '...' : ''}"`,
+                message: `New reply on your ticket ${ticket.displayId}: "${message.slice(0, 80)}${message.length > 80 ? '...' : ''}"`,
                 isPersistent: false,
             }
         });
@@ -349,11 +349,11 @@ export async function updateTicketStatus(
     const updated = await prisma.ticket.update({ where: { id }, data: dataToUpdate });
 
     const statusMessages: Record<string, string> = {
-        ACKNOWLEDGED: `ðŸ‘€ Your support ticket ${ticket.displayId} has been acknowledged.`,
-        IN_PROGRESS: `ðŸ”§ Work has started on your ticket ${ticket.displayId}.`,
-        RESOLVED: `âœ… Your ticket ${ticket.displayId} has been resolved.${note ? ` Resolution: ${note}` : ''}`,
-        CLOSED: `ðŸ”’ Your ticket ${ticket.displayId} has been closed.`,
-        ESCALATED: `â¬†ï¸ Your ticket ${ticket.displayId} has been escalated.`,
+        ACKNOWLEDGED: `Your support ticket ${ticket.displayId} has been acknowledged.`,
+        IN_PROGRESS: `Work has started on your ticket ${ticket.displayId}.`,
+        RESOLVED: `Your ticket ${ticket.displayId} has been resolved.${note ? ` Resolution: ${note}` : ''}`,
+        CLOSED: `Your ticket ${ticket.displayId} has been closed.`,
+        ESCALATED: `Your ticket ${ticket.displayId} has been escalated.`,
     };
 
     if (statusMessages[status]) {

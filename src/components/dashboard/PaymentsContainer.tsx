@@ -225,7 +225,7 @@ export function PaymentsContainer() {
                                                 <td className="p-4">
                                                     <div className="font-bold text-slate-800">{t.name}</div>
                                                     <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 group">
-                                                        <span className="opacity-60 group-hover:opacity-100 transition-opacity">🆔</span> {t.displayId}
+                                                        <span className="opacity-60 group-hover:opacity-100 transition-opacity">ID:</span> {t.displayId}
                                                     </div>
                                                     <div className="text-[10px] text-primary font-bold mt-1">{t.property?.name}</div>
                                                 </td>

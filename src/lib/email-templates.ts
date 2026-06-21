@@ -94,7 +94,7 @@ export const RequestAcceptedTemplate = (name: string, propertyName: string) => L
 
 // 3. ROOM_ALLOCATED (Tenant)
 export const RoomAllocatedTemplate = (name: string, propertyName: string, roomNumber: string) => LifecycleTemplate({
-  title: "Room Allocated ðŸ ",
+  title: "Room Allocated",
   name,
   status: "ALLOCATED",
   message: `You have been assigned <strong>Room ${roomNumber}</strong> at ${propertyName}.`,
@@ -154,7 +154,7 @@ export const CheckinConfirmedTemplate = (name: string, propertyName: string) => 
 
 // 8. KYC_SUBMITTED (User/Verification Team)
 export const KycSubmittedTemplate = (name: string) => LifecycleTemplate({
-  title: "KYC Under Review ðŸ”",
+  title: "KYC Under Review",
   name,
   status: "KYC_PENDING",
   message: `Your KYC documents have been submitted and are now being reviewed by our verification team.`,
@@ -231,7 +231,7 @@ export const VerifierNotificationTemplate = (message: string, actionUrl: string)
 
 // 11. EMAIL_VERIFICATION (User)
 export const EmailVerificationTemplate = (name: string, token: string) => LifecycleTemplate({
-  title: "Verify Your Email ðŸ›¡ï¸",
+  title: "Verify Your Email",
   name,
   status: "VERIFICATION_PENDING",
   message: `Welcome to RentPe! To ensure your account is secure, we need you to verify your email address.`,
@@ -280,7 +280,7 @@ export const PasswordResetTemplate = (name: string, resetUrl: string): string =>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f8f9ff;margin:0;padding:40px 20px;">
   <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(88,28,235,0.08);">
     <div style="background:linear-gradient(135deg,#3b5bdb 0%,#7048e8 100%);padding:32px;text-align:center;">
-      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:900;">ðŸ” RentPe</h1>
+      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:900;">RentPe</h1>
       <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Password Reset Request</p>
     </div>
     <div style="padding:32px;">
