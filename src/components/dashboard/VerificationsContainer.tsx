@@ -159,6 +159,16 @@ export function VerificationsContainer() {
                 )}
             </div>
 
+            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-sm">
+                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                    <p className="text-xs font-black uppercase tracking-wider">Student Online KYC Bypassed (Physical Check-in Active)</p>
+                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                        Student online document uploads are bypassed. Students are instructed to bring their physical documents (ID proof, address proof, etc.) at check-in. Verify these physically and complete onboarding, or use the quick-upload tool on the onboarding panel to upload scanned copies.
+                    </p>
+                </div>
+            </div>
+
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative flex-1 min-w-[280px]">

@@ -218,9 +218,9 @@ function BookingCard({
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">Stage:</span>
                     {(booking.status === "APPLIED" || booking.status === "PENDING_APPROVAL") && <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded">⏳ Waiting for Approval</span>}
-                    {isKycPending && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">🆔 KYC Verification</span>}
+                    {isKycPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">📋 KYC — Bring Docs at Check-In</span>}
                     {isTokenPending && <span className="bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🔒 Token Payment Pending</span>}
-                    {isTokenPaid && !isPhysicalVerified && <span className="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Awaiting Physical KYC</span>}
+                    {isTokenPaid && !isPhysicalVerified && <span className="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">✅ Token Paid — Visit Property with Docs</span>}
                     {isPhysicalVerified && <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded animate-pulse">🆔 ID Verified — Sign Agreement Now</span>}
                     {isPaymentPending && !isTokenPending && <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">💳 Payment Pending</span>}
                     {isAgreementPending && <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">⏳ Signed — Awaiting Owner Countersign</span>}
@@ -495,8 +495,24 @@ function BookingCard({
                 </div>
 
                 {expandedDocs === booking.id && (
-                    <div className="mt-4 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                        <StudentKYCUploader bookingId={booking.id} onUploadSuccess={() => { setExpandedDocs(null); fetchData(); }} />
+                    <div className="mt-4 p-4 bg-amber-50 rounded-2xl border-2 border-dashed border-amber-300 space-y-3 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl">📋</span>
+                            <div>
+                                <p className="text-sm font-black text-amber-900">No Online Upload Required</p>
+                                <p className="text-xs text-amber-700">KYC is verified in-person when you visit the property.</p>
+                            </div>
+                        </div>
+                        <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-1.5">
+                            <p className="text-[11px] font-black text-slate-600 uppercase tracking-wider">📌 Bring These at Check-In:</p>
+                            {['🪪 Government Photo ID (Aadhaar / Passport / Voter ID)', '🏠 Address Proof (Aadhaar / Utility Bill)', '🎓 College ID / Offer Letter / Employee ID', '📸 2 Passport-size Photographs'].map((item) => (
+                                <p key={item} className="text-xs text-slate-600 flex items-start gap-1.5">
+                                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0 mt-0.5" />
+                                    {item}
+                                </p>
+                            ))}
+                        </div>
+                        <p className="text-[10px] text-amber-600 font-medium text-center">Our staff will verify your originals on-site and activate your Tenant ID instantly.</p>
                     </div>
                 )}
 

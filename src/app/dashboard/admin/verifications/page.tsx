@@ -450,6 +450,16 @@ export default function AdminVerificationsPage() {
                 </div>
             </div>
 
+            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-sm">
+                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                    <p className="text-xs font-black uppercase tracking-wider">Student Online KYC Bypassed (Physical Check-in Active)</p>
+                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                        Student online KYC document uploads are disabled. Students are instructed to bring their physical documents directly to the property at check-in. Verification Center queues represent documents uploaded by property owners/partners or other tenants. Property staff can upload scanned copies on behalf of tenants during onboarding.
+                    </p>
+                </div>
+            </div>
+
             <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
                 {[
                     { id: "owner", label: "🏠 Owner KYC Queue" },

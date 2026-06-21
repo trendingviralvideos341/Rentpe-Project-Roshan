@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye, Search, Building2 } from "lucide-react";
+import { RefreshCcw, CheckCircle, Edit2, ChevronDown, ChevronUp, UploadCloud, XCircle, Eye, Search, Building2, Info } from "lucide-react";
 import { getBookings, approveBooking, markBookingPaid } from "@/actions/bookings";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument, uploadTenantDocument } from "@/actions/documents";
@@ -604,6 +604,16 @@ export function OnboardingContainer() {
                     <Button variant="outline" size="icon" className="h-11 w-11 rounded-2xl border-2 border-slate-100 transition-all hover:bg-slate-50" onClick={fetchData}>
                         <RefreshCcw className="h-5 w-5 text-slate-600" />
                     </Button>
+                </div>
+            </div>
+
+            <div className="bg-amber-50/60 border border-amber-200/80 rounded-3xl p-5 flex gap-4 text-amber-900 shadow-sm">
+                <Info className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                    <p className="text-sm font-black uppercase tracking-wider">Student Online KYC Bypassed (Physical Check-in Active)</p>
+                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                        For student tenants, online document upload has been disabled. They have been instructed to bring physical documents (ID proof, address proof, etc.) at check-in. Please verify these physically and complete onboarding, or use the quick-upload tool below on each tenant's card to upload scanned copies for your records.
+                    </p>
                 </div>
             </div>
 

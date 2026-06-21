@@ -1,13 +1,7 @@
 'use client';
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Upload, FileCheck, AlertCircle, Trash2, Eye, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
-import { useResumableUpload } from "@/hooks/useResumableUpload";
-import { ResilienceIndicator } from "@/components/ui/ResilienceIndicator";
-import { uploadTenantDocument } from "@/actions/documents";
+import { MapPin, FileText, Clock, ShieldCheck, CheckCircle, Phone, AlertTriangle } from "lucide-react";
 
 interface StudentKYCUploaderProps {
     bookingId: string;
@@ -15,191 +9,112 @@ interface StudentKYCUploaderProps {
     onUploadSuccess?: () => void;
 }
 
-export function StudentKYCUploader({ bookingId, existingDocs = [], onUploadSuccess }: StudentKYCUploaderProps) {
-    const [uploading, setUploading] = useState<string | null>(null);
-    const [uploadingCount, setUploadingCount] = useState(0);
-    const [consentAgreed, setConsentAgreed] = useState(false);
-    const { 
-        status: uploadStatus, 
-        progress: uploadProgress, 
-        uploadFile 
-    } = useResumableUpload();
-
-    const docTypes = [
-        { key: 'AADHAAR_FRONT', label: 'Aadhaar Card (Front)', desc: 'Clear photo of the front side', required: true },
-        { key: 'AADHAAR_BACK', label: 'Aadhaar Card (Back)', desc: 'Clear photo of the back side', required: true },
-        { key: 'PAN_FRONT', label: 'PAN Card (Front)', desc: 'Front side for identity verification', required: true },
-        { key: 'PAN_BACK', label: 'PAN Card (Back)', desc: 'Back side (Optional)', required: false },
-        { key: 'STUDENT_ID', label: 'Student ID / University ID', desc: 'Current academic year only', required: true },
-        { key: 'COMPANY_ID', label: 'Company ID / Offer Letter', desc: 'Working professionals only', required: true },
-        { key: 'LIVE_PHOTO', label: 'Current Photo / Selfie', desc: 'Clear selfie or current photo for identity match', required: true },
-        { key: 'OTHER', label: 'Others (If Any)', desc: 'Any additional supporting document', required: false },
+/**
+ * Pending Note 1 — KYC Online Upload BYPASSED.
+ * Students are directed to bring physical documents at check-in.
+ * No digital uploads are accepted or stored for KYC via this route.
+ * Physical verification is handled by staff on-site.
+ */
+export function StudentKYCUploader({ bookingId }: StudentKYCUploaderProps) {
+    const documents = [
+        { icon: "🪪", label: "Government-Issued Photo ID", desc: "Aadhaar Card / Passport / Voter ID / Driving License", note: "Original + 1 photocopy" },
+        { icon: "🏠", label: "Address Proof", desc: "Aadhaar Card / Utility Bill / Bank Statement", note: "Original + 1 photocopy" },
+        { icon: "🎓", label: "College / Company Proof", desc: "College ID / Offer Letter / Employee ID card", note: "Original + 1 photocopy" },
+        { icon: "📸", label: "Passport-Size Photographs", desc: "2 recent passport-size colour photos", note: "White background preferred" },
     ];
 
-
-    const handleUpload = async (file: File, type: string) => {
-        if (file.size > 5 * 1024 * 1024) return toast.error("File size must be less than 5MB");
-
-        const toastId = toast.loading(`Uploading ${type.split('_').join(' ')}...`);
-        setUploading(type);
-        setUploadingCount(prev => prev + 1);
-        
-        try {
-            // Use resumable upload instead of direct fetch
-            const result = await uploadFile(file);
-            
-            if (result.url) {
-                // Use server action to link doc to booking
-                await uploadTenantDocument({ 
-                    bookingId, 
-                    type, 
-                    fileData: result.url,
-                    fileName: file.name 
-                });
-
-                toast.success(`${type.split('_').join(' ')} uploaded!`, { id: toastId });
-                onUploadSuccess?.();
-            }
-        } catch (e) {
-            console.error("KYC Upload Error:", e);
-            toast.error("Upload failed", { id: toastId });
-        } finally {
-            setUploading(null);
-            setUploadingCount(prev => Math.max(0, prev - 1));
-        }
-    };
-
     return (
-        <Card className="border-indigo-100 shadow-sm overflow-hidden bg-white">
-            <CardHeader className="bg-indigo-50/50 border-b border-indigo-100">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5 text-indigo-600" />
-                        <span className="text-xs font-bold text-indigo-700 uppercase">Secure KYC Verification</span>
+        <Card className="border-2 border-amber-300 shadow-md overflow-hidden bg-amber-50/30">
+            {/* Header */}
+            <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-5">
+                <div className="flex items-center gap-3 mb-1">
+                    <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                        <MapPin className="h-5 w-5 text-white" />
                     </div>
-                    <ResilienceIndicator 
-                        status={uploadingCount > 0 ? 'UPLOADING' : 'IDLE'} 
-                        progress={undefined}
-                    />
+                    <div>
+                        <CardTitle className="text-lg font-black text-white">Physical Document Check-In</CardTitle>
+                        <CardDescription className="text-amber-100 text-xs font-medium mt-0.5">
+                            No online uploads required — bring originals to the property
+                        </CardDescription>
+                    </div>
                 </div>
-                <CardTitle className="text-xl font-bold">Document Verification</CardTitle>
-                <CardDescription>
-                    Please upload clear photos or PDFs of the following documents to confirm your booking.
-                </CardDescription>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
-                {/* Identity Confirmation Checkbox */}
-                <div className={`p-4 rounded-2xl border-2 transition-all ${consentAgreed ? "border-indigo-200 bg-indigo-50/30" : "border-amber-200 bg-amber-50/30 shadow-inner"}`}>
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                        <input 
-                            type="checkbox" 
-                            className="mt-1 h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0 transition-transform active:scale-90"
-                            checked={consentAgreed}
-                            onChange={e => setConsentAgreed(e.target.checked)}
-                        />
-                        <div className="space-y-1">
-                            <p className="text-xs font-black text-slate-800 tracking-tight uppercase">Identity & Document Declaration</p>
-                            <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                                I hereby confirm that the documents I am about to upload are authentic, belong to me, and are legally valid. I agree to RentPe's <a href="/privacy" target="_blank" className="text-indigo-600 underline font-bold">Privacy Policy</a> regarding the processing and encryption of my sensitive identity data for verification purposes. <span className="text-red-500 font-bold">*</span>
-                            </p>
-                        </div>
-                    </label>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {docTypes.map((doc) => {
-                        const existing = existingDocs.find(d => d.type === doc.key);
-                        const isVerified = existing?.status === 'VERIFIED';
-                        const isRejected = existing?.status === 'REJECTED';
-
-                        return (
-                            <div key={doc.key} className={`
-                                border-2 rounded-xl p-4 flex flex-col justify-between transition-all h-full
-                                ${isVerified ? 'border-green-100 bg-green-50/30' :
-                                    isRejected ? 'border-red-100 bg-red-50/30' :
-                                        'border-slate-100 hover:border-indigo-200 bg-slate-50/30'}
-                            `}>
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-bold text-sm text-slate-800">{doc.label}</h4>
-                                            {doc.required ? (
-                                                <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">Required</span>
-                                            ) : (
-                                                <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">Optional</span>
-                                            )}
-                                        </div>
-                                        {isVerified && <FileCheck className="h-4 w-4 text-green-600" />}
-                                        {isRejected && <AlertCircle className="h-4 w-4 text-red-600" />}
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mb-4">{doc.desc}</p>
-                                </div>
-
-                                <div className="space-y-2 mt-auto">
-                                    {existing ? (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between bg-white border rounded-lg p-2 shadow-sm text-[10px]">
-                                                <span className="truncate max-w-[100px] font-medium">{existing.fileName || 'Document'}</span>
-                                                <div className="flex gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                                                        <a href={existing.fileData} target="_blank"><Eye className="h-3 w-3" /></a>
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            {isRejected && (
-                                                <p className="text-[9px] text-red-600 font-bold bg-white p-1.5 rounded border border-red-100">
-                                                    Reason: {existing.rejectedNote || "Invalid document"}
-                                                </p>
-                                            )}
-                                            {!isVerified && (
-                                                <label className="w-full">
-                                                    <input
-                                                        type="file"
-                                                        className="hidden"
-                                                        onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], doc.key)}
-                                                        disabled={!!uploading || !consentAgreed}
-                                                    />
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        className="w-full text-[10px] h-8 font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 disabled:opacity-30"
-                                                        disabled={!consentAgreed}
-                                                    >
-                                                        {uploading === doc.key ? "Syncing..." : "Replace"}
-                                                    </Button>
-                                                </label>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <label className="w-full">
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], doc.key)}
-                                                disabled={!!uploading || !consentAgreed}
-                                            />
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="w-full h-10 border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold disabled:opacity-30"
-                                                disabled={!consentAgreed}
-                                            >
-                                                {uploading === doc.key ? "Syncing..." : "Upload File"}
-                                            </Button>
-                                        </label>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 flex gap-3 items-start">
-                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-amber-800 leading-relaxed">
-                        <strong>Security Note:</strong> All documents are encrypted and only accessible by verified platform admins for identity purposes. Please ensure files are clear and readable to avoid rejection.
+            <CardContent className="p-5 space-y-5">
+                {/* Main Notice */}
+                <div className="bg-white border-2 border-amber-300 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                        <p className="text-sm font-black text-amber-900 uppercase tracking-wide">
+                            Online KYC Upload Not Required
+                        </p>
+                    </div>
+                    <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                        RentPe verifies your identity <strong>in person at check-in</strong>. You do <strong>not</strong> need to
+                        upload any documents online. Simply bring the originals listed below when you physically
+                        arrive at the property to complete your verification.
                     </p>
                 </div>
+
+                {/* Documents to Bring */}
+                <div>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                        📋 Documents to Bring at Check-In
+                    </p>
+                    <div className="grid grid-cols-1 gap-3">
+                        {documents.map((doc, i) => (
+                            <div
+                                key={i}
+                                className="flex items-start gap-3 bg-white border border-slate-200 rounded-xl p-3 shadow-sm"
+                            >
+                                <span className="text-xl shrink-0 mt-0.5">{doc.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-slate-800">{doc.label}</p>
+                                    <p className="text-xs text-muted-foreground">{doc.desc}</p>
+                                    <span className="inline-block mt-1 text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                        {doc.note}
+                                    </span>
+                                </div>
+                                <CheckCircle className="h-4 w-4 text-green-400 shrink-0 mt-1" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* What Happens at Check-In */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Clock className="h-4 w-4 text-blue-600 shrink-0" />
+                        <p className="text-xs font-black text-blue-800 uppercase tracking-wide">What Happens at Check-In</p>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-blue-800 font-medium">
+                        <li className="flex items-start gap-2"><span className="shrink-0">1️⃣</span> Our staff will inspect your original documents on-site</li>
+                        <li className="flex items-start gap-2"><span className="shrink-0">2️⃣</span> A photocopy will be collected and filed for records</li>
+                        <li className="flex items-start gap-2"><span className="shrink-0">3️⃣</span> Your Tenant ID will be activated on the spot</li>
+                        <li className="flex items-start gap-2"><span className="shrink-0">4️⃣</span> You can sign the rental agreement immediately after</li>
+                    </ul>
+                </div>
+
+                {/* Security Note */}
+                <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-3">
+                    <ShieldCheck className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-[11px] font-black text-green-800">Your Data is Safer This Way</p>
+                        <p className="text-[10px] text-green-700 leading-relaxed mt-0.5">
+                            Physical verification eliminates the risk of document fraud, phishing, and data breaches
+                            associated with online uploads. Your documents are never stored on our servers.
+                        </p>
+                    </div>
+                </div>
+
+                {/* Support */}
+                <div className="flex items-center gap-2 text-[11px] text-slate-500 border-t border-slate-100 pt-3">
+                    <Phone className="h-3 w-3 shrink-0" />
+                    <span>Questions? Contact your property manager or reach RentPe support at <strong className="text-slate-700">help@rentpe.in</strong></span>
+                </div>
+
+                {/* Booking ref */}
+                <p className="text-[9px] text-slate-400 font-mono text-right">Ref: {bookingId}</p>
             </CardContent>
         </Card>
     );
