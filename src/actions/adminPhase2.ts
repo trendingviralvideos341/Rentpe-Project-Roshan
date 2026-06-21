@@ -8,6 +8,7 @@ import { createNotification } from "@/actions/notifications";
 import { sendEmail } from "@/lib/email";
 import { getSLAStatus } from "@/lib/sla";
 import { KycRejectedTemplate } from "@/lib/email-templates";
+import { generateSignedDocUrl } from "@/lib/upload";
 
 // ─────────────────────────────────────────────────────────
 // KYC VERIFICATION QUEUE
@@ -57,6 +58,11 @@ export async function getKYCQueue(filter?: string) {
                 if (!['PENDING', 'VERIFIED', 'ALL'].includes(filter) && docType !== filter) continue;
             }
 
+            // 🔒 SECURITY: Generate a 10-minute signed URL for private KYC documents.
+            // Raw Cloudinary URLs are NEVER exposed to the client.
+            // Compliant with DPDP Act 2023 & RBI KYC access-control requirements.
+            const signedDocUrl = generateSignedDocUrl(info.url);
+
             queue.push({
                 id: `${prop.id}__${docType}`,
                 propertyId: prop.id,
@@ -65,7 +71,7 @@ export async function getKYCQueue(filter?: string) {
                 city: prop.city,
                 docType,
                 docLabel: info.label,
-                docUrl: info.url,
+                docUrl: signedDocUrl,   // ✅ signed, expires in 10 min
                 isVerified,
                 owner: prop.owner,
                 submittedAt: prop.createdAt,
