@@ -2,13 +2,12 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCcw, ClipboardList, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
 import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate } from "@/actions/bookings";
 import { getCashPaymentEnabled } from "@/actions/platform";
 import { getAvailableRooms } from "@/actions/rooms";
-import { getTenantDocuments, verifyDocument } from "@/actions/documents";
 import { changeFoodPreference } from "@/actions/food";
 import { toast } from "sonner";
 import { RoomAllocationModal } from "@/components/dashboard/RoomAllocationModal";
@@ -112,62 +111,21 @@ function OwnerNextStep({ booking, allowCashPayment }: { booking: any; allowCashP
 
 // ─── BookingDetail (Expanded Panel) ────────────────────────────────────────
 function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
-    const [tab, setTab] = useState<"onboarding" | "documents">("onboarding");
-    const [docs, setDocs] = useState<any[]>([]);
-    const [docsLoading, setDocsLoading] = useState(false);
-    const [rejectTarget, setRejectTarget] = useState<string | null>(null);
-    const [rejectNote, setRejectNote] = useState("");
-    const [previewDoc, setPreviewDoc] = useState<any>(null);
     const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
     const [foodChanging, setFoodChanging] = useState(false);
-
-    const fetchDocs = async () => {
-        setDocsLoading(true);
-        try { const d = await getTenantDocuments(booking.id); setDocs(d); }
-        catch { } finally { setDocsLoading(false); }
-    };
-
-    useEffect(() => { if (tab === "documents") fetchDocs(); }, [tab]);
-
-    const handleVerify = async (docId: string) => {
-        try { await verifyDocument(docId, "VERIFIED"); fetchDocs(); toast.success("Document Verified"); }
-        catch { toast.error("Failed to verify."); }
-    };
-
-    const handleReject = async (docId: string) => {
-        if (!rejectNote.trim()) { toast.error("Enter rejection reason."); return; }
-        try {
-            await verifyDocument(docId, "REJECTED", rejectNote);
-            setRejectTarget(null); setRejectNote(""); fetchDocs();
-            toast.success("Document Rejected");
-        } catch { toast.error("Failed to reject."); }
-    };
-
-    const pendingDocs = docs.filter(d => d.status === "PENDING");
-    const verifiedDocs = docs.filter(d => d.status === "VERIFIED");
-    const rejectedDocs = docs.filter(d => d.status === "REJECTED");
 
     return (
         <tr>
             <td colSpan={7} className="bg-slate-50 border-b">
                 <div className="p-4 space-y-3">
-                    {/* Tab switcher */}
-                    <div className="flex gap-2 border-b pb-2">
-                        <button onClick={() => setTab("onboarding")}
-                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "onboarding" ? "border-purple-600 text-purple-700 bg-purple-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                            <ClipboardList className="h-4 w-4" /> Onboarding
-                        </button>
-                        <button onClick={() => { setTab("documents"); fetchDocs(); }}
-                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-t text-sm font-semibold border-b-2 transition-colors ${tab === "documents" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                            <FileText className="h-4 w-4" /> Verify Documents
-                            {pendingDocs.length > 0 && tab === "documents" && (
-                                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">{pendingDocs.length}</span>
-                            )}
-                        </button>
+                    {/* Section header */}
+                    <div className="flex items-center gap-2 border-b pb-2">
+                        <ClipboardList className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-bold text-purple-700">Onboarding Details</span>
                     </div>
 
-                    {/* ONBOARDING TAB */}
-                    {tab === "onboarding" && (
+                    {/* ONBOARDING DETAILS */}
+                    {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <div className="text-xs font-bold uppercase text-purple-700 mb-2">📋 Guest / Onboarding Details</div>
@@ -276,72 +234,6 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* DOCUMENTS TAB */}
-                    {tab === "documents" && (
-                        <div className="space-y-3">
-                            {docsLoading && <p className="text-sm text-center text-muted-foreground py-4 animate-pulse">Loading documents...</p>}
-                            {pendingDocs.length > 0 && (
-                                <div className="bg-red-50 border-2 border-red-400 rounded-lg p-3">
-                                    <div className="text-red-700 font-bold text-sm mb-2">🔴 {pendingDocs.length} Pending Review</div>
-                                    <div className="space-y-2">
-                                        {pendingDocs.map(doc => (
-                                            <div key={doc.id} className="bg-white border border-red-200 rounded p-2 flex items-center justify-between gap-2 flex-wrap">
-                                                <div>
-                                                    <div className="font-semibold text-sm">{TYPE_LABELS[doc.type] || doc.type}</div>
-                                                    <div className="text-[10px] text-muted-foreground">{doc.fileName}</div>
-                                                </div>
-                                                <div className="flex gap-1.5 items-center flex-wrap">
-                                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPreviewDoc(doc)}><Eye className="h-3 w-3 mr-1" />View</Button>
-                                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleVerify(doc.id)}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>
-                                                    {rejectTarget === doc.id ? (
-                                                        <div className="flex gap-1 items-center">
-                                                            <input className="border rounded px-2 py-1 text-xs w-36" placeholder="Reason..." value={rejectNote} onChange={e => setRejectNote(e.target.value)} />
-                                                            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleReject(doc.id)}>Reject</Button>
-                                                            <button className="text-[10px] px-2 py-1 bg-slate-200 rounded" onClick={() => { setRejectTarget(null); setRejectNote(""); }}>✕</button>
-                                                        </div>
-                                                    ) : (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600" onClick={() => setRejectTarget(doc.id)}><XCircle className="h-3 w-3 mr-1" />Decline</Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {verifiedDocs.length > 0 && (
-                                <div className="space-y-1">
-                                    <div className="text-xs font-bold text-green-700">✅ Verified</div>
-                                    {verifiedDocs.map(doc => (
-                                        <div key={doc.id} className="bg-green-50 border border-green-200 rounded p-2 flex items-center justify-between">
-                                            <span className="font-medium text-sm">{TYPE_LABELS[doc.type] || doc.type}</span>
-                                            <div className="flex gap-1.5">
-                                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">✅ Approved</span>
-                                                <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setPreviewDoc(doc)}>View</Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {rejectedDocs.length > 0 && (
-                                <div className="space-y-1">
-                                    <div className="text-xs font-bold text-red-700">❌ Rejected — Awaiting Re-upload</div>
-                                    {rejectedDocs.map(doc => (
-                                        <div key={doc.id} className="bg-red-50 border border-red-300 rounded p-2 flex items-center justify-between">
-                                            <div>
-                                                <span className="font-medium text-sm">{TYPE_LABELS[doc.type] || doc.type}</span>
-                                                {doc.rejectedNote && <div className="text-[10px] text-red-600">Reason: {doc.rejectedNote}</div>}
-                                            </div>
-                                            <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setPreviewDoc(doc)}>View</Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {docs.length === 0 && !docsLoading && (
-                                <div className="text-center text-sm text-muted-foreground py-4 bg-white border rounded">No documents uploaded yet.</div>
-                            )}
                         </div>
                     )}
                 </div>
