@@ -23,31 +23,39 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
     if (booking.userId !== userId) throw new Error("Unauthorized");
 
     try {
-        const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
-        const studentFee = (settings?.feesEnabled && settings?.studentRentFeeFlat) || 0;
-
         // Determine amount from invoice, deposit, or booking (initial: rent + security deposit)
         let baseAmount: number;
+        let paymentType: 'RENT' | 'TOKEN' = 'RENT';
         if (extras?.invoiceId) {
             const invoice = await prisma.rentInvoice.findUnique({ where: { id: extras.invoiceId } });
             baseAmount = invoice ? Number(invoice.amount) : Number(booking.amount);
+            paymentType = 'RENT';
         } else if (extras?.depositId) {
             const deposit = await prisma.securityDeposit.findUnique({ where: { id: extras.depositId } });
             baseAmount = deposit ? Number(deposit.amount) : Number(booking.amount);
+            paymentType = 'RENT';
         } else {
             // Initial booking payment: rent + security deposit
             baseAmount = Number(booking.amount) + Number((booking as any).depositAmount || 0);
+            paymentType = 'RENT';
         }
 
-        const finalCharge = (baseAmount + studentFee) * 100; // in paise
-
-        // ... (Transfers logic remains same, but using baseAmount)
+        // ── Dynamic fee calculation respecting exemptions and custom rates ──
+        const { calculateFees } = await import('@/actions/platform');
         const room = await prisma.room.findUnique({
             where: { id: booking.roomId! },
             include: { property: { include: { owner: true } } }
         });
         const ownerAccountId = room?.property.owner.razorpayAccountId;
-        const ownerFee = (settings?.feesEnabled && settings?.ownerRentFeeFlat) || 0;
+        const fees = await calculateFees(
+            String(baseAmount),
+            booking.userId,
+            room?.property?.name || booking.propertyName,
+            room?.property?.ownerId,
+            paymentType
+        );
+        const studentFee = fees.customerFee;
+        const finalCharge = fees.totalCharged * 100; // in paise
 
         const options = {
             amount: finalCharge,
@@ -55,12 +63,12 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
             receipt: `receipt_${booking.id.slice(0, 5)}`,
         };
 
-        // ── COMPONENT 1: Delayed Transfer ──────────────────────────────────────
+        // ── COMPONENT 1: Delayed Transfer ───────────────────────────────────────────
         // Money is collected from student into Razorpay nodal account.
         // We do NOT do instant transfers to the owner's linked account.
         // Owner's payout is released manually via releaseTransferToOwner() by admin.
         // This gives the platform the 15-day window for deposit refund enforcement.
-        // ──────────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────────────────────────
 
         // NOTE: 'transfers' array intentionally removed — no instant owner payout.
         // DUMMY MODE: If Razorpay API fails, falls back to mock order.
@@ -82,7 +90,7 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
                 bookingId: booking.id,
                 invoiceId: extras?.invoiceId,
                 depositId: extras?.depositId,
-                amount: baseAmount + studentFee,
+                amount: fees.totalCharged,
                 method: "ONLINE",
                 status: "PENDING",
                 razorpayOrderId: order.id,
@@ -171,6 +179,23 @@ export async function verifyPayment(data: {
                 paymentStatus: "PAID"
             }
         });
+
+        // 4. Record platform fee earnings to DB wallet (Async — non-blocking)
+        try {
+            const { recordPlatformFee } = await import('@/actions/platform');
+            const paymentWithBooking = await tx.booking.findUnique({
+                where: { id: payment.bookingId },
+                include: { user: true, room: { include: { property: { include: { owner: true } } } } }
+            });
+            if (paymentWithBooking) {
+                recordPlatformFee(
+                    payment.bookingId,
+                    String(payment.amount),
+                    paymentWithBooking.userId,
+                    paymentWithBooking.room?.property?.name || paymentWithBooking.propertyName
+                ).catch(err => console.error('[PLATFORM FEE RECORD] Failed:', err));
+            }
+        } catch (feeErr) { console.error('[PLATFORM FEE RECORD] Error:', feeErr); }
 
         // 4. Send Payment Receipt Email (Async)
         const user = await tx.user.findUnique({ where: { id: (session as any).userId }, select: { email: true, name: true } });
@@ -611,9 +636,18 @@ export async function releaseTransferToOwner(paymentId: string) {
     if (payment.transferStatus === 'RELEASED') throw new Error('Transfer already released');
 
     const ownerAccountId = payment.booking?.room?.property?.owner?.razorpayAccountId;
-    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
-    const ownerFee = (settings?.feesEnabled && (settings as any)?.ownerRentFeeFlat) || 0;
-    const transferAmount = Math.max(0, (Number(payment.amount) - ownerFee) * 100); // paise
+    // ── Dynamic fee calculation respecting owner exemptions and custom commission rates ──
+    const { calculateFees: calcFees } = await import('@/actions/platform');
+    const propertyName = payment.booking?.room?.property?.name || '';
+    const ownerId = payment.booking?.room?.property?.owner?.id || '';
+    const feeBreakdown = await calcFees(
+        String(Number(payment.amount)),
+        undefined,
+        propertyName,
+        ownerId,
+        'RENT'
+    );
+    const transferAmount = Math.max(0, feeBreakdown.ownerNet * 100); // paise, after deducting owner's commission
 
     // DUMMY MODE: Simulate transfer (replace with real Razorpay transfer API for production)
     let transferId: string;

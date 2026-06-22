@@ -26,6 +26,9 @@ export default function PlatformFeesPage() {
     const [studentRentFeeFlat, setStudentRentFeeFlat] = useState(9);
     const [ownerRentFeeFlat, setOwnerRentFeeFlat] = useState(9);
     const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
+    const [tokenFeesEnabled, setTokenFeesEnabled] = useState(false);
+    const [studentTokenFeeFlat, setStudentTokenFeeFlat] = useState(0);
+    const [ownerTokenFeeFlat, setOwnerTokenFeeFlat] = useState(0);
     const [exemptions, setExemptions] = useState<any[]>([]);
 
     // Exemption data
@@ -46,6 +49,7 @@ export default function PlatformFeesPage() {
     const [pgOwnerFeeType, setPgOwnerFeeType] = useState<"FLAT" | "PERCENT">("FLAT");
     const [pgOwnerFeeValue, setPgOwnerFeeValue] = useState<string>("");
     const [pgReason, setPgReason] = useState("");
+    const [pgExemptOwnerToken, setPgExemptOwnerToken] = useState(false);
     const [pgSaving, setPgSaving] = useState(false);
 
     // Student exemption config (inside dialog)
@@ -53,6 +57,7 @@ export default function PlatformFeesPage() {
     const [stuFeeType, setStuFeeType] = useState<"FLAT" | "PERCENT">("FLAT");
     const [stuFeeValue, setStuFeeValue] = useState<string>("");
     const [stuReason, setStuReason] = useState("");
+    const [stuExemptToken, setStuExemptToken] = useState(false);
     const [stuSaving, setStuSaving] = useState(false);
 
     const fetchAll = async () => {
@@ -72,6 +77,9 @@ export default function PlatformFeesPage() {
             setStudentRentFeeFlat(s.studentRentFeeFlat);
             setOwnerRentFeeFlat(s.ownerRentFeeFlat);
             setOwnerOnboardingFeeFlat(s.ownerOnboardingFeeFlat);
+            setTokenFeesEnabled((s as any).tokenFeesEnabled ?? false);
+            setStudentTokenFeeFlat((s as any).studentTokenFeeFlat ?? 0);
+            setOwnerTokenFeeFlat((s as any).ownerTokenFeeFlat ?? 0);
             setFees(f);
             setChangeLogs(l);
             setExemptions(ex);
@@ -86,7 +94,7 @@ export default function PlatformFeesPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updatePlatformSettings({ feesEnabled, allowCashPayment, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat });
+            await updatePlatformSettings({ feesEnabled, allowCashPayment, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat, tokenFeesEnabled, studentTokenFeeFlat: studentTokenFeeFlat, ownerTokenFeeFlat: ownerTokenFeeFlat } as any);
             await fetchAll();
             alert("✅ Platform fee settings saved successfully.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
@@ -103,6 +111,7 @@ export default function PlatformFeesPage() {
         setPgOwnerFeeType(ex?.customOwnerFeeType ?? "FLAT");
         setPgOwnerFeeValue(ex?.customOwnerFee != null ? String(ex.customOwnerFee) : "");
         setPgReason(ex?.reason ?? "");
+        setPgExemptOwnerToken(ex?.exemptOwnerToken ?? false);
         setPgDialog(pg);
     };
 
@@ -113,6 +122,7 @@ export default function PlatformFeesPage() {
         setStuFeeType(ex?.customStudentFeeType ?? "FLAT");
         setStuFeeValue(ex?.customStudentFee != null ? String(ex.customStudentFee) : "");
         setStuReason(ex?.reason ?? "");
+        setStuExemptToken(ex?.exemptStudentToken ?? false);
         setStuDialog(student);
     };
 
@@ -122,7 +132,7 @@ export default function PlatformFeesPage() {
         try {
             const old = exemptions.find(e => e.propertyId === pgDialog.id);
             if (old) await removeFeeExemption(old.id);
-            if (pgExemptOwner || pgExemptOnboarding || pgOwnerFeeValue !== "" || pgOnboardingFeeValue !== "") {
+            if (pgExemptOwner || pgExemptOnboarding || pgOwnerFeeValue !== "" || pgOnboardingFeeValue !== "" || pgExemptOwnerToken) {
                 const customOwnerFee = pgOwnerFeeValue !== "" ? parseFloat(pgOwnerFeeValue) : null;
                 const customOnboardingFee = pgOnboardingFeeValue !== "" ? parseFloat(pgOnboardingFeeValue) : null;
                 await addFeeExemption({
@@ -134,8 +144,9 @@ export default function PlatformFeesPage() {
                     customOnboardingFeeType: customOnboardingFee != null ? pgOnboardingFeeType : null,
                     customOwnerFee: customOwnerFee,
                     customOwnerFeeType: customOwnerFee != null ? pgOwnerFeeType : null,
+                    exemptOwnerToken: pgExemptOwnerToken,
                     reason: pgReason,
-                });
+                } as any);
             }
             await fetchAll();
             setPgDialog(null);
@@ -150,7 +161,7 @@ export default function PlatformFeesPage() {
         try {
             const old = exemptions.find(e => e.userId === stuDialog.user?.id);
             if (old) await removeFeeExemption(old.id);
-            if (stuExemptStudent || stuFeeValue !== "") {
+            if (stuExemptStudent || stuFeeValue !== "" || stuExemptToken) {
                 const customFee = stuFeeValue !== "" ? parseFloat(stuFeeValue) : null;
                 await addFeeExemption({
                     userId: stuDialog.user?.id,
@@ -158,8 +169,9 @@ export default function PlatformFeesPage() {
                     exemptCustomer: stuExemptStudent,
                     customStudentFee: customFee,
                     customStudentFeeType: customFee != null ? stuFeeType : null,
+                    exemptStudentToken: stuExemptToken,
                     reason: stuReason,
-                });
+                } as any);
             }
             await fetchAll();
             setStuDialog(null);
@@ -300,6 +312,29 @@ export default function PlatformFeesPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Token Payment Fees Toggle */}
+                    <Card className={`border-2 ${tokenFeesEnabled ? "border-yellow-400 bg-yellow-50" : "border-gray-200"}`}>
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">🪙 Token Payment Fees</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        {tokenFeesEnabled
+                                            ? "✅ ENABLED — Platform charges fees on ₹1,000 token payments too"
+                                            : "⭕ DISABLED — No extra fees charged on token payments (default)"}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setTokenFeesEnabled(!tokenFeesEnabled)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${tokenFeesEnabled ? "bg-yellow-500 text-white" : "bg-gray-200 text-gray-600"}`}
+                                >
+                                    {tokenFeesEnabled ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                                    {tokenFeesEnabled ? "ON" : "OFF"}
+                                </button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Cash Payment Toggle */}
                     <Card className={`border-2 ${allowCashPayment ? "border-orange-400 bg-orange-50" : "border-gray-200"}`}>
                         <CardContent className="p-5">
@@ -324,7 +359,7 @@ export default function PlatformFeesPage() {
                     </Card>
 
                     {/* Fee Configuration */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
                         <Card className="border-blue-200">
                             <CardContent className="p-5 space-y-3">
                                 <h3 className="font-bold text-blue-800">👤 Customer (Student) Rent Fee</h3>
@@ -343,6 +378,28 @@ export default function PlatformFeesPage() {
                                     <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerRentFeeFlat} min={0} step={1} onChange={e => setOwnerRentFeeFlat(parseFloat(e.target.value) || 0)} />
                                 </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-yellow-200">
+                            <CardContent className="p-5 space-y-3">
+                                <h3 className="font-bold text-yellow-800">🪙 Student Token Fee</h3>
+                                <p className="text-xs text-muted-foreground">Added on top of ₹1,000 token payment by student.</p>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={studentTokenFeeFlat} min={0} step={1} onChange={e => setStudentTokenFeeFlat(parseFloat(e.target.value) || 0)} />
+                                </div>
+                                {!tokenFeesEnabled && <p className="text-xs text-amber-600">⚠️ Token Fees toggle is OFF</p>}
+                            </CardContent>
+                        </Card>
+                        <Card className="border-red-200">
+                            <CardContent className="p-5 space-y-3">
+                                <h3 className="font-bold text-red-800">🏠 Owner Token Fee</h3>
+                                <p className="text-xs text-muted-foreground">Deducted when admin releases token payout to owner.</p>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
+                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerTokenFeeFlat} min={0} step={1} onChange={e => setOwnerTokenFeeFlat(parseFloat(e.target.value) || 0)} />
+                                </div>
+                                {!tokenFeesEnabled && <p className="text-xs text-amber-600">⚠️ Token Fees toggle is OFF</p>}
                             </CardContent>
                         </Card>
                         <Card className="border-green-200">
@@ -872,6 +929,20 @@ export default function PlatformFeesPage() {
                                 )}
                             </div>
 
+                            {/* Owner Token Fee Exemption */}
+                            <div className="bg-white rounded-xl p-4 border border-yellow-100 space-y-2">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" checked={pgExemptOwnerToken} onChange={e => setPgExemptOwnerToken(e.target.checked)} className="w-4 h-4 accent-yellow-500" />
+                                    <div>
+                                        <span className="text-sm font-black text-slate-800">Exempt from Token Payment Fee</span>
+                                        <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold">Global: ₹{ownerTokenFeeFlat}</span>
+                                    </div>
+                                </label>
+                                {pgExemptOwnerToken && (
+                                    <p className="text-[10px] text-emerald-600 ml-7">✅ Owner will NOT be charged any platform fee on token payouts for this PG.</p>
+                                )}
+                            </div>
+
                             {/* Reason */}
                             <div>
                                 <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Reason *</label>
@@ -964,6 +1035,20 @@ export default function PlatformFeesPage() {
                                 )}
                                 {stuExemptStudent && stuFeeValue !== "" && parseFloat(stuFeeValue) > 0 && (
                                     <p className="text-[10px] text-blue-600 ml-7">ℹ️ Student will be charged {stuFeeType === "FLAT" ? `₹${stuFeeValue}` : `${stuFeeValue}% of rent`} instead of global ₹{studentRentFeeFlat}.</p>
+                                )}
+                            </div>
+
+                            {/* Student Token Fee Exemption */}
+                            <div className="bg-white rounded-xl p-4 border border-yellow-100 space-y-2">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" checked={stuExemptToken} onChange={e => setStuExemptToken(e.target.checked)} className="w-4 h-4 accent-yellow-500" />
+                                    <div>
+                                        <span className="text-sm font-black text-slate-800">Exempt from Token Payment Fee</span>
+                                        <span className="ml-2 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold">Global: ₹{studentTokenFeeFlat}</span>
+                                    </div>
+                                </label>
+                                {stuExemptToken && (
+                                    <p className="text-[10px] text-emerald-600 ml-7">✅ Student will NOT be charged any platform fee on their token payment.</p>
                                 )}
                             </div>
 

@@ -27,6 +27,9 @@ export async function updatePlatformSettings(data: {
     ownerRentFeeFlat?: number;
     ownerOnboardingFeeFlat?: number;
     allowCashPayment?: boolean;
+    tokenFeesEnabled?: boolean;
+    studentTokenFeeFlat?: number;
+    ownerTokenFeeFlat?: number;
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -60,7 +63,7 @@ export async function getCashPaymentEnabled(): Promise<boolean> {
 }
 
 // ── Internal: calculate fees for a given amount ───────
-export async function calculateFees(amountStr: string, userId?: string, propertyName?: string, ownerId?: string): Promise<{
+export async function calculateFees(amountStr: string, userId?: string, propertyName?: string, ownerId?: string, paymentType?: 'RENT' | 'TOKEN'): Promise<{
     feesEnabled: boolean;
     grossAmount: number;
     customerFee: number;
@@ -81,8 +84,9 @@ export async function calculateFees(amountStr: string, userId?: string, property
     // Check exemptions
     let exemptCustomer = false;
     let exemptOwner = false;
+    let exemptions: any[] = [];
     if (userId || propertyName) {
-        const exemptions = await (prisma as any).feeExemption.findMany({
+        exemptions = await (prisma as any).feeExemption.findMany({
             where: {
                 OR: [
                     { userId: userId || undefined },
@@ -97,8 +101,37 @@ export async function calculateFees(amountStr: string, userId?: string, property
         }
     }
 
-    // Customer fee: flat ₹9 (or 0 if exempt)
-    const customerFee = exemptCustomer ? 0 : settings.studentRentFeeFlat;
+    // Token fee exemption check
+    let exemptCustomerToken = false;
+    let exemptOwnerToken = false;
+    for (const ex of exemptions) {
+        if (ex.exemptStudentToken) exemptCustomerToken = true;
+        if (ex.exemptOwnerToken) exemptOwnerToken = true;
+    }
+
+    const isToken = paymentType === 'TOKEN';
+    const tokenFeesEnabled = (settings as any).tokenFeesEnabled ?? false;
+    const studentTokenFeeFlat = (settings as any).studentTokenFeeFlat ?? 0;
+    const ownerTokenFeeFlat = (settings as any).ownerTokenFeeFlat ?? 0;
+
+    // Customer fee: use token or rent fee based on payment type
+    let customerFee: number;
+    if (isToken) {
+        customerFee = (tokenFeesEnabled && !exemptCustomerToken) ? studentTokenFeeFlat : 0;
+    } else {
+        customerFee = exemptCustomer ? 0 : settings.studentRentFeeFlat;
+        // Check custom student fee override
+        if (!exemptCustomer && exemptions.length > 0) {
+            for (const ex of exemptions) {
+                if (ex.customStudentFee != null) {
+                    customerFee = ex.customStudentFeeType === 'PERCENT'
+                        ? Math.round((grossAmount * ex.customStudentFee) / 100 * 100) / 100
+                        : ex.customStudentFee;
+                    break;
+                }
+            }
+        }
+    }
     const totalCharged = grossAmount + customerFee;
 
     // Per-owner commission override — check owner's commissionRate first
@@ -110,8 +143,24 @@ export async function calculateFees(amountStr: string, userId?: string, property
             commissionRate = Math.round((grossAmount * (owner as any).commissionRate) / 100 * 100) / 100;
         }
     }
+    // Check custom owner fee from FeeExemption
+    if (!exemptOwner && exemptions.length > 0) {
+        for (const ex of exemptions) {
+            if (ex.customOwnerFee != null) {
+                commissionRate = ex.customOwnerFeeType === 'PERCENT'
+                    ? Math.round((grossAmount * ex.customOwnerFee) / 100 * 100) / 100
+                    : ex.customOwnerFee;
+                break;
+            }
+        }
+    }
 
-    const ownerFee = exemptOwner ? 0 : commissionRate;
+    let ownerFee: number;
+    if (isToken) {
+        ownerFee = (tokenFeesEnabled && !exemptOwnerToken) ? ownerTokenFeeFlat : 0;
+    } else {
+        ownerFee = exemptOwner ? 0 : commissionRate;
+    }
     const ownerNet = grossAmount - ownerFee;
     const platformEarned = customerFee + ownerFee;
 

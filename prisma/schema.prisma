@@ -767,6 +767,9 @@ model PlatformSettings {
   maintenanceMode          Boolean  @default(false)
   maintenanceMessage       String?
   allowCashPayment         Boolean  @default(false)
+  tokenFeesEnabled         Boolean  @default(false)
+  studentTokenFeeFlat      Float    @default(0)
+  ownerTokenFeeFlat        Float    @default(0)
   updatedAt                DateTime @updatedAt
 }
 
@@ -801,6 +804,8 @@ model FeeExemption {
   customOnboardingFeeType   String?   // "FLAT" | "PERCENT"
   customOwnerFee            Float?    // null = use global; 0 = hide fee from owner; >0 = custom
   customOwnerFeeType        String?   // "FLAT" | "PERCENT"
+  exemptStudentToken    Boolean   @default(false)  // Waive token payment fee for this student
+  exemptOwnerToken      Boolean   @default(false)  // Waive owner token fee for this PG
   reason                String
   status                String    @default("ACTIVE")
   deletedAt             DateTime?
