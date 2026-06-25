@@ -64,9 +64,9 @@ export function PropertyAgreementModal({
             setScrolledToBottom(false);
             setAccepted(false);
             setSigning(false);
-            setSelectedDate(parseDateToISO(moveInDate));
+            setSelectedDate("");
         }
-    }, [isOpen, moveInDate]);
+    }, [isOpen]);
  
     function handleScroll() {
         const el = scrollRef.current;
@@ -92,15 +92,15 @@ export function PropertyAgreementModal({
  
     const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
     const formattedMoveInDate = selectedDate
-        ? new Date(selectedDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-        : moveInDate;
+        ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        : "[Please select date below]";
 
     const noticePeriod = property.noticePeriod || 30;
     const rent = Number(room.price) || 0;
     const deposit = Number(depositAmount) || 0;
     const totalPayable = rent + deposit;
  
-    const canSign = scrolledToBottom && accepted;
+    const canSign = scrolledToBottom && accepted && selectedDate !== "";
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -146,18 +146,28 @@ export function PropertyAgreementModal({
                 </div>
 
                 {/* ── Date Selection Card ── */}
-                <div className="px-6 py-3 bg-indigo-50 border-b border-indigo-100 shrink-0">
+                <div className={`px-6 py-3 border-b shrink-0 transition-all duration-300 ${!selectedDate ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <label className="text-xs font-black text-indigo-950 uppercase tracking-wider block">Confirm Your Actual Move-in Date</label>
-                            <span className="text-[10px] text-red-600 font-bold block mt-0.5">⚠️ Rent and billing cycles will start from this selected date.</span>
+                            {!selectedDate ? (
+                                <span className="text-[10px] text-rose-600 font-bold block mt-0.5 animate-pulse">
+                                    ⚠️ Please select a move-in date. Rent will be calculated from this date.
+                                </span>
+                            ) : (
+                                <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+                                    ✅ Rent and every other applicable charges will start from this date: {formattedMoveInDate}
+                                </span>
+                            )}
                         </div>
                         <input
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                             min={new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Allow up to 3 days in the past
-                            className="px-3 py-1.5 bg-white border-2 border-indigo-200 rounded-xl text-sm font-bold text-indigo-950 focus:outline-none focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                            className={`px-3 py-1.5 bg-white border-2 rounded-xl text-sm font-bold text-indigo-950 focus:outline-none transition-all cursor-pointer ${
+                                !selectedDate ? 'border-rose-300 focus:border-rose-500 hover:border-rose-400' : 'border-emerald-300 focus:border-emerald-500 hover:border-emerald-400'
+                            }`}
                         />
                     </div>
                 </div>
