@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPlatformSettings, updatePlatformSettings, getPlatformFees, getPlatformChangeLogs, getFeeExemptions, addFeeExemption, removeFeeExemption, getRegisteredPropertiesForExemption, getActiveStudentsForExemption } from "@/actions/platform";
-import { Shield, ToggleLeft, ToggleRight, IndianRupee, TrendingUp, RefreshCcw, Search, History, Database, Target, X } from "lucide-react";
+import { uploadPrivateDocumentAction, getSignedDocumentUrlAction } from "@/actions/uploads";
+import { Shield, ToggleLeft, ToggleRight, IndianRupee, TrendingUp, RefreshCcw, Search, History, Database, Target, X, FileText, UploadCloud, CheckCircle, AlertCircle } from "lucide-react";
 
 type TabType = "settings" | "data" | "log" | "exemptions";
 
@@ -50,6 +51,11 @@ export default function PlatformFeesPage() {
     const [pgOwnerFeeValue, setPgOwnerFeeValue] = useState<string>("");
     const [pgReason, setPgReason] = useState("");
     const [pgExemptOwnerToken, setPgExemptOwnerToken] = useState(false);
+    const [pgExemptTds, setPgExemptTds] = useState(false);
+    const [pgTdsCertificateFile, setPgTdsCertificateFile] = useState<File | null>(null);
+    const [pgTdsCertificateUrl, setPgTdsCertificateUrl] = useState<string | null>(null);
+    const [pgTdsExemptionReason, setPgTdsExemptionReason] = useState("");
+    const [pgUploadingTds, setPgUploadingTds] = useState(false);
     const [pgSaving, setPgSaving] = useState(false);
 
     // Student exemption config (inside dialog)
@@ -112,6 +118,10 @@ export default function PlatformFeesPage() {
         setPgOwnerFeeValue(ex?.customOwnerFee != null ? String(ex.customOwnerFee) : "");
         setPgReason(ex?.reason ?? "");
         setPgExemptOwnerToken(ex?.exemptOwnerToken ?? false);
+        setPgExemptTds(ex?.exemptTds ?? false);
+        setPgTdsCertificateUrl(ex?.tdsCertificateUrl ?? null);
+        setPgTdsCertificateFile(null);
+        setPgTdsExemptionReason(ex?.tdsExemptionReason ?? "");
         setPgDialog(pg);
     };
 
@@ -128,11 +138,59 @@ export default function PlatformFeesPage() {
 
     const handleSavePGExemption = async () => {
         if (!pgDialog || !pgReason.trim()) { alert("Reason is required."); return; }
+
+        if (pgExemptTds) {
+            if (!pgTdsCertificateFile && !pgTdsCertificateUrl) {
+                alert("Nil/Lower TDS Exemption Certificate is mandatory.");
+                return;
+            }
+            if (!pgTdsExemptionReason.trim()) {
+                alert("Explanation notes explaining the TDS exemption are mandatory.");
+                return;
+            }
+        }
+
         setPgSaving(true);
         try {
+            let finalTdsCertUrl = pgTdsCertificateUrl;
+
+            // Upload TDS Certificate if a new one is selected
+            if (pgExemptTds && pgTdsCertificateFile) {
+                setPgUploadingTds(true);
+                try {
+                    const formData = new FormData();
+                    formData.append("file", pgTdsCertificateFile);
+                    formData.append("fileName", pgTdsCertificateFile.name);
+                    formData.append("mimeType", pgTdsCertificateFile.type);
+
+                    const result = await uploadPrivateDocumentAction(formData);
+                    if (result && result.success) {
+                        finalTdsCertUrl = result.url;
+                    } else {
+                        throw new Error("Private file upload returned no success flag.");
+                    }
+                } catch (uploadErr: any) {
+                    alert(`Private Certificate Upload Error: ${uploadErr.message}`);
+                    setPgSaving(false);
+                    setPgUploadingTds(false);
+                    return;
+                } finally {
+                    setPgUploadingTds(false);
+                }
+            }
+
             const old = exemptions.find(e => e.propertyId === pgDialog.id);
             if (old) await removeFeeExemption(old.id);
-            if (pgExemptOwner || pgExemptOnboarding || pgOwnerFeeValue !== "" || pgOnboardingFeeValue !== "" || pgExemptOwnerToken) {
+
+            const shouldSaveRule =
+                pgExemptOwner ||
+                pgExemptOnboarding ||
+                pgOwnerFeeValue !== "" ||
+                pgOnboardingFeeValue !== "" ||
+                pgExemptOwnerToken ||
+                pgExemptTds;
+
+            if (shouldSaveRule) {
                 const customOwnerFee = pgOwnerFeeValue !== "" ? parseFloat(pgOwnerFeeValue) : null;
                 const customOnboardingFee = pgOnboardingFeeValue !== "" ? parseFloat(pgOnboardingFeeValue) : null;
                 await addFeeExemption({
@@ -145,6 +203,9 @@ export default function PlatformFeesPage() {
                     customOwnerFee: customOwnerFee,
                     customOwnerFeeType: customOwnerFee != null ? pgOwnerFeeType : null,
                     exemptOwnerToken: pgExemptOwnerToken,
+                    exemptTds: pgExemptTds,
+                    tdsCertificateUrl: pgExemptTds ? finalTdsCertUrl : null,
+                    tdsExemptionReason: pgExemptTds ? pgTdsExemptionReason : null,
                     reason: pgReason,
                 } as any);
             }
@@ -154,6 +215,7 @@ export default function PlatformFeesPage() {
         } catch (e: any) { alert(`Failed: ${e.message}`); }
         finally { setPgSaving(false); }
     };
+
 
     const handleSaveStudentExemption = async () => {
         if (!stuDialog || !stuReason.trim()) { alert("Reason is required."); return; }
@@ -853,7 +915,28 @@ export default function PlatformFeesPage() {
                                                     {ex.exemptOwner && ex.customOwnerFee === 0 && <span className="block text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: FREE (hidden)</span>}
                                                     {ex.exemptOwner && ex.customOwnerFee > 0 && <span className="block text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">Rent Fee: {ex.customOwnerFeeType === "PERCENT" ? `${ex.customOwnerFee}%` : `₹${ex.customOwnerFee}`}</span>}
                                                     {ex.exemptOnboardingFee && <span className="block text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-bold">Onboarding: FREE</span>}
-                                                    {!ex.exemptOwner && !ex.exemptOnboardingFee && <span className="text-slate-400 text-xs">—</span>}
+                                                    {ex.exemptTds && (
+                                                        <div className="flex flex-col gap-0.5 mt-0.5">
+                                                            <span className="inline-block text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">TDS: Exempt (Waived)</span>
+                                                            {ex.tdsCertificateUrl && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            const url = await getSignedDocumentUrlAction(ex.tdsCertificateUrl);
+                                                                            window.open(url, "_blank");
+                                                                        } catch (err: any) {
+                                                                            alert("Error: " + err.message);
+                                                                        }
+                                                                    }}
+                                                                    className="text-[9px] text-red-700 hover:underline text-left font-bold flex items-center gap-0.5"
+                                                                >
+                                                                    📂 View Cert
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {!ex.exemptOwner && !ex.exemptOnboardingFee && !ex.exemptTds && <span className="text-slate-400 text-xs">—</span>}
                                                 </td>
                                                 <td className="p-3 space-y-1">
                                                     {ex.exemptCustomer && ex.customStudentFee === 0 && <span className="block text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Conv. Fee: FREE (hidden)</span>}
@@ -992,6 +1075,121 @@ export default function PlatformFeesPage() {
                                 )}
                             </div>
 
+                            {/* TDS Exemption (Section 194-O) */}
+                            <div className={`rounded-xl p-4 border transition-all ${pgExemptTds ? "bg-red-50/35 border-red-200" : "bg-white border-slate-200"}`}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={pgExemptTds} 
+                                        onChange={e => setPgExemptTds(e.target.checked)} 
+                                        className="w-4 h-4 accent-red-600" 
+                                    />
+                                    <div>
+                                        <span className="text-sm font-black text-slate-850 flex items-center gap-1.5">
+                                            ⚠️ TDS Exemption (Section 194-O)
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 block font-semibold">Waive 1% TDS deduction on owner payouts</span>
+                                    </div>
+                                </label>
+
+                                {pgExemptTds && (
+                                    <div className="mt-4 ml-7 space-y-4 border-l-2 border-red-300 pl-4">
+                                        {/* Certificate File Uploader */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-bold uppercase text-slate-650 flex items-center gap-1">
+                                                Lower/Nil TDS Certificate * <span className="text-red-500 font-bold">(Max 5MB)</span>
+                                            </label>
+                                            
+                                            {/* File Picker / Existing File Link */}
+                                            {pgTdsCertificateUrl && !pgTdsCertificateFile ? (
+                                                <div className="bg-emerald-50 border border-emerald-250 rounded-lg p-2.5 flex items-center justify-between shadow-sm">
+                                                    <div className="flex items-center gap-2 text-xs font-black text-emerald-800">
+                                                        <FileText className="h-4 w-4 text-emerald-600" />
+                                                        <span>Certificate on Record</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const url = await getSignedDocumentUrlAction(pgTdsCertificateUrl);
+                                                                    window.open(url, "_blank");
+                                                                } catch (err: any) {
+                                                                    alert("Failed to view certificate: " + err.message);
+                                                                }
+                                                            }}
+                                                            className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded transition-all shadow-sm"
+                                                        >
+                                                            View
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setPgTdsCertificateUrl(null)}
+                                                            className="text-[10px] bg-red-650 hover:bg-red-750 text-white font-bold px-2.5 py-1 rounded transition-all shadow-sm"
+                                                        >
+                                                            Replace
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-4 flex flex-col items-center justify-center hover:bg-slate-50 transition-all cursor-pointer">
+                                                        <input 
+                                                            type="file" 
+                                                            accept=".pdf,image/jpeg,image/png,image/webp"
+                                                            onChange={e => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    if (file.size > 5 * 1024 * 1024) {
+                                                                        alert("❌ File size exceeds 5MB limit. Please choose a smaller file.");
+                                                                        e.target.value = "";
+                                                                        setPgTdsCertificateFile(null);
+                                                                    } else {
+                                                                        setPgTdsCertificateFile(file);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                        />
+                                                        <UploadCloud className="h-6 w-6 text-slate-400 mb-1" />
+                                                        <p className="text-xs text-slate-650 font-bold text-center">
+                                                            {pgTdsCertificateFile ? pgTdsCertificateFile.name : "Click or drag certificate here"}
+                                                        </p>
+                                                        <p className="text-[10px] text-slate-400">PDF, JPG, PNG up to 5MB</p>
+                                                    </div>
+                                                    {pgTdsCertificateFile && (
+                                                        <div className="flex items-center justify-between text-xs text-slate-650 bg-slate-50 p-2 rounded border shadow-sm">
+                                                            <span className="truncate max-w-[200px] font-bold">{pgTdsCertificateFile.name}</span>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => setPgTdsCertificateFile(null)} 
+                                                                className="text-red-500 font-bold hover:underline"
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Notes for Exemption */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-bold uppercase text-slate-600 block">
+                                                TDS Exemption Notes/Explanation *
+                                            </label>
+                                            <textarea 
+                                                rows={2}
+                                                placeholder="Explain why this property is TDS-exempt (e.g. Certificate No, lower deduction rate, special section)..."
+                                                className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-red-400 bg-white"
+                                                value={pgTdsExemptionReason}
+                                                onChange={e => setPgTdsExemptionReason(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Reason */}
                             <div>
                                 <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Reason *</label>
@@ -1009,15 +1207,23 @@ export default function PlatformFeesPage() {
                             <Button
                                 className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black"
                                 onClick={handleSavePGExemption}
-                                disabled={pgSaving || !pgReason.trim()}
+                                disabled={
+                                    pgSaving || 
+                                    pgUploadingTds ||
+                                    !pgReason.trim() || 
+                                    (pgExemptTds && (
+                                        !pgTdsExemptionReason.trim() || 
+                                        (!pgTdsCertificateFile && !pgTdsCertificateUrl)
+                                    ))
+                                }
                             >
-                                {pgSaving ? "Saving..." : "💾 Save Rule"}
+                                {pgSaving ? (pgUploadingTds ? "Uploading..." : "Saving...") : "💾 Save Rule"}
                             </Button>
                             <Button
                                 variant="outline"
                                 className="flex-1 font-black"
                                 onClick={() => setPgDialog(null)}
-                                disabled={pgSaving}
+                                disabled={pgSaving || pgUploadingTds}
                             >
                                 Cancel
                             </Button>

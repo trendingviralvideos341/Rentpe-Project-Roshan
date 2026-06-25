@@ -78,6 +78,51 @@ export async function quickUploadAction(formData: FormData) {
 }
 
 /**
+ * SECURE Private Document Upload to Cloudinary.
+ * Used for uploading sensitive tax documents like TDS Exemption Certificates.
+ * Restricts access to authenticated admin users only, files are stored as private.
+ */
+export async function uploadPrivateDocumentAction(formData: FormData) {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+    if (session.role !== "ADMIN") throw new Error("Unauthorized — Admins only");
+
+    const file = formData.get('file') as File;
+    const fileName = formData.get('fileName') as string;
+    const mimeType = formData.get('mimeType') as string;
+
+    if (!file || !fileName || !mimeType) {
+        throw new Error("Invalid upload parameters");
+    }
+
+    // Strict 5MB file size limit for tax documents
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File exceeds 5MB size limit");
+    }
+
+    const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/webp', 'application/pdf'
+    ];
+    if (!allowedTypes.includes(mimeType)) {
+        throw new Error(`File type ${mimeType} is not allowed. Choose a PDF or an Image file.`);
+    }
+
+    try {
+        const reference = await uploadToCloudinary(file, 'certificates/tds', true);
+        return { 
+            url: reference,
+            fileName: fileName,
+            success: true
+        };
+    } catch (error: any) {
+        console.error("🔴 Cloudinary private upload error:", error);
+        throw new Error("Cloud storage upload failed. Please try again.");
+    }
+}
+
+
+/**
  * Generates a signature for DIRECT browser-to-Cloudinary upload.
  * This is the HIGHEST PERFORMANCE path as it bypasses Vercel proxying entirely.
  */
@@ -114,3 +159,17 @@ export async function getCloudinarySignature(params: { folder: string; timestamp
         cloudName: process.env.CLOUDINARY_CLOUD_NAME?.trim()
     };
 }
+
+/**
+ * Safe, authenticated action to get a short-lived signed URL for a private document.
+ * Restricts document viewing strictly to Admin roles.
+ */
+export async function getSignedDocumentUrlAction(storedValue: string): Promise<string> {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+    if (session.role !== "ADMIN") throw new Error("Unauthorized — Admins only");
+
+    const { generateSignedDocUrl } = await import("@/lib/upload");
+    return generateSignedDocUrl(storedValue);
+}
+

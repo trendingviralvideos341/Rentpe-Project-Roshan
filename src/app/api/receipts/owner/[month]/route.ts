@@ -103,6 +103,21 @@ export async function GET(
         });
         const feeMap = new Map(platformFees.map((f: any) => [f.bookingId, f]));
 
+        // Check if there is any active TDS exemption for this owner's properties
+        const ownerProperties = await prisma.property.findMany({
+            where: { ownerId },
+            select: { name: true }
+        });
+        const propertyNames = ownerProperties.map(p => p.name);
+        const tdsExemptions = await (prisma as any).feeExemption.findMany({
+            where: {
+                propertyName: { in: propertyNames },
+                exemptTds: true,
+                status: 'ACTIVE'
+            }
+        });
+        const hasTdsExemption = tdsExemptions.length > 0;
+
         // ── Aggregate totals ──────────────────────────────────────────────────
         let totalGross        = 0;
         let totalOwnerFee     = 0;
@@ -148,7 +163,9 @@ export async function GET(
                 `RentPe Owner Commission Statement — ${monthLabel}`,
                 `Owner: ${owner.name} | ID: ${owner.displayId} | Generated: ${generatedOn}`,
                 `Statement No: ${statementNo}`,
-                `TDS deducted under Section 194-O (e-commerce aggregator). Use this for ITR filing.`,
+                hasTdsExemption 
+                    ? `TDS EXEMPTION ACTIVE under Section 194-O (Nil/Lower TDS Certificate on record).` 
+                    : `TDS deducted under Section 194-O (e-commerce aggregator). Use this for ITR filing.`,
                 "",
                 "Date,Tenant,Tenant ID,Property,Gross Rent (Rs.),Platform Commission (Rs.),GST on Commission (Rs.),TDS @ 1% (Rs.),Net Payout (Rs.),Payment Ref",
                 ...rows.map((r: any) =>
@@ -157,7 +174,9 @@ export async function GET(
                 "",
                 `TOTALS,,,,${totalGross.toFixed(2)},${totalOwnerFee.toFixed(2)},${totalGstOnOwner.toFixed(2)},${totalTds.toFixed(2)},${totalNetPayout.toFixed(2)},`,
                 "",
-                `NOTE: TDS Certificate (Form 16C equivalent) reference — Section 194-O. Deductor: RentPe (Antigravity Project). GSTIN: PENDING REGISTRATION.`,
+                hasTdsExemption
+                    ? `NOTE: TDS Certificate reference — Section 194-O. TDS exempted based on Lower/Nil certificate on record. Deductor: RentPe (Antigravity Project). GSTIN: PENDING REGISTRATION.`
+                    : `NOTE: TDS Certificate (Form 16C equivalent) reference — Section 194-O. Deductor: RentPe (Antigravity Project). GSTIN: PENDING REGISTRATION.`,
             ];
 
             return new NextResponse(csvLines.join("\n"), {
@@ -226,20 +245,37 @@ export async function GET(
         doc.text(`ID: ${owner.displayId || "—"}  |  ${owner.email || "—"}`, L + 4, y + 20);
 
         // TDS notice card
-        doc.setFillColor(255, 247, 237);
-        doc.roundedRect(150, y, pageW - 164, 22, 2, 2, "F");
-        doc.setDrawColor(251, 191, 36);
-        doc.roundedRect(150, y, pageW - 164, 22, 2, 2);
+        if (hasTdsExemption) {
+            doc.setFillColor(254, 242, 242);
+            doc.roundedRect(150, y, pageW - 164, 22, 2, 2, "F");
+            doc.setDrawColor(239, 68, 68);
+            doc.roundedRect(150, y, pageW - 164, 22, 2, 2);
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(146, 64, 14);
-        doc.text("TDS DEDUCTION NOTICE — SECTION 194-O", 154, y + 7);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7);
-        doc.setTextColor(92, 64, 14);
-        doc.text("RentPe deducts 1% TDS on gross rent as an e-commerce aggregator.", 154, y + 13);
-        doc.text("Please use this statement as your TDS certificate for ITR filing.", 154, y + 19);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7);
+            doc.setTextColor(153, 27, 27);
+            doc.text("TDS EXEMPTION ACTIVE — SECTION 194-O", 154, y + 7);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.setTextColor(127, 29, 29);
+            doc.text("TDS has been waived for exempted properties based on Nil/Lower TDS Certificate.", 154, y + 13);
+            doc.text("Verified certificate copy and explanation notes are kept on record.", 154, y + 19);
+        } else {
+            doc.setFillColor(255, 247, 237);
+            doc.roundedRect(150, y, pageW - 164, 22, 2, 2, "F");
+            doc.setDrawColor(251, 191, 36);
+            doc.roundedRect(150, y, pageW - 164, 22, 2, 2);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7);
+            doc.setTextColor(146, 64, 14);
+            doc.text("TDS DEDUCTION NOTICE — SECTION 194-O", 154, y + 7);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.setTextColor(92, 64, 14);
+            doc.text("RentPe deducts 1% TDS on gross rent as an e-commerce aggregator.", 154, y + 13);
+            doc.text("Please use this statement as your TDS certificate for ITR filing.", 154, y + 19);
+        }
 
         // Table
         y += 30;

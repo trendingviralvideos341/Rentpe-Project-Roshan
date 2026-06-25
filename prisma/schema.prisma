@@ -810,6 +810,9 @@ model FeeExemption {
   customOwnerFeeType        String?   // "FLAT" | "PERCENT"
   exemptStudentToken    Boolean   @default(false)  // Waive token payment fee for this student
   exemptOwnerToken      Boolean   @default(false)  // Waive owner token fee for this PG
+  exemptTds             Boolean   @default(false)  // Whether Section 194-O TDS is waived
+  tdsCertificateUrl     String?                    // Reference of the uploaded Nil/Lower TDS Certificate
+  tdsExemptionReason    String?                    // Mandatory notes explaining the TDS exemption
   reason                String
   status                String    @default("ACTIVE")
   deletedAt             DateTime?

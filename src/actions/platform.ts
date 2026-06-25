@@ -91,6 +91,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
     // Check exemptions
     let exemptCustomer = false;
     let exemptOwner = false;
+    let exemptTds = false;
     let exemptions: any[] = [];
     if (userId || propertyName) {
         exemptions = await (prisma as any).feeExemption.findMany({
@@ -105,6 +106,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
         for (const ex of exemptions) {
             if (ex.exemptCustomer) exemptCustomer = true;
             if (ex.exemptOwner) exemptOwner = true;
+            if (ex.exemptTds) exemptTds = true;
         }
     }
 
@@ -177,7 +179,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
     const gstOnStudentFee = Math.round(customerFee * GST_RATE * 100) / 100;
     const gstOnOwnerFee   = Math.round(ownerFee * GST_RATE * 100) / 100;
     // TDS deducted from owner on the FULL gross rent (not just fee) under Sec 194-O
-    const tdsAmount         = Math.round(grossAmount * TDS_RATE * 100) / 100;
+    const tdsAmount         = exemptTds ? 0 : Math.round(grossAmount * TDS_RATE * 100) / 100;
     const totalGstCollected = Math.round((gstOnStudentFee + gstOnOwnerFee) * 100) / 100;
     // CGST and SGST are each half of total GST (for invoice display purposes)
     const cgst = Math.round((gstOnStudentFee / 2) * 100) / 100;
@@ -311,12 +313,25 @@ export async function addFeeExemption(data: {
     customOnboardingFeeType?: string | null;
     customOwnerFee?: number | null;
     customOwnerFeeType?: string | null;
+    exemptTds?: boolean;
+    tdsCertificateUrl?: string | null;
+    tdsExemptionReason?: string | null;
     reason: string;
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
     if (!data.reason?.trim()) throw new Error("Reason is required.");
+
+    // Server-side validation for TDS exemption
+    if (data.exemptTds) {
+        if (!data.tdsCertificateUrl?.trim()) {
+            throw new Error("TDS lower/nil deduction certificate is required when TDS exemption is enabled.");
+        }
+        if (!data.tdsExemptionReason?.trim()) {
+            throw new Error("Reason notes specifically for TDS exemption are required.");
+        }
+    }
 
     const exemption = await (prisma as any).feeExemption.create({ data });
 
