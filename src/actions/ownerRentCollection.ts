@@ -158,7 +158,13 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
         bookingStatus: b.status,
     }));
 
-    return [...rentRows, ...tokenRows];
+    const combined = [...rentRows, ...tokenRows];
+    combined.sort((a, b) => {
+        const dateA = new Date(a.paidAt || a.dueDate).getTime();
+        const dateB = new Date(b.paidAt || b.dueDate).getTime();
+        return dateB - dateA;
+    });
+    return combined;
 }
 
 export async function markInvoiceAsCashPaid(invoiceId: string, note?: string) {
