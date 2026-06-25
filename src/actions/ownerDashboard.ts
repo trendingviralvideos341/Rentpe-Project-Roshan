@@ -391,14 +391,14 @@ export async function updateOwnerProfile(data: {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    if (!session || session.role !== 'OWNER') throw new Error('Unauthorized');
     const ownerId = (session as any).userId;
 
     const from = fromDate || new Date(new Date().setMonth(new Date().getMonth() - 12));
     const to = toDate || new Date();
 
-    const propertyIds = (await prisma.property.findMany({ where: { ownerId }, select: { id: true, name: true } }));
-    const propIdList = propertyIds.map(p => p.id);
+    const propertyList = await prisma.property.findMany({ where: { ownerId }, select: { id: true, name: true } });
+    const propIdList = propertyList.map(p => p.id);
 
     const owner = await prisma.user.findUnique({
         where: { id: ownerId },
@@ -407,46 +407,126 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
 
     const bookings = await (prisma.booking as any).findMany({
         where: { propertyId: { in: propIdList }, createdAt: { gte: from, lte: to } },
-        select: { 
-            id: true, displayId: true, propertyName: true, roomType: true, 
+        select: {
+            id: true, displayId: true, propertyName: true, propertyId: true, roomType: true,
             amount: true, status: true, createdAt: true, cancelReason: true,
             user: { select: { name: true } }
         }
     });
 
     const bookingIds = bookings.map((b: any) => b.id);
-    const refunds = await (prisma as any).refundRecord.findMany({ where: { bookingId: { in: bookingIds } } });
+    const [refunds, platformFees, payments] = await Promise.all([
+        (prisma as any).refundRecord.findMany({ where: { bookingId: { in: bookingIds } } }),
+        (prisma as any).platformFee.findMany({ where: { bookingId: { in: bookingIds } } }),
+        (prisma as any).payment.findMany({
+            where: { bookingId: { in: bookingIds }, status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] } },
+            select: { bookingId: true, razorpayOrderId: true, razorpayId: true, razorpayTransferId: true, method: true }
+        }),
+    ]);
+
+    const feeMap: Record<string, any> = {};
+    for (const f of platformFees) feeMap[f.bookingId] = f;
+    const payMap: Record<string, any> = {};
+    for (const p of payments) payMap[p.bookingId] = p;
+
+    // TDS exemption status
+    const exemption = await (prisma as any).feeExemption.findFirst({
+        where: { OR: [{ userId: ownerId }, { propertyId: { in: propIdList } }], status: 'ACTIVE', exemptTds: true },
+        orderBy: { createdAt: 'desc' }
+    });
 
     const report = bookings.map((b: any) => {
         const refund = refunds.find((r: any) => r.bookingId === b.id);
-        const isRevenue = ['BOOKING_CONFIRMED','CHECKED_IN','PAID','CASH_PAID'].includes(b.status);
+        const fee = feeMap[b.id] || {};
+        const pay = payMap[b.id] || {};
+        const isRevenue = ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(b.status);
         const gross = isRevenue ? (b.amount || 0) : 0;
         const refundAmount = refund?.status === 'PROCESSED' ? refund.amount : 0;
         return {
-            bookingId: b.displayId, 
+            bookingId: b.displayId,
+            internalBookingId: b.id,
             tenantName: b.user?.name || 'N/A',
-            property: b.propertyName, 
+            property: b.propertyName,
             roomType: b.roomType,
-            amount: b.amount, 
-            status: b.status, 
+            amount: b.amount,
+            status: b.status,
             date: b.createdAt,
-            revenueContribution: gross, 
-            refundAmount, 
-            netRevenue: gross - refundAmount
+            razorpayOrderId: pay.razorpayOrderId || '—',
+            razorpayPaymentId: pay.razorpayId || '—',
+            razorpayTransferId: pay.razorpayTransferId || '—',
+            paymentMethod: pay.method || '—',
+            revenueContribution: gross,
+            refundAmount,
+            netRevenue: gross - refundAmount,
+            // === Tax Breakdown ===
+            platformFeeCharged: fee.customerFee || 0,
+            gstCharged: fee.gstOnStudentFee || 0,
+            tdsDeducted: fee.tdsAmount || 0,
+            ownerNetPayout: fee.ownerNet || 0,
         };
     });
 
+    const revenueRows = report.filter((r: any) => ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(r.status));
+
     const summary = {
         ownerName: owner?.name || 'Owner',
-        businessName: owner?.businessName || 'RentPe Property Partner',
+        businessName: (owner as any)?.businessName || 'RentPe Property Partner',
         ownerId: owner?.displayId,
         totalBookings: bookings.length,
-        confirmedBookings: bookings.filter((b: any) => ['BOOKING_CONFIRMED','CHECKED_IN','PAID','CASH_PAID'].includes(b.status)).length,
+        confirmedBookings: revenueRows.length,
         cancelledBookings: bookings.filter((b: any) => b.status === 'CANCELLED').length,
-        totalGross: report.reduce((s: number, r: any) => s + r.revenueContribution, 0),
+        totalGross: revenueRows.reduce((s: number, r: any) => s + r.revenueContribution, 0),
         totalRefunds: report.reduce((s: number, r: any) => s + r.refundAmount, 0),
-        totalNet: report.reduce((s: number, r: any) => s + r.netRevenue, 0),
+        totalNet: revenueRows.reduce((s: number, r: any) => s + r.netRevenue, 0),
+        // === NEW TAX FIELDS ===
+        totalPlatformFeeCharged: revenueRows.reduce((s: number, r: any) => s + r.platformFeeCharged, 0),
+        totalGstCharged: revenueRows.reduce((s: number, r: any) => s + r.gstCharged, 0),
+        totalTdsDeducted: revenueRows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
+        totalOwnerNetPayout: revenueRows.reduce((s: number, r: any) => s + r.ownerNetPayout, 0),
+        tdsExempt: !!exemption,
+        tdsExemptionReason: exemption?.tdsExemptionReason || null,
+        tdsCertificateUrl: exemption?.tdsCertificateUrl || null,
     };
 
     return { report, summary, generatedAt: new Date() };
+}
+
+// ── Owner: Monthly GST + TDS breakdown for tax summary page ──
+export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error('Unauthorized');
+    const ownerId = (session as any).userId;
+
+    const from = fromDate || new Date(new Date().getFullYear(), 3, 1);
+    const to = toDate || new Date();
+
+    const propIdList = (await prisma.property.findMany({ where: { ownerId }, select: { id: true } })).map(p => p.id);
+    const bookingIds = (await prisma.booking.findMany({
+        where: { propertyId: { in: propIdList }, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] }, createdAt: { gte: from, lte: to } },
+        select: { id: true, createdAt: true }
+    }));
+
+    const fees = await (prisma as any).platformFee.findMany({
+        where: { bookingId: { in: bookingIds.map(b => b.id) }, status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    const bookingDateMap: Record<string, Date> = {};
+    for (const b of bookingIds) bookingDateMap[b.id] = b.createdAt;
+
+    const monthlyMap: Record<string, any> = {};
+    for (const f of fees) {
+        const d = new Date(f.createdAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0 };
+        monthlyMap[key].grossRent += f.grossAmount || 0;
+        monthlyMap[key].platformFee += (f.customerFee || 0) + (f.ownerFee || 0);
+        monthlyMap[key].gst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
+        monthlyMap[key].tds += f.tdsAmount || 0;
+        monthlyMap[key].netPayout += f.ownerNet || 0;
+        monthlyMap[key].transactions++;
+    }
+
+    return Object.values(monthlyMap).sort((a: any, b: any) => a.key.localeCompare(b.key));
 }

@@ -428,3 +428,233 @@ export async function updateOwnerRazorpayAccount(accountId: string | null) {
     revalidatePath('/dashboard/owner/settings/payment');
     return { success: true };
 }
+
+// ── ADMIN: Get full financial ledger with all IDs and tax breakdown ──
+export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const from = fromDate || new Date(new Date().getFullYear(), 3, 1); // April 1 of current year
+    const to = toDate || new Date();
+
+    const payments = await (prisma as any).payment.findMany({
+        where: {
+            createdAt: { gte: from, lte: to },
+            status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] }
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+            booking: {
+                select: {
+                    id: true, displayId: true, propertyName: true, propertyId: true, roomType: true,
+                    status: true, createdAt: true,
+                    user: { select: { id: true, name: true, email: true, phone: true, displayId: true } },
+                    room: {
+                        select: {
+                            property: {
+                                select: {
+                                    id: true, name: true, city: true,
+                                    owner: { select: { id: true, name: true, displayId: true, email: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Join with PlatformFee records for tax data
+    const bookingIds = payments.map((p: any) => p.bookingId).filter(Boolean);
+    const feeRecords = await (prisma as any).platformFee.findMany({
+        where: { bookingId: { in: bookingIds } }
+    });
+    const feeMap: Record<string, any> = {};
+    for (const f of feeRecords) feeMap[f.bookingId] = f;
+
+    const rows = payments.map((p: any) => {
+        const fee = feeMap[p.bookingId] || {};
+        const booking = p.booking || {};
+        const owner = booking?.room?.property?.owner || {};
+        const property = booking?.room?.property || {};
+        return {
+            // === IDs (Audit Trail) ===
+            rentpePaymentId: p.id,
+            rentpeBookingId: booking.displayId || booking.id,
+            razorpayOrderId: p.razorpayOrderId || '—',
+            razorpayPaymentId: p.razorpayId || '—',
+            razorpayTransferId: p.razorpayTransferId || '—',
+            // === Who Paid ===
+            studentName: booking?.user?.name || '—',
+            studentEmail: booking?.user?.email || '—',
+            studentId: booking?.user?.displayId || '—',
+            // === What For ===
+            propertyName: property.name || booking.propertyName || '—',
+            propertyCity: property.city || '—',
+            roomType: booking.roomType || '—',
+            // === Owner ===
+            ownerName: owner.name || '—',
+            ownerId: owner.displayId || '—',
+            ownerEmail: owner.email || '—',
+            // === Money Breakdown ===
+            grossAmount: fee.grossAmount || p.amount || 0,
+            platformFeeStudent: fee.customerFee || 0,
+            platformFeeOwner: fee.ownerFee || 0,
+            gstOnStudentFee: fee.gstOnStudentFee || 0,
+            gstOnOwnerFee: fee.gstOnOwnerFee || 0,
+            cgst: fee.gstOnStudentFee ? Math.round(fee.gstOnStudentFee / 2 * 100) / 100 : 0,
+            sgst: fee.gstOnStudentFee ? Math.round(fee.gstOnStudentFee / 2 * 100) / 100 : 0,
+            tdsDeducted: fee.tdsAmount || 0,
+            ownerNetPayout: fee.ownerNet || 0,
+            totalCharged: fee.totalCharged || p.amount || 0,
+            platformEarned: fee.platformEarned || 0,
+            sacCode: fee.sacCode || '997312',
+            paymentMethod: p.method || '—',
+            status: p.status,
+            date: p.createdAt,
+        };
+    });
+
+    // === Aggregate totals ===
+    const totals = {
+        totalGrossCollected: rows.reduce((s: number, r: any) => s + r.grossAmount, 0),
+        totalPlatformEarned: rows.reduce((s: number, r: any) => s + r.platformEarned, 0),
+        totalGstCollected: rows.reduce((s: number, r: any) => s + r.gstOnStudentFee + r.gstOnOwnerFee, 0),
+        totalCgst: rows.reduce((s: number, r: any) => s + r.cgst, 0),
+        totalSgst: rows.reduce((s: number, r: any) => s + r.sgst, 0),
+        totalTdsWithheld: rows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
+        totalOwnerPayouts: rows.reduce((s: number, r: any) => s + r.ownerNetPayout, 0),
+        transactionCount: rows.length,
+    };
+
+    return { rows, totals, generatedAt: new Date(), from, to };
+}
+
+// ── ADMIN: Monthly GST + TDS tax liability summary ──
+export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const from = fromDate || new Date(new Date().getFullYear(), 3, 1);
+    const to = toDate || new Date();
+
+    const fees = await (prisma as any).platformFee.findMany({
+        where: { createdAt: { gte: from, lte: to }, status: 'ACTIVE' },
+        include: {
+            booking: {
+                select: {
+                    propertyName: true, propertyId: true, createdAt: true,
+                    room: { select: { property: { select: { owner: { select: { id: true, name: true, displayId: true, email: true } }, name: true } } } }
+                }
+            }
+        },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    // Group by month
+    const monthlyMap: Record<string, any> = {};
+    for (const f of fees) {
+        const d = new Date(f.createdAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0 };
+        monthlyMap[key].gst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
+        monthlyMap[key].cgst += f.gstOnStudentFee ? f.gstOnStudentFee / 2 : 0;
+        monthlyMap[key].sgst += f.gstOnStudentFee ? f.gstOnStudentFee / 2 : 0;
+        monthlyMap[key].tds += f.tdsAmount || 0;
+        monthlyMap[key].transactions++;
+        monthlyMap[key].platformEarned += f.platformEarned || 0;
+    }
+
+    // TDS by owner
+    const ownerTdsMap: Record<string, any> = {};
+    for (const f of fees) {
+        const owner = f.booking?.room?.property?.owner;
+        if (!owner) continue;
+        if (!ownerTdsMap[owner.id]) ownerTdsMap[owner.id] = { ownerName: owner.name, ownerId: owner.displayId, ownerEmail: owner.email, totalTds: 0, transactions: 0 };
+        ownerTdsMap[owner.id].totalTds += f.tdsAmount || 0;
+        ownerTdsMap[owner.id].transactions++;
+    }
+
+    // TDS exempt owners
+    const exemptOwners = await (prisma as any).feeExemption.findMany({
+        where: { status: 'ACTIVE', exemptTds: true },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    const monthly = Object.values(monthlyMap).sort((a: any, b: any) => a.key.localeCompare(b.key));
+    const ownerTds = Object.values(ownerTdsMap).sort((a: any, b: any) => b.totalTds - a.totalTds);
+
+    const totals = {
+        totalGst: monthly.reduce((s: number, m: any) => s + m.gst, 0),
+        totalCgst: monthly.reduce((s: number, m: any) => s + m.cgst, 0),
+        totalSgst: monthly.reduce((s: number, m: any) => s + m.sgst, 0),
+        totalTds: monthly.reduce((s: number, m: any) => s + m.tds, 0),
+        totalPlatformEarned: monthly.reduce((s: number, m: any) => s + m.platformEarned, 0),
+    };
+
+    return { monthly, ownerTds, exemptOwners, totals, generatedAt: new Date(), from, to };
+}
+
+// ── ADMIN: Per-property unit economics ──
+export async function getAdminPropertyUnitEconomics(fromDate?: Date, toDate?: Date) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const from = fromDate || new Date(new Date().getFullYear(), 3, 1);
+    const to = toDate || new Date();
+
+    const fees = await (prisma as any).platformFee.findMany({
+        where: { createdAt: { gte: from, lte: to }, status: 'ACTIVE' },
+        include: {
+            booking: {
+                select: {
+                    propertyId: true, propertyName: true,
+                    user: { select: { name: true, displayId: true } },
+                    room: { select: { property: { select: { name: true, city: true, owner: { select: { name: true, displayId: true } } } } } }
+                }
+            }
+        }
+    });
+
+    const propMap: Record<string, any> = {};
+    for (const f of fees) {
+        const propId = f.booking?.propertyId || 'unknown';
+        const propName = f.booking?.room?.property?.name || f.booking?.propertyName || 'Unknown';
+        const city = f.booking?.room?.property?.city || '—';
+        const owner = f.booking?.room?.property?.owner;
+        if (!propMap[propId]) {
+            propMap[propId] = {
+                propertyId: propId,
+                propertyName: propName,
+                city,
+                ownerName: owner?.name || '—',
+                ownerId: owner?.displayId || '—',
+                totalGrossRent: 0,
+                totalPlatformFee: 0,
+                totalGst: 0,
+                totalTds: 0,
+                totalOwnerPayout: 0,
+                platformEarned: 0,
+                transactions: 0,
+                students: new Set<string>(),
+            };
+        }
+        propMap[propId].totalGrossRent += f.grossAmount || 0;
+        propMap[propId].totalPlatformFee += (f.customerFee || 0) + (f.ownerFee || 0);
+        propMap[propId].totalGst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
+        propMap[propId].totalTds += f.tdsAmount || 0;
+        propMap[propId].totalOwnerPayout += f.ownerNet || 0;
+        propMap[propId].platformEarned += f.platformEarned || 0;
+        propMap[propId].transactions++;
+        if (f.booking?.user?.displayId) propMap[propId].students.add(f.booking.user.displayId);
+    }
+
+    const properties = Object.values(propMap).map((p: any) => ({
+        ...p,
+        uniqueStudents: p.students.size,
+        students: undefined, // remove Set before serializing
+    })).sort((a: any, b: any) => b.totalGrossRent - a.totalGrossRent);
+
+    return { properties, generatedAt: new Date(), from, to };
+}
