@@ -50,6 +50,18 @@ export async function GET(
 
         if (!invoice) return new NextResponse("Not found", { status: 404 });
 
+        // Fetch platform fee / tax breakdown (if it was recorded)
+        const platformFee = await (prisma as any).platformFee.findFirst({
+            where: { bookingId: invoice.bookingId }
+        });
+        const convFee        = platformFee ? Number(platformFee.customerFee)    : 0;
+        const gstOnStudent   = platformFee ? Number(platformFee.gstOnStudentFee): 0;
+        const cgstAmt        = Math.round((gstOnStudent / 2) * 100) / 100;
+        const sgstAmt        = Math.round((gstOnStudent / 2) * 100) / 100;
+        const tdsAmt         = platformFee ? Number(platformFee.tdsAmount)       : 0;
+        const sacCode        = platformFee?.sacCode || "997312";
+        const feesApplied    = convFee > 0;
+
         // Ownership check — students can only see their own; owners/admins see all
         if ((session as any).role === "USER" && invoice.booking?.userId !== userId) {
             return new NextResponse("Unauthorized", { status: 401 });
@@ -201,11 +213,11 @@ export async function GET(
         y += 11;
 
         // ── Table rows ──
-        const rows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean }> = [
+        const rows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; indent?: boolean }> = [
             { label: "Period / Month",  value: invoice.month || "—" },
             { label: "Invoice No.",     value: receiptNo },
             { label: "Tenant ID",       value: tenantId },
-            { label: "Rent Amount",     value: inr(Number(invoice.rentAmount)) },
+            { label: "Base Rent",       value: inr(Number(invoice.rentAmount)) },
         ];
 
         if (Number(invoice.foodAmount) > 0) {
@@ -215,12 +227,21 @@ export async function GET(
             rows.push({ label: "Credit Applied", value: `- ${inr(Number(invoice.creditApplied))}` });
         }
 
+        // ── GST breakdown rows (show only if platform fees were applied) ──
+        if (feesApplied) {
+            rows.push(
+                { label: `RentPe Convenience Fee (SAC ${sacCode})`, value: inr(convFee), indent: true },
+                { label: "  CGST @ 9%",  value: inr(cgstAmt),  indent: true },
+                { label: "  SGST @ 9%",  value: inr(sgstAmt),  indent: true },
+            );
+        }
+
         rows.push(
-            { label: "Total Amount",    value: inrShort(Number(invoice.amount)), bold: true, highlight: true },
-            { label: "Due Date",        value: dueDate },
-            { label: "Paid On",         value: paidOn },
-            { label: "Payment Method",  value: paymentMethod },
-            { label: "Payment Ref",     value: paymentRef },
+            { label: "Total Amount Paid",  value: inrShort(Number(invoice.amount) + convFee + gstOnStudent), bold: true, highlight: true },
+            { label: "Due Date",           value: dueDate },
+            { label: "Paid On",            value: paidOn },
+            { label: "Payment Method",     value: paymentMethod },
+            { label: "Payment Ref",        value: paymentRef },
         );
 
         const ROW_H = 9;
@@ -230,6 +251,8 @@ export async function GET(
 
             if (row.highlight) {
                 doc.setFillColor(238, 242, 255); // indigo-50 for total row
+            } else if (row.indent) {
+                doc.setFillColor(250, 250, 255); // very light for GST sub-rows
             } else {
                 doc.setFillColor(isEven ? 248 : 255, isEven ? 250 : 255, isEven ? 252 : 255);
             }
@@ -244,10 +267,11 @@ export async function GET(
             doc.line(130, y, 130, y + ROW_H);
 
             // Left label
-            doc.setFont("helvetica", row.bold ? "bold" : "normal");
-            doc.setFontSize(row.bold ? 9 : 8);
-            doc.setTextColor(row.bold ? 55 : 100, row.bold ? 48 : 116, row.bold ? 163 : 139);
-            doc.text(row.label, L + 4, y + 6);
+            const labelX = row.indent ? L + 8 : L + 4;
+            doc.setFont("helvetica", row.bold ? "bold" : (row.indent ? "italic" : "normal"));
+            doc.setFontSize(row.bold ? 9 : (row.indent ? 7.5 : 8));
+            doc.setTextColor(row.bold ? 55 : (row.indent ? 99 : 100), row.bold ? 48 : (row.indent ? 102 : 116), row.bold ? 163 : (row.indent ? 241 : 139));
+            doc.text(row.label, labelX, y + 6);
 
             // Right value — always right-aligned at R-4
             doc.setTextColor(15, 23, 42);
@@ -267,9 +291,28 @@ export async function GET(
         doc.rect(L, y - (rows.length * ROW_H), 182, rows.length * ROW_H);
 
         // ═══════════════════════════════════════════════════════════════════════
-        // AMOUNT IN WORDS — real Indian invoice standard
+        // GST CERTIFICATE BOX (Indian Invoice Standard)
         // ═══════════════════════════════════════════════════════════════════════
-        y += 6;
+        y += 5;
+        doc.setFillColor(238, 242, 255);
+        doc.roundedRect(L, y, 182, feesApplied ? 28 : 16, 2, 2, "F");
+        doc.setDrawColor(199, 210, 254);
+        doc.roundedRect(L, y, 182, feesApplied ? 28 : 16, 2, 2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(55, 48, 163);
+        doc.text("GST & TAX INFORMATION", L + 4, y + 7);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(71, 85, 105);
+        doc.text("Service Provider: RentPe (Antigravity Project)  |  GSTIN: PENDING REGISTRATION", L + 4, y + 13);
+        doc.text(`SAC Code: ${sacCode} (Short-term accommodation / leasing services)  |  GST Rate: 18% (CGST 9% + SGST 9%)`, L + 4, y + 19);
+        if (feesApplied) {
+            doc.text(`Convenience Fee (Excl. GST): ${inr(convFee)}  |  CGST: ${inr(cgstAmt)}  |  SGST: ${inr(sgstAmt)}  |  TDS (Sec. 194-O): ${inr(tdsAmt)}`, L + 4, y + 25);
+        }
+        y += feesApplied ? 32 : 20;
         const totalWords = numberToWords(Number(invoice.amount));
         doc.setFillColor(249, 250, 251);
         doc.roundedRect(L, y, 182, 10, 1, 1, "F");

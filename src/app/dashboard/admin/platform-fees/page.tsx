@@ -180,11 +180,14 @@ export default function PlatformFeesPage() {
         finally { setStuSaving(false); }
     };
 
-    // Live preview calculations
-    const customerFee = feesEnabled ? studentRentFeeFlat : 0;
-    const totalCharged = previewAmount + customerFee;
-    const ownerFee = feesEnabled ? ownerRentFeeFlat : 0;
-    const ownerNet = previewAmount - ownerFee;
+    // Live preview calculations (with GST 18% exclusive + TDS 1%)
+    const customerFee    = feesEnabled ? studentRentFeeFlat : 0;
+    const gstPreview     = feesEnabled ? Math.round(customerFee * 0.18 * 100) / 100 : 0;
+    const totalCharged   = previewAmount + customerFee + gstPreview;
+    const ownerFee       = feesEnabled ? ownerRentFeeFlat : 0;
+    const gstOnOwner     = feesEnabled ? Math.round(ownerFee * 0.18 * 100) / 100 : 0;
+    const tdsPreview     = feesEnabled ? Math.round(previewAmount * 0.01 * 100) / 100 : 0;
+    const ownerNet       = previewAmount - ownerFee - gstOnOwner - tdsPreview;
     const platformEarned = customerFee + ownerFee;
 
     // Data tab filters
@@ -202,6 +205,14 @@ export default function PlatformFeesPage() {
     const totalEarned = filteredFees.reduce((s, f) => s + (f.platformEarned || 0), 0);
     const totalCustomerFees = filteredFees.reduce((s, f) => s + (f.customerFee || 0), 0);
     const totalOwnerFees = filteredFees.reduce((s, f) => s + (f.ownerFee || 0), 0);
+    const totalGstCollected = filteredFees.reduce((s, f) => s + ((f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0)), 0);
+    const totalTdsDeducted = filteredFees.reduce((s, f) => s + (f.tdsAmount || 0), 0);
+
+    // Export URL helpers
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const [exportFrom, setExportFrom] = useState(currentMonth);
+    const [exportTo, setExportTo] = useState(currentMonth);
 
     // Filtered PGs/Students for dropdown
     const filteredPGs = registeredProperties.filter(p => {
@@ -426,14 +437,18 @@ export default function PlatformFeesPage() {
                                 <input type="number" className="border rounded-md p-2 text-sm w-36" value={previewAmount} min={100} step={100} onChange={e => setPreviewAmount(parseFloat(e.target.value) || 0)} />
                             </div>
                             {feesEnabled ? (
-                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                     {[
-                                        { label: "Rent Amount", value: `₹${previewAmount.toFixed(2)}`, color: "" },
-                                        { label: "Customer Fee Added", value: `+₹${customerFee.toFixed(2)}`, color: "blue" },
-                                        { label: "Customer Pays Total", value: `₹${totalCharged.toFixed(2)}`, color: "green" },
-                                        { label: "Owner Fee Deducted", value: `-₹${ownerFee.toFixed(2)}`, color: "orange" },
-                                        { label: "Owner Receives", value: `₹${ownerNet.toFixed(2)}`, color: "" },
-                                        { label: "Platform Earns", value: `₹${platformEarned.toFixed(2)}`, color: "purple" },
+                                        { label: "Base Rent",            value: `₹${previewAmount.toFixed(2)}`,    color: "" },
+                                        { label: "Convenience Fee",      value: `+₹${customerFee.toFixed(2)}`,    color: "blue" },
+                                        { label: "GST on Fee (18%)",     value: `+₹${gstPreview.toFixed(2)}`,     color: "indigo" },
+                                        { label: "Student Pays Total",   value: `₹${totalCharged.toFixed(2)}`,    color: "green" },
+                                        { label: "Owner Commission",     value: `-₹${ownerFee.toFixed(2)}`,       color: "orange" },
+                                        { label: "GST on Commission",    value: `-₹${gstOnOwner.toFixed(2)}`,     color: "orange" },
+                                        { label: "TDS @ 1% (Sec 194-O)",value: `-₹${tdsPreview.toFixed(2)}`,     color: "red" },
+                                        { label: "Owner Net Payout",     value: `₹${ownerNet.toFixed(2)}`,        color: "" },
+                                        { label: "Platform Earns",       value: `₹${platformEarned.toFixed(2)}`,  color: "purple" },
+                                        { label: "GST to Remit (Govt)", value: `₹${(gstPreview + gstOnOwner).toFixed(2)}`, color: "" },
                                     ].map(({ label, value, color }) => (
                                         <div key={label} className={`rounded-lg p-3 border ${color ? `bg-${color}-50 border-${color}-200` : "bg-white"}`}>
                                             <p className={`text-xs ${color ? `text-${color}-600` : "text-muted-foreground"}`}>{label}</p>
@@ -457,17 +472,44 @@ export default function PlatformFeesPage() {
             {/* ── DATA TAB ── */}
             {activeTab === "data" && (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {[
-                            { label: "Total Platform Earned", value: `₹${totalEarned.toFixed(2)}`, color: "purple" },
-                            { label: "From Customer Fees", value: `₹${totalCustomerFees.toFixed(2)}`, color: "blue" },
-                            { label: "From Owner Fees", value: `₹${totalOwnerFees.toFixed(2)}`, color: "orange" },
+                            { label: "Platform Earned",    value: `₹${totalEarned.toFixed(2)}`,         color: "purple" },
+                            { label: "From Student Fees",  value: `₹${totalCustomerFees.toFixed(2)}`,   color: "blue" },
+                            { label: "From Owner Fees",    value: `₹${totalOwnerFees.toFixed(2)}`,      color: "orange" },
+                            { label: "GST Collected",      value: `₹${totalGstCollected.toFixed(2)}`,   color: "indigo" },
+                            { label: "TDS Deducted",       value: `₹${totalTdsDeducted.toFixed(2)}`,    color: "red" },
                         ].map(({ label, value, color }) => (
                             <div key={label} className={`p-4 rounded-xl border-2 bg-${color}-50 border-${color}-200`}>
-                                <div className={`text-2xl font-bold text-${color}-700`}>{value}</div>
-                                <div className={`text-sm font-medium text-${color}-600`}>{label}</div>
+                                <div className={`text-xl font-bold text-${color}-700`}>{value}</div>
+                                <div className={`text-xs font-medium text-${color}-600`}>{label}</div>
                             </div>
                         ))}
+                    </div>
+                    {/* Export Tax Report */}
+                    <div className="flex flex-wrap gap-3 items-center p-4 bg-gray-50 border rounded-xl">
+                        <span className="text-sm font-bold text-gray-700">📤 Export Tax Report:</span>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500">From:</label>
+                            <input type="month" className="border rounded px-2 py-1 text-sm" value={exportFrom} onChange={e => setExportFrom(e.target.value)} />
+                            <label className="text-xs text-gray-500">To:</label>
+                            <input type="month" className="border rounded px-2 py-1 text-sm" value={exportTo} onChange={e => setExportTo(e.target.value)} />
+                        </div>
+                        <a
+                            href={`/api/receipts/admin/export?from=${exportFrom}&to=${exportTo}&format=csv`}
+                            download
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg"
+                        >
+                            ⬇️ Download CSV (Excel)
+                        </a>
+                        <a
+                            href={`/api/receipts/admin/export?from=${exportFrom}&to=${exportTo}&format=pdf`}
+                            download
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg"
+                        >
+                            ⬇️ Download PDF
+                        </a>
+                        <span className="text-xs text-gray-400">Share CSV with your CA for GSTR-1 and TDS filing</span>
                     </div>
                     <div className="flex gap-3 items-center">
                         <div className="flex-1 relative">
@@ -485,35 +527,42 @@ export default function PlatformFeesPage() {
                                 <table className="w-full">
                                     <thead className="bg-muted border-b">
                                         <tr>
-                                            <th className="p-4 text-left font-medium">Booking ID</th>
-                                            <th className="p-4 text-left font-medium">User</th>
-                                            <th className="p-4 text-left font-medium">PG / Property</th>
-                                            <th className="p-4 text-left font-medium">Gross Rent</th>
-                                            <th className="p-4 text-left font-medium">Customer Fee</th>
-                                            <th className="p-4 text-left font-medium">Owner Fee</th>
-                                            <th className="p-4 text-left font-medium">Platform Earned</th>
-                                            <th className="p-4 text-left font-medium">Date</th>
+                                            <th className="p-3 text-left font-medium text-xs">Booking ID</th>
+                                            <th className="p-3 text-left font-medium text-xs">User</th>
+                                            <th className="p-3 text-left font-medium text-xs">PG / Property</th>
+                                            <th className="p-3 text-left font-medium text-xs">Gross Rent</th>
+                                            <th className="p-3 text-left font-medium text-xs">Student Fee</th>
+                                            <th className="p-3 text-left font-medium text-xs">Owner Fee</th>
+                                            <th className="p-3 text-left font-medium text-xs text-indigo-700">GST (18%)</th>
+                                            <th className="p-3 text-left font-medium text-xs text-red-700">TDS 1%</th>
+                                            <th className="p-3 text-left font-medium text-xs">Platform Earned</th>
+                                            <th className="p-3 text-left font-medium text-xs">Date</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredFees.length === 0 ? (
-                                            <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No fee records found. Fees are collected when a booking payment is made with fees enabled.</td></tr>
+                                            <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">No fee records found. Fees are collected when a booking payment is made with fees enabled.</td></tr>
                                         ) : filteredFees.map(f => (
                                             <tr key={f.id} className="border-b hover:bg-muted/5">
-                                                <td className="p-4 font-mono text-xs">{f.booking?.displayId || "—"}</td>
-                                                <td className="p-4">
+                                                <td className="p-3 font-mono text-xs">{f.booking?.displayId || "—"}</td>
+                                                <td className="p-3">
                                                     <div className="font-medium text-sm">{f.booking?.user?.name || "—"}</div>
                                                     <div className="text-xs text-muted-foreground">{f.booking?.user?.email}</div>
                                                     <div className="text-[10px] font-mono text-muted-foreground">{f.booking?.user?.displayId}</div>
                                                 </td>
-                                                <td className="p-4 text-sm font-medium">{f.booking?.propertyName || "—"}</td>
-                                                <td className="p-4 font-bold">₹{f.grossAmount?.toFixed(2)}</td>
-                                                <td className="p-4 text-blue-700 font-medium">+₹{f.customerFee?.toFixed(2)}</td>
-                                                <td className="p-4 text-orange-700 font-medium">-₹{f.ownerFee?.toFixed(2)}</td>
-                                                <td className="p-4">
+                                                <td className="p-3 text-sm font-medium">{f.booking?.propertyName || "—"}</td>
+                                                <td className="p-3 font-bold text-sm">₹{f.grossAmount?.toFixed(2)}</td>
+                                                <td className="p-3 text-blue-700 font-medium text-sm">+₹{f.customerFee?.toFixed(2)}</td>
+                                                <td className="p-3 text-orange-700 font-medium text-sm">-₹{f.ownerFee?.toFixed(2)}</td>
+                                                <td className="p-3 text-indigo-700 font-medium text-sm">
+                                                    ₹{((f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0)).toFixed(2)}
+                                                    <div className="text-[10px] text-indigo-400">CGST+SGST</div>
+                                                </td>
+                                                <td className="p-3 text-red-600 font-medium text-sm">-₹{(f.tdsAmount || 0).toFixed(2)}</td>
+                                                <td className="p-3">
                                                     <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold text-sm">₹{f.platformEarned?.toFixed(2)}</span>
                                                 </td>
-                                                <td className="p-4 text-xs text-muted-foreground">
+                                                <td className="p-3 text-xs text-muted-foreground">
                                                     {new Date(f.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                                                 </td>
                                             </tr>

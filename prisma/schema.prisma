@@ -774,18 +774,22 @@ model PlatformSettings {
 }
 
 model PlatformFee {
-  id             String    @id @default(uuid())
-  bookingId      String    @unique
-  grossAmount    Float
-  customerFee    Float
-  totalCharged   Float
-  ownerNet       Float
-  ownerFee       Float
-  platformEarned Float
-  status         String    @default("ACTIVE")
-  deletedAt      DateTime?
-  createdAt      DateTime  @default(now())
-  booking        Booking   @relation(fields: [bookingId], references: [id])
+  id                String    @id @default(uuid())
+  bookingId         String    @unique
+  grossAmount       Float
+  customerFee       Float
+  totalCharged      Float
+  ownerNet          Float
+  ownerFee          Float
+  platformEarned    Float
+  gstOnStudentFee   Float     @default(0)        // 18% GST on student convenience fee (CGST 9% + SGST 9%)
+  gstOnOwnerFee     Float     @default(0)        // 18% GST on owner platform commission
+  tdsAmount         Float     @default(0)        // 1% TDS on grossAmount under Section 194-O (e-commerce aggregator)
+  sacCode           String    @default("997312") // SAC: Short-term accommodation/leasing services
+  status            String    @default("ACTIVE")
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  booking           Booking   @relation(fields: [bookingId], references: [id])
 }
 
 model FeeExemption {

@@ -72,13 +72,20 @@ export async function calculateFees(amountStr: string, userId?: string, property
     ownerFee: number;
     platformEarned: number;
     commissionRate: number;
+    gstOnStudentFee: number;   // 18% GST exclusive on student convenience fee
+    gstOnOwnerFee: number;     // 18% GST exclusive on owner commission
+    tdsAmount: number;         // 1% TDS on gross amount under Section 194-O
+    totalGstCollected: number; // Total GST collected to remit to government
+    cgst: number;              // CGST component (9% of fee)
+    sgst: number;              // SGST component (9% of fee)
+    sacCode: string;           // SAC 997312 — Short-term accommodation services
 }> {
     const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
 
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
 
     if (!settings || !settings.feesEnabled) {
-        return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0, commissionRate: 0 };
+        return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0, commissionRate: 0, gstOnStudentFee: 0, gstOnOwnerFee: 0, tdsAmount: 0, totalGstCollected: 0, cgst: 0, sgst: 0, sacCode: '997312' };
     }
 
     // Check exemptions
@@ -161,28 +168,52 @@ export async function calculateFees(amountStr: string, userId?: string, property
     } else {
         ownerFee = exemptOwner ? 0 : commissionRate;
     }
-    const ownerNet = grossAmount - ownerFee;
-    const platformEarned = customerFee + ownerFee;
+    // ── GST Calculation (Option B: EXCLUSIVE — charged ON TOP of fees) ────────
+    // Indian GST law: 18% GST split equally as CGST 9% + SGST 9%
+    // SAC Code 997312 — Short-term accommodation/leasing services
+    const GST_RATE = 0.18;
+    const TDS_RATE = 0.01; // Section 194-O — TDS by e-commerce aggregator on gross transaction
+
+    const gstOnStudentFee = Math.round(customerFee * GST_RATE * 100) / 100;
+    const gstOnOwnerFee   = Math.round(ownerFee * GST_RATE * 100) / 100;
+    // TDS deducted from owner on the FULL gross rent (not just fee) under Sec 194-O
+    const tdsAmount         = Math.round(grossAmount * TDS_RATE * 100) / 100;
+    const totalGstCollected = Math.round((gstOnStudentFee + gstOnOwnerFee) * 100) / 100;
+    // CGST and SGST are each half of total GST (for invoice display purposes)
+    const cgst = Math.round((gstOnStudentFee / 2) * 100) / 100;
+    const sgst = Math.round((gstOnStudentFee / 2) * 100) / 100;
+
+    // Recalculate totals including GST and TDS
+    const totalChargedFinal = grossAmount + customerFee + gstOnStudentFee;
+    const ownerNet          = grossAmount - ownerFee - gstOnOwnerFee - tdsAmount;
+    const platformEarned    = customerFee + ownerFee; // GST is govt money, not our earnings
 
     return {
         feesEnabled: true,
         grossAmount,
-        customerFee: Math.round(customerFee * 100) / 100,
-        totalCharged: Math.round(totalCharged * 100) / 100,
-        ownerNet: Math.round(ownerNet * 100) / 100,
-        ownerFee: Math.round(ownerFee * 100) / 100,
-        platformEarned: Math.round(platformEarned * 100) / 100,
-        commissionRate: (ownerId ? (await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any })) as any : null)?.commissionRate ?? settings.ownerRentFeeFlat,
+        customerFee:        Math.round(customerFee * 100) / 100,
+        totalCharged:       Math.round(totalChargedFinal * 100) / 100,
+        ownerNet:           Math.round(ownerNet * 100) / 100,
+        ownerFee:           Math.round(ownerFee * 100) / 100,
+        platformEarned:     Math.round(platformEarned * 100) / 100,
+        commissionRate:     (ownerId ? (await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any })) as any : null)?.commissionRate ?? settings.ownerRentFeeFlat,
+        gstOnStudentFee,
+        gstOnOwnerFee,
+        tdsAmount,
+        totalGstCollected,
+        cgst,
+        sgst,
+        sacCode: '997312',
     };
 }
 
 
 // ── Record a platform fee after payment ───────────────
-export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string) {
-    const fees = await calculateFees(amountStr, userId, propertyName);
+export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string, ownerId?: string) {
+    const fees = await calculateFees(amountStr, userId, propertyName, ownerId);
     if (!fees.feesEnabled) return null;
 
-    // Add to platform wallet
+    // Add platform earnings to wallet (GST excluded — that goes to government)
     await prisma.platformSettings.update({
         where: { id: "singleton" },
         data: { platformWalletBalance: { increment: fees.platformEarned } }
@@ -192,20 +223,28 @@ export async function recordPlatformFee(bookingId: string, amountStr: string, us
         where: { bookingId },
         create: {
             bookingId,
-            grossAmount: fees.grossAmount,
-            customerFee: fees.customerFee,
-            totalCharged: fees.totalCharged,
-            ownerNet: fees.ownerNet,
-            ownerFee: fees.ownerFee,
-            platformEarned: fees.platformEarned,
+            grossAmount:     fees.grossAmount,
+            customerFee:     fees.customerFee,
+            totalCharged:    fees.totalCharged,
+            ownerNet:        fees.ownerNet,
+            ownerFee:        fees.ownerFee,
+            platformEarned:  fees.platformEarned,
+            gstOnStudentFee: fees.gstOnStudentFee,
+            gstOnOwnerFee:   fees.gstOnOwnerFee,
+            tdsAmount:       fees.tdsAmount,
+            sacCode:         fees.sacCode,
         },
         update: {
-            grossAmount: fees.grossAmount,
-            customerFee: fees.customerFee,
-            totalCharged: fees.totalCharged,
-            ownerNet: fees.ownerNet,
-            ownerFee: fees.ownerFee,
-            platformEarned: fees.platformEarned,
+            grossAmount:     fees.grossAmount,
+            customerFee:     fees.customerFee,
+            totalCharged:    fees.totalCharged,
+            ownerNet:        fees.ownerNet,
+            ownerFee:        fees.ownerFee,
+            platformEarned:  fees.platformEarned,
+            gstOnStudentFee: fees.gstOnStudentFee,
+            gstOnOwnerFee:   fees.gstOnOwnerFee,
+            tdsAmount:       fees.tdsAmount,
+            sacCode:         fees.sacCode,
         }
     });
 }
