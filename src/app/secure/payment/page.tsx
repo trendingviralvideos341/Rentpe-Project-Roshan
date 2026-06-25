@@ -290,16 +290,25 @@ function PaymentPortal() {
     //   daily rate     = ₹10,000 / 31 = ₹322.58
     //   prorated rent  = 4 × ₹322.58 = ₹1,290
     // From June 1st onward → full ₹10,000/month via cron.
-    const today = new Date();
-    const daysInThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const daysRemaining = daysInThisMonth - today.getDate() + 1;
+    // Parse booking's onboarding date or move-in date to align calculations
+    let moveInDateObj = new Date();
+    if (booking.onboardingDate) {
+        const d = new Date(booking.onboardingDate);
+        if (!isNaN(d.getTime())) moveInDateObj = d;
+    } else if (booking.moveInDate) {
+        const d = new Date(booking.moveInDate);
+        if (!isNaN(d.getTime())) moveInDateObj = d;
+    }
+
+    const daysInThisMonth = new Date(moveInDateObj.getFullYear(), moveInDateObj.getMonth() + 1, 0).getDate();
+    const daysRemaining = daysInThisMonth - moveInDateObj.getDate() + 1;
     const dailyRate = Math.round((rentAmount / daysInThisMonth) * 100) / 100;
     const proratedRent = Math.round(dailyRate * daysRemaining);
-    const isFirstOfMonth = today.getDate() === 1; // if move-in is exactly 1st, no proration needed
+    const isFirstOfMonth = moveInDateObj.getDate() === 1; // if move-in is exactly 1st, no proration needed
     const effectiveRent = isFirstOfMonth ? rentAmount : proratedRent;
-    const monthName = today.toLocaleString('en-IN', { month: 'long' });
+    const monthName = moveInDateObj.toLocaleString('en-IN', { month: 'long' });
     const lastDayLabel = `${daysInThisMonth} ${monthName}`;
-    const moveInLabel  = `${today.getDate()} ${monthName}`;
+    const moveInLabel  = `${moveInDateObj.getDate()} ${monthName}`;
 
     const subtotal = effectiveRent + depositAmount;
     // Final payment deducts the ₹1,000 token already paid

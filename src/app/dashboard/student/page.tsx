@@ -10,7 +10,7 @@ import { changeFoodPreference } from "@/actions/food";
 import { getPendingRentInvoice } from "@/actions/rent";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X, Clock } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X, Clock, MapPin } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -51,24 +51,37 @@ function formatOccupancy(occupancy: string): string {
 }
 
 // ── Alert Banner ──
-function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' | 'warning' | 'info'; message: string; actionLabel?: string; onAction?: () => void }) {
-    const bgColor = type === 'error' ? 'bg-red-50 border-red-200' : type === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200';
-    const textColor = type === 'error' ? 'text-red-800' : type === 'warning' ? 'text-amber-800' : 'text-blue-800';
-    const Icon = type === 'error' ? AlertTriangle : type === 'warning' ? AlertTriangle : Shield;
+function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' | 'warning' | 'info' | 'brand'; message: string; actionLabel?: string; onAction?: () => void }) {
+    const bgColor = type === 'error' ? 'bg-rose-50 border-rose-200'
+        : type === 'warning' ? 'bg-amber-50 border-amber-200'
+        : type === 'brand' ? 'bg-indigo-50 border-indigo-200 shadow-indigo-100/50'
+        : 'bg-blue-50 border-blue-200';
+        
+    const textColor = type === 'error' ? 'text-rose-800'
+        : type === 'warning' ? 'text-amber-800'
+        : type === 'brand' ? 'text-indigo-900 font-bold'
+        : 'text-blue-800';
+        
+    const Icon = type === 'brand' ? CreditCard : type === 'error' ? AlertTriangle : type === 'warning' ? AlertTriangle : Shield;
 
     return (
-        <div className={`flex items-center justify-between p-4 rounded-lg border shadow-sm mb-4 animate-in fade-in slide-in-from-top-2 duration-500 ${bgColor} ${textColor}`}>
+        <div className={`flex items-center justify-between p-4 rounded-xl border-2 shadow-md mb-4 animate-in fade-in slide-in-from-top-2 duration-500 transition-all ${bgColor} ${textColor}`}>
             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${type === 'error' ? 'bg-red-100' : type === 'warning' ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                <div className={`p-2 rounded-full ${type === 'brand' ? 'bg-indigo-100/80 text-indigo-700' : type === 'error' ? 'bg-rose-100 text-rose-700' : type === 'warning' ? 'bg-amber-100' : 'bg-blue-100'}`}>
                     <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                    <p className="text-sm font-bold">Action Required</p>
-                    <p className="text-xs opacity-90">{message}</p>
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-500">Action Required</p>
+                    <p className="text-xs font-bold mt-0.5">{message}</p>
                 </div>
             </div>
             {actionLabel && (
-                <Button size="sm" onClick={onAction} className={`${type === 'error' ? 'bg-red-600 hover:bg-red-700' : type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold ml-4 shrink-0`}>
+                <Button size="sm" onClick={onAction} className={`rounded-xl px-4 py-2 font-black transition-all transform hover:scale-[1.02] active:scale-[0.98] ${
+                    type === 'brand' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200' :
+                    type === 'error' ? 'bg-rose-600 hover:bg-rose-700 text-white' : 
+                    type === 'warning' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 
+                    'bg-blue-600 hover:bg-blue-700 text-white'
+                } text-xs ml-4 shrink-0`}>
                     {actionLabel}
                 </Button>
             )}
@@ -497,36 +510,84 @@ function BookingCard({
                 )}
 
                 {isFinalPaymentPending && (
-                    <div className="w-full bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 border-2 border-red-400 rounded-2xl p-5 space-y-4 animate-[pulse_1.5s_ease-in-out_infinite]">
+                    <div className="w-full bg-gradient-to-br from-indigo-50/60 via-violet-50/40 to-white border-2 border-indigo-200 rounded-3xl p-6 space-y-4 shadow-md shadow-indigo-50/30 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-100/40">
                         <div className="flex items-center gap-2">
-                            <span className="inline-block w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
-                            <p className="text-sm font-black text-red-800">🔴 Final Payment Due — Action Required</p>
+                            <span className="inline-block w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping shrink-0" />
+                            <p className="text-sm font-black text-indigo-900 uppercase tracking-wider">⚡ Final Payment Due — Action Required</p>
                         </div>
-                        <p className="text-xs text-red-700 font-medium">Agreement confirmed! Pay the joining balance to activate your stay at <strong>{booking.propertyName}</strong>.</p>
+                        <p className="text-xs text-slate-600 font-medium">Agreement confirmed! Pay the joining balance to activate your stay at <strong>{booking.propertyName}</strong>.</p>
                         {/* Physical presence notice */}
-                        <div className="bg-white border-2 border-orange-400 rounded-xl p-3 space-y-1">
-                            <p className="text-[11px] font-black text-orange-800 uppercase tracking-wider">📍 Important — Physical Presence Required</p>
-                            <p className="text-[11px] text-orange-700 font-medium leading-relaxed">
+                        <div className="bg-white border border-indigo-100 rounded-2xl p-4 space-y-1.5 shadow-sm">
+                            <p className="text-[11px] font-black text-indigo-900 uppercase tracking-widest flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Important — Physical Presence Required
+                            </p>
+                            <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
                                 To complete your joining, you must be <strong>physically present at the PG address</strong> when making this payment. Our staff will verify your identity on-site.
                                 This step prevents fraud and ensures your booking is secure.
                             </p>
                             {booking.propertyAddress && (
-                                <p className="text-[11px] font-bold text-orange-900 mt-1">📌 Address: {booking.propertyAddress}{booking.propertyCity ? `, ${booking.propertyCity}` : ''}</p>
+                                <p className="text-[11px] font-bold text-slate-700 mt-1.5 pt-1.5 border-t border-slate-50">📌 Address: {booking.propertyAddress}{booking.propertyCity ? `, ${booking.propertyCity}` : ''}</p>
                             )}
                         </div>
                         {(() => {
-                            const rent = Number(booking.amount || 0);
-                            const deposit = Number(booking.depositAmount || 0);
-                            const balance = Math.max(0, rent + deposit - 1000);
+                            const rentAmount = Number(booking.amount || 0);
+                            const depositAmount = Number(booking.depositAmount || 0);
+                            
+                            let moveInDateObj = new Date();
+                            if (booking.onboardingDate) {
+                                const d = new Date(booking.onboardingDate);
+                                if (!isNaN(d.getTime())) moveInDateObj = d;
+                            } else if (booking.moveInDate) {
+                                const d = new Date(booking.moveInDate);
+                                if (!isNaN(d.getTime())) moveInDateObj = d;
+                            }
+                            
+                            const daysInThisMonth = new Date(moveInDateObj.getFullYear(), moveInDateObj.getMonth() + 1, 0).getDate();
+                            const daysRemaining = daysInThisMonth - moveInDateObj.getDate() + 1;
+                            const dailyRate = Math.round((rentAmount / daysInThisMonth) * 100) / 100;
+                            const proratedRent = Math.round(dailyRate * daysRemaining);
+                            const isFirstOfMonth = moveInDateObj.getDate() === 1;
+                            const effectiveRent = isFirstOfMonth ? rentAmount : proratedRent;
+                            const monthName = moveInDateObj.toLocaleString('en-IN', { month: 'long' });
+                            const lastDayLabel = `${daysInThisMonth} ${monthName}`;
+                            const moveInLabel  = `${moveInDateObj.getDate()} ${monthName}`;
+                            
+                            const subtotal = effectiveRent + depositAmount;
+                            const balance = Math.max(0, subtotal - 1000);
+                            
                             return (
-                                <div className="space-y-2 text-sm bg-white/80 rounded-xl p-4 border border-red-200">
-                                    <div className="flex justify-between text-slate-600"><span>Monthly Rent</span><span>₹{rent.toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between text-slate-600"><span>Security Deposit</span><span>₹{deposit.toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between pt-1 border-t border-dashed border-red-200 font-bold text-slate-800"><span>Subtotal</span><span>₹{(rent + deposit).toLocaleString('en-IN')}</span></div>
-                                    <div className="flex justify-between text-orange-600 font-bold"><span>Token Paid Already</span><span>- ₹1,000</span></div>
-                                    <div className="flex justify-between pt-2 border-t font-black text-red-900 text-base"><span>💰 Balance Due</span><span>₹{balance.toLocaleString('en-IN')}</span></div>
-                                    <Button className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white font-black h-12 rounded-2xl text-base shadow-lg shadow-red-300/50" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay ₹{balance.toLocaleString('en-IN')} Now</Button>
-                                    <p className="text-[10px] text-center text-slate-400 pt-1">⚠️ Visit {booking.propertyName} in person to complete check-in</p>
+                                <div className="space-y-2 text-sm bg-white/80 rounded-2xl p-5 border border-indigo-100">
+                                    <div className="flex justify-between items-start text-slate-600">
+                                        <div>
+                                            <span className="font-semibold">🏠 Rent — {isFirstOfMonth ? monthName : `${moveInLabel} to ${lastDayLabel}`}</span>
+                                            {!isFirstOfMonth && (
+                                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                                    {daysRemaining} days × ₹{dailyRate.toFixed(0)}/day (₹{rentAmount.toLocaleString('en-IN')}/mo)
+                                                </p>
+                                            )}
+                                        </div>
+                                        <span className="font-black text-slate-800">₹{effectiveRent.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between text-slate-600">
+                                        <span className="font-semibold text-emerald-700">🛡️ Security Deposit ({(booking as any).depositMonths || 2}m)</span>
+                                        <span className="font-black text-emerald-700">₹{depositAmount.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between pt-2 border-t border-dashed border-slate-200 font-bold text-slate-500">
+                                        <span>Subtotal</span>
+                                        <span className="font-bold text-slate-700">₹{subtotal.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between text-indigo-600 font-bold">
+                                        <span>🎟️ Token Paid Already</span>
+                                        <span>- ₹1,000</span>
+                                    </div>
+                                    <div className="flex justify-between pt-2 border-t border-indigo-200 font-black text-indigo-900 text-base">
+                                        <span>💰 Balance Due</span>
+                                        <span className="text-lg text-indigo-700">₹{balance.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <Button className="w-full mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black h-12 rounded-2xl text-base shadow-lg shadow-indigo-200/50 transition-all active:scale-[0.99]" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>
+                                        💳 Pay ₹{balance.toLocaleString('en-IN')} Now
+                                    </Button>
+                                    <p className="text-[10px] text-center text-slate-400 pt-1.5">⚠️ Visit {booking.propertyName} in person to complete check-in</p>
                                 </div>
                             );
                         })()}
@@ -1075,8 +1136,29 @@ export default function StudentDashboardPage() {
                                         if (booking.status === 'AGREEMENT_PENDING')
                                             return null;
                                         if (booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') {
-                                            const finalAmt = Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000);
-                                            return <AlertBanner key={`alert-final-${booking.id}`} type="error" message={`🔴 Final Payment Due ₹${finalAmt.toLocaleString('en-IN')} — Visit ${booking.propertyName} in person to pay and complete check-in.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
+                                            const rentAmount = Number(booking.amount || 0);
+                                            const depositAmount = Number(booking.depositAmount || 0);
+                                            
+                                            let moveInDateObj = new Date();
+                                            if (booking.onboardingDate) {
+                                                const d = new Date(booking.onboardingDate);
+                                                if (!isNaN(d.getTime())) moveInDateObj = d;
+                                            } else if (booking.moveInDate) {
+                                                const d = new Date(booking.moveInDate);
+                                                if (!isNaN(d.getTime())) moveInDateObj = d;
+                                            }
+                                            
+                                            const daysInThisMonth = new Date(moveInDateObj.getFullYear(), moveInDateObj.getMonth() + 1, 0).getDate();
+                                            const daysRemaining = daysInThisMonth - moveInDateObj.getDate() + 1;
+                                            const dailyRate = Math.round((rentAmount / daysInThisMonth) * 100) / 100;
+                                            const proratedRent = Math.round(dailyRate * daysRemaining);
+                                            const isFirstOfMonth = moveInDateObj.getDate() === 1;
+                                            const effectiveRent = isFirstOfMonth ? rentAmount : proratedRent;
+                                            
+                                            const subtotal = effectiveRent + depositAmount;
+                                            const finalAmt = Math.max(0, subtotal - 1000);
+                                            
+                                            return <AlertBanner key={`alert-final-${booking.id}`} type="brand" message={`⚡ Final Payment Due: ₹${finalAmt.toLocaleString('en-IN')} — Visit ${booking.propertyName} in person to pay and complete check-in.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
                                         }
                                         return null;
                                     })}
