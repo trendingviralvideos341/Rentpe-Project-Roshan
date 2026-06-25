@@ -164,10 +164,10 @@ export async function GET(
                 `Owner: ${owner.name} | ID: ${owner.displayId} | Generated: ${generatedOn}`,
                 `Statement No: ${statementNo}`,
                 hasTdsExemption 
-                    ? `TDS EXEMPTION ACTIVE under Section 194-O (Nil/Lower TDS Certificate on record).` 
-                    : `TDS deducted under Section 194-O (e-commerce aggregator). Use this for ITR filing.`,
+                    ? `TDS EXEMPTION ACTIVE under Section 194-O (Nil/Lower TDS Certificate on record). Security deposit excluded from TDS in all cases.` 
+                    : `TDS deducted @ 1% on RENT ONLY under Section 194-O. Security deposit is NOT subject to TDS (refundable capital). Use this for ITR filing.`,
                 "",
-                "Date,Tenant,Tenant ID,Property,Gross Rent (Rs.),Platform Commission (Rs.),GST on Commission (Rs.),TDS @ 1% (Rs.),Net Payout (Rs.),Payment Ref",
+                "Date,Tenant,Tenant ID,Property,Rent Received (excl. Deposit) (Rs.),Platform Commission (Rs.),GST on Commission (Rs.),TDS @ 1% on Rent (Rs.),Net Payout (Rs.),Payment Ref",
                 ...rows.map((r: any) =>
                     `"${r.date}","${r.tenant}","${r.tenantId}","${r.property}",${r.gross.toFixed(2)},${r.ownerFee.toFixed(2)},${r.gstOnOwner.toFixed(2)},${r.tds.toFixed(2)},${r.netPayout.toFixed(2)},"${r.paymentRef}"`
                 ),
@@ -273,8 +273,8 @@ export async function GET(
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7);
             doc.setTextColor(92, 64, 14);
-            doc.text("RentPe deducts 1% TDS on gross rent as an e-commerce aggregator.", 154, y + 13);
-            doc.text("Please use this statement as your TDS certificate for ITR filing.", 154, y + 19);
+            doc.text("RentPe deducts 1% TDS on RENT ONLY (Section 194-O). Security deposit is excluded — it is", 154, y + 13);
+            doc.text("refundable capital and not taxable income. Use this statement for ITR filing.", 154, y + 19);
         }
 
         // Table
@@ -291,10 +291,10 @@ export async function GET(
             { label: "Date",                x: L + 2,   w: 22  },
             { label: "Tenant",              x: L + 24,  w: 35  },
             { label: "Property",            x: L + 59,  w: 38  },
-            { label: "Gross Rent",          x: L + 97,  w: 28  },
+            { label: "Rent (excl. Dep.)",  x: L + 97,  w: 28  },
             { label: "Comm.",               x: L + 125, w: 22  },
             { label: "GST on Comm.",        x: L + 147, w: 26  },
-            { label: "TDS 1%",              x: L + 173, w: 22  },
+            { label: "TDS 1% (Rent)",       x: L + 173, w: 22  },
             { label: "Net Payout",          x: L + 195, w: 28  },
             { label: "Ref",                 x: L + 223, w: 32  },
         ];
@@ -359,7 +359,7 @@ export async function GET(
         doc.setFontSize(6.5);
         doc.setTextColor(100, 116, 139);
         doc.text(
-            `Deductor: RentPe (Antigravity Project) | GSTIN: PENDING REGISTRATION | SAC Code: 997312 | TDS: Sec 194-O @ 1% | GST: 18% (CGST 9% + SGST 9%)`,
+            `Deductor: RentPe (Antigravity Project) | GSTIN: PENDING REGISTRATION | SAC Code: 997312 | TDS: Sec 194-O @ 1% on RENT ONLY (NOT on security deposit) | GST: 18% (CGST 9% + SGST 9%)`,
             pageW / 2, pageH - 10, { align: "center" }
         );
         doc.setFont("helvetica", "bold");

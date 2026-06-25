@@ -296,11 +296,17 @@ async function handlePaymentCaptured(entity: RazorpayPaymentEntity) {
         const { recordPlatformFee } = await import('@/actions/platform');
         const bookingData = payment.booking;
         if (bookingData) {
+            // Use booking.amount (rent only) + deposit separately so TDS is
+            // calculated only on the rent portion, not the refundable deposit.
+            const rentAmt    = String(bookingData.amount || payment.amount);
+            const depositAmt = Number((bookingData as any).depositAmount || 0);
             await recordPlatformFee(
                 payment.bookingId,
-                String(payment.amount),
+                rentAmt,
                 bookingData.userId,
-                bookingData.room?.property?.name || bookingData.propertyName
+                bookingData.room?.property?.name || bookingData.propertyName,
+                bookingData.room?.property?.ownerId || undefined,
+                depositAmt
             );
             console.log(`[Webhook] Platform fee recorded for booking ${payment.bookingId}`);
         }

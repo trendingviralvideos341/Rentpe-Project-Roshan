@@ -191,11 +191,17 @@ export async function verifyPayment(data: {
                 include: { user: true, room: { include: { property: { include: { owner: true } } } } }
             });
             if (paymentWithBooking) {
+                // Pass rent amount and deposit separately so TDS (1% u/s 194-O) is only
+                // calculated on the rent portion. Security deposit is NOT taxable income.
+                const rentAmt    = String(paymentWithBooking.amount || payment.amount);
+                const depositAmt = Number((paymentWithBooking as any).depositAmount || 0);
                 recordPlatformFee(
                     payment.bookingId,
-                    String(payment.amount),
+                    rentAmt,
                     paymentWithBooking.userId,
-                    paymentWithBooking.room?.property?.name || paymentWithBooking.propertyName
+                    paymentWithBooking.room?.property?.name || paymentWithBooking.propertyName,
+                    paymentWithBooking.room?.property?.ownerId || undefined,
+                    depositAmt
                 ).catch(err => console.error('[PLATFORM FEE RECORD] Failed:', err));
             }
         } catch (feeErr) { console.error('[PLATFORM FEE RECORD] Error:', feeErr); }

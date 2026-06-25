@@ -63,7 +63,7 @@ export async function getCashPaymentEnabled(): Promise<boolean> {
 }
 
 // ── Internal: calculate fees for a given amount ───────
-export async function calculateFees(amountStr: string, userId?: string, propertyName?: string, ownerId?: string, paymentType?: 'RENT' | 'TOKEN'): Promise<{
+export async function calculateFees(amountStr: string, userId?: string, propertyName?: string, ownerId?: string, paymentType?: 'RENT' | 'TOKEN', depositAmountNum?: number): Promise<{
     feesEnabled: boolean;
     grossAmount: number;
     customerFee: number;
@@ -81,6 +81,10 @@ export async function calculateFees(amountStr: string, userId?: string, property
     sacCode: string;           // SAC 997312 — Short-term accommodation services
 }> {
     const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
+    // Security deposit is refundable capital — NOT taxable income under IT Act.
+    // TDS u/s 194-O must only apply to the rent portion of the gross transaction.
+    const depositAmt  = depositAmountNum || 0;
+    const rentOnlyAmt = Math.max(0, grossAmount - depositAmt); // rent = total paid - deposit
 
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
 
@@ -174,12 +178,15 @@ export async function calculateFees(amountStr: string, userId?: string, property
     // Indian GST law: 18% GST split equally as CGST 9% + SGST 9%
     // SAC Code 997312 — Short-term accommodation/leasing services
     const GST_RATE = 0.18;
-    const TDS_RATE = 0.01; // Section 194-O — TDS by e-commerce aggregator on gross transaction
+    const TDS_RATE = 0.01; // Section 194-O — TDS by e-commerce aggregator on RENT only
 
     const gstOnStudentFee = Math.round(customerFee * GST_RATE * 100) / 100;
     const gstOnOwnerFee   = Math.round(ownerFee * GST_RATE * 100) / 100;
-    // TDS deducted from owner on the FULL gross rent (not just fee) under Sec 194-O
-    const tdsAmount         = exemptTds ? 0 : Math.round(grossAmount * TDS_RATE * 100) / 100;
+    // ── LEGAL FIX: TDS u/s 194-O applies ONLY to the rent component, NOT the refundable
+    // security deposit. A security deposit is a capital receipt, not income — it is returned
+    // to the tenant on exit and is therefore NOT subject to tax deduction at source.
+    // Reference: CBDT Circular No. 718 & Income Tax Act Section 194-O r/w Explanation.
+    const tdsAmount         = exemptTds ? 0 : Math.round(rentOnlyAmt * TDS_RATE * 100) / 100;
     const totalGstCollected = Math.round((gstOnStudentFee + gstOnOwnerFee) * 100) / 100;
     // CGST and SGST are each half of total GST (for invoice display purposes)
     const cgst = Math.round((gstOnStudentFee / 2) * 100) / 100;
@@ -211,8 +218,8 @@ export async function calculateFees(amountStr: string, userId?: string, property
 
 
 // ── Record a platform fee after payment ───────────────
-export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string, ownerId?: string) {
-    const fees = await calculateFees(amountStr, userId, propertyName, ownerId);
+export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string, ownerId?: string, depositAmount?: number) {
+    const fees = await calculateFees(amountStr, userId, propertyName, ownerId, undefined, depositAmount);
     if (!fees.feesEnabled) return null;
 
     // Add platform earnings to wallet (GST excluded — that goes to government)
