@@ -146,7 +146,7 @@ function PaymentPortal() {
                     setIsPaid(true);
                     return;
                 }
-                const order = await createRazorpayOrder(booking.id);
+                const order = await createRazorpayOrder(booking.id, { isToken: true });
                 if (order.isDummyRoute || !(window as any).Razorpay) {
                     await payTokenAmount(booking.id, 'ONLINE', 'pay_tok_sim_' + Math.random().toString(36).slice(2));
                     setIsPaid(true);

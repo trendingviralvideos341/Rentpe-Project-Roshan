@@ -8,7 +8,7 @@ import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
 
 
-export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string }) {
+export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string, isToken?: boolean }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -34,6 +34,9 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
             const deposit = await prisma.securityDeposit.findUnique({ where: { id: extras.depositId } });
             baseAmount = deposit ? Number(deposit.amount) : Number(booking.amount);
             paymentType = 'RENT';
+        } else if (extras?.isToken) {
+            baseAmount = 1000;
+            paymentType = 'TOKEN';
         } else {
             // Initial booking payment: rent + security deposit
             baseAmount = Number(booking.amount) + Number((booking as any).depositAmount || 0);
