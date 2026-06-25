@@ -114,8 +114,8 @@ function PaymentPortal() {
                             await verifyPayment(response);
                             // verifyPayment already marks invoice PAID when invoiceId is on Payment
                             setIsPaid(true);
-                        } catch {
-                            setError("Payment verification failed. Contact support.");
+                        } catch (err: any) {
+                            setError(err.message || "Payment verification failed. Contact support.");
                             setPayFailed(true);
                             setIsPaying(false);
                         }
@@ -164,7 +164,10 @@ function PaymentPortal() {
                             await verifyPayment(response);
                             await payTokenAmount(booking.id, 'ONLINE', response.razorpay_payment_id);
                             setIsPaid(true);
-                        } catch { setError('Token payment verification failed. Contact support.'); setIsPaying(false); }
+                        } catch (err: any) {
+                            setError(err.message || 'Token payment verification failed. Contact support.');
+                            setIsPaying(false);
+                        }
                     },
                     prefill: { name: booking.guestName, email: booking.guestEmail || 'user@example.com', contact: booking.guestPhone || '' },
                     theme: { color: '#f59e0b' },
@@ -209,8 +212,8 @@ function PaymentPortal() {
                         await verifyPayment(response);
                         await markBookingPaid(booking.id, "ONLINE", response.razorpay_payment_id);
                         setIsPaid(true);
-                    } catch {
-                        setError("Payment verification failed. Please contact support.");
+                    } catch (err: any) {
+                        setError(err.message || "Payment verification failed. Please contact support.");
                         setIsPaying(false);
                     }
                 },
