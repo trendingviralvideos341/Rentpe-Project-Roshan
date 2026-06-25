@@ -26,3 +26,27 @@ Ensure your production environment (Vercel/Self-hosted) has these keys:
 
 ## 4. Final Verification Logic
 I am currently resolving final TypeScript type mismatches in the `switchRole` function to ensure seamless multi-role switching for Users/Owners.
+
+## 5. Pre-Live Security & Deployment Checklist (CRITICAL)
+When the command is given to move to "Testing" or "Fully Live Production", the following security actions MUST be verified:
+
+### A. Content Security Policy (CSP) Verification
+- [ ] **Verify `next.config.ts`**: Ensure the strict global CSP is active.
+- [ ] **Verify Payment Exemption**: Double-check that `/secure/payment` specifically retains the `https:` exception in `frame-src` so Razorpay bank redirects (3D-Secure/OTP) never crash.
+- [ ] **Violation Monitoring**: Ensure Sentry is fully catching and reporting any unexpected blocked scripts on production devices.
+
+### B. Business & Payment Configuration (Razorpay Dashboard)
+- [ ] **Disable Credit Cards for Rent**: If the business strategy dictates zero MDR fees, physically log into the Razorpay Live Dashboard and disable the "Credit Card" method so students are routed to UPI/Netbanking.
+- [ ] **Live Keys Swap**: Ensure the codebase `.env` is swapped from `rzp_test_...` to `rzp_live_...`.
+- [ ] **Test ₹1 Transaction**: Before opening to the public, process a ₹1 Live Token transaction and let it hit the bank redirect to guarantee the CSP is holding up in the live banking environment.
+
+### C. Secrets & Environment Hardening
+- [ ] Ensure `JWT_SECRET` is rotated to a massive, unguessable string in the Vercel production environment variables.
+- [ ] Verify that no `console.log` statements are leaking user KYC data or Razorpay response tokens to the browser console.
+
+### D. Error Tracking & Observability (Sentry)
+- [ ] **Sentry DSN**: Create an account on Sentry.io, generate a real Next.js DSN, and add it to the Vercel dashboard as `NEXT_PUBLIC_SENTRY_DSN`. This ensures we catch production crashes and bugs instantly instead of relying on students to report them.
+
+### E. Database Performance & Indexing (Scalability)
+- [ ] **Booking Indexes**: Add database indexes to fields that are searched frequently (e.g., indexes on `onboardingDate` and `status` inside `prisma/schema.prisma`) to keep the dashboard and automated cron jobs running fast once you scale past 1,000+ bookings.
+- [ ] **Production Migration**: Run `npx prisma migrate deploy` to deploy the schema changes on your live database.
