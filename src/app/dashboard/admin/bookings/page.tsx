@@ -239,7 +239,9 @@ function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboardin
                                         ["Allocated Room", booking.roomAssigned || "Not Allocated"],
                                         ["Booking Price", `₹${booking.amount}` || "—"],
                                         ["Method", booking.paymentMethod || "Online"],
-                                        ["Transaction ID", booking.paymentId || "—"],
+                                        ["Transaction ID", booking.tokenPaymentId || "—"],
+                                        ["Token Paid", booking.tokenPaidAt ? `₹${booking.tokenAmount || 1000}` : "—"],
+                                        ["Token Paid On", booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN') : "—"],
                                     ].map(([label, value]) => (
                                         <div key={label} className="bg-white border rounded p-2">
                                             <div className="text-[10px] text-muted-foreground uppercase font-bold">{label}</div>
