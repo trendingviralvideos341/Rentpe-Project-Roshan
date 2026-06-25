@@ -1297,6 +1297,7 @@ export async function signAgreement(id: string, agreementMeta?: {
     agreementPdfUrl?: string;
     signedIp?: string;
     signedDevice?: string;
+    moveInDate?: string;
 }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
@@ -1344,7 +1345,20 @@ export async function signAgreement(id: string, agreementMeta?: {
     const signedAt = new Date();
     const AGREEMENT_VERSION = 'v1.0-2026'; // Bump when agreement terms change
 
-    // â”€â”€â”€ Store full audit trail in DB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    let confirmedMoveInDateStr = agreementMeta?.moveInDate;
+    if (confirmedMoveInDateStr) {
+        try {
+            const d = new Date(confirmedMoveInDateStr);
+            if (!isNaN(d.getTime())) {
+                confirmedMoveInDateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            }
+        } catch { /* fallback to default */ }
+    }
+    if (!confirmedMoveInDateStr) {
+        confirmedMoveInDateStr = signedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // ─── Store full audit trail in DB ────────────────────────────────────────
     // This is what holds up in court: WHO signed, WHAT they signed, WHEN, WHERE, on WHAT device.
     const updated = await prisma.booking.update({
         where: { id },
@@ -1356,23 +1370,23 @@ export async function signAgreement(id: string, agreementMeta?: {
             agreementVersion: AGREEMENT_VERSION,
             agreementSignedIp: realIp,
             agreementSignedDevice: agreementMeta?.signedDevice || 'unknown',
+            onboardingDate: confirmedMoveInDateStr,
             ...(agreementMeta?.agreementText ? { agreementText: agreementMeta.agreementText } : {}),
             ...(agreementMeta?.agreementPdfUrl ? { agreementPdfUrl: agreementMeta.agreementPdfUrl } : {}),
         } as any
     });
 
-    // â”€â”€â”€ CRITICAL: Set Tenant.startDate = Agreement Signing Date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Agreement signing date IS the stay start date. ALL rent calculations flow from this:
-    //   â€¢ Prorated first-month rent (days from signing â†’ end of month)
-    //   â€¢ Billing anchor cycles
-    //   â€¢ Stay duration for settlements & move-out calculations
-    // This must be set HERE â€” at the moment of signing â€” not at check-in or payment.
+    // ─── CRITICAL: Set Tenant.startDate = Confirmed Move-In Date ─────────────
+    // Confirmed move-in date IS the stay start date. ALL rent calculations flow from this:
+    //   • Prorated first-month rent (days from signing → end of month)
+    //   • Billing anchor cycles
+    //   • Stay duration for settlements & move-out calculations
+    // This must be set HERE — at the moment of signing — not at check-in or payment.
     const tenantId = booking.tenant?.id || (booking as any).tenantId;
     if (tenantId) {
-        const signedDateStr = signedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
         await prisma.tenant.update({
             where: { id: tenantId },
-            data: { startDate: signedDateStr }
+            data: { startDate: confirmedMoveInDateStr }
         }).catch(e => console.error('[signAgreement] Failed to update tenant startDate:', e));
     }
 

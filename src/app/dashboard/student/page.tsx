@@ -1172,7 +1172,8 @@ export default function StudentDashboardPage() {
                     try {
                         await signAgreement(signingBooking.id, {
                             agreementId: `AGT-${signingBooking.displayId}-${Date.now()}`,
-                            signedDevice: deviceInfo.userAgent
+                            signedDevice: deviceInfo.userAgent,
+                            moveInDate: (deviceInfo as any).moveInDate
                         });
                         toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId });
                         await fetchData();

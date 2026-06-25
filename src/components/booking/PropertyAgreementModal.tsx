@@ -8,7 +8,7 @@ import { CheckCircle, ScrollText, AlertTriangle, MapPin, BedDouble, Calendar, Sh
 interface PropertyAgreementModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAccept: (deviceInfo: { userAgent: string }) => Promise<void>;
+    onAccept: (deviceInfo: { userAgent: string; moveInDate?: string }) => Promise<void>;
     property: {
         id: string;
         name: string;
@@ -37,6 +37,18 @@ interface PropertyAgreementModalProps {
     bookingDisplayId?: string | null; // Booking ID e.g. REN-BOOK-2026-0001
 }
 
+function parseDateToISO(dateStr: string) {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    try {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+            return d.toISOString().split('T')[0];
+        }
+    } catch {}
+    return new Date().toISOString().split('T')[0];
+}
+
 export function PropertyAgreementModal({
     isOpen, onClose, onAccept,
     property, room, tenant, moveInDate, depositAmount, platformFee, bookingDisplayId
@@ -44,16 +56,18 @@ export function PropertyAgreementModal({
     const [scrolledToBottom, setScrolledToBottom] = useState(false);
     const [accepted, setAccepted] = useState(false);
     const [signing, setSigning] = useState(false);
+    const [selectedDate, setSelectedDate] = useState("");
     const scrollRef = useRef<HTMLDivElement>(null);
-
+ 
     useEffect(() => {
         if (isOpen) {
             setScrolledToBottom(false);
             setAccepted(false);
             setSigning(false);
+            setSelectedDate(parseDateToISO(moveInDate));
         }
-    }, [isOpen]);
-
+    }, [isOpen, moveInDate]);
+ 
     function handleScroll() {
         const el = scrollRef.current;
         if (!el) return;
@@ -61,24 +75,31 @@ export function PropertyAgreementModal({
         const isAtBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 10;
         if (isAtBottom) setScrolledToBottom(true);
     }
-
+ 
     const handleAccept = async () => {
         setSigning(true);
         try {
             // Capture device fingerprint at the exact moment of signing
-            const deviceInfo = { userAgent: navigator.userAgent };
+            const deviceInfo = { 
+                userAgent: navigator.userAgent,
+                moveInDate: selectedDate
+            };
             await onAccept(deviceInfo);
         } finally {
             setSigning(false);
         }
     };
-
+ 
     const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    const formattedMoveInDate = selectedDate
+        ? new Date(selectedDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        : moveInDate;
+
     const noticePeriod = property.noticePeriod || 30;
     const rent = Number(room.price) || 0;
     const deposit = Number(depositAmount) || 0;
     const totalPayable = rent + deposit;
-
+ 
     const canSign = scrolledToBottom && accepted;
 
     return (
@@ -115,12 +136,29 @@ export function PropertyAgreementModal({
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="text-[11px] text-slate-300 font-semibold">Move-in: {moveInDate}</span>
+                            <span className="text-[11px] text-slate-300 font-semibold">Move-in: {formattedMoveInDate}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Shield className="w-3 h-3 text-slate-400 shrink-0" />
                             <span className="text-[11px] text-slate-300 font-semibold">{room.depositMonths}M Deposit</span>
                         </div>
+                    </div>
+                </div>
+
+                {/* ── Date Selection Card ── */}
+                <div className="px-6 py-3 bg-indigo-50 border-b border-indigo-100 shrink-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <label className="text-xs font-black text-indigo-950 uppercase tracking-wider block">Confirm Your Actual Move-in Date</label>
+                            <span className="text-[10px] text-red-600 font-bold block mt-0.5">⚠️ Rent and billing cycles will start from this selected date.</span>
+                        </div>
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            min={new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Allow up to 3 days in the past
+                            className="px-3 py-1.5 bg-white border-2 border-indigo-200 rounded-xl text-sm font-bold text-indigo-950 focus:outline-none focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                        />
                     </div>
                 </div>
 
@@ -219,7 +257,7 @@ export function PropertyAgreementModal({
                     <section>
                         <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">3. Tenancy Duration & Rent Schedule</h4>
                         <ul className="space-y-1 list-disc ml-4">
-                            <li>Move-in Date: <strong>{moveInDate}</strong></li>
+                            <li>Move-in Date: <strong>{formattedMoveInDate}</strong></li>
                             <li>Monthly rent is due on the <strong>1st of every calendar month</strong>. Late payment may attract a penalty as specified by the property owner.</li>
                             <li>Tenancy is on a month-to-month basis. Minimum stay and notice period rules apply (see Section 5).</li>
                         </ul>
