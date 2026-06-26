@@ -36,7 +36,8 @@ function PaymentPortal() {
     // Contains: convenienceFee, gstOnFee, cgst, sgst, totalCharged,
     //           feesEnabled, isExempt, exemptReason, ownerFee, ownerNet, tdsAmount
     const [feeBreakdown, setFeeBreakdown] = useState<any>(null);
-    const [countdown, setCountdown] = useState(5);
+    const [countdown, setCountdown] = useState(10);
+    const [transactionId, setTransactionId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) { router.push("/dashboard/student"); return; }
@@ -111,9 +112,11 @@ function PaymentPortal() {
 
                 if (order.isDummyRoute || !(window as any).Razorpay) {
                     // Dev / mock fallback
+                    const mockPaymentId = "pay_rent_sim_" + Math.random().toString(36).slice(2);
+                    setTransactionId(mockPaymentId);
                     await verifyPayment({
                         razorpay_order_id: order.id,
-                        razorpay_payment_id: "pay_rent_sim_" + Math.random().toString(36).slice(2),
+                        razorpay_payment_id: mockPaymentId,
                         razorpay_signature: "sim_sig",
                     });
                     setIsPaid(true);
@@ -130,6 +133,7 @@ function PaymentPortal() {
                     order_id: order.id,
                     handler: async (response: any) => {
                         try {
+                            setTransactionId(response.razorpay_payment_id);
                             await verifyPayment(response);
                             // verifyPayment already marks invoice PAID when invoiceId is on Payment
                             setIsPaid(true);
@@ -150,6 +154,9 @@ function PaymentPortal() {
 
                 const rzp = new (window as any).Razorpay(options);
                 rzp.on("payment.failed", (resp: any) => {
+                    if (resp.error?.metadata?.payment_id) {
+                        setTransactionId(resp.error.metadata.payment_id);
+                    }
                     setError(`Payment failed: ${resp.error?.description || "Unknown error"}.`);
                     setPayFailed(true);
                     setIsPaying(false);
@@ -167,7 +174,9 @@ function PaymentPortal() {
                 }
                 const order = await createRazorpayOrder(booking.id, { isToken: true });
                 if (order.isDummyRoute || !(window as any).Razorpay) {
-                    await payTokenAmount(booking.id, 'ONLINE', 'pay_tok_sim_' + Math.random().toString(36).slice(2));
+                    const mockPaymentId = 'pay_tok_sim_' + Math.random().toString(36).slice(2);
+                    setTransactionId(mockPaymentId);
+                    await payTokenAmount(booking.id, 'ONLINE', mockPaymentId);
                     setIsPaid(true);
                     return;
                 }
@@ -180,6 +189,7 @@ function PaymentPortal() {
                     order_id: order.id,
                     handler: async (response: any) => {
                         try {
+                            setTransactionId(response.razorpay_payment_id);
                             await verifyPayment(response);
                             await payTokenAmount(booking.id, 'ONLINE', response.razorpay_payment_id);
                             setIsPaid(true);
@@ -193,7 +203,13 @@ function PaymentPortal() {
                     modal: { ondismiss: () => setIsPaying(false) }
                 };
                 const rzp = new (window as any).Razorpay(options);
-                rzp.on('payment.failed', (resp: any) => { setError(`Payment failed: ${resp.error?.description || 'Unknown error'}`); setIsPaying(false); });
+                rzp.on('payment.failed', (resp: any) => {
+                    if (resp.error?.metadata?.payment_id) {
+                        setTransactionId(resp.error.metadata.payment_id);
+                    }
+                    setError(`Payment failed: ${resp.error?.description || 'Unknown error'}`);
+                    setIsPaying(false);
+                });
                 rzp.open();
                 return;
             }
@@ -209,12 +225,14 @@ function PaymentPortal() {
 
             if (order.isDummyRoute || !(window as any).Razorpay) {
                 await new Promise(r => setTimeout(r, 1200));
+                const mockPaymentId = "pay_sim_" + Math.random().toString(36).slice(2);
+                setTransactionId(mockPaymentId);
                 await verifyPayment({
                     razorpay_order_id: order.id,
-                    razorpay_payment_id: "pay_sim_" + Math.random().toString(36).slice(2),
+                    razorpay_payment_id: mockPaymentId,
                     razorpay_signature: "sim_sig"
                 });
-                await markBookingPaid(booking.id, "ONLINE");
+                await markBookingPaid(booking.id, "ONLINE", mockPaymentId);
                 setIsPaid(true);
                 return;
             }
@@ -228,6 +246,7 @@ function PaymentPortal() {
                 order_id: order.id,
                 handler: async function (response: any) {
                     try {
+                        setTransactionId(response.razorpay_payment_id);
                         await verifyPayment(response);
                         await markBookingPaid(booking.id, "ONLINE", response.razorpay_payment_id);
                         setIsPaid(true);
@@ -247,6 +266,9 @@ function PaymentPortal() {
 
             const rzp = new (window as any).Razorpay(options);
             rzp.on("payment.failed", (resp: any) => {
+                if (resp.error?.metadata?.payment_id) {
+                    setTransactionId(resp.error.metadata.payment_id);
+                }
                 setError(`Payment failed: ${resp.error?.description || "Unknown error"}. Please try again.`);
                 setIsPaying(false);
             });
@@ -382,6 +404,11 @@ function PaymentPortal() {
                                 <div className="bg-red-50 border-2 border-red-300 p-4 rounded-xl text-sm text-red-800 space-y-2 text-left">
                                     <p className="font-black text-base">✅ ₹{Number(invoice?.amount || 0).toLocaleString('en-IN')} Confirmed</p>
                                     <p className="text-slate-600">Rent for <strong>{invoice?.month || 'this month'}</strong> has been captured by Razorpay and marked paid.</p>
+                                    {transactionId && (
+                                        <div className="bg-white/80 border border-red-200 rounded-lg p-2 mt-2">
+                                            <p className="text-xs text-slate-500">Transaction ID: <span className="font-mono font-black text-slate-800 select-all">{transactionId}</span></p>
+                                        </div>
+                                    )}
                                     <div className="pt-2 border-t border-red-200 space-y-1">
                                         <p className="text-xs text-slate-500">Property: <strong>{booking.propertyName}</strong></p>
                                         <p className="text-xs text-slate-500">Booking: <strong>{booking.displayId}</strong></p>
@@ -395,15 +422,25 @@ function PaymentPortal() {
                                     {isToken ? '🔐 Token Secured!' : 'Payment Successful! 🎉'}
                                 </h2>
                                 {isToken ? (
-                                    <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-xl text-sm text-amber-800 space-y-2">
-                                        <p className="font-black">✅ ₹1,000 Non-Refundable Token Paid</p>
+                                    <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-xl text-sm text-amber-800 space-y-2 text-left">
+                                        <p className="font-black text-center text-amber-900">✅ ₹1,000 Non-Refundable Token Paid</p>
                                         <p>Your bed is now <strong>LOCKED</strong> for you. The token amount is non-refundable as per the reservation agreement.</p>
-                                        <p className="text-xs text-amber-600">RentPe is a technology mediator. Token goes to the property owner.</p>
+                                        {transactionId && (
+                                            <div className="bg-white/80 border border-amber-200 rounded-lg p-2">
+                                                <p className="text-xs text-slate-500">Transaction ID: <span className="font-mono font-black text-slate-800 select-all">{transactionId}</span></p>
+                                            </div>
+                                        )}
+                                        <p className="text-[11px] text-amber-600">RentPe is a technology mediator. Token goes to the property owner.</p>
                                     </div>
                                 ) : (
-                                    <div className="bg-green-50 border border-green-300 p-4 rounded-xl text-sm text-green-800">
-                                        <p className="font-black">✅ Joining Amount Paid!</p>
+                                    <div className="bg-green-50 border-2 border-green-300 p-4 rounded-xl text-sm text-green-800 space-y-2 text-left">
+                                        <p className="font-black text-center text-green-950">✅ Joining Amount Paid!</p>
                                         <p>Your check-in is confirmed. Management will contact you shortly.</p>
+                                        {transactionId && (
+                                            <div className="bg-white/80 border border-green-200 rounded-lg p-2">
+                                                <p className="text-xs text-slate-500">Transaction ID: <span className="font-mono font-black text-slate-800 select-all">{transactionId}</span></p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 <p className="text-sm text-slate-500">Booking ID: <strong>{booking.displayId}</strong></p>
@@ -415,7 +452,7 @@ function PaymentPortal() {
                                 <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                                     <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
                                     <circle cx="18" cy="18" r="16" fill="none" stroke={isRent ? "#dc2626" : "#6366f1"} strokeWidth="3"
-                                        strokeDasharray={`${(countdown / 5) * 100} 100`}
+                                        strokeDasharray={`${(countdown / 10) * 100} 100`}
                                         strokeLinecap="round"
                                         style={{ transition: 'stroke-dasharray 1s linear' }}
                                     />
@@ -447,15 +484,20 @@ function PaymentPortal() {
                         </div>
                         <h2 className="text-2xl font-black text-red-700">Payment Failed ❌</h2>
                         <div className="bg-red-50 border-2 border-red-300 p-4 rounded-xl text-sm text-red-800 text-left space-y-2">
-                            <p className="font-black">Your payment was not successful.</p>
+                            <p className="font-black text-center">Your payment was not successful.</p>
                             <p className="text-slate-600">{error || 'The transaction could not be completed. No amount has been deducted.'}</p>
+                            {transactionId && (
+                                <div className="bg-white/80 border border-red-200 rounded-lg p-2 mt-2">
+                                    <p className="text-xs text-slate-500">Transaction ID: <span className="font-mono font-black text-slate-800 select-all">{transactionId}</span></p>
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center justify-center gap-2 py-2">
                             <div className="relative w-10 h-10 flex items-center justify-center">
                                 <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                                     <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
                                     <circle cx="18" cy="18" r="16" fill="none" stroke="#dc2626" strokeWidth="3"
-                                        strokeDasharray={`${(countdown / 5) * 100} 100`}
+                                        strokeDasharray={`${(countdown / 10) * 100} 100`}
                                         strokeLinecap="round"
                                         style={{ transition: 'stroke-dasharray 1s linear' }}
                                     />

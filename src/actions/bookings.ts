@@ -727,7 +727,6 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
             paymentStatus: 'PAID',
             paymentMethod: method,
             paidAt: new Date(),
-            ...(paymentId ? { paymentId } : {}),
             ...(isFinalPayment ? { activeAt: new Date() } : {}),
         } as any
     });

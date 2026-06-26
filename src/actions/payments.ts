@@ -149,7 +149,7 @@ export async function verifyPayment(data: {
 
     return await prisma.$transaction(async (tx) => {
         // 1. Update Payment — mark VERIFIED, set transferStatus = PENDING (Component 1)
-        await (prisma as any).payment.update({
+        await (tx as any).payment.update({
             where: { id: payment.id },
             data: {
                 status: "VERIFIED",
@@ -186,10 +186,13 @@ export async function verifyPayment(data: {
             }
         });
 
-        // 4. Record platform fee earnings to DB wallet (Async — non-blocking)
+        return { success: true };
+    }).then(async (res) => {
+        // ── SIDE EFFECTS: Execute post-transaction commit safely ──
         try {
+            // 1. Record platform fee earnings to DB wallet (Async — non-blocking)
             const { recordPlatformFee } = await import('@/actions/platform');
-            const paymentWithBooking = await tx.booking.findUnique({
+            const paymentWithBooking = await prisma.booking.findUnique({
                 where: { id: payment.bookingId },
                 include: { user: true, room: { include: { property: { include: { owner: true } } } } }
             });
@@ -207,48 +210,54 @@ export async function verifyPayment(data: {
                     depositAmt
                 ).catch(err => console.error('[PLATFORM FEE RECORD] Failed:', err));
             }
-        } catch (feeErr) { console.error('[PLATFORM FEE RECORD] Error:', feeErr); }
+        } catch (feeErr) {
+            console.error('[PLATFORM FEE RECORD] Error:', feeErr);
+        }
 
-        // 4. Send Payment Receipt Email (Async)
-        const user = await tx.user.findUnique({ where: { id: (session as any).userId }, select: { email: true, name: true } });
-        if (user?.email) {
-            sendEmail({
-                to: user.email,
-                subject: `Payment Receipt: ₹${payment.amount} confirmed! 🧾`,
-                html: `
-                    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                        <h2 style="color: #8b5cf6;">Payment Received!</h2>
-                        <p>Hi ${user.name || 'there'},</p>
-                        <p>Your payment of <strong>₹${payment.amount}</strong> has been successfully verified.</p>
-                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 0;"><strong>Payment ID:</strong> ${data.razorpay_payment_id}</p>
-                            <p style="margin: 4px 0 0 0;"><strong>Amount:</strong> ₹${payment.amount}</p>
-                            <p style="margin: 4px 0 0 0;"><strong>Status:</strong> Success</p>
+        try {
+            // 2. Send Payment Receipt Email (Async)
+            const user = await prisma.user.findUnique({ where: { id: (session as any).userId }, select: { email: true, name: true } });
+            if (user?.email) {
+                sendEmail({
+                    to: user.email,
+                    subject: `Payment Receipt: ₹${payment.amount} confirmed! 🧾`,
+                    html: `
+                        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <h2 style="color: #8b5cf6;">Payment Received!</h2>
+                            <p>Hi ${user.name || 'there'},</p>
+                            <p>Your payment of <strong>₹${payment.amount}</strong> has been successfully verified.</p>
+                            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                                <p style="margin: 0;"><strong>Payment ID:</strong> ${data.razorpay_payment_id}</p>
+                                <p style="margin: 4px 0 0 0;"><strong>Amount:</strong> ₹${payment.amount}</p>
+                                <p style="margin: 4px 0 0 0;"><strong>Status:</strong> Success</p>
+                            </div>
+                            <p>You can view your payment history and download invoices from your dashboard.</p>
+                            <a href="https://rentpe.in/dashboard/student" style="display: inline-block; background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 10px;">Go to Dashboard</a>
                         </div>
-                        <p>You can view your payment history and download invoices from your dashboard.</p>
-                        <a href="https://rentpe.in/dashboard/student" style="display: inline-block; background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 10px;">Go to Dashboard</a>
-                    </div>
-                `
-            }).catch(err => console.error('Failed to email payment receipt:', err));
+                    `
+                }).catch(err => console.error('Failed to email payment receipt:', err));
+            }
+
+            // 3. Audit Log — Payment Verified
+            logAuditEvent({
+                actorId: (session as any).userId,
+                actorRole: (session as any).role || 'USER',
+                actorName: user?.name || 'Tenant',
+                actionType: 'UPDATE',
+                entityType: 'PAYMENT',
+                entityId: payment.id,
+                description: `Payment of ₹${payment.amount} verified. Razorpay ID: ${data.razorpay_payment_id}. Booking ID: ${payment.bookingId}.`,
+                newValue: { status: 'VERIFIED', razorpayId: data.razorpay_payment_id, amount: payment.amount },
+            }).catch(err => console.error('Failed to log audit event:', err));
+        } catch (sideErr) {
+            console.error('[SIDE EFFECTS] Error:', sideErr);
         }
 
         revalidatePath("/dashboard/student");
         revalidatePath("/dashboard/owner/bookings");
         revalidatePath("/dashboard/owner/financials");
 
-        // ✅ Audit Log — Payment Verified (appears in Admin Audit + Owner Activity Logs)
-        logAuditEvent({
-            actorId: (session as any).userId,
-            actorRole: (session as any).role || 'USER',
-            actorName: user?.name || 'Tenant',
-            actionType: 'UPDATE',
-            entityType: 'PAYMENT',
-            entityId: payment.id,
-            description: `Payment of ₹${payment.amount} verified. Razorpay ID: ${data.razorpay_payment_id}. Booking ID: ${payment.bookingId}.`,
-            newValue: { status: 'VERIFIED', razorpayId: data.razorpay_payment_id, amount: payment.amount },
-        });
-
-        return { success: true };
+        return res;
     });
 }
 
