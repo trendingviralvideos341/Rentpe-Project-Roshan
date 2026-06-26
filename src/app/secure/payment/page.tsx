@@ -738,10 +738,16 @@ function PaymentPortal() {
                                         <span className="font-black text-green-700">− ₹1,000</span>
                                     </div>
 
+                                    {/* ── PENDING SUBTOTAL (after token, before platform fee) ── */}
+                                    <div className="flex justify-between items-center border-t border-slate-300 pt-2 bg-slate-100 -mx-4 px-4 py-2">
+                                        <span className="text-sm font-black text-slate-700">Pending Subtotal</span>
+                                        <span className="font-black text-slate-800">₹{baseJoiningAmount.toLocaleString('en-IN')}</span>
+                                    </div>
+
                                     {/* ── Platform Convenience Fee (if enabled & not exempt) ── */}
                                     {feesEnabled && convenienceFee > 0 && !isExempt && (
                                         <>
-                                            <div className="flex justify-between items-center pt-1 border-t border-dashed border-indigo-200">
+                                            <div className="flex justify-between items-center pt-1">
                                                 <div className="flex items-center gap-1">
                                                     <Receipt className="h-3.5 w-3.5 text-indigo-500" />
                                                     <span className="text-sm text-indigo-700 font-semibold">Platform Convenience Fee</span>
@@ -760,6 +766,7 @@ function PaymentPortal() {
                                             <p className="text-[10px] text-slate-400 italic">* Platform fee is a service charge by RentPe and is separate from your rent receipt.</p>
                                         </>
                                     )}
+
 
                                     {/* ── Fees Exempt Badge ── */}
                                     {feesEnabled && isExempt && (
@@ -783,10 +790,16 @@ function PaymentPortal() {
                             )}
 
                             {/* ── GRAND TOTAL ── */}
-                            <div className="flex justify-between items-center border-t-2 border-indigo-200 pt-2 mt-1 bg-indigo-50 -mx-4 px-4 py-2 rounded-b-2xl">
-                                <span className="font-black text-slate-800">{isToken ? 'Token Amount' : 'Balance Due Now'}</span>
+                            <div className="flex justify-between items-center border-t-2 border-indigo-300 pt-3 mt-1 bg-indigo-50 -mx-4 px-4 py-3 rounded-b-2xl">
+                                <span className="font-black text-slate-800 text-base">
+                                    {isToken ? 'Token Amount' : 'Balance Due'}
+                                </span>
                                 <div className="text-right">
-                                    <span className="text-xl font-black text-indigo-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+                                    <span className="text-2xl font-black text-indigo-700">
+                                        ₹{totalAmount % 1 === 0
+                                            ? totalAmount.toLocaleString('en-IN')
+                                            : totalAmount.toFixed(2)}
+                                    </span>
                                     {!feeBreakdown && <p className="text-[10px] text-indigo-400 animate-pulse">Calculating fees…</p>}
                                 </div>
                             </div>
