@@ -216,6 +216,163 @@ export async function calculateFees(amountStr: string, userId?: string, property
     };
 }
 
+// ── calculateCheckoutFees: Single source of truth for checkout screen ─────
+// Called by the payment page (client) and by createRazorpayOrder (server)
+// to ensure EXACTLY the same amount is shown on screen and charged by Razorpay.
+//
+// CHECKLIST this function enforces:
+//   [1] Is the platform fee globally enabled?
+//   [2] Is this student or property exempt from convenience fee?
+//   [3] Is this student or property exempt from GST on their fee?
+//   [4] For JOINING payment: compute prorated first-month rent (not full month)
+//   [5] For JOINING payment: deduct token advance already paid (₹1,000)
+//   [6] For TOKEN payment: use token fee settings if enabled, not rent settings
+//   [7] For RENT_INVOICE: use invoice amount as base (no proration needed)
+//   [8] Compute GST (18% CGST+SGST) on convenience fee (exclusive — on top of fee)
+//   [9] Return totalCharged = baseAmount + convenienceFee + gstOnFee
+export async function calculateCheckoutFees(
+    bookingId: string,
+    paymentType: 'JOINING' | 'TOKEN' | 'RENT_INVOICE',
+    invoiceId?: string,
+): Promise<{
+    baseAmount:       number;   // prorated rent + deposit - token (for JOINING) or invoice amount
+    rentBase:         number;   // just the rent portion (for TDS purposes)
+    depositBase:      number;   // just the deposit portion (refundable — not taxed)
+    convenienceFee:   number;   // student-facing platform fee
+    gstOnFee:         number;   // 18% GST on convenience fee (exclusive)
+    cgst:             number;   // 9% CGST component
+    sgst:             number;   // 9% SGST component
+    totalCharged:     number;   // what student actually pays = baseAmount + fee + GST
+    feesEnabled:      boolean;
+    isExempt:         boolean;  // true if student or property is fee-exempt
+    exemptReason:     string;   // human-readable exemption note
+    feeType:          'FLAT' | 'PERCENT' | 'NONE';
+    sacCode:          string;
+    // Owner-side breakdown (for display in owner payout breakdown)
+    ownerFee:         number;   // platform commission deducted from owner
+    ownerNet:         number;   // what owner receives = rentBase - ownerFee - gstOnOwnerFee - tdsAmount
+    ownerFeeExempt:   boolean;
+    tdsAmount:        number;
+    tdsExempt:        boolean;
+    gstOnOwnerFee:    number;
+}> {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+
+    // ── STEP 1: Fetch booking with full context ──────────────────────────────
+    const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+            room: { include: { property: { include: { owner: true } } } }
+        }
+    });
+    if (!booking) throw new Error('Booking not found');
+
+    const rentAmount    = Number(booking.amount || 0);
+    const depositAmount = Number((booking as any).depositAmount || 0);
+    const tokenPaid     = !!(booking as any).tokenPaidAt; // true if token already paid
+
+    // ── STEP 2: Compute base amount per payment type ─────────────────────────
+    // JOINING: prorated first-month rent (move-in date → last day of move-in month)
+    //          + full security deposit
+    //          - token advance (₹1,000) already paid
+    //
+    // TOKEN: flat ₹1,000 — no proration
+    //
+    // RENT_INVOICE: invoice amount as stored in DB
+
+    let baseAmount     = 0;
+    let rentBase       = 0;   // rent-only component (for TDS)
+    let depositBase    = 0;   // deposit component (refundable — no TDS)
+    let apiPaymentType: 'RENT' | 'TOKEN' = 'RENT';
+
+    if (paymentType === 'TOKEN') {
+        baseAmount     = 1000;
+        rentBase       = 1000;
+        depositBase    = 0;
+        apiPaymentType = 'TOKEN';
+
+    } else if (paymentType === 'RENT_INVOICE') {
+        let invAmount = rentAmount; // fallback
+        if (invoiceId) {
+            const inv = await prisma.rentInvoice.findUnique({ where: { id: invoiceId } });
+            if (inv) invAmount = Number(inv.amount);
+        }
+        baseAmount   = invAmount;
+        rentBase     = invAmount;
+        depositBase  = 0;
+        apiPaymentType = 'RENT';
+
+    } else {
+        // JOINING — compute prorated rent from move-in / onboarding date
+        let moveInDate = new Date();
+        const rawDate = (booking as any).onboardingDate || (booking as any).moveInDate;
+        if (rawDate) {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) moveInDate = d;
+        }
+
+        const daysInMo     = new Date(moveInDate.getFullYear(), moveInDate.getMonth() + 1, 0).getDate();
+        const daysLeft     = daysInMo - moveInDate.getDate() + 1;
+        const isFirst      = moveInDate.getDate() === 1;
+        const proratedRent = isFirst ? rentAmount : Math.round((rentAmount / daysInMo) * daysLeft);
+
+        const TOKEN_DEDUCT  = tokenPaid ? 1000 : 0;
+        rentBase            = proratedRent;
+        depositBase         = depositAmount;
+        baseAmount          = Math.max(0, proratedRent + depositAmount - TOKEN_DEDUCT);
+        apiPaymentType      = 'RENT';
+    }
+
+    // ── STEP 3: Run full fee calculation (exemptions, custom rates, GST, TDS) ─
+    const propertyName  = booking.room?.property?.name || booking.propertyName;
+    const ownerId       = booking.room?.property?.ownerId;
+    const userId        = booking.userId;
+
+    // Pass rent-only amount as the "gross" for TDS; pass deposit separately
+    // calculateFees handles: exempt check, flat vs %, GST, TDS (only on rent)
+    const fees = await calculateFees(
+        String(rentBase),          // gross = rent only (TDS applies here)
+        userId,
+        propertyName,
+        ownerId,
+        apiPaymentType,
+        depositBase                // passed so TDS excludes deposit
+    );
+
+    // ── STEP 4: Build exemption display message ──────────────────────────────
+    let exemptReason = '';
+    const isExempt   = fees.feesEnabled && fees.customerFee === 0;
+    if (!fees.feesEnabled)        exemptReason = 'Platform fees are currently disabled';
+    else if (isExempt)            exemptReason = 'This booking/property is fee-exempt';
+
+    // ── STEP 5: Final totals ─────────────────────────────────────────────────
+    // totalCharged = baseAmount (prorated+deposit-token) + convenience fee + GST
+    const totalCharged = baseAmount + fees.customerFee + fees.gstOnStudentFee;
+
+    return {
+        baseAmount:     Math.round(baseAmount * 100) / 100,
+        rentBase:       Math.round(rentBase * 100) / 100,
+        depositBase:    Math.round(depositBase * 100) / 100,
+        convenienceFee: fees.customerFee,
+        gstOnFee:       fees.gstOnStudentFee,
+        cgst:           fees.cgst,
+        sgst:           fees.sgst,
+        totalCharged:   Math.round(totalCharged * 100) / 100,
+        feesEnabled:    fees.feesEnabled,
+        isExempt,
+        exemptReason,
+        feeType:        fees.feesEnabled ? 'FLAT' : 'NONE',
+        sacCode:        fees.sacCode,
+        // Owner-side
+        ownerFee:       fees.ownerFee,
+        ownerNet:       fees.ownerNet,
+        ownerFeeExempt: fees.feesEnabled && fees.ownerFee === 0,
+        tdsAmount:      fees.tdsAmount,
+        tdsExempt:      fees.tdsAmount === 0 && fees.feesEnabled,
+        gstOnOwnerFee:  fees.gstOnOwnerFee,
+    };
+}
 
 // ── Record a platform fee after payment ───────────────
 export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string, ownerId?: string, depositAmount?: number) {

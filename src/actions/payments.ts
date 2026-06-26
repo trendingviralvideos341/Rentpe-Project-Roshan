@@ -23,42 +23,50 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
     if (booking.userId !== userId) throw new Error("Unauthorized");
 
     try {
-        // Determine amount from invoice, deposit, or booking (initial: rent + security deposit)
-        let baseAmount: number;
-        let paymentType: 'RENT' | 'TOKEN' = 'RENT';
-        if (extras?.invoiceId) {
-            const invoice = await prisma.rentInvoice.findUnique({ where: { id: extras.invoiceId } });
-            baseAmount = invoice ? Number(invoice.amount) : Number(booking.amount);
-            paymentType = 'RENT';
-        } else if (extras?.depositId) {
+        // ── PAYMENT TYPE DETECTION ─────────────────────────────────────────────────
+        // Determine what kind of payment this is so we can run the correct
+        // fee/proration logic via calculateCheckoutFees.
+        //
+        // CHECKLIST:
+        //   [1] invoiceId present  → RENT_INVOICE  (monthly rent, no proration)
+        //   [2] depositId present  → deposit-only  (use raw deposit amount)
+        //   [3] isToken present    → TOKEN          (₹1,000 reservation)
+        //   [4] none of the above  → JOINING        (prorated rent + deposit - token)
+
+        let checkoutType: 'JOINING' | 'TOKEN' | 'RENT_INVOICE' = 'JOINING';
+        if (extras?.invoiceId) checkoutType = 'RENT_INVOICE';
+        else if (extras?.isToken) checkoutType = 'TOKEN';
+
+        // Handle legacy depositId-only path (rare, but keep support)
+        let legacyDepositAmount: number | null = null;
+        if (extras?.depositId && !extras?.invoiceId) {
             const deposit = await prisma.securityDeposit.findUnique({ where: { id: extras.depositId } });
-            baseAmount = deposit ? Number(deposit.amount) : Number(booking.amount);
-            paymentType = 'RENT';
-        } else if (extras?.isToken) {
-            baseAmount = 1000;
-            paymentType = 'TOKEN';
-        } else {
-            // Initial booking payment: rent + security deposit
-            baseAmount = Number(booking.amount) + Number((booking as any).depositAmount || 0);
-            paymentType = 'RENT';
+            legacyDepositAmount = deposit ? Number(deposit.amount) : Number((booking as any).depositAmount || 0);
         }
 
-        // ── Dynamic fee calculation respecting exemptions and custom rates ──
-        const { calculateFees } = await import('@/actions/platform');
-        const room = await prisma.room.findUnique({
-            where: { id: booking.roomId! },
-            include: { property: { include: { owner: true } } }
-        });
-        const ownerAccountId = room?.property.owner.razorpayAccountId;
-        const fees = await calculateFees(
-            String(baseAmount),
-            booking.userId,
-            room?.property?.name || booking.propertyName,
-            room?.property?.ownerId,
-            paymentType
-        );
-        const studentFee = fees.customerFee;
-        const finalCharge = fees.totalCharged * 100; // in paise
+        // ── SINGLE SOURCE OF TRUTH: calculateCheckoutFees ─────────────────────────
+        // This server function handles:
+        //   • Prorated rent for JOINING (move-in date → end of month)
+        //   • Token advance deduction for JOINING (if already paid)
+        //   • Platform fee enabled/disabled check
+        //   • Student & property exemption check (custom rates / full exemption)
+        //   • Convenience fee + 18% GST calculation (exclusive, on top)
+        //   • Owner commission + TDS calculation
+        //   Returns: { baseAmount, convenienceFee, gstOnFee, totalCharged, ... }
+        const { calculateCheckoutFees } = await import('@/actions/platform');
+
+        let finalCharge: number; // in paise (× 100)
+        let totalChargedRupees: number;
+
+        if (legacyDepositAmount !== null) {
+            // Deposit-only payment: no proration, no fee, just the deposit amount
+            finalCharge = legacyDepositAmount * 100;
+            totalChargedRupees = legacyDepositAmount;
+        } else {
+            const checkout = await calculateCheckoutFees(bookingId, checkoutType, extras?.invoiceId);
+            totalChargedRupees = checkout.totalCharged;
+            finalCharge = Math.round(checkout.totalCharged * 100); // paise
+        }
 
         const options = {
             amount: finalCharge,
@@ -66,15 +74,9 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
             receipt: `receipt_${booking.id.slice(0, 5)}`,
         };
 
-        // ── COMPONENT 1: Delayed Transfer ───────────────────────────────────────────
-        // Money is collected from student into Razorpay nodal account.
-        // We do NOT do instant transfers to the owner's linked account.
-        // Owner's payout is released manually via releaseTransferToOwner() by admin.
-        // This gives the platform the 15-day window for deposit refund enforcement.
-        // ────────────────────────────────────────────────────────────────────────
-
-        // NOTE: 'transfers' array intentionally removed — no instant owner payout.
-        // DUMMY MODE: If Razorpay API fails, falls back to mock order.
+        // ── COMPONENT 1: Delayed Transfer ────────────────────────────────────────
+        // Money is collected into Razorpay nodal account.
+        // Owner payout is released manually by admin after the 15-day window.
         let order: { id: string; amount: number; currency: string };
         try {
             const rzpOrder = await (razorpay.orders as any).create(options);
@@ -93,11 +95,11 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
                 bookingId: booking.id,
                 invoiceId: extras?.invoiceId,
                 depositId: extras?.depositId,
-                amount: fees.totalCharged,
+                amount: totalChargedRupees,   // stored amount = what student pays (incl. fee)
                 method: "ONLINE",
                 status: "PENDING",
                 razorpayOrderId: order.id,
-                transferStatus: "PENDING",   // Component 1: Held in nodal
+                transferStatus: "PENDING",    // Component 1: Held in nodal
             }
         });
 
@@ -113,6 +115,7 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
         throw new Error("Failed to create payment order");
     }
 }
+
 
 export async function verifyPayment(data: {
     razorpay_order_id: string;

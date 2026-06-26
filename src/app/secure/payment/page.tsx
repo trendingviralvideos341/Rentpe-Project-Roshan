@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, Banknote, Smartphone, CheckCircle, AlertTriangle, ArrowLeft, Phone, BedDouble } from "lucide-react";
+import { Lock, Banknote, Smartphone, CheckCircle, AlertTriangle, ArrowLeft, Phone, BedDouble, ShieldCheck, Receipt, BadgePercent } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
 import { cn } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,13 +32,17 @@ function PaymentPortal() {
     const [invoice, setInvoice] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
-    const [convenienceFee, setConvenienceFee] = useState(0); // platform fee charged to student
+    // ── Fee Breakdown State (single source of truth from server) ──────────────
+    // Contains: convenienceFee, gstOnFee, cgst, sgst, totalCharged,
+    //           feesEnabled, isExempt, exemptReason, ownerFee, ownerNet, tdsAmount
+    const [feeBreakdown, setFeeBreakdown] = useState<any>(null);
     const [countdown, setCountdown] = useState(5);
 
     useEffect(() => {
         if (!id) { router.push("/dashboard/student"); return; }
         const fetchBooking = async () => {
             try {
+                // ── CHECKLIST [1]: Fetch booking + cash settings in parallel ──
                 const [data, cashEnabled] = await Promise.all([
                     getBookingById(id),
                     getCashPaymentEnabled(),
@@ -47,7 +51,7 @@ function PaymentPortal() {
                 setAllowCashPayment(cashEnabled);
                 setMethod("online");
 
-                // If this is a rent invoice payment, fetch the invoice details
+                // ── CHECKLIST [2]: Fetch invoice for rent payments ─────────────
                 if (paymentType === "rent" && invoiceId) {
                     try {
                         const { getInvoiceById } = await import("@/actions/payments");
@@ -56,12 +60,27 @@ function PaymentPortal() {
                     } catch { /* invoice fetch fail is non-fatal */ }
                 }
 
-                // Fetch platform settings to show convenience fee in checkout breakdown
+                // ── CHECKLIST [3-9]: Fetch authoritative fee breakdown ─────────
+                // calculateCheckoutFees runs the full checklist:
+                //   [3] Platform fees enabled?
+                //   [4] Student or property exempt?
+                //   [5] Prorated rent for JOINING? Token deducted?
+                //   [6] Token fee settings for TOKEN?
+                //   [7] Invoice amount for RENT_INVOICE?
+                //   [8] GST (18% CGST+SGST) calculated on convenience fee?
+                //   [9] Owner commission, TDS calculated?
                 try {
-                    const { getPlatformSettings } = await import("@/actions/platform");
-                    const ps = await getPlatformSettings();
-                    if (ps.feesEnabled) setConvenienceFee(ps.studentRentFeeFlat ?? 0);
-                } catch { /* non-fatal */ }
+                    const { calculateCheckoutFees } = await import("@/actions/platform");
+                    const checkoutType: 'JOINING' | 'TOKEN' | 'RENT_INVOICE' =
+                        paymentType === 'token' ? 'TOKEN'
+                        : paymentType === 'rent' ? 'RENT_INVOICE'
+                        : 'JOINING';
+                    const fb = await calculateCheckoutFees(id, checkoutType, invoiceId || undefined);
+                    setFeeBreakdown(fb);
+                } catch (feeErr) {
+                    console.warn('[PaymentPage] Fee breakdown fetch failed (non-fatal):', feeErr);
+                    // Page still usable — Razorpay amount comes from backend order
+                }
             } catch (err: any) {
                 setError(err.message || "Failed to load booking");
             } finally {
@@ -285,12 +304,8 @@ function PaymentPortal() {
     const depositAmount = Number((booking as any).depositAmount || 0);
 
     // ── UNIFIED CALENDAR BILLING: Prorated first-month rent ──────────────────
-    // If customer moves in today (e.g. 28 May, 31-day month):
-    //   days remaining = 31 - 28 + 1 = 4
-    //   daily rate     = ₹10,000 / 31 = ₹322.58
-    //   prorated rent  = 4 × ₹322.58 = ₹1,290
-    // From June 1st onward → full ₹10,000/month via cron.
-    // Parse booking's onboarding date or move-in date to align calculations
+    // Parse booking's onboarding date or move-in date to align calculations.
+    // This mirrors what calculateCheckoutFees does on the server.
     let moveInDateObj = new Date();
     if (booking.onboardingDate) {
         const d = new Date(booking.onboardingDate);
@@ -304,15 +319,30 @@ function PaymentPortal() {
     const daysRemaining = daysInThisMonth - moveInDateObj.getDate() + 1;
     const dailyRate = Math.round((rentAmount / daysInThisMonth) * 100) / 100;
     const proratedRent = Math.round(dailyRate * daysRemaining);
-    const isFirstOfMonth = moveInDateObj.getDate() === 1; // if move-in is exactly 1st, no proration needed
+    const isFirstOfMonth = moveInDateObj.getDate() === 1;
     const effectiveRent = isFirstOfMonth ? rentAmount : proratedRent;
     const monthName = moveInDateObj.toLocaleString('en-IN', { month: 'long' });
     const lastDayLabel = `${daysInThisMonth} ${monthName}`;
     const moveInLabel  = `${moveInDateObj.getDate()} ${monthName}`;
 
     const subtotal = effectiveRent + depositAmount;
-    // Final payment deducts the ₹1,000 token already paid
-    const totalAmount = isToken ? TOKEN_AMOUNT : Math.max(0, subtotal - TOKEN_AMOUNT);
+    // When feeBreakdown is loaded: use its totalCharged as the authoritative total.
+    // Until it loads: show provisional amount (no fee added yet, shows loading state).
+    const convenienceFee = feeBreakdown?.convenienceFee ?? 0;
+    const gstOnFee       = feeBreakdown?.gstOnFee ?? 0;
+    const cgstAmt        = feeBreakdown?.cgst ?? 0;
+    const sgstAmt        = feeBreakdown?.sgst ?? 0;
+    const feesEnabled    = feeBreakdown?.feesEnabled ?? false;
+    const isExempt       = feeBreakdown?.isExempt ?? false;
+    const exemptReason   = feeBreakdown?.exemptReason ?? '';
+
+    // Token total: ₹1,000 base + convenience fee + GST (if token fees enabled)
+    // Joining total: (prorated rent + deposit - token) + convenience fee + GST
+    const baseJoiningAmount = Math.max(0, subtotal - TOKEN_AMOUNT);
+    const joiningTotal      = baseJoiningAmount + convenienceFee + gstOnFee;
+    const totalAmount       = isToken
+        ? TOKEN_AMOUNT + convenienceFee + gstOnFee
+        : joiningTotal;
 
     // ── SUCCESS SCREEN ────────────────────────────────────────────────────────
     if (isPaid) {
@@ -492,20 +522,44 @@ function PaymentPortal() {
                                         <span className="text-slate-600 text-sm">Rent Total</span>
                                         <span className="font-black text-slate-800">₹{rentAmt.toLocaleString('en-IN')}</span>
                                     </div>
-                                    {convenienceFee > 0 && (
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-slate-500">Platform Convenience Fee</span>
-                                            <span className="font-bold text-slate-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
+                                     {/* ── Platform Convenience Fee (driven by server feeBreakdown) ── */}
+                                    {feesEnabled && convenienceFee > 0 && !isExempt && (
+                                        <>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="flex items-center gap-1 text-slate-500"><Receipt className="h-3 w-3" /> Platform Convenience Fee</span>
+                                                <span className="font-bold text-indigo-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
+                                            </div>
+                                            {gstOnFee > 0 && (
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs text-slate-400 flex items-center gap-1"><BadgePercent className="h-3 w-3" /> GST 18% (CGST ₹{cgstAmt.toFixed(2)} + SGST ₹{sgstAmt.toFixed(2)}) · SAC 997312</span>
+                                                    <span className="text-xs font-semibold text-slate-500">+ ₹{gstOnFee.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                    {feesEnabled && isExempt && (
+                                        <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold">
+                                            <ShieldCheck className="h-3.5 w-3.5" />
+                                            <span>Platform Fee Waived — {exemptReason || 'Exempted'}</span>
+                                        </div>
+                                    )}
+                                    {!feeBreakdown && (
+                                        <div className="flex items-center gap-2 animate-pulse">
+                                            <div className="h-3 w-3 rounded-full bg-red-200" />
+                                            <div className="h-3 bg-red-100 rounded w-36" />
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center pt-2 border-t border-red-300">
                                         <span className="font-black text-red-800">Total You Pay</span>
-                                        <span className="text-2xl font-black text-red-700">₹{(rentAmt + convenienceFee).toLocaleString('en-IN')}</span>
+                                        <div className="text-right">
+                                            <span className="text-2xl font-black text-red-700">₹{(rentAmt + convenienceFee + gstOnFee).toLocaleString('en-IN')}</span>
+                                            {!feeBreakdown && <p className="text-[10px] text-red-400 animate-pulse">Calculating fees…</p>}
+                                        </div>
                                     </div>
                                 </div>
                                 <p className="text-xs text-red-600 font-bold">⚠️ Due by {dueDate}. Late fees may apply after this date.</p>
-                                {convenienceFee > 0 && (
-                                    <p className="text-[10px] text-slate-400">* ₹{convenienceFee} platform convenience fee is a service charge by RentPe and is separate from your rent receipt.</p>
+                                {convenienceFee > 0 && !isExempt && (
+                                    <p className="text-[10px] text-slate-400">* Platform convenience fee is a RentPe service charge, separate from your rent receipt. Inclusive of 18% GST.</p>
                                 )}
                             </div>
                             {/* Online payment info */}
@@ -527,16 +581,18 @@ function PaymentPortal() {
                             <Button
                                 className="w-full text-base font-black rounded-2xl shadow-lg py-6 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white active:scale-95 transition-all"
                                 onClick={handlePay}
-                                disabled={isPaying}
+                                disabled={isPaying || !feeBreakdown}
                             >
                                 {isPaying
                                     ? <><span className="animate-spin inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full" />Processing...</>
-                                    : `💳 Pay ₹${(rentAmt + convenienceFee).toLocaleString('en-IN')} Now`
+                                    : feeBreakdown
+                                        ? `💳 Pay ₹${(rentAmt + convenienceFee + gstOnFee).toLocaleString('en-IN')} Now`
+                                        : 'Calculating fees…'
                                 }
                             </Button>
-                            {convenienceFee > 0 && (
+                            {convenienceFee > 0 && !isExempt && (
                                 <p className="text-xs text-center text-slate-500">
-                                    Rent ₹{rentAmt.toLocaleString('en-IN')} + Platform Fee ₹{convenienceFee.toLocaleString('en-IN')}
+                                    Rent ₹{rentAmt.toLocaleString('en-IN')} + Fee ₹{convenienceFee.toLocaleString('en-IN')} + GST ₹{gstOnFee.toFixed(2)}
                                 </p>
                             )}
                             <p className="text-xs text-center text-slate-400">🔒 256-bit SSL encrypted. Powered by Razorpay.</p>
@@ -611,16 +667,39 @@ function PaymentPortal() {
                             </div>
                         )}
 
-                        {/* Payment Breakdown */}
+                        {/* ── PAYMENT BREAKDOWN ─────────────────────────────── */}
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-2">
                             {isToken ? (
-                                // Token payment: simple ₹1,000 row
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-slate-700">🔐 Reservation Token</span>
-                                    <span className="font-black text-amber-700">₹1,000</span>
-                                </div>
+                                // ── TOKEN PAYMENT BREAKDOWN ──
+                                <>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-bold text-slate-700">🔐 Reservation Token</span>
+                                        <span className="font-black text-amber-700">₹1,000</span>
+                                    </div>
+                                    {/* Convenience Fee for Token (if token fees enabled) */}
+                                    {feesEnabled && convenienceFee > 0 && !isExempt && (
+                                        <>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-slate-500 flex items-center gap-1"><Receipt className="h-3 w-3" /> Platform Fee</span>
+                                                <span className="font-bold text-indigo-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
+                                            </div>
+                                            {gstOnFee > 0 && (
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-slate-400 flex items-center gap-1"><BadgePercent className="h-3 w-3" /> GST (CGST ₹{cgstAmt.toFixed(2)} + SGST ₹{sgstAmt.toFixed(2)})</span>
+                                                    <span className="text-slate-500">+ ₹{gstOnFee.toLocaleString('en-IN')}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                    {feesEnabled && isExempt && (
+                                        <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold">
+                                            <ShieldCheck className="h-3.5 w-3.5" />
+                                            <span>Fees Waived — {exemptReason || 'Exempted'}</span>
+                                        </div>
+                                    )}
+                                </>
                             ) : (
-                                // Final joining payment: PRORATED first-month rent breakdown
+                                // ── FINAL JOINING PAYMENT BREAKDOWN ──
                                 <>
                                     {/* Prorated Rent Row */}
                                     <div className="flex justify-between items-start">
@@ -647,7 +726,7 @@ function PaymentPortal() {
                                         </div>
                                     )}
 
-                                    {/* Subtotal */}
+                                    {/* Subtotal before deductions */}
                                     <div className="flex justify-between items-center border-t border-slate-200 pt-2">
                                         <span className="text-sm text-slate-500">Subtotal</span>
                                         <span className="font-bold text-slate-600">₹{subtotal.toLocaleString('en-IN')}</span>
@@ -658,11 +737,58 @@ function PaymentPortal() {
                                         <span className="text-sm text-green-700 font-semibold">🎟️ Token Advance Paid ✅</span>
                                         <span className="font-black text-green-700">− ₹1,000</span>
                                     </div>
+
+                                    {/* ── Platform Convenience Fee (if enabled & not exempt) ── */}
+                                    {feesEnabled && convenienceFee > 0 && !isExempt && (
+                                        <>
+                                            <div className="flex justify-between items-center pt-1 border-t border-dashed border-indigo-200">
+                                                <div className="flex items-center gap-1">
+                                                    <Receipt className="h-3.5 w-3.5 text-indigo-500" />
+                                                    <span className="text-sm text-indigo-700 font-semibold">Platform Convenience Fee</span>
+                                                </div>
+                                                <span className="font-bold text-indigo-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
+                                            </div>
+                                            {gstOnFee > 0 && (
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-1">
+                                                        <BadgePercent className="h-3 w-3 text-slate-400" />
+                                                        <span className="text-xs text-slate-400">GST 18% (CGST ₹{cgstAmt.toFixed(2)} + SGST ₹{sgstAmt.toFixed(2)}) · SAC 997312</span>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-slate-500">+ ₹{gstOnFee.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            <p className="text-[10px] text-slate-400 italic">* Platform fee is a service charge by RentPe and is separate from your rent receipt.</p>
+                                        </>
+                                    )}
+
+                                    {/* ── Fees Exempt Badge ── */}
+                                    {feesEnabled && isExempt && (
+                                        <div className="flex items-center gap-2 mt-1 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                                            <ShieldCheck className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-black text-emerald-700">Convenience Fee Waived ✓</p>
+                                                <p className="text-[10px] text-emerald-600">{exemptReason}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ── Fee Loading Skeleton ── */}
+                                    {!feeBreakdown && (
+                                        <div className="flex items-center gap-2 animate-pulse">
+                                            <div className="h-3 w-3 rounded-full bg-indigo-200" />
+                                            <div className="h-3 bg-indigo-100 rounded w-40" />
+                                        </div>
+                                    )}
                                 </>
                             )}
-                            <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
-                                <span className="font-black text-slate-800">{isToken ? 'Token Amount' : 'Amount Payable Now'}</span>
-                                <span className="text-xl font-black text-indigo-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+
+                            {/* ── GRAND TOTAL ── */}
+                            <div className="flex justify-between items-center border-t-2 border-indigo-200 pt-2 mt-1 bg-indigo-50 -mx-4 px-4 py-2 rounded-b-2xl">
+                                <span className="font-black text-slate-800">{isToken ? 'Token Amount' : 'Balance Due Now'}</span>
+                                <div className="text-right">
+                                    <span className="text-xl font-black text-indigo-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+                                    {!feeBreakdown && <p className="text-[10px] text-indigo-400 animate-pulse">Calculating fees…</p>}
+                                </div>
                             </div>
                         </div>
 
@@ -742,7 +868,7 @@ function PaymentPortal() {
                                     : "bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
                             )}
                             onClick={handlePay}
-                            disabled={isPaying}
+                            disabled={isPaying || !feeBreakdown}
                         >
                             {isPaying
                                 ? <><span className="animate-spin inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full" />Processing...</>
