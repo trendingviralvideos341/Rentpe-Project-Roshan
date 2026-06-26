@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllTickets, replyToTicket, updateTicketStatus, resolveTicket } from "@/actions/ops";
+import { getAllTickets, replyToTicket, updateTicketStatus, resolveTicket, adminRouteTicket } from "@/actions/ops";
 import {
     CheckCircle2, Clock, AlertCircle, Send, Filter, Users, Building,
     ShieldCheck, Loader2, ChevronDown, ChevronRight, ArrowUpRight,
@@ -166,18 +166,64 @@ export default function AdminTicketsPage() {
                             <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card ${ticket.status === "RESOLVED" || ticket.status === "CLOSED" ? "opacity-60" : ""}`}>
                                 {/* Collapsed Header */}
                                 <div className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => setExpanded(isExpanded ? null : ticket.id)}>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="font-bold text-sm">{ticket.category}</span>
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        {/* Left Column: Ticket Info */}
+                                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                                            <span className="text-3xl p-2 bg-slate-100 rounded-xl shrink-0">
+                                                {ticket.raisedByRole === "USER" ? "👤" : "🏠"}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                                        {ticket.displayId}
+                                                    </span>
+                                                    <span className="font-black text-sm text-slate-800">{ticket.category}</span>
+                                                </div>
+                                                <p className="text-xs text-slate-600 font-semibold mt-1.5 line-clamp-1">{ticket.description}</p>
+                                                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                                    <span>By: <strong>{ticket.user?.name || "Unknown"}</strong> {ticket.user?.email && `(${ticket.user.email})`}</span>
+                                                    {ticket.property?.name && (
+                                                        <>
+                                                            <span>·</span>
+                                                            <Building className="h-3 w-3 inline text-slate-400" />
+                                                            <span>{ticket.property.name}</span>
+                                                        </>
+                                                    )}
+                                                    {replies.length > 0 && (
+                                                        <>
+                                                            <span>·</span>
+                                                            <MessageCircle className="h-3 w-3 inline text-slate-400" />
+                                                            <span>{replies.length} replies</span>
+                                                        </>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column: Badges, Date, Toggle */}
+                                        <div className="flex items-start sm:items-end flex-col gap-2 shrink-0">
+                                            {/* Date & Time */}
+                                            <span className="text-xs font-semibold text-slate-500 bg-slate-50 border px-2.5 py-1 rounded-lg">
+                                                📅 {new Date(ticket.createdAt).toLocaleString("en-IN", {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                    hour12: true
+                                                })}
+                                            </span>
+
+                                            {/* Badges Row */}
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
                                                     {ticket.status.replace("_", " ")}
                                                 </span>
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${PRIORITY_BADGE[ticket.priority] || "bg-gray-100"}`}>
                                                     {ticket.priority}
                                                 </span>
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ticket.raisedByRole === "USER" ? "bg-blue-50 text-blue-700" : "bg-orange-50 text-orange-700"}`}>
-                                                    {ticket.raisedByRole === "USER" ? "👤 Student" : "🏠 Owner"}
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${ticket.targetTeam === "ADMIN" ? "bg-red-50 text-red-700 border-red-200" : "bg-orange-50 text-orange-700 border-orange-200"}`}>
+                                                    📢 Assigned: {ticket.targetTeam}
                                                 </span>
                                                 {sla && <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sla.cls}`}>{sla.label}</span>}
                                                 {(() => {
@@ -199,17 +245,12 @@ export default function AdminTicketsPage() {
                                                     }
                                                     return null;
                                                 })()}
+                                                {/* Chevron */}
+                                                <div className="p-1 bg-slate-50 hover:bg-slate-100 rounded-lg ml-1 border">
+                                                    {isExpanded ? <ChevronDown className="h-3 w-3 text-slate-500" /> : <ChevronRight className="h-3 w-3 text-slate-500" />}
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">
-                                                <span className="font-mono">{ticket.displayId}</span> · <strong>{ticket.user?.name || "Unknown"}</strong>
-                                                {ticket.user?.email && ` (${ticket.user.email})`}
-                                                {ticket.property?.name && ` · ${ticket.property.name}`}
-                                                · {new Date(ticket.createdAt).toLocaleDateString("en-IN")}
-                                                {replies.length > 0 && ` · 💬 ${replies.length}`}
-                                            </p>
                                         </div>
-                                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />}
                                     </div>
                                 </div>
 
@@ -235,6 +276,18 @@ export default function AdminTicketsPage() {
                                                     onChange={e => setNoteText(p => ({ ...p, [ticket.id]: e.target.value }))}
                                                     className="w-full border rounded-xl px-3 py-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                                 />
+                                                <div className="pt-2 border-t mt-2 flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Route Team:</span>
+                                                    <button onClick={async () => {
+                                                        const target = ticket.targetTeam === "ADMIN" ? "OWNER" : "ADMIN";
+                                                        if (confirm(`Change route team for this ticket to ${target}?`)) {
+                                                            await adminRouteTicket(ticket.id, target);
+                                                            fetchAll();
+                                                        }
+                                                    }} className="px-2 py-1 bg-white hover:bg-slate-100 border text-[10px] font-bold rounded-lg transition-all text-slate-700 flex items-center gap-1 shadow-sm">
+                                                        🔁 Change routing to {ticket.targetTeam === "ADMIN" ? "OWNER" : "ADMIN"}
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
 

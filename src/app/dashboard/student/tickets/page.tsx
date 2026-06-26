@@ -236,47 +236,84 @@ export default function StudentTicketsPage() {
                         return (
                             <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card transition-all ${ticket.status === "RESOLVED" || ticket.status === "CLOSED" ? "opacity-60" : ""}`}>
                                 <div className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedTicket(isExpanded ? null : ticket.id)}>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-2xl mt-0.5">{cat?.emoji || "📋"}</span>
-                                            <div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        {/* Left Column: Ticket Info */}
+                                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                                            <span className="text-3xl p-2 bg-slate-100 rounded-xl shrink-0">{cat?.emoji || "📋"}</span>
+                                            <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="font-bold text-sm">{ticket.category}</span>
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
-                                                        {ticket.status.replace("_", " ")}
+                                                    <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                                        {ticket.displayId}
                                                     </span>
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${cat?.color === "orange" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                                                        {cat?.routeLabel || ""}
-                                                    </span>
-                                                    {sla && <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sla.color}`}>{sla.label}</span>}
-                                                    {(() => {
-                                                        const parsedReplies = JSON.parse(ticket.replies || "[]");
-                                                        const lastReply = parsedReplies[parsedReplies.length - 1];
-                                                        const isReplyReceived = 
-                                                            ticket.status !== "RESOLVED" && 
-                                                            ticket.status !== "CLOSED" && 
-                                                            lastReply && 
-                                                            lastReply.sender !== "USER";
-                                                        
-                                                        if (isReplyReceived) {
-                                                            return (
-                                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse flex items-center gap-1">
-                                                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                                                                    Reply Received
-                                                                </span>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    })()}
+                                                    <span className="font-black text-sm text-slate-800">{ticket.category}</span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
-                                                    <span className="font-mono">{ticket.displayId}</span> · {new Date(ticket.createdAt).toLocaleDateString("en-IN")}
-                                                    {replies.length > 0 && <span className="ml-2">· <MessageCircle className="h-3 w-3 inline" /> {replies.length} {replies.length === 1 ? "reply" : "replies"}</span>}
+                                                <p className="text-xs text-slate-600 font-semibold mt-1.5 line-clamp-1">{ticket.description}</p>
+                                                <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                                    {ticket.property?.name && (
+                                                        <>
+                                                            <Building className="h-3 w-3 inline text-slate-400" />
+                                                            <span>{ticket.property.name}</span>
+                                                        </>
+                                                    )}
+                                                    {replies.length > 0 && (
+                                                        <>
+                                                            <span>·</span>
+                                                            <MessageCircle className="h-3 w-3 inline text-slate-400" />
+                                                            <span>{replies.length} {replies.length === 1 ? "reply" : "replies"}</span>
+                                                        </>
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
-                                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />}
+
+                                        {/* Right Column: Badges, Date, Toggle */}
+                                        <div className="flex items-start sm:items-end flex-col gap-2 shrink-0">
+                                            {/* Date & Time */}
+                                            <span className="text-xs font-semibold text-slate-500 bg-slate-50 border px-2.5 py-1 rounded-lg">
+                                                📅 {new Date(ticket.createdAt).toLocaleString("en-IN", {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                    hour12: true
+                                                })}
+                                            </span>
+
+                                            {/* Badges Row */}
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
+                                                    {ticket.status.replace("_", " ")}
+                                                </span>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${cat?.color === "orange" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                                                    {cat?.routeLabel || ""}
+                                                </span>
+                                                {sla && <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sla.color}`}>{sla.label}</span>}
+                                                {(() => {
+                                                    const parsedReplies = JSON.parse(ticket.replies || "[]");
+                                                    const lastReply = parsedReplies[parsedReplies.length - 1];
+                                                    const isReplyReceived = 
+                                                        ticket.status !== "RESOLVED" && 
+                                                        ticket.status !== "CLOSED" && 
+                                                        lastReply && 
+                                                        lastReply.sender !== "USER";
+                                                    
+                                                    if (isReplyReceived) {
+                                                        return (
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse flex items-center gap-1">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                                                                Reply Received
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                                {/* Chevron */}
+                                                <div className="p-1 bg-slate-50 hover:bg-slate-100 rounded-lg ml-1 border">
+                                                    {isExpanded ? <ChevronDown className="h-3 w-3 text-slate-500" /> : <ChevronRight className="h-3 w-3 text-slate-500" />}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 

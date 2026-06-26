@@ -10,6 +10,7 @@ export const OWNER_CATEGORIES = [
     'Security',
     'Noise Complaint',
     'Room Condition',
+    'Room Issue',
     'Parking Issue',
     'Booking Issue',
 ];

@@ -151,11 +151,57 @@ export default function OwnerTicketsPage() {
                                 return (
                                     <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card ${ticket.priority === "URGENT" ? "border-red-300" : ""}`}>
                                         <div className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => setExpanded(isExpanded ? null : ticket.id)}>
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="font-bold text-sm">{ticket.category}</span>
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                {/* Left Column: Ticket Info */}
+                                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                    <span className="text-3xl p-2 bg-slate-100 rounded-xl shrink-0">
+                                                        {ticket.category.includes("Food") ? "🍲" : ticket.category.includes("Maintenance") ? "🔧" : ticket.category.includes("Cleanliness") ? "🧹" : "📋"}
+                                                    </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                                                {ticket.displayId}
+                                                            </span>
+                                                            <span className="font-black text-sm text-slate-800">{ticket.category}</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-600 font-semibold mt-1.5 line-clamp-1">{ticket.description}</p>
+                                                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                                            <span>By: <strong>{ticket.user?.name || "Tenant"}</strong></span>
+                                                            {ticket.property?.name && (
+                                                                <>
+                                                                    <span>·</span>
+                                                                    <Building className="h-3 w-3 inline text-slate-400" />
+                                                                    <span>{ticket.property.name}</span>
+                                                                </>
+                                                            )}
+                                                            {replies.length > 0 && (
+                                                                <>
+                                                                    <span>·</span>
+                                                                    <MessageCircle className="h-3 w-3 inline text-slate-400" />
+                                                                    <span>{replies.length} replies</span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Right Column: Badges, Date, Toggle */}
+                                                <div className="flex items-start sm:items-end flex-col gap-2 shrink-0">
+                                                    {/* Date & Time */}
+                                                    <span className="text-xs font-semibold text-slate-500 bg-slate-50 border px-2.5 py-1 rounded-lg">
+                                                        📅 {new Date(ticket.createdAt).toLocaleString("en-IN", {
+                                                            day: "2-digit",
+                                                            month: "short",
+                                                            year: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            hour12: true
+                                                        })}
+                                                    </span>
+
+                                                    {/* Badges Row */}
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
                                                             {ticket.status.replace("_", " ")}
                                                         </span>
                                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${PRIORITY_BADGE[ticket.priority] || "bg-gray-100 text-gray-600"}`}>
@@ -180,15 +226,12 @@ export default function OwnerTicketsPage() {
                                                             }
                                                             return null;
                                                         })()}
+                                                        {/* Chevron */}
+                                                        <div className="p-1 bg-slate-50 hover:bg-slate-100 rounded-lg ml-1 border">
+                                                            {isExpanded ? <ChevronDown className="h-3 w-3 text-slate-500" /> : <ChevronRight className="h-3 w-3 text-slate-500" />}
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-1">
-                                                        <span className="font-mono">{ticket.displayId}</span> · From: <strong>{ticket.user?.name || "Tenant"}</strong>
-                                                        {ticket.property?.name && ` · ${ticket.property.name}`} · {new Date(ticket.createdAt).toLocaleDateString("en-IN")}
-                                                        {replies.length > 0 && ` · 💬 ${replies.length} replies`}
-                                                    </p>
                                                 </div>
-                                                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />}
                                             </div>
                                         </div>
 
@@ -371,11 +414,53 @@ export default function OwnerTicketsPage() {
                                 return (
                                     <div key={ticket.id} className={`border rounded-2xl overflow-hidden bg-card ${ticket.status === "RESOLVED" ? "opacity-60" : ""}`}>
                                         <div className="p-4 cursor-pointer hover:bg-muted/30" onClick={() => setExpanded(isExpanded ? null : ticket.id)}>
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="font-bold text-sm">{ticket.category}</span>
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${STATUS_STYLES[ticket.status] || "bg-gray-100"}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                {/* Left Column: Ticket Info */}
+                                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                    <span className="text-3xl p-2 bg-slate-100 rounded-xl shrink-0">📋</span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                                                {ticket.displayId}
+                                                            </span>
+                                                            <span className="font-black text-sm text-slate-800">{ticket.category}</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-600 font-semibold mt-1.5 line-clamp-1">{ticket.description}</p>
+                                                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                                            {ticket.property?.name && (
+                                                                <>
+                                                                    <Building className="h-3 w-3 inline text-slate-400" />
+                                                                    <span>{ticket.property.name}</span>
+                                                                    <span>·</span>
+                                                                </>
+                                                            )}
+                                                            {replies.length > 0 && (
+                                                                <>
+                                                                    <MessageCircle className="h-3 w-3 inline text-slate-400" />
+                                                                    <span>{replies.length} replies</span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Right Column: Badges, Date, Toggle */}
+                                                <div className="flex items-start sm:items-end flex-col gap-2 shrink-0">
+                                                    {/* Date & Time */}
+                                                    <span className="text-xs font-semibold text-slate-500 bg-slate-50 border px-2.5 py-1 rounded-lg">
+                                                        📅 {new Date(ticket.createdAt).toLocaleString("en-IN", {
+                                                            day: "2-digit",
+                                                            month: "short",
+                                                            year: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            hour12: true
+                                                        })}
+                                                    </span>
+
+                                                    {/* Badges Row */}
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[ticket.status] || "bg-gray-100 text-gray-700"}`}>
                                                             {ticket.status.replace("_", " ")}
                                                         </span>
                                                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">→ RentPe Admin</span>
@@ -398,14 +483,12 @@ export default function OwnerTicketsPage() {
                                                             }
                                                             return null;
                                                         })()}
+                                                        {/* Chevron */}
+                                                        <div className="p-1 bg-slate-50 hover:bg-slate-100 rounded-lg ml-1 border">
+                                                            {isExpanded ? <ChevronDown className="h-3 w-3 text-slate-500" /> : <ChevronRight className="h-3 w-3 text-slate-500" />}
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-1">
-                                                        <span className="font-mono">{ticket.displayId}</span> · {new Date(ticket.createdAt).toLocaleDateString("en-IN")}
-                                                        {replies.length > 0 && ` · 💬 ${replies.length} replies`}
-                                                    </p>
                                                 </div>
-                                                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />}
                                             </div>
                                         </div>
 

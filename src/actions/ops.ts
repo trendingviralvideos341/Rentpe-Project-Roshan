@@ -514,3 +514,23 @@ export async function getTicketThread(ticketId: string) {
     return ticket;
 }
 
+// Server action: admin manually re-route ticket to OWNER or ADMIN
+export async function adminRouteTicket(id: string, targetTeam: 'ADMIN' | 'OWNER') {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new Error("Ticket not found");
+
+    const updated = await prisma.ticket.update({
+        where: { id },
+        data: { targetTeam }
+    });
+
+    revalidatePath('/dashboard/owner/tickets');
+    revalidatePath('/dashboard/admin/tickets');
+    revalidatePath('/dashboard/student/tickets');
+    return updated;
+}
+
+
