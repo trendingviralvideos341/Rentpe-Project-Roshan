@@ -50,3 +50,6 @@ prisma/dev.db-journal
 scripts/debug-checkin.js
 scripts/test-lifecycle.js
 scripts/fix-kumar-tenant.js
+
+# temp debug directory
+scratch/
