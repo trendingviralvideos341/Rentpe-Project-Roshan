@@ -98,13 +98,16 @@ export async function createStudentTicket(data: {
                 userId: (session as any).userId,
                 status: 'ACTIVE',
             },
-            select: {
-                propertyId: true,
-                id: true
+            include: {
+                room: {
+                    select: {
+                        propertyId: true
+                    }
+                }
             }
         });
         if (activeBooking) {
-            propertyId = activeBooking.propertyId;
+            propertyId = activeBooking.propertyId || activeBooking.room?.propertyId || null;
             bookingId = activeBooking.id;
         } else {
             // Fallback: get the latest booking of the student
@@ -115,13 +118,16 @@ export async function createStudentTicket(data: {
                 orderBy: {
                     createdAt: 'desc'
                 },
-                select: {
-                    propertyId: true,
-                    id: true
+                include: {
+                    room: {
+                        select: {
+                            propertyId: true
+                        }
+                    }
                 }
             });
             if (latestBooking) {
-                propertyId = latestBooking.propertyId;
+                propertyId = latestBooking.propertyId || latestBooking.room?.propertyId || null;
                 bookingId = latestBooking.id;
             }
         }
