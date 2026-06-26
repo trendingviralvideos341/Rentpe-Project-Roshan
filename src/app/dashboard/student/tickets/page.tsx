@@ -124,6 +124,7 @@ export default function StudentTicketsPage() {
     const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
     const imgInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
+    const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
 
     const activeCat = STUDENT_CATEGORIES.find((c) => c.key === selectedCategory);
 
@@ -164,11 +165,13 @@ export default function StudentTicketsPage() {
     const handleReply = async (id: string) => {
         const msg = replyText[id]?.trim();
         if (!msg) return;
+        setSendingReply(p => ({ ...p, [id]: true }));
         try {
             await replyToTicket(id, msg);
             setReplyText((prev) => ({ ...prev, [id]: "" }));
-            fetchTickets();
+            await fetchTickets();
         } catch { alert("Failed to send reply."); }
+        finally { setSendingReply(p => ({ ...p, [id]: false })); }
     };
 
     const getSLAStatus = (ticket: any) => {
@@ -246,6 +249,25 @@ export default function StudentTicketsPage() {
                                                         {cat?.routeLabel || ""}
                                                     </span>
                                                     {sla && <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sla.color}`}>{sla.label}</span>}
+                                                    {(() => {
+                                                        const parsedReplies = JSON.parse(ticket.replies || "[]");
+                                                        const lastReply = parsedReplies[parsedReplies.length - 1];
+                                                        const isReplyReceived = 
+                                                            ticket.status !== "RESOLVED" && 
+                                                            ticket.status !== "CLOSED" && 
+                                                            lastReply && 
+                                                            lastReply.sender !== "USER";
+                                                        
+                                                        if (isReplyReceived) {
+                                                            return (
+                                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse flex items-center gap-1">
+                                                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                                                                    Reply Received
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
                                                 <p className="text-[10px] text-muted-foreground mt-1">
@@ -298,19 +320,49 @@ export default function StudentTicketsPage() {
 
                                         {/* Reply Input */}
                                         {ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && (
-                                            <div className="flex gap-2 pt-2 border-t">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Add a follow-up message..."
-                                                    value={replyText[ticket.id] || ""}
-                                                    onChange={(e) => setReplyText((prev) => ({ ...prev, [ticket.id]: e.target.value }))}
-                                                    onKeyDown={(e) => e.key === "Enter" && handleReply(ticket.id)}
-                                                    className="flex-1 border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                                />
-                                                <button onClick={() => handleReply(ticket.id)} disabled={!replyText[ticket.id]?.trim()}
-                                                    className="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-all">
-                                                    <Send className="h-4 w-4" />
-                                                </button>
+                                            <div className="pt-4 border-t space-y-2 bg-slate-50/50 p-4 rounded-xl border mt-3">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                                        New Reply
+                                                    </label>
+                                                    <span className="text-[10px] text-slate-400">
+                                                        {replyText[ticket.id]?.length || 0} / 1000 characters
+                                                    </span>
+                                                </div>
+                                                <div className="relative flex gap-2">
+                                                    <textarea
+                                                        placeholder="Type your reply here..."
+                                                        value={replyText[ticket.id] || ""}
+                                                        onChange={(e) => {
+                                                            if (e.target.value.length <= 1000) {
+                                                                setReplyText((prev) => ({ ...prev, [ticket.id]: e.target.value }));
+                                                            }
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                                e.preventDefault();
+                                                                handleReply(ticket.id);
+                                                            }
+                                                        }}
+                                                        disabled={sendingReply[ticket.id]}
+                                                        rows={2}
+                                                        className="flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-inner disabled:bg-slate-100"
+                                                    />
+                                                    <button
+                                                        onClick={() => handleReply(ticket.id)}
+                                                        disabled={!replyText[ticket.id]?.trim() || sendingReply[ticket.id]}
+                                                        className="self-end px-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-40 transition-all shadow-md hover:shadow-lg flex items-center justify-center h-[46px] w-[46px]"
+                                                    >
+                                                        {sendingReply[ticket.id] ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Send className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400">
+                                                    💡 Press <kbd className="bg-slate-100 px-1 rounded font-mono">Enter</kbd> to send, <kbd className="bg-slate-100 px-1 rounded font-mono">Shift+Enter</kbd> for a new line.
+                                                </p>
                                             </div>
                                         )}
                                     </div>

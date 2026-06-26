@@ -13,6 +13,7 @@ import { getPendingDocumentsCount } from "@/actions/documents";
 import { getPendingUpgradeCount } from "@/actions/roleUpgrade";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 import { getStudentFoodStatus } from "@/actions/food";
+import { getPendingOwnerTicketsCount, getPendingAdminTicketsCount } from "@/actions/ops";
 
 interface SidebarLink {
     href: string;
@@ -50,6 +51,8 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [pendingNoticesCount, setPendingNoticesCount] = useState(0);
     const [foodStatus, setFoodStatus] = useState<{ label: string; href?: string; hasActiveBooking: boolean } | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [pendingOwnerTicketsCount, setPendingOwnerTicketsCount] = useState(0);
+    const [pendingAdminTicketsCount, setPendingAdminTicketsCount] = useState(0);
 
     useEffect(() => {
         if (role === "owner" || role === "staff") {
@@ -62,6 +65,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setPendingDocCount(docCount);
                 const noticesCount = await getPendingVacatingNoticesCount();
                 setPendingNoticesCount(noticesCount);
+                const ticketsCount = await getPendingOwnerTicketsCount();
+                setPendingOwnerTicketsCount(ticketsCount);
             };
             checkOwner();
             const interval = setInterval(checkOwner, 30000);
@@ -77,6 +82,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setDeactivationCount(deactCount);
                 const upgradeCount = await getPendingUpgradeCount();
                 setRoleUpgradeCount(upgradeCount);
+                const ticketsCount = await getPendingAdminTicketsCount();
+                setPendingAdminTicketsCount(ticketsCount);
             };
             checkAdmin();
             const interval = setInterval(checkAdmin, 30000);
@@ -146,7 +153,7 @@ export default function DashboardSidebar(props: SidebarProps) {
 
                 { href: "/dashboard/owner/availability", label: "Room Calendar", icon: CalendarDays, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/broadcast", label: "WhatsApp Broadcast", icon: MessageCircle, reqPerm: ["manage_tenants"] },
-                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["support"] },
+                { href: "/dashboard/owner/tickets", label: "Support Tickets", icon: Ticket, badge: pendingOwnerTicketsCount, reqPerm: ["support"] },
                 { href: "/dashboard/owner/activity-log", label: "Activity Log", icon: ClipboardList, reqPerm: ["view_activity"] },
             ]
         }
@@ -182,7 +189,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         {
             title: "Support & Resolution",
             links: [
-                { href: "/dashboard/admin/tickets", label: "Support Tickets", icon: Ticket, reqPerm: ["super_admin", "tickets"] },
+                { href: "/dashboard/admin/tickets", label: "Support Tickets", icon: Ticket, badge: pendingAdminTicketsCount, reqPerm: ["super_admin", "tickets"] },
                 { href: "/dashboard/admin/refunds", label: "Refund Management", icon: CreditCard, reqPerm: ["super_admin", "payments"] },
                 { href: "/dashboard/admin/notifications/send", label: "Bulk Notifications", icon: Send, reqPerm: ["super_admin"] },
             ]

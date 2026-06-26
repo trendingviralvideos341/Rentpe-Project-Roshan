@@ -88,16 +88,63 @@ export async function createStudentTicket(data: {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
+    let propertyId = data.propertyId || null;
+    let bookingId = null;
+
+    if (!propertyId) {
+        // Find student's active booking
+        const activeBooking = await prisma.booking.findFirst({
+            where: {
+                userId: (session as any).userId,
+                status: 'ACTIVE',
+            },
+            select: {
+                propertyId: true,
+                id: true
+            }
+        });
+        if (activeBooking) {
+            propertyId = activeBooking.propertyId;
+            bookingId = activeBooking.id;
+        } else {
+            // Fallback: get the latest booking of the student
+            const latestBooking = await prisma.booking.findFirst({
+                where: {
+                    userId: (session as any).userId,
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                select: {
+                    propertyId: true,
+                    id: true
+                }
+            });
+            if (latestBooking) {
+                propertyId = latestBooking.propertyId;
+                bookingId = latestBooking.id;
+            }
+        }
+    }
+
     const count = await prisma.ticket.count();
     const displayId = `TKT-${String(count + 1).padStart(4, '0')}`;
-    const targetTeam = determineTargetTeam(data.category);
-    const assignedTo = getAssignedTo(data.category);
+    
+    let targetTeam = determineTargetTeam(data.category);
+    let assignedTo = getAssignedTo(data.category);
+
+    // If there is no property associated, it must route to admin
+    if (!propertyId) {
+        targetTeam = 'ADMIN';
+        assignedTo = 'ADMIN';
+    }
 
     const ticket = await (prisma.ticket as any).create({
         data: {
             displayId,
             userId: (session as any).userId,
-            propertyId: data.propertyId || null,
+            propertyId,
+            bookingId,
             category: data.category,
             description: data.description,
             priority: data.priority || 'MEDIUM',
@@ -114,6 +161,55 @@ export async function createStudentTicket(data: {
     revalidatePath('/dashboard/admin/tickets');
     return ticket;
 }
+
+// Server action: get pending ticket count for owner dashboard sidebar
+export async function getPendingOwnerTicketsCount() {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF'].includes(session.role)) return 0;
+
+    const user = await prisma.user.findUnique({ 
+        where: { id: session.userId },
+        include: { staffProfile: true }
+    });
+    
+    let propertyIds: string[] = [];
+    if (user?.staffProfile) {
+        const assignments = await prisma.staffPropertyAssignment.findMany({
+            where: { staffMemberId: user.staffProfile.id },
+            select: { propertyId: true }
+        });
+        propertyIds = assignments.map(a => a.propertyId);
+    } else {
+        const properties = await prisma.property.findMany({ 
+            where: { ownerId: user?.parentOwnerId || session.userId }, 
+            select: { id: true } 
+        });
+        propertyIds = properties.map(p => p.id);
+    }
+
+    return prisma.ticket.count({
+        where: {
+            propertyId: { in: propertyIds },
+            targetTeam: 'OWNER',
+            raisedByRole: 'USER',
+            status: { notIn: ['RESOLVED', 'CLOSED'] }
+        }
+    });
+}
+
+// Server action: get pending ticket count for admin dashboard sidebar
+export async function getPendingAdminTicketsCount() {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') return 0;
+
+    return prisma.ticket.count({
+        where: {
+            targetTeam: 'ADMIN',
+            status: { notIn: ['RESOLVED', 'CLOSED'] }
+        }
+    });
+}
+
 
 // Owner: get tickets routed to them (from students) + their own tickets to admin
 export async function getOwnerTickets() {
@@ -277,12 +373,28 @@ export async function replyToTicket(id: string, message: string) {
     const userId = (session as any).userId;
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
 
+    // Determine the sender name based on the business rules
+    let senderName = user?.name || session.role;
+    if (['OWNER', 'STAFF'].includes(session.role) && ticket.raisedByRole === 'USER') {
+        if (ticket.propertyId) {
+            const prop = await prisma.property.findUnique({
+                where: { id: ticket.propertyId },
+                select: { name: true }
+            });
+            senderName = prop?.name ? `${prop.name} Management Team` : "Management Team";
+        } else {
+            senderName = "Management Team";
+        }
+    } else if (session.role === 'ADMIN') {
+        senderName = "Rentpe Support Team";
+    }
+
     // Append to legacy JSON replies (for backward compat)
     const replies = JSON.parse((ticket as any).replies || "[]");
     replies.push({
         sender: session.role,
         senderId: userId,
-        senderName: user?.name || session.role,
+        senderName,
         message,
         timestamp: new Date().toISOString()
     });
@@ -293,7 +405,7 @@ export async function replyToTicket(id: string, message: string) {
             ticketId: id,
             senderId: userId,
             senderRole: session.role,
-            senderName: user?.name || session.role,
+            senderName,
             message,
         }
     });
