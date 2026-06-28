@@ -954,7 +954,7 @@ export default function AddPropertyPage() {
                                 </div>
                                 <div className="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
                                     <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                                        Note: Under GST law, registration is mandatory only if your aggregate annual turnover exceeds ₹20 Lakhs. If your turnover is below this threshold, you may select 'No' to list without a GSTIN.
+                                        Note: Under GST law, registration is mandatory if your aggregate annual turnover exceeds ₹20 Lakhs. If your turnover falls below this threshold or you are exempted, you may select 'No' to list without a GSTIN.
                                     </p>
                                 </div>
                                 {errors.hasGstNumber && <p className="text-xs text-red-600 font-semibold">{errors.hasGstNumber}</p>}
