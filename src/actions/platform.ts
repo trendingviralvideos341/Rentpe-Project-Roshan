@@ -413,8 +413,8 @@ export async function calculateCheckoutFees(
 }
 
 // ── Record a platform fee after payment ───────────────
-export async function recordPlatformFee(bookingId: string, amountStr: string, userId?: string, propertyName?: string, ownerId?: string, depositAmount?: number) {
-    const fees = await calculateFees(amountStr, userId, propertyName, ownerId, undefined, depositAmount);
+export async function recordPlatformFee(paymentId: string, bookingId: string, amountStr: string, userId?: string, propertyName?: string, ownerId?: string, depositAmount?: number, paymentType?: 'RENT' | 'TOKEN') {
+    const fees = await calculateFees(amountStr, userId, propertyName, ownerId, paymentType, depositAmount);
     if (!fees.feesEnabled) return null;
 
     // Add platform earnings to wallet (GST excluded — that goes to government)
@@ -424,9 +424,11 @@ export async function recordPlatformFee(bookingId: string, amountStr: string, us
     });
 
     return await (prisma as any).platformFee.upsert({
-        where: { bookingId },
+        where: { paymentId },
         create: {
             bookingId,
+            paymentId,
+            paymentType,
             grossAmount:     fees.grossAmount,
             customerFee:     fees.customerFee,
             totalCharged:    fees.totalCharged,
@@ -667,15 +669,15 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
     });
 
     // Join with PlatformFee records for tax data
-    const bookingIds = payments.map((p: any) => p.bookingId).filter(Boolean);
+    const paymentIds = payments.map((p: any) => p.id).filter(Boolean);
     const feeRecords = await (prisma as any).platformFee.findMany({
-        where: { bookingId: { in: bookingIds } }
+        where: { paymentId: { in: paymentIds } }
     });
     const feeMap: Record<string, any> = {};
-    for (const f of feeRecords) feeMap[f.bookingId] = f;
+    for (const f of feeRecords) feeMap[f.paymentId] = f;
 
     const rows = payments.map((p: any) => {
-        const fee = feeMap[p.bookingId] || {};
+        const fee = feeMap[p.id] || {};
         const booking = p.booking || {};
         const owner = booking?.room?.property?.owner || {};
         const property = booking?.room?.property || {};

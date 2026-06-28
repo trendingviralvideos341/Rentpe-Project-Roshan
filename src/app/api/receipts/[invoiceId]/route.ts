@@ -257,11 +257,13 @@ export async function GET(
         }
 
         // ── Platform Fee Record ───────────────────────────────────────────────
-        // Fetch the recorded platform fee for this booking/invoice
-        const platformFee = await (prisma as any).platformFee.findFirst({
-            where: { bookingId: invoice.bookingId },
-            orderBy: { createdAt: "desc" }
+        // Fetch the recorded platform fee for this invoice's payment
+        const payment = await prisma.payment.findFirst({
+            where: { invoiceId: invoice.id, status: 'VERIFIED' }
         });
+        const platformFee = payment ? await (prisma as any).platformFee.findFirst({
+            where: { paymentId: payment.id }
+        }) : null;
 
         // GST-INCLUSIVE decomposition (Rs.9 incl. GST → base Rs.7.63 + GST Rs.1.37)
         const GST_RATE = 0.18;

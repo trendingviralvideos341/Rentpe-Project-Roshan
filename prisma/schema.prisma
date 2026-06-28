@@ -317,7 +317,7 @@ model Booking {
   user                        User             @relation(fields: [userId], references: [id])
   kycVerifier                 User?            @relation("KycVerifier", fields: [kycVerifiedBy], references: [id])
   payments                    Payment[]
-  platformFee                 PlatformFee?
+  platformFees                PlatformFee[]
   invoices                    RentInvoice[]    @relation("BookingInvoices")
   tenant                      Tenant?
   documents                   TenantDocument[]
@@ -584,6 +584,7 @@ model Payment {
   booking         Booking          @relation(fields: [bookingId], references: [id])
   deposit         SecurityDeposit? @relation("DepositPayments", fields: [depositId], references: [id])
   invoice         RentInvoice?     @relation("InvoicePayments", fields: [invoiceId], references: [id])
+  platformFee     PlatformFee?
 }
 
 model FoodMenu {
@@ -782,7 +783,9 @@ model PlatformSettings {
 
 model PlatformFee {
   id                String    @id @default(uuid())
-  bookingId         String    @unique
+  bookingId         String
+  paymentId         String?   @unique
+  paymentType       String?   // RENT | TOKEN
   grossAmount       Float
   customerFee       Float
   totalCharged      Float
@@ -797,6 +800,7 @@ model PlatformFee {
   deletedAt         DateTime?
   createdAt         DateTime  @default(now())
   booking           Booking   @relation(fields: [bookingId], references: [id])
+  payment           Payment?  @relation(fields: [paymentId], references: [id])
 }
 
 model FeeExemption {

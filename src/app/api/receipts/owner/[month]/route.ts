@@ -104,12 +104,12 @@ export async function GET(
             orderBy: { createdAt: "asc" }
         });
 
-        // Fetch platform fee records for all bookings
-        const bookingIds = payments.map((p: any) => p.bookingId).filter(Boolean);
+        // Fetch platform fee records for all payments
+        const paymentIds = payments.map((p: any) => p.id).filter(Boolean);
         const platformFees = await (prisma as any).platformFee.findMany({
-            where: { bookingId: { in: bookingIds } }
+            where: { paymentId: { in: paymentIds } }
         });
-        const feeMap = new Map(platformFees.map((f: any) => [f.bookingId, f]));
+        const feeMap = new Map(platformFees.map((f: any) => [f.paymentId, f]));
 
         // Check if there is any active TDS exemption for this owner's properties
         const ownerProperties = await prisma.property.findMany({
@@ -150,7 +150,7 @@ export async function GET(
         let totalNetPayout    = 0;
 
         const rentalRows = payments.map((p: any) => {
-            const fee          = feeMap.get(p.bookingId) as any;
+            const fee          = feeMap.get(p.id) as any;
             const gross        = Number(p.amount);
             const ownerFee     = fee ? Number(fee.ownerFee)       : 0;
             const gstOnOwner   = fee ? Number(fee.gstOnOwnerFee)  : 0;

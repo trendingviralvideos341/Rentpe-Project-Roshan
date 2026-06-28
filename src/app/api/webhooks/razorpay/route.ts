@@ -301,14 +301,16 @@ async function handlePaymentCaptured(entity: RazorpayPaymentEntity) {
             const rentAmt    = String(bookingData.amount || payment.amount);
             const depositAmt = Number((bookingData as any).depositAmount || 0);
             await recordPlatformFee(
+                payment.id,
                 payment.bookingId,
                 rentAmt,
                 bookingData.userId,
                 bookingData.room?.property?.name || bookingData.propertyName,
                 bookingData.room?.property?.ownerId || undefined,
-                depositAmt
+                depositAmt,
+                "RENT"
             );
-            console.log(`[Webhook] Platform fee recorded for booking ${payment.bookingId}`);
+            console.log(`[Webhook] Platform fee recorded for payment ${payment.id} / booking ${payment.bookingId}`);
         }
     } catch (feeErr) {
         // Non-critical — fee can be manually reconciled from admin panel

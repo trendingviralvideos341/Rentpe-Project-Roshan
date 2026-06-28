@@ -202,12 +202,14 @@ export async function verifyPayment(data: {
                 const rentAmt    = String(paymentWithBooking.amount || payment.amount);
                 const depositAmt = Number((paymentWithBooking as any).depositAmount || 0);
                 recordPlatformFee(
+                    payment.id,
                     payment.bookingId,
                     rentAmt,
                     paymentWithBooking.userId,
                     paymentWithBooking.room?.property?.name || paymentWithBooking.propertyName,
                     paymentWithBooking.room?.property?.ownerId || undefined,
-                    depositAmt
+                    depositAmt,
+                    "RENT"
                 ).catch(err => console.error('[PLATFORM FEE RECORD] Failed:', err));
             }
         } catch (feeErr) {
