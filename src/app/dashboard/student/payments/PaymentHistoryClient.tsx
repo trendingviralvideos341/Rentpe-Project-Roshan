@@ -250,12 +250,12 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
                                     <p className="text-sm font-black text-slate-800">First Month Rent</p>
                                     <p className="text-xs text-slate-400">Paid at joining</p>
                                 </div>
-                                <p className="font-black text-indigo-700">₹{(booking.amount || 0).toLocaleString('en-IN')}</p>
+                                <p className="font-black text-indigo-700">₹{(booking.pendingAmount || booking.amount || 0).toLocaleString('en-IN')}</p>
                             </div>
                         )}
                         <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
                             <p className="text-sm font-black text-slate-600">Total Collected at Joining</p>
-                            <p className="font-black text-lg text-slate-900">₹{((depositInfo?.amount || 0) + (booking?.amount || 0)).toLocaleString('en-IN')}</p>
+                            <p className="font-black text-lg text-slate-900">₹{((depositInfo?.amount || 0) + (booking?.pendingAmount || booking?.amount || 0)).toLocaleString('en-IN')}</p>
                         </div>
                     </div>
 
