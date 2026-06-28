@@ -58,6 +58,21 @@ export default function TaxSummaryPage() {
         fyOptions.find(f => f.label === getCurrentFY()) || fyOptions[0]
     );
 
+    // Get the most recent month within selectedFY for per-month download
+    const currentDownloadMonth: string = (() => {
+        const now = new Date();
+        const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        // fyFrom and fyTo may be Date or string — normalize both to YYYY-MM for comparison
+        const toMonthStr = (d: Date | string) => {
+            const dt = typeof d === 'string' ? new Date(d) : d;
+            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+        };
+        const fyFrom = toMonthStr(selectedFY.from);
+        const fyTo   = toMonthStr(selectedFY.to);
+        if (nowStr >= fyFrom && nowStr <= fyTo) return nowStr;
+        return fyTo;
+    })();
+
     const reload = (fy: typeof fyOptions[0]) => {
         setLoading(true);
         Promise.all([
@@ -75,105 +90,22 @@ export default function TaxSummaryPage() {
 
     useEffect(() => { reload(selectedFY); }, [selectedFY]);
 
-    // ── PDF Export (upgraded with GST/TDS) ──
-    const handleExportPDF = async () => {
+    // ── Server-Side PDF Export (multi-page: summary + individual tax invoices) ──
+    const handleExportPDF = async (month?: string) => {
         if (!report) return;
         setExporting('pdf');
         try {
-            const { jsPDF } = await import('jspdf');
-            const autoTable = (await import('jspdf-autotable')).default;
-            const doc = new jsPDF({ orientation: 'landscape' });
-            const s = report.summary;
-
-            // Header
-            doc.setFillColor(67, 56, 202);
-            doc.rect(0, 0, 300, 35, 'F');
-            doc.setFontSize(22); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
-            doc.text('RentPe', 14, 16);
-            doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-            doc.text('Owner Tax Summary & Financial Statement', 14, 23);
-            doc.text(`${selectedFY.label}  |  Generated: ${new Date().toLocaleString('en-IN')}`, 14, 30);
-
-            // Owner Details
-            doc.setFillColor(248, 250, 252);
-            doc.roundedRect(14, 42, 270, 22, 3, 3, 'F');
-            doc.setFontSize(11); doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold');
-            doc.text(s.businessName || s.ownerName, 20, 52);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-            doc.text(`Owner: ${s.ownerName}  |  Partner ID: ${s.ownerId}  |  TDS Status: ${s.tdsExempt ? '✓ EXEMPT' : 'Standard 1%'}`, 20, 59);
-
-            // Summary Table
-            doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 41, 59);
-            doc.text('Financial Summary', 14, 76);
-            autoTable(doc, {
-                startY: 81,
-                head: [['Metric', 'Amount']],
-                body: [
-                    ['Total Gross Rent Collected', fmt(s.totalGross)],
-                    ['Platform Fee Charged to You', fmt(s.totalPlatformFeeCharged)],
-                    ['GST on Platform Fee (18%)', fmt(s.totalGstCharged)],
-                    ['TDS Deducted from Payouts (1%)', s.tdsExempt ? '₹0.00 (Exempt)' : fmt(s.totalTdsDeducted)],
-                    ['Your Net Payout (after fees + TDS)', fmt(s.totalOwnerNetPayout)],
-                    ['Total Refunds', fmt(s.totalRefunds)],
-                    ['Confirmed Bookings', String(s.confirmedBookings)],
-                ],
-                theme: 'grid',
-                headStyles: { fillColor: [67, 56, 202], textColor: 255, fontStyle: 'bold' },
-                styles: { fontSize: 9, cellPadding: 3 },
-                columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
-            });
-
-            // Monthly Breakdown
-            if (monthly.length > 0) {
-                const y2 = (doc as any).lastAutoTable.finalY + 10;
-                doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-                doc.text('Monthly Tax Breakdown', 14, y2);
-                autoTable(doc, {
-                    startY: y2 + 5,
-                    head: [['Month', 'Gross Rent', 'Platform Fee', 'GST', 'TDS', 'Net Payout', 'Transactions']],
-                    body: monthly.map(m => [
-                        m.month,
-                        fmtShort(m.grossRent),
-                        fmtShort(m.platformFee),
-                        fmtShort(m.gst),
-                        s.tdsExempt ? '₹0 (Exempt)' : fmtShort(m.tds),
-                        fmtShort(m.netPayout),
-                        String(m.transactions),
-                    ]),
-                    styles: { fontSize: 8, cellPadding: 3 },
-                    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-                    alternateRowStyles: { fillColor: [248, 250, 255] },
-                });
-            }
-
-            // Transaction Ledger
-            const y3 = (doc as any).lastAutoTable.finalY + 10;
-            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-            doc.text('Transaction Ledger (Audit Trail)', 14, y3);
-            autoTable(doc, {
-                startY: y3 + 5,
-                head: [['Booking ID', 'RP Order ID', 'RP Payment ID', 'Tenant', 'Property', 'Gross', 'Platform Fee', 'GST', 'TDS', 'Net Payout', 'Date', 'Status']],
-                body: report.report.map((r: any) => [
-                    r.bookingId,
-                    r.razorpayOrderId?.slice(-12) || '—',
-                    r.razorpayPaymentId?.slice(-12) || '—',
-                    r.tenantName,
-                    r.property?.slice(0, 15),
-                    fmtShort(r.amount || 0),
-                    fmtShort(r.platformFeeCharged),
-                    fmtShort(r.gstCharged),
-                    s.tdsExempt ? '₹0' : fmtShort(r.tdsDeducted),
-                    fmtShort(r.ownerNetPayout),
-                    new Date(r.date).toLocaleDateString('en-IN'),
-                    r.status,
-                ]),
-                styles: { fontSize: 7, cellPadding: 2 },
-                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 7 },
-                alternateRowStyles: { fillColor: [248, 250, 255] },
-            });
-
-            doc.save(`RentPe-TaxSummary-${selectedFY.label.replace(/\s/g, '-')}.pdf`);
-            toast.success('PDF downloaded with complete tax breakdown!');
+            const targetMonth = month || currentDownloadMonth;
+            const res = await fetch(`/api/receipts/owner/${targetMonth}?format=pdf`);
+            if (!res.ok) throw new Error('Server error generating PDF');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `RentPe-Owner-Statement-${targetMonth}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('PDF downloaded — includes individual GST Tax Invoices for your CA!');
         } catch (e) {
             console.error(e);
             toast.error('Failed to generate PDF');
@@ -440,21 +372,46 @@ export default function TaxSummaryPage() {
                 {/* Export Section */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
                     <h3 className="font-black text-slate-900 text-lg mb-1">Export for Your CA / Accountant</h3>
-                    <p className="text-sm text-slate-500 mb-5">
-                        Downloads include: Booking ID, Razorpay IDs, GST breakdown, TDS deducted, and net payout for every transaction.
+                    <p className="text-sm text-slate-500 mb-1">
+                        Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
+                    </p>
+                    <p className="text-xs text-indigo-600 font-bold mb-5">
+                        📋 PDF now includes individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for CA Input Tax Credit filing.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button onClick={handleExportPDF} disabled={exporting !== null}
-                            className="flex items-center gap-4 p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl hover:from-indigo-100 hover:to-violet-100 transition-all disabled:opacity-50 text-left">
-                            {exporting === 'pdf'
-                                ? <Loader2 className="w-10 h-10 text-indigo-500 animate-spin flex-shrink-0" />
-                                : <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-white" /></div>
-                            }
-                            <div>
-                                <p className="font-black text-slate-900">📄 Download PDF</p>
-                                <p className="text-xs text-slate-500 mt-0.5">Formatted report: Summary + Monthly + Full Ledger with GST/TDS</p>
-                            </div>
-                        </button>
+
+                        {/* Monthly PDF button — per month individual tax invoices */}
+                        <div className="space-y-2">
+                            <button onClick={() => handleExportPDF(currentDownloadMonth)} disabled={exporting !== null}
+                                className="w-full flex items-center gap-4 p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl hover:from-indigo-100 hover:to-violet-100 transition-all disabled:opacity-50 text-left">
+                                {exporting === 'pdf'
+                                    ? <Loader2 className="w-10 h-10 text-indigo-500 animate-spin flex-shrink-0" />
+                                    : <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-white" /></div>
+                                }
+                                <div>
+                                    <p className="font-black text-slate-900">📄 Download Monthly PDF</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Page 1: Summary · Page 2+: Individual GST Tax Invoices</p>
+                                    <p className="text-[10px] text-indigo-500 font-bold mt-0.5">Month: {currentDownloadMonth}</p>
+                                </div>
+                            </button>
+                            {/* Per-month buttons from monthly breakdown */}
+                            {monthly.length > 0 && (
+                                <div className="flex flex-wrap gap-2 pl-1">
+                                    <p className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest">Download by month:</p>
+                                    {monthly.map((m: any) => (
+                                        <button
+                                            key={String(m.key)}
+                                            onClick={() => handleExportPDF(String(m.key))}
+                                            disabled={exporting !== null}
+                                            className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-50"
+                                        >
+                                            {String(m.month)}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         <button onClick={handleExportCSV} disabled={exporting !== null}
                             className="flex items-center gap-4 p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl hover:from-emerald-100 hover:to-teal-100 transition-all disabled:opacity-50 text-left">
                             {exporting === 'csv'

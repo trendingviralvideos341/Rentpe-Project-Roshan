@@ -112,8 +112,10 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
     const now = new Date();
     const depositInvoiceId = `DEP-INV-${depositInfo?.id?.slice(-8).toUpperCase() || 'XXXXXXXX'}`;
     const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
-    // Download URL: joining payment / deposit receipts use the token route as fallback
-    const depositPdfUrl = booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null;
+    // Download URL: dedicated deposit receipt API (legally correct — separate from token)
+    const depositPdfUrl = depositInfo?.id
+        ? `/api/receipts/deposit/${depositInfo.id}?download=1`
+        : (booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null);
     const paidDate = depositInfo?.paidAt
         ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
         : booking?.agreementSignedAt

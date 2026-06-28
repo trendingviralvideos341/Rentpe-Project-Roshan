@@ -8,11 +8,12 @@
  * • Session verified for every request
  *
  * ─── WHAT'S INCLUDED ────────────────────────────────────────────────────────
- * • All rent payments collected for the owner's properties in the given month
- * • Per-booking breakdown: Gross Rent | Platform Commission | GST | TDS deducted
- * • TDS Certificate reference (Section 194-O — e-commerce aggregator)
- * • Net payout to owner's bank
- * • SAC Code: 997312
+ * • Page 1:    Consolidated landscape summary table (all transactions)
+ * • Page 2+:   Individual GST Tax Invoice per transaction (RP/FYXX-YY/XXXXXX)
+ *              SAC 997312 | CGST 9% + SGST 9% | Payout reconciliation
+ *              Allows owner's CA to claim Input Tax Credit
+ * • CSV:       All columns including Razorpay IDs, GST, TDS
+ * • TDS:       Section 194-O @ 1% on RENT ONLY (never on deposit)
  *
  * Month format: YYYY-MM (e.g. 2026-06)
  */
@@ -25,6 +26,13 @@ import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 
 function inr(amount: number): string {
     return `Rs. ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function getFY(date: Date): string {
+    const y = date.getFullYear();
+    const m = date.getMonth();
+    const startYear = m >= 3 ? y : y - 1;
+    return `${String(startYear).slice(2)}-${String(startYear + 1).slice(2)}`;
 }
 
 export async function GET(
@@ -366,6 +374,288 @@ export async function GET(
         doc.setFontSize(7);
         doc.setTextColor(55, 48, 163);
         doc.text("rentpe.in", pageW / 2, pageH - 5, { align: "center" });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // PAGES 2+: Individual GST Tax Invoice per transaction (GST Rule 46)
+        // Owner's CA uses these to claim Input Tax Credit on platform fees.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (rows.length > 0) {
+            const GST_RATE = 0.18;
+            const generatedOnStr = format(new Date(), "dd MMM yyyy, HH:mm");
+            const fy = getFY(monthStart);
+
+            rows.forEach((row: any, idx: number) => {
+                // Only generate a tax invoice if platform commission was charged
+                if (row.ownerFee <= 0) return;
+
+                doc.addPage("a4", "portrait");
+                const pw = doc.internal.pageSize.getWidth();
+                const ph = doc.internal.pageSize.getHeight();
+                const PL = 14; const PR = 196;
+
+                // Page border
+                doc.setDrawColor(199, 210, 254);
+                doc.setLineWidth(0.4);
+                doc.rect(6, 6, pw - 12, ph - 12);
+
+                // Invoice sequence number per GST Rule 46
+                const seqNo = String(idx + 1).padStart(6, "0");
+                const taxInvoiceNo = `RP/FY${fy}/${seqNo}`;
+
+                // ── Formal navy header ──────────────────────────────────────
+                doc.setFillColor(30, 27, 75);
+                doc.rect(0, 0, pw, 42, "F");
+                doc.setFillColor(49, 46, 129);
+                doc.rect(0, 36, pw, 6, "F");
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text("RentPe", PL, 19);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(199, 210, 254);
+                doc.text("E-Commerce Operator under Section 52 CGST Act", PL, 26);
+
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(255, 255, 255);
+                doc.text("TAX INVOICE", PR, 17, { align: "right" });
+                doc.setFontSize(8.5);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(199, 210, 254);
+                doc.text(`#${taxInvoiceNo}`, PR, 24, { align: "right" });
+
+                doc.setFillColor(99, 102, 241);
+                doc.roundedRect(PR - 30, 27, 30, 8, 2, 2, "F");
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(7.5);
+                doc.setFont("helvetica", "bold");
+                doc.text("ORIGINAL", PR - 15, 32.5, { align: "center" });
+
+                // ── Billing Cards ───────────────────────────────────────────
+                let iy = 50;
+
+                doc.setFillColor(238, 242, 255);
+                doc.roundedRect(PL, iy, 88, 48, 2, 2, "F");
+                doc.setDrawColor(199, 210, 254);
+                doc.roundedRect(PL, iy, 88, 48, 2, 2);
+
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(108, iy, 88, 48, 2, 2, "F");
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(108, iy, 88, 48, 2, 2);
+
+                const drawBillingBlock = (lines: string[], xStart: number, title: string) => {
+                    doc.setFontSize(6.5);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(title, xStart + 4, iy + 7);
+                    lines.forEach((line, li) => {
+                        doc.setFontSize(li === 0 ? 9.5 : 7.5);
+                        doc.setFont("helvetica", li === 0 ? "bold" : "normal");
+                        doc.setTextColor(li === 0 ? 15 : 71, li === 0 ? 23 : 85, li === 0 ? 42 : 105);
+                        const txt = line.length > 30 ? line.substring(0, 30) + "…" : line;
+                        doc.text(txt, xStart + 4, iy + 14 + (li * 8));
+                    });
+                };
+
+                drawBillingBlock([
+                    "RentPe (Antigravity Project)",
+                    "Platform Service Provider",
+                    "GSTIN: PENDING REGISTRATION",
+                    "SAC: 997312",
+                ], PL, "BILLED BY (SUPPLIER)");
+
+                drawBillingBlock([
+                    owner.name || "—",
+                    row.property || "—",
+                    `Owner ID: ${owner.displayId || "—"}`,
+                    owner.email || "—",
+                ], 108, "BILLED TO (RECIPIENT / OWNER)");
+
+                iy += 56;
+
+                // ── Invoice Meta Table ──────────────────────────────────────
+                const metaRows = [
+                    { label: "Invoice Number",        value: taxInvoiceNo },
+                    { label: "Invoice Date",          value: row.date },
+                    { label: "For Month",             value: monthLabel },
+                    { label: "Tenant",                value: `${row.tenant} (${row.tenantId})` },
+                    { label: "Payment Reference",     value: row.paymentRef },
+                    { label: "Place of Supply",       value: (row.property || "India").substring(0, 28) },
+                ];
+
+                doc.setFillColor(55, 48, 163);
+                doc.roundedRect(PL, iy, 182, 9, 1, 1, "F");
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(8.5);
+                doc.setFont("helvetica", "bold");
+                doc.text("INVOICE DETAILS", PL + 4, iy + 6);
+                iy += 11;
+
+                metaRows.forEach((mr, mi) => {
+                    const isEven = mi % 2 === 0;
+                    doc.setFillColor(isEven ? 248 : 255, isEven ? 250 : 255, isEven ? 252 : 255);
+                    doc.rect(PL, iy, 182, 9, "F");
+                    doc.setDrawColor(226, 232, 240);
+                    doc.line(PL, iy, PR, iy);
+                    doc.line(130, iy, 130, iy + 9);
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(mr.label, PL + 4, iy + 6);
+                    doc.setTextColor(15, 23, 42);
+                    doc.text(mr.value.substring(0, 36), PR - 4, iy + 6, { align: "right" });
+                    iy += 9;
+                });
+                doc.setDrawColor(199, 210, 254);
+                doc.rect(PL, iy - (metaRows.length * 9), 182, metaRows.length * 9);
+                iy += 8;
+
+                // ── GST Charge Table ────────────────────────────────────────
+                // GST-inclusive decomposition
+                const feeBase = Math.round((row.ownerFee / (1 + GST_RATE)) * 100) / 100;
+                const gstTotal = Math.round((row.ownerFee - feeBase) * 100) / 100;
+                const cgst = Math.round((gstTotal / 2) * 100) / 100;
+                const sgst = Math.round((gstTotal - cgst) * 100) / 100;
+
+                doc.setFillColor(30, 27, 75);
+                doc.roundedRect(PL, iy, 182, 9, 1, 1, "F");
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold");
+                doc.text("DESCRIPTION OF SERVICES", PL + 4, iy + 6);
+                iy += 10;
+
+                // Column headers
+                const gcols = { desc: PL + 4, sac: 100, base: 128, cgst: 148, sgst: 168, total: 192 };
+                doc.setFillColor(238, 242, 255);
+                doc.rect(PL, iy, 182, 9, "F");
+                doc.setDrawColor(199, 210, 254);
+                doc.line(PL, iy, PR, iy);
+                ["Description", "SAC", "Taxable Value", "CGST 9%", "SGST 9%", "Total"].forEach((h, hi) => {
+                    const x = [gcols.desc, gcols.sac, gcols.base, gcols.cgst, gcols.sgst, gcols.total][hi];
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(55, 48, 163);
+                    if (hi === 0) doc.text(h, x, iy + 6);
+                    else doc.text(h, x, iy + 6, { align: "right" });
+                });
+                iy += 10;
+
+                // Data row
+                doc.setFillColor(248, 250, 252);
+                doc.rect(PL, iy, 182, 10, "F");
+                doc.setDrawColor(226, 232, 240);
+                doc.line(PL, iy, PR, iy);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(15, 23, 42);
+                doc.text("Platform Convenience & Lead Gen. Services", gcols.desc, iy + 6.5);
+                doc.text("997312", gcols.sac, iy + 6.5, { align: "right" });
+                doc.text(inr(feeBase), gcols.base, iy + 6.5, { align: "right" });
+                doc.text(inr(cgst), gcols.cgst, iy + 6.5, { align: "right" });
+                doc.text(inr(sgst), gcols.sgst, iy + 6.5, { align: "right" });
+                doc.setFont("helvetica", "bold");
+                doc.text(inr(row.ownerFee), gcols.total, iy + 6.5, { align: "right" });
+                iy += 11;
+
+                // Total row
+                doc.setFillColor(238, 242, 255);
+                doc.rect(PL, iy, 182, 10, "F");
+                doc.setDrawColor(199, 210, 254);
+                doc.line(PL, iy, PR, iy);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(55, 48, 163);
+                doc.text("TOTAL INVOICE VALUE", gcols.desc, iy + 6.5);
+                doc.setTextColor(15, 23, 42);
+                doc.text(inr(row.ownerFee), gcols.total, iy + 6.5, { align: "right" });
+                iy += 12;
+                doc.setDrawColor(199, 210, 254);
+                doc.rect(PL, iy - 31, 182, 31);
+
+                // ── Payout Reconciliation ───────────────────────────────────
+                iy += 5;
+                doc.setFillColor(30, 27, 75);
+                doc.roundedRect(PL, iy, 182, 9, 1, 1, "F");
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(8.5);
+                doc.setFont("helvetica", "bold");
+                doc.text("PAYOUT RECONCILIATION", PL + 4, iy + 6);
+                iy += 11;
+
+                const payoutItems = [
+                    { label: "Gross Rent Collected from Tenant",      value: inr(row.gross), bold: false },
+                    { label: "Less: Platform Commission (incl. GST)", value: `- ${inr(row.ownerFee)}`, red: true },
+                ];
+                if (row.tds > 0) {
+                    payoutItems.push({ label: `Less: TDS Deducted (1% u/s 194-O on Rent)`, value: `- ${inr(row.tds)}`, amber: true } as any);
+                }
+                payoutItems.push({ label: "NET PAYOUT TO OWNER BANK ACCOUNT",         value: inr(row.netPayout), bold: true, green: true } as any);
+
+                payoutItems.forEach((pi: any, pii: number) => {
+                    const pEven = pii % 2 === 0;
+                    if (pi.green)       doc.setFillColor(220, 252, 231);
+                    else if (pi.red)    doc.setFillColor(254, 226, 226);
+                    else if (pi.amber)  doc.setFillColor(255, 251, 235);
+                    else doc.setFillColor(pEven ? 248 : 255, pEven ? 250 : 255, pEven ? 252 : 255);
+                    doc.rect(PL, iy, 182, 9, "F");
+                    doc.setDrawColor(226, 232, 240);
+                    doc.line(PL, iy, PR, iy);
+                    doc.line(130, iy, 130, iy + 9);
+                    doc.setFont("helvetica", pi.bold ? "bold" : "normal");
+                    doc.setFontSize(pi.bold ? 9 : 8);
+                    doc.setTextColor(pi.bold ? 55 : 100, pi.bold ? 48 : 116, pi.bold ? 163 : 139);
+                    doc.text(pi.label, PL + 4, iy + 6);
+                    doc.setTextColor(15, 23, 42);
+                    doc.setFont("helvetica", pi.bold ? "bold" : "normal");
+                    doc.text(pi.value, PR - 4, iy + 6, { align: "right" });
+                    iy += 9;
+                });
+                doc.setDrawColor(199, 210, 254);
+                doc.rect(PL, iy - (payoutItems.length * 9), 182, payoutItems.length * 9);
+                iy += 5;
+
+                // ── CA Advisory ─────────────────────────────────────────────
+                doc.setFillColor(255, 251, 235);
+                doc.roundedRect(PL, iy, 182, 20, 2, 2, "F");
+                doc.setDrawColor(253, 230, 138);
+                doc.roundedRect(PL, iy, 182, 20, 2, 2);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(7.5);
+                doc.setTextColor(146, 64, 14);
+                doc.text("CA & TAX ADVISORY", PL + 4, iy + 7);
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7);
+                doc.setTextColor(92, 45, 5);
+                doc.text(`1. Declare Gross Rent of ${inr(row.gross)} as Rental Income in ITR. NOT the net payout.`, PL + 4, iy + 13);
+                doc.text(`2. Platform Commission of ${inr(row.ownerFee)} is an allowable business expense — deductible from taxable income.`, PL + 4, iy + 18);
+                iy += 24;
+
+                // ── Page footer ─────────────────────────────────────────────
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(PL, iy, 182, 14, 1, 1, "F");
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(PL, iy, 182, 14, 1, 1);
+                doc.setFont("helvetica", "italic");
+                doc.setFontSize(7);
+                doc.setTextColor(100, 116, 139);
+                doc.text("Computer-generated tax invoice. Valid without signature. For disputes, contact support@rentpe.in", pw / 2, iy + 6, { align: "center" });
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(55, 48, 163);
+                doc.text("rentpe.in", pw / 2, iy + 12, { align: "center" });
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(6.5);
+                doc.setTextColor(148, 163, 184);
+                doc.text(
+                    `Generated: ${generatedOnStr}  ·  Invoice: ${taxInvoiceNo}  ·  Page ${idx + 2} of ${rows.length + 1}`,
+                    pw / 2, ph - 5, { align: "center" }
+                );
+            });
+        }
 
         const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
         return new NextResponse(pdfBuffer, {
