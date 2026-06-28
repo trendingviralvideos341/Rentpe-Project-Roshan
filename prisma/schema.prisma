@@ -168,6 +168,8 @@ model Property {
   feeTermsAcceptedAt         DateTime?
   onboardingPaidAt           DateTime?
   onboardingPaymentMethod    String?
+  onboardingRazorpayId       String?   // pay_XXXXXX — Razorpay payment ID after success
+  onboardingRazorpayOrderId  String?   // order_XXXXX — Razorpay order ID created before checkout
   applicationId              String?                      @unique
   foodType                   String                       @default("NOT_AVAILABLE")
   foodPricePerMonth          Float?

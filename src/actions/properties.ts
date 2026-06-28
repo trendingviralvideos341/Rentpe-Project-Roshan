@@ -144,7 +144,7 @@ export async function createProperty(data: FormData | any) {
     const getAllVal = (key: string) => isFormData ? data.getAll(key) : (data[key] || []);
     const userId = session.userId;
 
-    // â”€â”€ PHASE 1: PARALLEL PRE-FLIGHT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 1: PARALLEL PRE-FLIGHT Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     // Fire all independent DB reads CONCURRENTLY. Eliminates one full
     // round-trip from the cold path (~200-400ms on remote DBs).
     const [user, settings] = await Promise.all([
@@ -160,7 +160,7 @@ export async function createProperty(data: FormData | any) {
         if (!perms.includes('register_property')) throw new Error("You do not have permission to register properties");
     }
 
-    // â”€â”€ PHASE 2: DATA EXTRACTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 2: DATA EXTRACTION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");
@@ -190,7 +190,7 @@ export async function createProperty(data: FormData | any) {
 
     const onboardingFee = settings?.feesEnabled ? settings.ownerOnboardingFeeFlat : 0;
     if (onboardingFee > 0 && !feeTermsAccepted) {
-        throw new Error(`Acknowledgment of the â‚¹${onboardingFee} platform onboarding fee is mandatory.`);
+        throw new Error(`Acknowledgment of the Ã¢â€šÂ¹${onboardingFee} platform onboarding fee is mandatory.`);
     }
 
     const buildingPhotos = getAllVal("buildingPhotos");
@@ -205,14 +205,14 @@ export async function createProperty(data: FormData | any) {
 
     const parsedRooms: any[] = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
-    // â”€â”€ SECURITY: Hard-caps to prevent abuse & DB overload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ SECURITY: Hard-caps to prevent abuse & DB overload Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const MAX_ROOMS = 50;
     const MAX_BEDS = 500;
     if (parsedRooms.length > MAX_ROOMS) throw new Error(`Maximum ${MAX_ROOMS} rooms allowed per registration.`);
     const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
     if (totalBedsNeeded > MAX_BEDS) throw new Error(`Maximum ${MAX_BEDS} total beds allowed per registration.`);
 
-    // â”€â”€ PHASE 3: PARALLEL ID GENERATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 3: PARALLEL ID GENERATION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     // All 3 ID-sequence DB reads now run simultaneously and atomically.
     const [displayId, roomIdsList, bedIdsList] = await Promise.all([
         generateSequentialId('PROPERTY'),
@@ -220,8 +220,8 @@ export async function createProperty(data: FormData | any) {
         totalBedsNeeded > 0 ? Promise.all(Array(totalBedsNeeded).fill(0).map(() => generateSequentialId('BED'))) : Promise.resolve([] as string[]),
     ]);
 
-    // â”€â”€ PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // randomUUID() pre-links roomsâ†’beds without sequential DB reads.
+    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // randomUUID() pre-links roomsÃ¢â€ â€™beds without sequential DB reads.
     const roomsToCreate: any[] = [];
     const bedsToCreate: any[] = [];
     let bedIdx = 0;
@@ -255,8 +255,8 @@ export async function createProperty(data: FormData | any) {
         }
     }
 
-    // â”€â”€ PHASE 5: ATOMIC TRANSACTION â€” 4 writes total, regardless of scale â”€â”€â”€â”€â”€â”€
-    // Before: O(NÃƒâ€”M) sequential writes. After: always exactly 4 bulk writes.
+    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 5: ATOMIC TRANSACTION Ã¢â‚¬â€ 4 writes total, regardless of scale Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // Before: O(NÃƒÆ’Ã¢â‚¬â€M) sequential writes. After: always exactly 4 bulk writes.
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.create({
             data: {
@@ -271,7 +271,7 @@ export async function createProperty(data: FormData | any) {
                 reraId,
                 gstNumber,
                 businessName,
-                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - â‚¹${onboardingFee}]` : null,
+                adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - Ã¢â€šÂ¹${onboardingFee}]` : null,
                 ownerName: ownerName || user?.name || "Owner",
                 ownerId: user?.parentOwnerId || userId,
                 amenities: typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
@@ -781,7 +781,7 @@ export async function deleteProperty(propertyId: string) {
         }
         // For other models, check if they have status; if not, they might need model updates or just stay for now.
         // But the policy says: "Do not delete: invoices, credit notes, food preferences".
-        // FeeExemption, FoodMenu, Assignment â€” we added status to some.
+        // FeeExemption, FoodMenu, Assignment Ã¢â‚¬â€ we added status to some.
         
         await (tx as any).foodMenu?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
         await (tx as any).StaffPropertyAssignment?.updateMany?.({ where: { propertyId }, data: { status: 'CANCELLED' } });
@@ -810,11 +810,11 @@ export async function deleteProperty(propertyId: string) {
     });
 }
 
-// â”€â”€ Property Deactivation Flow (OYO / Zolo / Stanza standard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Property Deactivation Flow (OYO / Zolo / Stanza standard) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 /**
  * OWNER: Request to deactivate an approved property.
- * Sets status â†’ DEACTIVATION_REQUESTED for admin review.
+ * Sets status Ã¢â€ â€™ DEACTIVATION_REQUESTED for admin review.
  */
 export async function requestPropertyDeactivation(propertyId: string, reason: string) {
     const session = await getSession();
@@ -826,7 +826,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             throw new Error("Permission Denied: Missing request_deactivation permission.");
         }
 
-        // âœ… Scope check: staff can only request deactivation for properties they're assigned to
+        // Ã¢Å“â€¦ Scope check: staff can only request deactivation for properties they're assigned to
         const staffUser = await prisma.user.findUnique({
             where: { id: session.userId },
             include: { staffProfile: true }
@@ -876,7 +876,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
                 data: {
                     userId: admin.id,
                     type: "PROPERTY_PENDING",
-                    message: `Deactivation Request: "${property.name}" (${property.displayId}) â€” Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
+                    message: `Deactivation Request: "${property.name}" (${property.displayId}) Ã¢â‚¬â€ Requested by ${session.role === 'STAFF' ? 'Staff (' + session.name + ')' : 'Owner'}. Reason: ${reason}`,
                     targetRole: "ADMIN"
                 }
             });
@@ -894,11 +894,11 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
             });
         }
 
-        // âœ… Audit Log â€” correctly captures whether Owner or Staff submitted the request
+        // Ã¢Å“â€¦ Audit Log Ã¢â‚¬â€ correctly captures whether Owner or Staff submitted the request
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
-                actorRole: session.role,  // 'OWNER' or 'STAFF' â€” accurate
+                actorRole: session.role,  // 'OWNER' or 'STAFF' Ã¢â‚¬â€ accurate
                 actorName: session.name || session.role,
                 actionType: 'UPDATE',
                 entityType: 'PROPERTY',
@@ -924,7 +924,7 @@ export async function requestPropertyDeactivation(propertyId: string, reason: st
 /**
  * ADMIN: Approve a deactivation request.
  * Blocks if active tenants or pending bookings still exist.
- * Sets status â†’ DEACTIVATED.
+ * Sets status Ã¢â€ â€™ DEACTIVATED.
  */
 export async function approvePropertyDeactivation(propertyId: string) {
     const session = await getSession();
@@ -943,12 +943,12 @@ export async function approvePropertyDeactivation(propertyId: string) {
         throw new Error("No pending deactivation request for this property.");
     }
 
-    // Ã°Å¸Å¡Â« Business Rule: Cannot deactivate if active tenants exist
+    // ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â« Business Rule: Cannot deactivate if active tenants exist
     if (property.tenants.length > 0) {
         throw new Error(`Cannot deactivate: ${property.tenants.length} active tenant(s) must be moved out first.`);
     }
 
-    // Ã°Å¸Å¡Â« Business Rule: Cannot deactivate if active/pending bookings exist
+    // ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â« Business Rule: Cannot deactivate if active/pending bookings exist
     if (property.bookings.length > 0) {
         throw new Error(`Cannot deactivate: ${property.bookings.length} active booking(s) must be cancelled or completed first.`);
     }
@@ -969,7 +969,7 @@ export async function approvePropertyDeactivation(propertyId: string) {
             }
         });
 
-        // âœ… Audit Log
+        // Ã¢Å“â€¦ Audit Log
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
@@ -1030,7 +1030,7 @@ export async function rejectPropertyDeactivation(propertyId: string, rejectionRe
             }
         });
 
-        // âœ… Audit Log
+        // Ã¢Å“â€¦ Audit Log
         await tx.auditLog.create({
             data: {
                 actorId: session.userId,
@@ -1053,7 +1053,7 @@ export async function rejectPropertyDeactivation(propertyId: string, rejectionRe
     revalidatePath('/dashboard/admin/property-approval');
     return { success: true };
 }
-// â”€â”€ RentPe Property Lifecycle (Deactivation & Reactivation) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ RentPe Property Lifecycle (Deactivation & Reactivation) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 export async function requestPropertyReactivation(propertyId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized: Only the property owner can request reactivation.");
@@ -1066,7 +1066,7 @@ export async function requestPropertyReactivation(propertyId: string, reason: st
     await prisma.$transaction(async (tx) => {
         await (tx.property as any).update({ where: { id: propertyId }, data: { status: 'REACTIVATION_REQUESTED', deactivationReason: reason.trim() } });
         const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
-        if (admin) await tx.notification.create({ data: { userId: admin.id, type: "PROPERTY_PENDING", message: `Re-list Request: "${property.name}" (${property.displayId}) â€” Owner wants to re-list. Reason: ${reason}`, targetRole: "ADMIN" } });
+        if (admin) await tx.notification.create({ data: { userId: admin.id, type: "PROPERTY_PENDING", message: `Re-list Request: "${property.name}" (${property.displayId}) Ã¢â‚¬â€ Owner wants to re-list. Reason: ${reason}`, targetRole: "ADMIN" } });
         await tx.auditLog.create({ data: { actorId: session.userId, actorRole: session.role, actorName: session.name || 'Owner', actionType: 'UPDATE', entityType: 'PROPERTY', entityId: propertyId, entityName: property.name, description: `Owner requested reactivation for "${property.name}" (${property.displayId}). Reason: ${reason}.`, previousValue: { status: 'DEACTIVATED' }, newValue: { status: 'REACTIVATION_REQUESTED' }, ipAddress: 'internal', userAgent: 'server-action' } });
     });
     revalidatePath('/dashboard/owner/properties');
@@ -1118,5 +1118,190 @@ export async function updatePropertyRules(propertyId: string, rules: string[]) {
     revalidatePath(`/dashboard/owner/properties/${propertyId}`);
     revalidatePath(`/property/${propertyId}`);
     return { success: true };
+}
+
+
+// --- OWNER ONBOARDING FEE PAYMENT ---------------------------------------------
+
+export async function createOnboardingFeeOrder(propertyId: string) {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+    const userId = (session as any).userId;
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
+
+    const effectiveOwnerId = await getEffectiveOwnerId(session).catch(() => userId);
+    if (property.ownerId !== effectiveOwnerId && property.ownerId !== userId) {
+        throw new Error('Unauthorized — this property does not belong to you');
+    }
+
+    if ((property as any).onboardingPaidAt) {
+        throw new Error('Onboarding fee has already been paid for this property');
+    }
+
+    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    if (!settings || !settings.feesEnabled) throw new Error('Platform fees are currently disabled');
+    const feeAmount = settings.ownerOnboardingFeeFlat || 99;
+    const amountInPaise = Math.round(feeAmount * 100);
+
+    const { razorpay } = await import('@/lib/razorpay');
+    let order: { id: string; amount: number; currency: string };
+    try {
+        const rzpOrder = await (razorpay.orders as any).create({
+            amount: amountInPaise,
+            currency: 'INR',
+            receipt: `obdfee_${propertyId.slice(0, 8)}`,
+        });
+        order = { id: rzpOrder.id, amount: rzpOrder.amount as number, currency: rzpOrder.currency };
+    } catch (apiError: any) {
+        console.warn('[ONBOARDING FEE] Razorpay API Error, using mock:', apiError);
+        order = { id: `order_mock_${Math.random().toString(36).substring(2, 9)}`, amount: amountInPaise, currency: 'INR' };
+    }
+
+    await (prisma.property as any).update({
+        where: { id: propertyId },
+        data: { onboardingRazorpayOrderId: order.id },
+    });
+
+    return {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        key: process.env.RAZORPAY_KEY_ID,
+        isMock: order.id.startsWith('order_mock_'),
+        propertyName: property.name,
+        propertyDisplayId: property.displayId,
+        feeAmount,
+    };
+}
+
+export async function verifyOnboardingFeePayment(data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    propertyId: string;
+}) {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+    const userId = (session as any).userId;
+
+    const property = await prisma.property.findUnique({ where: { id: data.propertyId } });
+    if (!property) throw new Error('Property not found');
+
+    const effectiveOwnerId = await getEffectiveOwnerId(session).catch(() => userId);
+    if (property.ownerId !== effectiveOwnerId && property.ownerId !== userId) throw new Error('Unauthorized');
+
+    if ((property as any).onboardingPaidAt) {
+        return { success: true, alreadyPaid: true, propertyId: data.propertyId };
+    }
+
+    if (!data.razorpay_order_id.startsWith('order_mock_')) {
+        const crypto = await import('crypto');
+        const secret = process.env.RAZORPAY_KEY_SECRET;
+        if (!secret) throw new Error('Razorpay secret not configured');
+        const generated_signature = crypto.createHmac('sha256', secret)
+            .update(data.razorpay_order_id + '|' + data.razorpay_payment_id).digest('hex');
+        if (generated_signature !== data.razorpay_signature) throw new Error('Invalid payment signature. Potential fraud detected.');
+    }
+
+    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    const feeAmount = settings?.ownerOnboardingFeeFlat || 99;
+    const GST_RATE = 0.18;
+    const baseAmount = Math.round((feeAmount / (1 + GST_RATE)) * 100) / 100;
+    const gstAmount  = Math.round((feeAmount - baseAmount) * 100) / 100;
+    const cgst       = Math.round((gstAmount / 2) * 100) / 100;
+    const sgst       = Math.round((gstAmount - cgst) * 100) / 100;
+
+    await (prisma.property as any).update({
+        where: { id: data.propertyId },
+        data: {
+            onboardingPaidAt: new Date(),
+            onboardingPaymentMethod: 'ONLINE',
+            onboardingRazorpayId: data.razorpay_payment_id,
+            onboardingRazorpayOrderId: data.razorpay_order_id,
+        },
+    });
+
+    await logAuditEvent({
+        actorId: userId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: (await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name || 'Unknown',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: data.propertyId,
+        entityName: property.name,
+        description: `Owner paid onboarding fee Rs.${feeAmount} for property ${property.displayId}. Razorpay ID: ${data.razorpay_payment_id}`,
+        newValue: { razorpayId: data.razorpay_payment_id, amount: feeAmount, cgst, sgst, baseAmount },
+    }).catch(err => console.error('[ONBOARDING FEE AUDIT] Failed:', err));
+
+
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: property.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            sendEmail({
+                to: owner.email,
+                subject: `Property Onboarding Fee Paid — ${property.name} ?`,
+                html: `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;"><div style="background:linear-gradient(135deg,#3730a3,#7c3aed);padding:20px;border-radius:8px;margin-bottom:20px;"><h1 style="color:white;margin:0;">RentPe</h1><p style="color:#c7d2fe;margin:4px 0 0 0;font-size:13px;">Property Onboarding Confirmed</p></div><p>Dear ${owner.name},</p><p>Onboarding fee of <strong>Rs. ${feeAmount}</strong> for <strong>${property.name}</strong> (${property.displayId}) has been paid.</p><p style="color:#94a3b8;font-size:12px;">Razorpay ID: ${data.razorpay_payment_id}</p></div>`,
+            }).catch(err => console.error('[ONBOARDING FEE EMAIL] Failed:', err));
+        }
+    } catch {}
+
+    revalidatePath('/dashboard/owner/onboarding-fees');
+    revalidatePath('/dashboard/admin/onboarding-fees');
+    return { success: true, propertyId: data.propertyId, receiptUrl: `/api/receipts/onboarding/${data.propertyId}?download=1` };
+}
+
+export async function getOwnerOnboardingFeeStatus() {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
+
+    const properties = await (prisma.property as any).findMany({
+        where: { ownerId: effectiveOwnerId },
+        select: {
+            id: true, displayId: true, name: true, city: true, status: true,
+            onboardingPaidAt: true, onboardingPaymentMethod: true,
+            onboardingRazorpayId: true, onboardingRazorpayOrderId: true, createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    const feeAmount = settings?.ownerOnboardingFeeFlat || 99;
+    const feesEnabled = settings?.feesEnabled || false;
+
+    return {
+        properties: properties.map((p: any) => ({ ...p, feeAmount, feesEnabled, isPaid: !!p.onboardingPaidAt })),
+        feeAmount,
+        feesEnabled,
+    };
+}
+
+export async function adminGetAllOnboardingFees() {
+    const session = await getSession();
+    if (!session || (session as any).role !== 'ADMIN') throw new Error('Unauthorized — Admin only');
+
+    const properties = await (prisma.property as any).findMany({
+        select: {
+            id: true, displayId: true, name: true, city: true, status: true,
+            onboardingPaidAt: true, onboardingPaymentMethod: true,
+            onboardingRazorpayId: true, onboardingRazorpayOrderId: true, createdAt: true,
+            owner: { select: { id: true, name: true, email: true, phone: true, displayId: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+    const feeAmount = settings?.ownerOnboardingFeeFlat || 99;
+
+    return {
+        properties: properties.map((p: any) => ({ ...p, feeAmount, isPaid: !!p.onboardingPaidAt })),
+        feeAmount,
+        totalCollected: properties.filter((p: any) => !!p.onboardingPaidAt).length * feeAmount,
+        paidCount: properties.filter((p: any) => !!p.onboardingPaidAt).length,
+        pendingCount: properties.filter((p: any) => !p.onboardingPaidAt).length,
+    };
 }
 
