@@ -214,6 +214,21 @@ export async function verifyPayment(data: {
             console.error('[PLATFORM FEE RECORD] Error:', feeErr);
         }
 
+        // 3. GST Turnover Check & Alert (Async — non-blocking)
+        try {
+            const paymentWithBooking = await prisma.booking.findUnique({
+                where: { id: payment.bookingId },
+                include: { room: { include: { property: true } } }
+            });
+            const ownerId = paymentWithBooking?.room?.property?.ownerId || (paymentWithBooking as any)?.property?.ownerId;
+            if (ownerId) {
+                const { checkOwnerTurnoverAndAlert } = await import('@/actions/taxAlerts');
+                checkOwnerTurnoverAndAlert(ownerId).catch(err => console.error('[GST TURNOVER CHECK] Failed:', err));
+            }
+        } catch (gstErr) {
+            console.error('[GST TURNOVER CHECK] Error:', gstErr);
+        }
+
         try {
             // 2. Send Payment Receipt Email (Async)
             const user = await prisma.user.findUnique({ where: { id: (session as any).userId }, select: { email: true, name: true } });

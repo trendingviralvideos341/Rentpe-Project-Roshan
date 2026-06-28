@@ -171,6 +171,7 @@ export async function createProperty(data: FormData | any) {
     const propertyType = getVal("propertyType");
     const licenseNumber = getVal("licenseNumber");
     const reraId = getVal("reraId");
+    const gstNumber = getVal("gstNumber");
     const businessName = getVal("businessName");
     const termsAcceptedRaw = getVal("termsAccepted");
     const termsAccepted = termsAcceptedRaw === "true" || termsAcceptedRaw === "on" || (termsAcceptedRaw as any) === true;
@@ -268,6 +269,7 @@ export async function createProperty(data: FormData | any) {
                 propertyType: (propertyType as any) || "PG",
                 licenseNumber,
                 reraId,
+                gstNumber,
                 businessName,
                 adminNotes: onboardingFee > 0 ? `[SYSTEM: Fee Acknowledged - â‚¹${onboardingFee}]` : null,
                 ownerName: ownerName || user?.name || "Owner",

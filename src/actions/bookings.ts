@@ -906,6 +906,8 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
         const property = await prisma.property.findUnique({ where: { id: booking.propertyId || '' } });
         if (property) {
             await NotificationService.onPaymentCompleted(booking, booking.amount, property.ownerId);
+            const { checkOwnerTurnoverAndAlert } = await import('@/actions/taxAlerts');
+            checkOwnerTurnoverAndAlert(property.ownerId).catch(err => console.error('[GST TURNOVER CHECK] Failed:', err));
         }
     } catch (e) { console.error('Payment Notification Error:', e); }
 
@@ -1742,6 +1744,8 @@ export async function payTokenAmount(bookingId: string, paymentMethod: 'ONLINE' 
             const property = await prisma.property.findUnique({ where: { id: booking.propertyId } });
             if (property) {
                 await NotificationService.onPaymentCompleted(booking, booking.tokenAmount || 1000, property.ownerId);
+                const { checkOwnerTurnoverAndAlert } = await import('@/actions/taxAlerts');
+                checkOwnerTurnoverAndAlert(property.ownerId).catch(err => console.error('[GST TURNOVER CHECK] Failed:', err));
             }
         }
     } catch (e) { 

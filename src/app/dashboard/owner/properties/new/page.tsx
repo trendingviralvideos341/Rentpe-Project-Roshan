@@ -57,6 +57,8 @@ export default function AddPropertyPage() {
     const [propertyType, setPropertyType] = useState<"PG" | "Hostel" | "Flat/Apartment" | "Other" | "">("PG");
     const [licenseNumber, setLicenseNumber] = useState("");
     const [reraId, setReraId] = useState("");
+    const [hasGstNumber, setHasGstNumber] = useState<"yes" | "no" | "">("");
+    const [gstNumber, setGstNumber] = useState("");
     const [otherPropertyType, setOtherPropertyType] = useState("");
     const [gender, setGender] = useState<"Boys" | "Girls" | "Co-ed" | "">("");
     const [amenities, setAmenities] = useState<string[]>([]);
@@ -200,7 +202,7 @@ export default function AddPropertyPage() {
         const formData = {
             name, address, pincode, city, state, postOffice, phone,
             description, ownerName, ownerEmail, businessName,
-            propertyType, licenseNumber, reraId, otherPropertyType,
+            propertyType, licenseNumber, reraId, hasGstNumber, gstNumber, otherPropertyType,
             gender, amenities, rooms
             // Note: We don't save raw File objects to drafts; they are handled by useResumableUpload
         };
@@ -208,7 +210,7 @@ export default function AddPropertyPage() {
     }, [
         name, address, pincode, city, state, postOffice, phone,
         description, ownerName, ownerEmail, businessName,
-        propertyType, licenseNumber, reraId, otherPropertyType,
+        propertyType, licenseNumber, reraId, hasGstNumber, gstNumber, otherPropertyType,
         gender, amenities, rooms, updateData
     ]);
 
@@ -233,6 +235,8 @@ export default function AddPropertyPage() {
         setPropertyType(d.propertyType || "PG");
         setLicenseNumber(d.licenseNumber || "");
         setReraId(d.reraId || "");
+        setHasGstNumber(d.hasGstNumber || "");
+        setGstNumber(d.gstNumber || "");
         setOtherPropertyType(d.otherPropertyType || "");
         setGender(d.gender || "");
         setAmenities(d.amenities || []);
@@ -601,6 +605,20 @@ export default function AddPropertyPage() {
             errs.propertyType = "Please specify the property type";
         }
 
+        // GST Validation
+        if (!hasGstNumber) {
+            errs.hasGstNumber = "Please specify if you have a GST number";
+        } else if (hasGstNumber === "yes") {
+            if (!gstNumber.trim()) {
+                errs.gstNumber = "GST Number is required";
+            } else {
+                const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i;
+                if (!gstRegex.test(gstNumber.trim())) {
+                    errs.gstNumber = "Invalid GSTIN format (e.g. 29AAAAA1111A1Z1). Check for typos.";
+                }
+            }
+        }
+
         // Validate mandatory documents with specific slot counts
         // Photos are now optional per user request
         // if (docs.buildingPhotos.length < 4) errs.buildingPhotos = "4 Building photos are mandatory";
@@ -678,6 +696,7 @@ export default function AddPropertyPage() {
                 propertyType,
                 licenseNumber,
                 reraId,
+                gstNumber: hasGstNumber === "yes" ? gstNumber : "",
                 rooms,
                 termsAccepted,
                 feeTermsAccepted,
@@ -904,6 +923,59 @@ export default function AddPropertyPage() {
                                     suppressHydrationWarning
                                 />
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-purple-100 pt-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold flex items-center gap-1.5 text-slate-800">
+                                    Do you have a GST Number? <span className="text-red-500">*</span>
+                                </label>
+                                <div className="flex gap-3">
+                                    {[
+                                        { val: "yes", label: "Yes" },
+                                        { val: "no", label: "No" }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.val}
+                                            type="button"
+                                            onClick={() => {
+                                                setHasGstNumber(opt.val as any);
+                                                if (opt.val === "no") setGstNumber("");
+                                            }}
+                                            className={`px-5 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
+                                                hasGstNumber === opt.val
+                                                    ? "bg-purple-600 border-purple-600 text-white shadow-md"
+                                                    : "bg-white border-slate-200 text-slate-500 hover:border-purple-300"
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-medium italic mt-1 leading-relaxed">
+                                    Note: Under GST law, registration is mandatory only if your aggregate annual turnover exceeds ₹20 Lakhs. If you are a small operator, select 'No' to list without a GSTIN.
+                                </p>
+                                {errors.hasGstNumber && <p className="text-xs text-red-600 font-semibold">{errors.hasGstNumber}</p>}
+                            </div>
+
+                            {hasGstNumber === "yes" && (
+                                <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-sm font-medium text-slate-800">
+                                        GST Number (GSTIN) <span className="text-red-500">*</span>
+                                    </label>
+                                    <Input
+                                        placeholder="e.g. 29AAAAA1111A1Z1"
+                                        value={gstNumber}
+                                        onChange={e => setGstNumber(e.target.value.toUpperCase())}
+                                        className={inputErr("gstNumber")}
+                                        suppressHydrationWarning
+                                    />
+                                    <p className="text-[10px] text-slate-400 font-medium italic">
+                                        Enter your 15-character GSTIN. Format: 2 State Code, 10 PAN, 1 Entity Code, 1 Blank ('Z'), 1 Checksum digit.
+                                    </p>
+                                    {errors.gstNumber && <p className="text-xs text-red-600 font-semibold">{errors.gstNumber}</p>}
+                                </div>
+                            )}
                         </div>
 
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-4 shadow-sm">
