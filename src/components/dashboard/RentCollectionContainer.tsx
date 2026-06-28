@@ -12,7 +12,7 @@ import {
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 
-type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'UNPAID' | 'TOKEN';
+type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'PENDING' | 'OVERDUE' | 'TOKEN';
 
 
 // ── Receipt Preview Modal (HTML inline — no iframe) ────────────────
@@ -354,7 +354,13 @@ export function RentCollectionContainer() {
     const totalReceived = rentInvoices.filter(i => i.status === 'PAID').reduce((s, i) => s + i.paidAmount, 0);
     const onlineReceived = onlinePaid.reduce((s, i) => s + i.paidAmount, 0);
     const cashReceived = cashPaid.reduce((s, i) => s + i.paidAmount, 0);
-    const totalUnpaid = unpaid.reduce((s, i) => s + i.amount, 0);
+    
+    // Split unpaid into Pending (not late) and Overdue (late)
+    const pendingInvoices = unpaid.filter(i => (i.daysOverdue ?? 0) <= 0);
+    const overdueInvoices = unpaid.filter(i => (i.daysOverdue ?? 0) > 0);
+    const totalPending = pendingInvoices.reduce((s, i) => s + i.amount, 0);
+    const totalOverdue = overdueInvoices.reduce((s, i) => s + i.amount, 0);
+
     const totalExpected = rentInvoices.reduce((s, i) => s + i.amount, 0);
     const collectionRate = totalExpected > 0 ? Math.round((totalReceived / totalExpected) * 100) : 0;
     const tokenTotal = tokenPayments.reduce((s, i) => s + i.amount, 0);
@@ -371,9 +377,10 @@ export function RentCollectionContainer() {
         // Status Tabs Filter
         if (tab === 'ONLINE' && s !== 'ONLINE_PAID') return false;
         if (tab === 'CASH' && s !== 'CASH_PAID') return false;
-        if (tab === 'UNPAID' && s !== 'UNPAID' && s !== 'OVERDUE') return false;
+        if (tab === 'PENDING' && s !== 'UNPAID') return false;
+        if (tab === 'OVERDUE' && s !== 'OVERDUE') return false;
         if (tab === 'TOKEN' && s !== 'TOKEN_PAID') return false;
-        // Hide token rows from ONLINE/CASH/UNPAID tabs
+        // Hide token rows from ONLINE/CASH/PENDING/OVERDUE tabs
         if (tab !== 'ALL' && tab !== 'TOKEN' && s === 'TOKEN_PAID') return false;
 
         // Dropdown Filters
@@ -425,7 +432,8 @@ export function RentCollectionContainer() {
         { key: 'ALL', label: 'All', count: invoices.length },
         { key: 'ONLINE', label: '🌐 Online Paid', count: onlinePaid.length },
         { key: 'CASH', label: '💵 Cash Paid', count: cashPaid.length },
-        { key: 'UNPAID', label: '❌ Unpaid', count: unpaid.length },
+        { key: 'PENDING', label: '⏳ Pending', count: pendingInvoices.length },
+        { key: 'OVERDUE', label: '🚨 Overdue', count: overdueInvoices.length },
         { key: 'TOKEN', label: '🔐 Token Paid', count: tokenPayments.length },
     ];
 
@@ -457,19 +465,20 @@ export function RentCollectionContainer() {
                 </div>
             </div>
 
-            {/* 5 Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* 6 Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 {[
                     { label: 'Total Received', val: fmt(totalReceived), icon: '💰', color: 'bg-green-50 border-green-200 text-green-800' },
                     { label: 'Online Received', val: fmt(onlineReceived), icon: '🌐', color: 'bg-sky-50 border-sky-200 text-sky-800' },
                     { label: 'Cash Received', val: fmt(cashReceived), icon: '💵', color: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
-                    { label: 'Unpaid / Pending', val: fmt(totalUnpaid), icon: '⏳', color: 'bg-red-50 border-red-200 text-red-800' },
+                    { label: 'Pending (Not Late)', val: fmt(totalPending), icon: '⏳', color: 'bg-amber-50 border-amber-200 text-amber-800' },
+                    { label: 'Overdue (Defaulter)', val: fmt(totalOverdue), icon: '🚨', color: 'bg-red-50 border-red-200 text-red-800' },
                     { label: 'Collection Rate', val: `${collectionRate}%`, icon: '📊', color: 'bg-purple-50 border-purple-200 text-purple-800' },
                 ].map(c => (
                     <div key={c.label} className={`p-4 rounded-2xl border-2 ${c.color} shadow-sm`}>
                         <div className="text-xl mb-1">{c.icon}</div>
                         <div className="text-xl font-black">{c.val}</div>
-                        <div className="text-[11px] font-semibold opacity-70 mt-0.5">{c.label}</div>
+                        <div className="text-[10px] font-semibold opacity-70 mt-0.5">{c.label}</div>
                     </div>
                 ))}
             </div>

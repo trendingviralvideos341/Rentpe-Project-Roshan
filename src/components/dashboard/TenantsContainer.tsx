@@ -4,8 +4,9 @@ import { Fragment, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle, ClipboardCheck } from "lucide-react";
+import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle, ClipboardCheck, Eye, Loader2 } from "lucide-react";
 import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
+import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { SettlementModal } from "@/components/dashboard/SettlementModal";
@@ -27,6 +28,11 @@ export function TenantsContainer() {
     const [generateMonth, setGenerateMonth] = useState<Record<string, string>>({});
     const [showMoveOut, setShowMoveOut] = useState<any>(null); // tenant object or null
     const [viewingChecklist, setViewingChecklist] = useState<any>(null);
+    const [viewingDetails, setViewingDetails] = useState<any>(null);
+    const [initiatingMoveOut, setInitiatingMoveOut] = useState<any>(null);
+    const [moveOutReason, setMoveOutReason] = useState("");
+    const [moveOutDate, setMoveOutDate] = useState("");
+    const [initiatingNoticeBusy, setInitiatingNoticeBusy] = useState(false);
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
 
@@ -112,6 +118,29 @@ export function TenantsContainer() {
         }
     };
 
+    const handleInitiateNotice = async () => {
+        if (!initiatingMoveOut) return;
+        if (!moveOutDate) { toast.error("Please select a target move-out date."); return; }
+        if (!moveOutReason.trim()) { toast.error("Please enter a mandatory reason for the move-out notice."); return; }
+        setInitiatingNoticeBusy(true);
+        try {
+            await ownerFileVacatingNotice({
+                tenantId: initiatingMoveOut.id,
+                plannedMoveOut: moveOutDate,
+                reason: moveOutReason
+            });
+            toast.success("Move-out notice initiated successfully! Tenant notified.");
+            setInitiatingMoveOut(null);
+            setMoveOutReason("");
+            setMoveOutDate("");
+            await fetchTenants();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to initiate move-out notice.");
+        } finally {
+            setInitiatingNoticeBusy(false);
+        }
+    };
+
     // Move-out is now handled entirely by SettlementModal
 
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
@@ -160,29 +189,29 @@ export function TenantsContainer() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-indigo-50 border-indigo-100">
                     <CardContent className="p-4">
-                        <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Expected Rent</p>
+                        <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Active Tenants</p>
                         <p className="text-2xl font-black text-indigo-900 mt-1">
-                            ₹{filteredTenants.reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                            {tenants.filter(t => t.status === "Active").length}
                         </p>
-                        <p className="text-[10px] text-indigo-500 mt-1">Based on {filteredTenants.length} tenants</p>
+                        <p className="text-[10px] text-indigo-500 mt-1">Currently residing in rooms</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-emerald-50 border-emerald-100">
                     <CardContent className="p-4">
-                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Collected This Month</p>
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Upcoming Move-ins</p>
                         <p className="text-2xl font-black text-emerald-900 mt-1">
-                            ₹{filteredTenants.filter(t => t.rentRecords.some((r: any) => r.month === currentMonth && r.paid)).reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                            {tenants.filter(t => t.status === "Upcoming").length}
                         </p>
-                        <p className="text-[10px] text-emerald-500 mt-1">{filteredTenants.filter(t => t.rentRecords.some((r: any) => r.month === currentMonth && r.paid)).length} Payments received</p>
+                        <p className="text-[10px] text-emerald-500 mt-1">Booked and awaiting arrival</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-rose-50 border-rose-100">
+                <Card className="bg-slate-50 border-slate-200">
                     <CardContent className="p-4">
-                        <p className="text-xs font-bold text-rose-600 uppercase tracking-wider">Pending This Month</p>
-                        <p className="text-2xl font-black text-rose-900 mt-1">
-                            ₹{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status === "Active").reduce((acc, t) => acc + (t.rentAmount || 0), 0).toLocaleString('en-IN')}
+                        <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Checked Out Tenants</p>
+                        <p className="text-2xl font-black text-slate-800 mt-1">
+                            {tenants.filter(t => t.status === "Checked Out").length}
                         </p>
-                        <p className="text-[10px] text-rose-500 mt-1">{filteredTenants.filter(t => !t.rentRecords.some((r: any) => r.month === currentMonth && r.paid) && t.status === "Active").length} Unpaid tenants</p>
+                        <p className="text-[10px] text-slate-500 mt-1">All-time departed residents</p>
                     </CardContent>
                 </Card>
             </div>
@@ -259,18 +288,16 @@ export function TenantsContainer() {
                             </div>
                             {!isBlocked && !isCheckedOut && (
                                 <div className="flex gap-2 flex-wrap">
-                                    {latestRent && !showPayNote[t.id] && (
-                                        <Button size="sm" variant="outline" className="text-xs flex-1"
-                                            onClick={() => setShowPayNote(p => ({ ...p, [t.id]: true }))}>
-                                            {isPaid ? "↩ Mark Unpaid" : "✓ Mark Paid"}
-                                        </Button>
-                                    )}
-                                    <Button size="sm" variant="outline" className="text-xs border-blue-300 text-blue-700"
-                                        onClick={() => setShowMoveOut({ ...t, rentAmount: parseFloat(String(t.rentAmount ?? t.rent ?? 0).replace(/[^0-9.]/g, '')) })}>
+                                    <Button size="sm" variant="outline" className="text-xs flex-1 border-indigo-300 text-indigo-700"
+                                        onClick={() => setViewingDetails(t)}>
+                                        👁 Details
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="text-xs flex-1 border-rose-300 text-rose-700"
+                                        onClick={() => { setInitiatingMoveOut(t); setMoveOutDate(new Date().toISOString().split('T')[0]); }}>
                                         🚶 Move Out
                                     </Button>
                                 </div>
-                            )}
+                             )}
                             {showPayNote[t.id] && latestRent && (
                                 <div className="space-y-2 pt-2 border-t">
                                     <input className="w-full border rounded-lg p-2 text-xs" placeholder="Note (mandatory)..."
@@ -440,9 +467,14 @@ export function TenantsContainer() {
                                                         {!isBlocked ? (
                                                             <>
                                                                 <Button size="sm" variant="outline"
-                                                                    className="h-7 text-[10px] w-full border-blue-400 text-blue-700 hover:bg-blue-50"
-                                                                    onClick={() => setShowMoveOut({ ...t, rentAmount: parseFloat(String(t.rentAmount ?? t.rent ?? 0).replace(/[^0-9.]/g, '')) })}>
-                                                                    🚶 Move Out &amp; Settlement
+                                                                    className="h-7 text-[10px] w-full border-indigo-400 text-indigo-700 hover:bg-indigo-50"
+                                                                    onClick={() => setViewingDetails(t)}>
+                                                                    👁 View Details
+                                                                </Button>
+                                                                <Button size="sm" variant="outline"
+                                                                    className="h-7 text-[10px] w-full border-rose-400 text-rose-700 hover:bg-rose-50"
+                                                                    onClick={() => { setInitiatingMoveOut(t); setMoveOutDate(new Date().toISOString().split('T')[0]); }}>
+                                                                    🚶 Initiate Move-Out
                                                                 </Button>
                                                                 <Input className="h-7 text-xs w-full" placeholder="Block reason..."
                                                                     value={blockNotes[t.id] || ""}
@@ -564,6 +596,142 @@ export function TenantsContainer() {
 
                     <DialogFooter>
                         <Button onClick={() => setViewingChecklist(null)} className="w-full">Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* View Student Details Dialog */}
+            <Dialog open={!!viewingDetails} onOpenChange={(open) => !open && setViewingDetails(null)}>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            👤 Student Profile &amp; Ledger
+                        </DialogTitle>
+                        <DialogDescription>
+                            Detailed overview of active tenant record and historical payments.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {viewingDetails && (
+                        <div className="space-y-6 pt-4 text-sm text-slate-800">
+                            {/* Profile details grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="border rounded-2xl p-4 bg-slate-50 space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Personal Info</p>
+                                    <p className="font-black text-slate-900 text-base">{viewingDetails.name}</p>
+                                    <p className="text-xs text-slate-500 font-mono">{viewingDetails.displayId}</p>
+                                    <p className="text-xs text-slate-600">📞 {viewingDetails.phone}</p>
+                                    <p className="text-xs text-slate-600">✉️ {viewingDetails.email || '—'}</p>
+                                </div>
+                                <div className="border border-indigo-100 rounded-2xl p-4 bg-indigo-50/50 space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenancy Info</p>
+                                    <p className="font-bold text-indigo-900">{viewingDetails.property?.name || 'Unknown PG'}</p>
+                                    <p className="text-xs text-indigo-700">Room {viewingDetails.roomNumber} ({viewingDetails.roomType})</p>
+                                    <p className="text-xs text-slate-600">📅 Started: {viewingDetails.startDate || viewingDetails.moveInDate || '—'}</p>
+                                    <p className="text-xs text-slate-600">💰 Rent: ₹{viewingDetails.rentAmount || viewingDetails.rent}/month</p>
+                                </div>
+                            </div>
+
+                            {/* Monthly Rent Records Ledger */}
+                            <div className="space-y-3">
+                                <h3 className="font-bold text-slate-900 border-b pb-2">📅 Monthly Rent History</h3>
+                                {viewingDetails.rentRecords && viewingDetails.rentRecords.length > 0 ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                                        {viewingDetails.rentRecords.map((r: any) => (
+                                            <div key={r.id} className={`p-3 rounded-2xl border flex justify-between items-start gap-2 ${
+                                                r.paid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                                            }`}>
+                                                <div>
+                                                    <p className="font-bold text-slate-900">{r.month}</p>
+                                                    <p className="text-[10px] text-slate-500">₹{r.amount?.toLocaleString('en-IN')}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                        r.paid ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+                                                    }`}>
+                                                        {r.paid ? 'Paid' : 'Unpaid'}
+                                                    </span>
+                                                    {r.paidAt && (
+                                                        <p className="text-[9px] text-slate-400 mt-1">
+                                                            {new Date(r.paidAt).toLocaleDateString('en-IN')}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-400 italic text-center py-4">No rent records generated yet.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button onClick={() => setViewingDetails(null)} className="w-full bg-slate-950 text-white hover:bg-slate-900">Close Profile</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Initiate Move-Out Dialog */}
+            <Dialog open={!!initiatingMoveOut} onOpenChange={(open) => !open && setInitiatingMoveOut(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            🚶 Initiate Move-Out Request
+                        </DialogTitle>
+                        <DialogDescription>
+                            Initiate a move-out notice for this tenant. This will notify the student and create a notice in the Vacating Notices tab.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {initiatingMoveOut && (
+                        <div className="space-y-4 pt-4">
+                            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+                                <p className="text-sm font-black text-rose-800">You are initiating move-out for:</p>
+                                <p className="text-base font-black text-slate-950 mt-1">{initiatingMoveOut.name}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Room {initiatingMoveOut.roomNumber} · {initiatingMoveOut.property?.name}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Planned Move-Out Date</label>
+                                <Input 
+                                    type="date" 
+                                    value={moveOutDate} 
+                                    onChange={e => setMoveOutDate(e.target.value)} 
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Reason for Move-Out (Mandatory)</label>
+                                <textarea
+                                    rows={3}
+                                    value={moveOutReason}
+                                    onChange={e => setMoveOutReason(e.target.value)}
+                                    placeholder="e.g. Completed academic year, requested eviction, lease expiration."
+                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none font-medium text-slate-800"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setInitiatingMoveOut(null)} 
+                            disabled={initiatingNoticeBusy} 
+                            className="flex-1"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleInitiateNotice} 
+                            disabled={initiatingNoticeBusy || !moveOutReason.trim() || !moveOutDate}
+                            className="flex-1 bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1.5"
+                        >
+                            {initiatingNoticeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Initiate Move-Out'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

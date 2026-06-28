@@ -87,6 +87,80 @@ export async function fileVacatingNotice(data: {
     return notice;
 }
 
+export async function ownerFileVacatingNotice(data: {
+    tenantId: string;
+    plannedMoveOut: string; // ISO date string
+    reason: string;
+}) {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes((session as any).role)) {
+        throw new Error("Unauthorized");
+    }
+    const actorId = (session as any).userId;
+
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: data.tenantId },
+        include: { booking: { include: { property: true } } }
+    });
+
+    if (!tenant || !tenant.booking) throw new Error("Tenant or Booking not found");
+
+    const booking = tenant.booking;
+    const property = booking.property;
+
+    if (!property) throw new Error("Property not found");
+
+    // Check for existing active notice
+    const existingNotice = await prisma.vacatingNotice.findFirst({
+        where: { bookingId: booking.id, deletedAt: null, status: { not: 'WITHDRAWN' } }
+    });
+    if (existingNotice) throw new Error("An active notice already exists for this tenant.");
+
+    const moveOut = new Date(data.plannedMoveOut);
+
+    const displayId = await generateMasterId('NOTICE');
+    const notice = await prisma.vacatingNotice.create({
+        data: {
+            displayId,
+            bookingId: booking.id,
+            userId: booking.userId,
+            propertyId: property.id,
+            ownerId: property.ownerId,
+            plannedMoveOut: moveOut,
+            reason: data.reason,
+            status: 'ACKNOWLEDGED', // Immediately acknowledged since owner filed it
+            acknowledgedAt: new Date(),
+        }
+    });
+
+    // Notify student
+    await prisma.notification.create({
+        data: {
+            userId: booking.userId,
+            type: 'VACATING_NOTICE_CREATED',
+            category: 'NOTICE',
+            message: `A vacating notice (${displayId}) has been initiated by management for move-out on ${moveOut.toLocaleDateString('en-IN')}. Reason: ${data.reason}`,
+            isPersistent: true,
+            metadata: JSON.stringify({ noticeId: notice.id, bookingId: booking.id }),
+        }
+    });
+
+    logAuditEvent({
+        actorId,
+        actorRole: (session as any).role || 'OWNER',
+        actorName: 'Management',
+        actionType: 'CREATE',
+        entityType: 'VACATING_NOTICE',
+        entityId: notice.id,
+        description: `Owner initiated vacating notice. Planned move-out: ${moveOut.toLocaleDateString('en-IN')}`,
+        newValue: { reason: data.reason, plannedMoveOut: data.plannedMoveOut, tenantId: data.tenantId }
+    });
+
+    revalidatePath('/dashboard/owner/notices');
+    revalidatePath('/dashboard/student/notice');
+    return notice;
+}
+
 export async function withdrawVacatingNotice(noticeId: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
