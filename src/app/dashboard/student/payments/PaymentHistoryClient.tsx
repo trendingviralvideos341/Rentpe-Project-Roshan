@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import {
     FileText, CheckCircle2, Clock, AlertTriangle, Minus, TrendingUp,
     Calendar, Shield, IndianRupee, ChevronDown, Building2,
-    Tag, CreditCard, Home, ArrowLeft, X, Printer
+    Tag, CreditCard, Home, ArrowLeft, X, Download
 } from "lucide-react";
 import Link from "next/link";
 
@@ -112,6 +112,8 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
     const now = new Date();
     const depositInvoiceId = `DEP-INV-${depositInfo?.id?.slice(-8).toUpperCase() || 'XXXXXXXX'}`;
     const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
+    // Download URL: joining payment / deposit receipts use the token route as fallback
+    const depositPdfUrl = booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null;
     const paidDate = depositInfo?.paidAt
         ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
         : booking?.agreementSignedAt
@@ -279,11 +281,18 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
                         RentPe Ecosystem • Prop-Tech OS for Modern Living • support@rentpe.in
                     </p>
 
-                    <div className="flex gap-3 print:hidden">
-                        <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            <Printer className="w-4 h-4" /> Download / Print
-                        </button>
-                        <button onClick={onClose} className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-sm rounded-2xl transition-all">
+                    <div className="flex gap-3">
+                        {depositPdfUrl ? (
+                            <a
+                                href={depositPdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-sm rounded-2xl transition-all"
+                            >
+                                <Download className="w-4 h-4" /> Download PDF
+                            </a>
+                        ) : null}
+                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
                             Close
                         </button>
                     </div>
@@ -299,6 +308,8 @@ function RentReceiptModal({ booking, invoice, onClose }: {
     booking: any; invoice: any; onClose: () => void;
 }) {
     const receiptNo = invoice?.displayId || `INV-${invoice?.id?.slice(-8).toUpperCase() || 'XXXXXXXX'}`;
+    // Direct PDF API URL — opens the 2-page HRA + Tax Invoice PDF
+    const rentPdfUrl = invoice?.id ? `/api/receipts/${invoice.id}?download=1` : null;
     const paidDate = invoice?.paidAt
         ? new Date(invoice.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '—';
@@ -466,11 +477,18 @@ function RentReceiptModal({ booking, invoice, onClose }: {
                         RentPe Ecosystem • Prop-Tech OS for Modern Living • support@rentpe.in
                     </p>
 
-                    <div className="flex gap-3 print:hidden">
-                        <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            <Printer className="w-4 h-4" /> Download / Print
-                        </button>
-                        <button onClick={onClose} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-2xl transition-all">
+                    <div className="flex gap-3">
+                        {rentPdfUrl ? (
+                            <a
+                                href={rentPdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-2xl transition-all"
+                            >
+                                <Download className="w-4 h-4" /> Download PDF
+                            </a>
+                        ) : null}
+                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
                             Close
                         </button>
                     </div>
@@ -484,7 +502,9 @@ function RentReceiptModal({ booking, invoice, onClose }: {
 function TokenReceiptModal({ booking, onClose }: {
     booking: any; onClose: () => void;
 }) {
-    const receiptNo = `TKN-${booking?.displayId || 'XXXXXX'}`;
+    const receiptNo = `TKN-RP-${booking?.displayId || 'XXXXXX'}`;
+    // Direct PDF API URL — opens the professional token receipt PDF
+    const tokenPdfUrl = booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null;
     const paidDate = booking?.tokenPaidAt
         ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '—';
@@ -605,11 +625,18 @@ function TokenReceiptModal({ booking, onClose }: {
                         RentPe Ecosystem • Prop-Tech OS for Modern Living • support@rentpe.in
                     </p>
 
-                    <div className="flex gap-3 print:hidden">
-                        <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            <Printer className="w-4 h-4" /> Download / Print
-                        </button>
-                        <button onClick={onClose} className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white font-black text-sm rounded-2xl transition-all">
+                    <div className="flex gap-3">
+                        {tokenPdfUrl ? (
+                            <a
+                                href={tokenPdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 text-white font-black text-sm rounded-2xl transition-all"
+                            >
+                                <Download className="w-4 h-4" /> Download PDF
+                            </a>
+                        ) : null}
+                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
                             Close
                         </button>
                     </div>
