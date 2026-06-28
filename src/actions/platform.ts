@@ -67,17 +67,19 @@ export async function calculateFees(amountStr: string, userId?: string, property
     feesEnabled: boolean;
     grossAmount: number;
     customerFee: number;
+    studentFeeBase: number;    // base fee excl. GST (e.g. ₹7.63)
     totalCharged: number;
     ownerNet: number;
     ownerFee: number;
+    ownerFeeBase: number;      // owner fee excl. GST (e.g. ₹7.63)
     platformEarned: number;
     commissionRate: number;
-    gstOnStudentFee: number;   // 18% GST exclusive on student convenience fee
-    gstOnOwnerFee: number;     // 18% GST exclusive on owner commission
+    gstOnStudentFee: number;   // GST extracted from inclusive fee (e.g. ₹1.37)
+    gstOnOwnerFee: number;     // GST extracted from inclusive owner fee (e.g. ₹1.37)
     tdsAmount: number;         // 1% TDS on gross amount under Section 194-O
-    totalGstCollected: number; // Total GST collected to remit to government
-    cgst: number;              // CGST component (9% of fee)
-    sgst: number;              // SGST component (9% of fee)
+    totalGstCollected: number; // Total GST to remit to government
+    cgst: number;              // CGST component (9%) e.g. ₹0.68
+    sgst: number;              // SGST component (9%) e.g. ₹0.69
     sacCode: string;           // SAC 997312 — Short-term accommodation services
 }> {
     const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
@@ -89,7 +91,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
 
     if (!settings || !settings.feesEnabled) {
-        return { feesEnabled: false, grossAmount, customerFee: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, platformEarned: 0, commissionRate: 0, gstOnStudentFee: 0, gstOnOwnerFee: 0, tdsAmount: 0, totalGstCollected: 0, cgst: 0, sgst: 0, sacCode: '997312' };
+        return { feesEnabled: false, grossAmount, customerFee: 0, studentFeeBase: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, ownerFeeBase: 0, platformEarned: 0, commissionRate: 0, gstOnStudentFee: 0, gstOnOwnerFee: 0, tdsAmount: 0, totalGstCollected: 0, cgst: 0, sgst: 0, sacCode: '997312' };
     }
 
     // Check exemptions
@@ -174,44 +176,57 @@ export async function calculateFees(amountStr: string, userId?: string, property
     } else {
         ownerFee = exemptOwner ? 0 : commissionRate;
     }
-    // ── GST Calculation (Option B: EXCLUSIVE — charged ON TOP of fees) ────────
-    // Indian GST law: 18% GST split equally as CGST 9% + SGST 9%
+    // ── GST Calculation: INCLUSIVE — ₹9 is the all-in total the student pays ──────
+    // Business decision: ₹9 fee is stated as GST-inclusive (no extra surprise charge).
+    // For invoice/tax purposes we decompose: ₹9 = ₹7.63 (base) + ₹1.37 (18% GST)
+    // Formula: gst = fee * 0.18 / 1.18  |  base = fee - gst
+    // Indian GST law: 18% split equally as CGST 9% + SGST 9%
     // SAC Code 997312 — Short-term accommodation/leasing services
     const GST_RATE = 0.18;
     const TDS_RATE = 0.01; // Section 194-O — TDS by e-commerce aggregator on RENT only
 
-    const gstOnStudentFee = Math.round(customerFee * GST_RATE * 100) / 100;
-    const gstOnOwnerFee   = Math.round(ownerFee * GST_RATE * 100) / 100;
+    // INCLUSIVE mode: extract GST that is already baked into the fee
+    const gstOnStudentFee = Math.round((customerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100;
+    const studentFeeBase  = Math.round((customerFee - gstOnStudentFee) * 100) / 100; // ₹7.63
+    const gstOnOwnerFee   = Math.round((ownerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100;
+    const ownerFeeBase    = Math.round((ownerFee - gstOnOwnerFee) * 100) / 100;
+
     // ── LEGAL FIX: TDS u/s 194-O applies ONLY to the rent component, NOT the refundable
     // security deposit. A security deposit is a capital receipt, not income — it is returned
     // to the tenant on exit and is therefore NOT subject to tax deduction at source.
     // Reference: CBDT Circular No. 718 & Income Tax Act Section 194-O r/w Explanation.
-    const tdsAmount         = exemptTds ? 0 : Math.round(rentOnlyAmt * TDS_RATE * 100) / 100;
+    const tdsAmount = exemptTds ? 0 : Math.round(rentOnlyAmt * TDS_RATE * 100) / 100;
+
     const totalGstCollected = Math.round((gstOnStudentFee + gstOnOwnerFee) * 100) / 100;
     // CGST and SGST are each half of total GST (for invoice display purposes)
-    const cgst = Math.round((gstOnStudentFee / 2) * 100) / 100;
-    const sgst = Math.round((gstOnStudentFee / 2) * 100) / 100;
+    const cgst = Math.round((gstOnStudentFee / 2) * 100) / 100;  // ₹0.68
+    const sgst = Math.round((gstOnStudentFee - cgst) * 100) / 100; // ₹0.69
 
-    // Recalculate totals including GST and TDS
-    const totalChargedFinal = grossAmount + customerFee + gstOnStudentFee;
-    const ownerNet          = grossAmount - ownerFee - gstOnOwnerFee - tdsAmount;
-    const platformEarned    = customerFee + ownerFee; // GST is govt money, not our earnings
+    // INCLUSIVE: student pays grossAmount + customerFee (GST already inside customerFee)
+    // No extra GST is added on top — ₹9 is the final all-in platform fee
+    const totalChargedFinal = grossAmount + customerFee;
+    // Owner net = what student paid as rent - owner platform fee (incl. GST) - TDS
+    const ownerNet = grossAmount - ownerFee - tdsAmount;
+    // Platform earns the base fee portion only (GST is remitted to government)
+    const platformEarned = studentFeeBase + ownerFeeBase;
 
     return {
         feesEnabled: true,
         grossAmount,
-        customerFee:        Math.round(customerFee * 100) / 100,
-        totalCharged:       Math.round(totalChargedFinal * 100) / 100,
+        customerFee:        Math.round(customerFee * 100) / 100,       // ₹9 (incl. GST)
+        studentFeeBase,                                                  // ₹7.63 (excl. GST)
+        totalCharged:       Math.round(totalChargedFinal * 100) / 100,  // rent + ₹9
         ownerNet:           Math.round(ownerNet * 100) / 100,
-        ownerFee:           Math.round(ownerFee * 100) / 100,
+        ownerFee:           Math.round(ownerFee * 100) / 100,           // ₹9 (incl. GST)
+        ownerFeeBase,                                                    // ₹7.63 (excl. GST)
         platformEarned:     Math.round(platformEarned * 100) / 100,
         commissionRate:     (ownerId ? (await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any })) as any : null)?.commissionRate ?? settings.ownerRentFeeFlat,
-        gstOnStudentFee,
-        gstOnOwnerFee,
+        gstOnStudentFee,    // ₹1.37 — the GST component extracted from ₹9
+        gstOnOwnerFee,      // ₹1.37 — GST on owner commission
         tdsAmount,
         totalGstCollected,
-        cgst,
-        sgst,
+        cgst,               // ₹0.68
+        sgst,               // ₹0.69
         sacCode: '997312',
     };
 }
@@ -229,32 +244,32 @@ export async function calculateFees(amountStr: string, userId?: string, property
 //   [6] For TOKEN payment: use token fee settings if enabled, not rent settings
 //   [7] For RENT_INVOICE: use invoice amount as base (no proration needed)
 //   [8] Compute GST (18% CGST+SGST) on convenience fee (exclusive — on top of fee)
-//   [9] Return totalCharged = baseAmount + convenienceFee + gstOnFee
 export async function calculateCheckoutFees(
     bookingId: string,
     paymentType: 'JOINING' | 'TOKEN' | 'RENT_INVOICE',
     invoiceId?: string,
 ): Promise<{
-    baseAmount:       number;   // prorated rent + deposit - token (for JOINING) or invoice amount
-    rentBase:         number;   // just the rent portion (for TDS purposes)
-    depositBase:      number;   // just the deposit portion (refundable — not taxed)
-    convenienceFee:   number;   // student-facing platform fee
-    gstOnFee:         number;   // 18% GST on convenience fee (exclusive)
-    cgst:             number;   // 9% CGST component
-    sgst:             number;   // 9% SGST component
-    totalCharged:     number;   // what student actually pays = baseAmount + fee + GST
-    feesEnabled:      boolean;
-    isExempt:         boolean;  // true if student or property is fee-exempt
-    exemptReason:     string;   // human-readable exemption note
-    feeType:          'FLAT' | 'PERCENT' | 'NONE';
-    sacCode:          string;
-    // Owner-side breakdown (for display in owner payout breakdown)
-    ownerFee:         number;   // platform commission deducted from owner
-    ownerNet:         number;   // what owner receives = rentBase - ownerFee - gstOnOwnerFee - tdsAmount
-    ownerFeeExempt:   boolean;
-    tdsAmount:        number;
-    tdsExempt:        boolean;
-    gstOnOwnerFee:    number;
+    baseAmount:         number;
+    rentBase:           number;
+    depositBase:        number;
+    convenienceFee:     number;      // all-in platform fee incl. GST (e.g. ₹9)
+    convenienceFeeBase: number;      // base fee excl. GST (e.g. ₹7.63)
+    gstOnFee:           number;      // GST extracted from fee (e.g. ₹1.37)
+    cgst:               number;      // CGST 9% (e.g. ₹0.68)
+    sgst:               number;      // SGST 9% (e.g. ₹0.69)
+    totalCharged:       number;      // baseAmount + convenienceFee (GST inside)
+    feesEnabled:        boolean;
+    isExempt:           boolean;
+    exemptReason:       string;
+    feeType:            'FLAT' | 'PERCENT' | 'NONE';
+    sacCode:            string;
+    ownerFee:           number;      // all-in owner commission (e.g. ₹9)
+    ownerFeeBase:       number;      // owner fee excl. GST (e.g. ₹7.63)
+    ownerNet:           number;
+    ownerFeeExempt:     boolean;
+    tdsAmount:          number;
+    tdsExempt:          boolean;
+    gstOnOwnerFee:      number;
 }> {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
@@ -347,30 +362,33 @@ export async function calculateCheckoutFees(
     else if (isExempt)            exemptReason = 'This booking/property is fee-exempt';
 
     // ── STEP 5: Final totals ─────────────────────────────────────────────────
-    // totalCharged = baseAmount (prorated+deposit-token) + convenience fee + GST
-    const totalCharged = baseAmount + fees.customerFee + fees.gstOnStudentFee;
+    // INCLUSIVE GST: totalCharged = baseAmount + convenienceFee (GST is already inside the ₹9)
+    // Student pays exactly: rent + ₹9 (no extra GST surprise)
+    const totalCharged = baseAmount + fees.customerFee;
 
     return {
-        baseAmount:     Math.round(baseAmount * 100) / 100,
-        rentBase:       Math.round(rentBase * 100) / 100,
-        depositBase:    Math.round(depositBase * 100) / 100,
-        convenienceFee: fees.customerFee,
-        gstOnFee:       fees.gstOnStudentFee,
-        cgst:           fees.cgst,
-        sgst:           fees.sgst,
-        totalCharged:   Math.round(totalCharged * 100) / 100,
-        feesEnabled:    fees.feesEnabled,
+        baseAmount:       Math.round(baseAmount * 100) / 100,
+        rentBase:         Math.round(rentBase * 100) / 100,
+        depositBase:      Math.round(depositBase * 100) / 100,
+        convenienceFee:   fees.customerFee,          // ₹9 — all-in (incl. GST)
+        convenienceFeeBase: (fees as any).studentFeeBase ?? 0,  // ₹7.63 — for invoice
+        gstOnFee:         fees.gstOnStudentFee,       // ₹1.37 — extracted GST for display
+        cgst:             fees.cgst,                  // ₹0.68
+        sgst:             fees.sgst,                  // ₹0.69
+        totalCharged:     Math.round(totalCharged * 100) / 100,
+        feesEnabled:      fees.feesEnabled,
         isExempt,
         exemptReason,
-        feeType:        fees.feesEnabled ? 'FLAT' : 'NONE',
-        sacCode:        fees.sacCode,
-        // Owner-side
-        ownerFee:       fees.ownerFee,
-        ownerNet:       fees.ownerNet,
-        ownerFeeExempt: fees.feesEnabled && fees.ownerFee === 0,
-        tdsAmount:      fees.tdsAmount,
-        tdsExempt:      fees.tdsAmount === 0 && fees.feesEnabled,
-        gstOnOwnerFee:  fees.gstOnOwnerFee,
+        feeType:          fees.feesEnabled ? 'FLAT' : 'NONE',
+        sacCode:          fees.sacCode,
+        // Owner-side breakdown (for tax summary)
+        ownerFee:         fees.ownerFee,              // ₹9 (incl. GST) deducted from owner
+        ownerFeeBase:     (fees as any).ownerFeeBase ?? 0,  // ₹7.63 — for invoice
+        ownerNet:         fees.ownerNet,              // grossRent - ownerFee
+        ownerFeeExempt:   fees.feesEnabled && fees.ownerFee === 0,
+        tdsAmount:        fees.tdsAmount,
+        tdsExempt:        fees.tdsAmount === 0 && fees.feesEnabled,
+        gstOnOwnerFee:    fees.gstOnOwnerFee,
     };
 }
 

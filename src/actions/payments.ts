@@ -578,7 +578,7 @@ export async function getInvoiceForReceipt(invoiceId: string) {
     const grossRent = Number(invoice.amount);
     // Check if owner has a custom commission rate
     const ownerUser = booking?.property ? await prisma.user.findFirst({ where: { properties: { some: { id: booking.property.id } } }, select: { commissionRate: true } as any }) : null;
-    let ownerFee = 0;
+    let ownerFee = 0;  // Total fee incl. GST (what's deducted from payout)
     if (feesEnabled) {
         if (ownerUser && (ownerUser as any).commissionRate != null) {
             ownerFee = Math.round((grossRent * (ownerUser as any).commissionRate) / 100 * 100) / 100;
@@ -586,7 +586,17 @@ export async function getInvoiceForReceipt(invoiceId: string) {
             ownerFee = platformSettings?.ownerRentFeeFlat ?? 0;
         }
     }
+    // GST-INCLUSIVE decomposition (₹9 incl. GST → base ₹7.63 + GST ₹1.37)
+    const GST_RATE = 0.18;
+    const ownerFeeGst  = feesEnabled && ownerFee > 0 ? Math.round((ownerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
+    const ownerFeeBase = feesEnabled && ownerFee > 0 ? Math.round((ownerFee - ownerFeeGst) * 100) / 100 : 0;
+    const ownerFeeGstCgst = Math.round((ownerFeeGst / 2) * 100) / 100;
+    const ownerFeeGstSgst = Math.round((ownerFeeGst - ownerFeeGstCgst) * 100) / 100;
+    // Net payout = gross rent - all-in platform fee (base + GST already included in ownerFee)
     const netPayout = grossRent - ownerFee;
+    // ✅ LEGAL: Owner's taxable rental income = full gross rent collected from student
+    // The ₹9 platform fee is their business expense, not a reduction in income
+    const ownerTaxableIncome = grossRent;
 
     return {
         id: invoice.id,
@@ -599,10 +609,15 @@ export async function getInvoiceForReceipt(invoiceId: string) {
         creditApplied: Number((invoice as any).creditApplied || 0),
         amount: grossRent,
         paidAmount: Number(invoice.paidAmount),
-        // Platform commission fields for owner's receipt
+        // Platform commission fields for owner's receipt (GST-inclusive breakdown)
         feesEnabled,
-        ownerFee,
-        netPayout,
+        ownerFee,             // ₹9 — all-in platform fee (incl. GST)
+        ownerFeeBase,         // ₹7.63 — base fee excl. GST (for tax invoice)
+        ownerFeeGst,          // ₹1.37 — GST extracted (18% of ₹7.63)
+        ownerFeeGstCgst,      // ₹0.68 — CGST 9%
+        ownerFeeGstSgst,      // ₹0.69 — SGST 9%
+        netPayout,            // ₹grossRent - ₹9 = what lands in bank
+        ownerTaxableIncome,   // = grossRent — what to declare to IT/CA
         dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
         paidAt: invoice.paidAt ? new Date(invoice.paidAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
         paymentMethod: invoice.paymentMethod || payment?.method || 'Online',

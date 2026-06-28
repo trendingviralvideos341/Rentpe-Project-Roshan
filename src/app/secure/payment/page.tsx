@@ -350,20 +350,21 @@ function PaymentPortal() {
     const subtotal = effectiveRent + depositAmount;
     // When feeBreakdown is loaded: use its totalCharged as the authoritative total.
     // Until it loads: show provisional amount (no fee added yet, shows loading state).
-    const convenienceFee = feeBreakdown?.convenienceFee ?? 0;
-    const gstOnFee       = feeBreakdown?.gstOnFee ?? 0;
-    const cgstAmt        = feeBreakdown?.cgst ?? 0;
-    const sgstAmt        = feeBreakdown?.sgst ?? 0;
-    const feesEnabled    = feeBreakdown?.feesEnabled ?? false;
-    const isExempt       = feeBreakdown?.isExempt ?? false;
-    const exemptReason   = feeBreakdown?.exemptReason ?? '';
+    const convenienceFee    = feeBreakdown?.convenienceFee ?? 0;    // ₹9 all-in (incl. GST)
+    const convFeatureBase   = feeBreakdown?.convenienceFeeBase ?? 0; // ₹7.63 (excl. GST)
+    const gstOnFee          = feeBreakdown?.gstOnFee ?? 0;           // ₹1.37 (extracted GST)
+    const cgstAmt           = feeBreakdown?.cgst ?? 0;               // ₹0.68
+    const sgstAmt           = feeBreakdown?.sgst ?? 0;               // ₹0.69
+    const feesEnabled       = feeBreakdown?.feesEnabled ?? false;
+    const isExempt          = feeBreakdown?.isExempt ?? false;
+    const exemptReason      = feeBreakdown?.exemptReason ?? '';
 
-    // Token total: ₹1,000 base + convenience fee + GST (if token fees enabled)
-    // Joining total: (prorated rent + deposit - token) + convenience fee + GST
+    // INCLUSIVE GST: totalAmount = base + convenienceFee (₹9 already includes GST)
+    // No extra GST is added on top — the ₹9 is the clean all-in platform fee
     const baseJoiningAmount = Math.max(0, subtotal - TOKEN_AMOUNT);
-    const joiningTotal      = baseJoiningAmount + convenienceFee + gstOnFee;
+    const joiningTotal      = baseJoiningAmount + convenienceFee;  // No extra gstOnFee!
     const totalAmount       = isToken
-        ? TOKEN_AMOUNT + convenienceFee + gstOnFee
+        ? TOKEN_AMOUNT + convenienceFee  // ₹1000 + ₹9 (if token fees enabled)
         : joiningTotal;
 
     // ── SUCCESS SCREEN ────────────────────────────────────────────────────────
@@ -564,19 +565,28 @@ function PaymentPortal() {
                                         <span className="text-slate-600 text-sm">Rent Total</span>
                                         <span className="font-black text-slate-800">₹{rentAmt.toLocaleString('en-IN')}</span>
                                     </div>
-                                     {/* ── Platform Convenience Fee (driven by server feeBreakdown) ── */}
+                                     {/* ── Platform Convenience Fee (GST-INCLUSIVE: driven by server feeBreakdown) ── */}
                                     {feesEnabled && convenienceFee > 0 && !isExempt && (
                                         <>
                                             <div className="flex justify-between items-center text-sm">
-                                                <span className="flex items-center gap-1 text-slate-500"><Receipt className="h-3 w-3" /> Platform Convenience Fee</span>
+                                                <span className="flex items-center gap-1 text-slate-500">
+                                                    <Receipt className="h-3 w-3" />
+                                                    Platform Convenience Fee
+                                                    <span className="text-[10px] text-indigo-400 font-bold">(incl. GST)</span>
+                                                </span>
                                                 <span className="font-bold text-indigo-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
                                             </div>
-                                            {gstOnFee > 0 && (
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-xs text-slate-400 flex items-center gap-1"><BadgePercent className="h-3 w-3" /> GST 18% (CGST ₹{cgstAmt.toFixed(2)} + SGST ₹{sgstAmt.toFixed(2)}) · SAC 997312</span>
-                                                    <span className="text-xs font-semibold text-slate-500">+ ₹{gstOnFee.toFixed(2)}</span>
-                                                </div>
-                                            )}
+                                            {/* GST Breakup — shown as informational sub-line */}
+                                            <div className="flex justify-between items-center pl-4">
+                                                <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                                    <BadgePercent className="h-3 w-3" />
+                                                    {convFeatureBase > 0
+                                                        ? `Base ₹${convFeatureBase.toFixed(2)} + CGST ₹${cgstAmt.toFixed(2)} + SGST ₹${sgstAmt.toFixed(2)} · SAC 997312`
+                                                        : `GST 18% (CGST ₹${cgstAmt.toFixed(2)} + SGST ₹${sgstAmt.toFixed(2)}) · SAC 997312`
+                                                    }
+                                                </span>
+                                                <span className="text-[10px] font-semibold text-slate-400">₹{gstOnFee.toFixed(2)} incl.</span>
+                                            </div>
                                         </>
                                     )}
                                     {feesEnabled && isExempt && (
@@ -594,7 +604,7 @@ function PaymentPortal() {
                                     <div className="flex justify-between items-center pt-2 border-t border-red-300">
                                         <span className="font-black text-red-800">Total You Pay</span>
                                         <div className="text-right">
-                                            <span className="text-2xl font-black text-red-700">₹{(rentAmt + convenienceFee + gstOnFee).toLocaleString('en-IN')}</span>
+                                            <span className="text-2xl font-black text-red-700">₹{(rentAmt + convenienceFee).toLocaleString('en-IN')}</span>
                                             {!feeBreakdown && <p className="text-[10px] text-red-400 animate-pulse">Calculating fees…</p>}
                                         </div>
                                     </div>
@@ -628,13 +638,13 @@ function PaymentPortal() {
                                 {isPaying
                                     ? <><span className="animate-spin inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full" />Processing...</>
                                     : feeBreakdown
-                                        ? `💳 Pay ₹${(rentAmt + convenienceFee + gstOnFee).toLocaleString('en-IN')} Now`
+                                        ? `💳 Pay ₹${(rentAmt + convenienceFee).toLocaleString('en-IN')} Now`
                                         : 'Calculating fees…'
                                 }
                             </Button>
                             {convenienceFee > 0 && !isExempt && (
                                 <p className="text-xs text-center text-slate-500">
-                                    Rent ₹{rentAmt.toLocaleString('en-IN')} + Fee ₹{convenienceFee.toLocaleString('en-IN')} + GST ₹{gstOnFee.toFixed(2)}
+                                    Rent ₹{rentAmt.toLocaleString('en-IN')} + Platform Fee ₹{convenienceFee.toLocaleString('en-IN')} (GST incl.)
                                 </p>
                             )}
                             <p className="text-xs text-center text-slate-400">🔒 256-bit SSL encrypted. Powered by Razorpay.</p>
@@ -786,26 +796,30 @@ function PaymentPortal() {
                                         <span className="font-black text-slate-800">₹{baseJoiningAmount.toLocaleString('en-IN')}</span>
                                     </div>
 
-                                    {/* ── Platform Convenience Fee (if enabled & not exempt) ── */}
                                     {feesEnabled && convenienceFee > 0 && !isExempt && (
                                         <>
                                             <div className="flex justify-between items-center pt-1">
                                                 <div className="flex items-center gap-1">
                                                     <Receipt className="h-3.5 w-3.5 text-indigo-500" />
                                                     <span className="text-sm text-indigo-700 font-semibold">Platform Convenience Fee</span>
+                                                    <span className="text-[10px] text-indigo-400 font-bold">(incl. GST)</span>
                                                 </div>
                                                 <span className="font-bold text-indigo-600">+ ₹{convenienceFee.toLocaleString('en-IN')}</span>
                                             </div>
-                                            {gstOnFee > 0 && (
-                                                <div className="flex justify-between items-center">
-                                                    <div className="flex items-center gap-1">
-                                                        <BadgePercent className="h-3 w-3 text-slate-400" />
-                                                        <span className="text-xs text-slate-400">GST 18% (CGST ₹{cgstAmt.toFixed(2)} + SGST ₹{sgstAmt.toFixed(2)}) · SAC 997312</span>
-                                                    </div>
-                                                    <span className="text-xs font-semibold text-slate-500">+ ₹{gstOnFee.toFixed(2)}</span>
+                                            {/* GST Breakup — informational sub-line, not additive */}
+                                            <div className="flex justify-between items-center pl-5">
+                                                <div className="flex items-center gap-1">
+                                                    <BadgePercent className="h-3 w-3 text-slate-400" />
+                                                    <span className="text-xs text-slate-400">
+                                                        {convFeatureBase > 0
+                                                            ? `Base ₹${convFeatureBase.toFixed(2)} + CGST ₹${cgstAmt.toFixed(2)} + SGST ₹${sgstAmt.toFixed(2)} · SAC 997312`
+                                                            : `GST 18% (CGST ₹${cgstAmt.toFixed(2)} + SGST ₹${sgstAmt.toFixed(2)}) · SAC 997312`
+                                                        }
+                                                    </span>
                                                 </div>
-                                            )}
-                                            <p className="text-[10px] text-slate-400 italic">* Platform fee is a service charge by RentPe and is separate from your rent receipt.</p>
+                                                <span className="text-xs font-semibold text-slate-400">₹{gstOnFee.toFixed(2)} incl.</span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 italic">* Platform fee is a service charge by RentPe, separate from your rent receipt. GST inclusive.</p>
                                         </>
                                     )}
 

@@ -310,6 +310,86 @@ export default function TaxSummaryPage() {
                     </div>
                 )}
 
+                {/* ── RentPe Commission Breakdown Card ─────────────────────────────────── */}
+                {s && s.confirmedBookings > 0 && (
+                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <Building2 className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-white text-base">💼 RentPe Commission Breakdown</h3>
+                                    <p className="text-indigo-200 text-xs mt-0.5">How your platform fee is calculated (per transaction)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {/* Typical transaction breakdown */}
+                            <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
+                                {/* Row 1: Gross */}
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-bold text-slate-700 text-sm">Gross Rent Collected from Student</p>
+                                        <p className="text-xs text-slate-400">This is the full rent amount. Your taxable income.</p>
+                                    </div>
+                                    <span className="font-black text-slate-900 text-lg">{fmtShort(s.totalGross)}</span>
+                                </div>
+                                {/* Row 2: Platform Fee */}
+                                <div className="flex justify-between items-center py-3 border-t border-b border-dashed border-slate-200">
+                                    <div>
+                                        <p className="font-bold text-rose-600 text-sm flex items-center gap-1">
+                                            <span>− RentPe Platform Commission</span>
+                                            <span className="bg-rose-100 text-rose-600 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">Business Expense</span>
+                                        </p>
+                                        {/* GST breakup */}
+                                        <div className="mt-1 ml-2 space-y-0.5 text-[11px] text-slate-400">
+                                            <p>├─ Base Platform Fee (excl. GST): <span className="font-bold text-slate-600">₹7.63</span></p>
+                                            <p>└─ GST 18% (SAC 997312): CGST <span className="font-bold">₹0.68</span> + SGST <span className="font-bold">₹0.69</span> = <span className="font-bold">₹1.37</span></p>
+                                        </div>
+                                    </div>
+                                    <span className="font-black text-rose-600 text-lg whitespace-nowrap">− {fmtShort(s.totalPlatformFeeCharged)}</span>
+                                </div>
+                                {/* Row 3: Net Payout */}
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-black text-emerald-700 text-sm flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse inline-block" />
+                                            ✅ Net Payout to Your Account
+                                        </p>
+                                        <p className="text-xs text-slate-400">Gross Rent − Platform Commission</p>
+                                    </div>
+                                    <span className="font-black text-emerald-700 text-2xl">{fmtShort(s.totalOwnerNetPayout)}</span>
+                                </div>
+                            </div>
+                            {/* Legal / CA Note */}
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                                <BadgeCheck className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                    <p className="font-black text-amber-800 text-sm">CA Note: Your Taxable Rental Income</p>
+                                    <p className="text-xs text-amber-700">
+                                        ✅ For <strong>Income Tax (IT Act)</strong>: Your gross rental income is <strong>{fmtShort(s.totalGross)}</strong>.
+                                        Report this full amount to your CA when filing ITR.
+                                    </p>
+                                    <p className="text-xs text-amber-700">
+                                        ✅ The <strong>Platform Commission (₹9/transaction)</strong> is your allowable business expense
+                                        deductible under the IT Act.
+                                    </p>
+                                    <p className="text-xs text-amber-700">
+                                        ✅ RentPe issues a <strong>Tax Invoice (SAC 997312)</strong> for the platform fee. Request it from support for your records.
+                                    </p>
+                                    {!s.tdsExempt && (
+                                        <p className="text-xs text-amber-700">
+                                            ✅ <strong>TDS (1% u/s 194-O)</strong> will be deducted when your annual earnings via RentPe exceed ₹5,00,000.
+                                            Your Form 26AS will reflect this for ITR filing.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Monthly Tax Breakdown Table */}
                 {monthly.length > 0 && (
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
