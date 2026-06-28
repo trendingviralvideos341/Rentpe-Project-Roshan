@@ -161,6 +161,7 @@ model Property {
   pgLicence                  String?
   licenseNumber              String?
   reraId                     String?
+  gstNumber                  String?
   termsAccepted              Boolean                      @default(false)
   termsAcceptedAt            DateTime?
   feeTermsAccepted           Boolean                      @default(false)

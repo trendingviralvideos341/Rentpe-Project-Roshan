@@ -74,7 +74,7 @@ export async function GET(
         const booking = await prisma.booking.findFirst({
             where: { tenantId: deposit.tenantId },
             include: {
-                property: { select: { name: true, address: true, city: true, owner: { select: { name: true } } } },
+                property: { select: { name: true, address: true, city: true, gstNumber: true, owner: { select: { name: true } } } },
                 room: true,
                 user: { select: { name: true, email: true, displayId: true, phone: true } },
             }
@@ -104,7 +104,7 @@ export async function GET(
         const propName      = booking?.property?.name || booking?.propertyName || "—";
         const propAddr      = (booking?.property as any)?.address || "—";
         const propCity      = (booking?.property as any)?.city || "";
-        const propGst       = null; // GST is stored on FeeExemption/PlatformFee records, not Property
+        const propGst       = (booking?.property as any)?.gstNumber || null;
         const ownerName     = (booking?.property as any)?.owner?.name || "Property Owner";
         const bookingRef    = booking?.displayId || "—";
 
