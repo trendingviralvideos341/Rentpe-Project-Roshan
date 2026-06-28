@@ -314,7 +314,7 @@ export function PropertyAgreementModal({
                     {/* Section 8: Cancellation */}
                     <section>
                         <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-[0.2em] mb-2 pb-1 border-b border-slate-100">8. Refund & Cancellation Policy</h4>
-                        <p>{property.refundPolicy || "Cancellation refunds are subject to the property owner's cancellation policy. Token amounts, once the reservation window has expired, are non-refundable. Platform service fees are strictly non-refundable upon booking confirmation."}</p>
+                        <p>{property.refundPolicy || "Cancellation refunds are subject to the property owner's cancellation policy. Token amounts, once the reservation window has expired, are non-refundable. Convenience fees are strictly non-refundable upon booking confirmation."}</p>
                     </section>
 
                     {/* Section 9: Governing Law */}

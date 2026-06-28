@@ -363,7 +363,7 @@ export async function GET(
         doc.setFont("helvetica", "normal");
         doc.setTextColor(6, 95, 70);
         doc.text(
-            `For Income Tax / HRA claim, the chargeable rent is ${inr(ownerGrossRent)}. Platform fee of ${inr(convFee)} is a separate RentPe service charge.`,
+            `For Income Tax / HRA claim, the chargeable rent is ${inr(ownerGrossRent)}. Convenience fee of ${inr(convFee)} is a separate RentPe service charge.`,
             L + 4, y + 10
         );
         y += 16;
@@ -429,7 +429,7 @@ export async function GET(
         doc.text("IMPORTANT:", L + 4, y + 5.5);
         doc.setFont("helvetica", "normal");
         doc.text(
-            `Submit ONLY the Rent amount of ${inr(ownerGrossRent)} to your employer HR for HRA exemption. The platform fee is NOT part of rent.`,
+            `Submit ONLY the Rent amount of ${inr(ownerGrossRent)} to your employer HR for HRA exemption. The convenience fee is NOT part of rent.`,
             L + 4, y + 10.5
         );
 
@@ -589,7 +589,7 @@ export async function GET(
             doc.setFont("helvetica", "normal");
             doc.setFontSize(7.5);
             doc.setTextColor(15, 23, 42);
-            doc.text("Platform Convenience & Lead Gen. Services", cols.desc, y + 6.5);
+            doc.text("Platform Commission", cols.desc, y + 6.5);
             doc.text(sacCode, cols.sac, y + 6.5, { align: "right" });
             doc.text(inr(ownerFeeBase), cols.base, y + 6.5, { align: "right" });
             doc.text(inr(ownerCgst), cols.cgst, y + 6.5, { align: "right" });

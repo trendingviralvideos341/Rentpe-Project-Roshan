@@ -124,7 +124,7 @@ export default function TaxSummaryPage() {
                 'Booking ID', 'Internal Booking ID',
                 'Razorpay Order ID', 'Razorpay Payment ID', 'Razorpay Transfer ID',
                 'Tenant Name', 'Property', 'Room Type', 'Payment Method',
-                'Gross Amount', 'Platform Fee Charged', 'GST Charged (18%)',
+                'Gross Amount', 'Platform Commission', 'GST Charged (18%)',
                 'TDS Deducted (1%)', 'Owner Net Payout',
                 'Refund Amount', 'Net Revenue',
                 'Status', 'Date'
@@ -234,8 +234,8 @@ export default function TaxSummaryPage() {
                 {s && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <KpiCard label="Total Gross Rent" value={fmtShort(s.totalGross)} icon={IndianRupee} color="indigo" sub={`${s.confirmedBookings} paid bookings`} />
-                        <KpiCard label="Platform Fee Charged" value={fmtShort(s.totalPlatformFeeCharged)} icon={Building2} color="amber" sub="Convenience fee" />
-                        <KpiCard label="GST Charged (18%)" value={fmtShort(s.totalGstCharged)} icon={Receipt} color="violet" sub="On platform fee only" />
+                        <KpiCard label="Platform Commission" value={fmtShort(s.totalPlatformFeeCharged)} icon={Building2} color="amber" sub="Platform commission charged" />
+                        <KpiCard label="GST Charged (18%)" value={fmtShort(s.totalGstCharged)} icon={Receipt} color="violet" sub="On platform commission only" />
                         <KpiCard label="TDS Deducted (1%)" value={s.tdsExempt ? '₹0 (Exempt)' : fmtShort(s.totalTdsDeducted)} icon={Shield} color={s.tdsExempt ? 'emerald' : 'rose'} sub="Sec 194-O" />
                         <KpiCard label="Your Net Payout" value={fmtShort(s.totalOwnerNetPayout)} icon={TrendingUp} color="emerald" sub="After fees + TDS" />
                         <KpiCard label="Total Refunds" value={fmtShort(s.totalRefunds)} icon={Download} color="rose" sub="Processed refunds" />
@@ -255,7 +255,7 @@ export default function TaxSummaryPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-black text-white text-base">💼 RentPe Commission Breakdown</h3>
-                                    <p className="text-indigo-200 text-xs mt-0.5">How your platform fee is calculated (per transaction)</p>
+                                    <p className="text-indigo-200 text-xs mt-0.5">How your platform commission is calculated (per transaction)</p>
                                 </div>
                             </div>
                         </div>
@@ -279,7 +279,7 @@ export default function TaxSummaryPage() {
                                         </p>
                                         {/* GST breakup */}
                                         <div className="mt-1 ml-2 space-y-0.5 text-[11px] text-slate-400">
-                                            <p>├─ Base Platform Fee (excl. GST): <span className="font-bold text-slate-600">₹7.63</span></p>
+                                            <p>├─ Base Platform Commission (excl. GST): <span className="font-bold text-slate-600">₹7.63</span></p>
                                             <p>└─ GST 18% (SAC 997312): CGST <span className="font-bold">₹0.68</span> + SGST <span className="font-bold">₹0.69</span> = <span className="font-bold">₹1.37</span></p>
                                         </div>
                                     </div>
@@ -311,7 +311,7 @@ export default function TaxSummaryPage() {
                                         deductible under the IT Act.
                                     </p>
                                     <p className="text-xs text-amber-700">
-                                        ✅ RentPe issues a <strong>Tax Invoice (SAC 997312)</strong> for the platform fee. Request it from support for your records.
+                                        ✅ RentPe issues a <strong>Tax Invoice (SAC 997312)</strong> for the platform commission. Request it from support for your records.
                                     </p>
                                     {!s.tdsExempt && (
                                         <p className="text-xs text-amber-700">
@@ -330,13 +330,13 @@ export default function TaxSummaryPage() {
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                         <div className="p-5 border-b border-slate-100">
                             <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform fees, GST, TDS, and your net payout</p>
+                            <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net payout</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
-                                        {['Month', 'Transactions', 'Gross Rent', 'Platform Fee', 'GST (18%)', 'TDS (1%)', 'Your Net Payout'].map(h => (
+                                        {['Month', 'Transactions', 'Gross Rent', 'Platform Commission', 'GST (18%)', 'TDS (1%)', 'Your Net Payout'].map(h => (
                                             <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                                         ))}
                                     </tr>
@@ -440,7 +440,7 @@ export default function TaxSummaryPage() {
                             <table className="w-full text-xs">
                                 <thead>
                                     <tr className="bg-slate-800 text-white">
-                                        {['Date', 'Booking ID', 'RP Order ID', 'Tenant', 'Property', 'Gross', 'Platform Fee', 'GST', 'TDS', 'Net Payout', 'Status'].map(h => (
+                                        {['Date', 'Booking ID', 'RP Order ID', 'Tenant', 'Property', 'Gross', 'Platform Commission', 'GST', 'TDS', 'Net Payout', 'Status'].map(h => (
                                             <th key={h} className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">{h}</th>
                                         ))}
                                     </tr>
@@ -451,6 +451,7 @@ export default function TaxSummaryPage() {
                                             <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                             <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
                                             <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate">{r.razorpayOrderId}</td>
+
                                             <td className="px-3 py-2.5 font-bold text-slate-700">
                                                 {r.tenantName}
                                                 {r.type === 'PROPERTY_ONBOARDING' && (

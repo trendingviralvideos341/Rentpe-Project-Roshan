@@ -83,9 +83,9 @@ export function BookingFeeBreakdown({
                     <div className="flex items-start gap-2 bg-slate-50 border border-slate-100 rounded-xl p-3">
                         <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                         <p className="text-[10px] text-slate-500 leading-relaxed">
-                            PG accommodation rent may be GST-exempt if monthly rent ≤ ₹20,000 and stay ≥ 90 days (CBIC Circular, effective July 15, 2024). Platform service fees attract 18% GST separately.
+                            PG accommodation rent may be GST-exempt if monthly rent ≤ ₹20,000 and stay ≥ 90 days (CBIC Circular, effective July 15, 2024). Convenience fees attract 18% GST separately.
                             <br />
-                            <em>Platform fee may vary from time to time. Updated charges will be communicated 7 days in advance.</em>
+                            <em>Convenience fee may vary from time to time. Updated charges will be communicated 7 days in advance.</em>
                         </p>
                     </div>
                 )}

@@ -505,7 +505,7 @@ export async function GET(
 
                 const isOnboarding = row.type === 'PROPERTY_ONBOARDING';
                 const currentSac = isOnboarding ? "998314" : "997312";
-                const serviceDesc = isOnboarding ? "Property Onboarding Platform Services" : "Platform Convenience & Lead Gen. Services";
+                const serviceDesc = isOnboarding ? "Property Onboarding Platform Services" : "Platform Commission";
 
                 drawBillingBlock([
                     "RentPe (Antigravity Project)",
