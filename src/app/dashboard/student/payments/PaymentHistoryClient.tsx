@@ -109,194 +109,117 @@ function PaymentTypeBadge({ type }: { type: string }) {
 function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
     booking: any; depositInfo: any; rawPayments: RawPayment[]; onClose: () => void;
 }) {
-    const now = new Date();
     const depositInvoiceId = `DEP-INV-${depositInfo?.id?.slice(-8).toUpperCase() || 'XXXXXXXX'}`;
     const receiptNo = `DEP-${depositInfo?.id?.slice(-6).toUpperCase() || 'XXXXXX'}`;
-    // Download URL: dedicated deposit receipt API (legally correct — separate from token)
-    const depositPdfUrl = depositInfo?.id
-        ? `/api/receipts/deposit/${depositInfo.id}?download=1`
-        : (booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null);
-    const paidDate = depositInfo?.paidAt
-        ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-        : booking?.agreementSignedAt
-            ? new Date(booking.agreementSignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-            : booking?.activeAt
-                ? new Date(booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-                : '—';
+    const depositPdfUrl = depositInfo?.id ? `/api/receipts/deposit/${depositInfo.id}?download=1` : (booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null);
+    const paidDate = depositInfo?.paidAt ? new Date(depositInfo.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
     const isPaid = depositInfo?.status === 'PAID';
 
-    // Find the deposit payment first (has depositId matching depositInfo.id)
-    const depositPayment = rawPayments.find(
-        p => p.depositId === depositInfo?.id && (p.status === 'VERIFIED' || p.status === 'SUCCESS')
-    );
-    // Fallback: joining payment (no invoiceId, no depositId)
-    const joiningPayment = depositPayment || rawPayments.find(
-        p => !p.invoiceId && !p.depositId && (p.status === 'VERIFIED' || p.status === 'SUCCESS')
-    );
-    // Also check any verified payment for this booking
-    const anyVerifiedPayment = joiningPayment || rawPayments.find(
-        p => p.status === 'VERIFIED' || p.status === 'SUCCESS'
-    );
+    const depositPayment = rawPayments.find(p => p.depositId === depositInfo?.id && (p.status === 'VERIFIED' || p.status === 'SUCCESS'));
+    const joiningPayment = depositPayment || rawPayments.find(p => !p.invoiceId && !p.depositId && (p.status === 'VERIFIED' || p.status === 'SUCCESS'));
+    const anyVerifiedPayment = joiningPayment || rawPayments.find(p => p.status === 'VERIFIED' || p.status === 'SUCCESS');
     const txId = anyVerifiedPayment?.razorpayId || anyVerifiedPayment?.razorpayOrderId || null;
     const rawMethod = anyVerifiedPayment?.method || booking?.paymentMethod || null;
-    const paymentMode = rawMethod === 'CASH' ? 'Cash'
-        : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
-        : rawMethod ? rawMethod : '—';
-
-    // Extract room number and bed number from roomAssigned (format: "Room 102 — Bed A" or "102")
+    const paymentMode = rawMethod === 'CASH' ? 'CASH' : rawMethod === 'ONLINE' ? 'ONLINE' : rawMethod ? rawMethod.toUpperCase() : '—';
     const roomAssigned = booking?.roomAssigned || '';
     const roomParts = roomAssigned.split('—');
     const roomDisplay = roomParts[0]?.replace(/room/i, '').trim() || roomAssigned || '—';
-    const bedDisplay = roomParts[1]?.replace(/bed/i, '').trim() || null;
+    const bedDisplay = roomParts[1]?.replace(/bed/i, '').trim() || '';
+
+    const depositAmount = Number(depositInfo?.amount || 0);
+    const firstMonthRent = Number(booking?.pendingAmount || booking?.amount || 0);
+    const totalCollected = depositAmount + firstMonthRent;
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-y-auto max-h-[92vh] print:shadow-none print:max-h-none">
-                {/* Header */}
-                <div className="bg-gradient-to-br from-teal-600 to-indigo-700 p-6 text-white relative overflow-hidden">
-                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
-                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10 print:hidden">
-                        <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-3 mb-3 relative z-10">
-                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <Shield className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-teal-200">Security Deposit Receipt</p>
-                            <p className="font-black text-lg">{receiptNo}</p>
-                        </div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-4 overflow-hidden print:shadow-none">
+                <div className="bg-[#0F766E] px-4 py-3 flex items-center justify-between text-white">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                        <Shield className="w-4 h-4" /> Deposit Receipt <span className="text-[#99F6E4]">#{receiptNo}</span>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full relative z-10 ${
-                        isPaid ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-100' : 'bg-amber-500/30 border border-amber-400/40 text-amber-100'
-                    }`}>
-                        {isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                        {isPaid ? 'Held by Owner' : 'Pending'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {depositPdfUrl && (
+                            <a href={depositPdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-bold rounded-lg transition-all border border-[#14B8A6]">
+                                <Download className="w-3.5 h-3.5" /> Download PDF
+                            </a>
+                        )}
+                        <button onClick={onClose} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-all">
+                            <X className="w-3.5 h-3.5" /> Close
+                        </button>
+                    </div>
                 </div>
 
-                {/* Body */}
-                <div className="p-6 space-y-4">
-                    {/* Room + Type strip at top */}
-                    {roomAssigned && (
-                        <div className="flex gap-3">
-                            <div className="flex-1 bg-slate-50 rounded-xl p-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Room</p>
-                                <p className="text-sm font-black text-slate-800">{roomDisplay}</p>
-                            </div>
-                            {bedDisplay && (
-                                <div className="flex-1 bg-slate-50 rounded-xl p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Bed</p>
-                                    <p className="text-sm font-black text-slate-800">{bedDisplay}</p>
-                                </div>
-                            )}
+                <div className="p-6 md:p-8 space-y-6">
+                    <div className="bg-[#14B8A6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3" />
+                        <div>
+                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                            <p className="text-teal-100 text-sm font-medium mt-1">Verified PGs & Hostels</p>
                         </div>
-                    )}
-
-                    {/* Tenant */}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
-                        <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
-                        {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
-                        {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
-                        {booking?.roomAssigned && <p className="text-sm text-slate-400">Room: {booking.roomAssigned}</p>}
-                        {(booking?.agreementSignedAt || booking?.activeAt) && (
-                            <p className="text-sm text-slate-400">Stay from: <span className="font-bold text-slate-700">{new Date(booking.agreementSignedAt || booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
-                        )}
-                    </div>
-
-                    {/* Reference IDs */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-teal-500 mb-1">Deposit Invoice ID</p>
-                            <p className="text-xs font-mono font-black text-teal-700">{depositInvoiceId}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
-                            <p className="text-xs font-mono font-black text-slate-700">{booking?.displayId || '—'}</p>
+                        <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">
+                            <h3 className="text-lg font-black uppercase tracking-widest">DEPOSIT RECEIPT</h3>
+                            <p className="text-teal-100 text-sm font-bold mb-2">#{receiptNo}</p>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-white text-[10px] font-black uppercase tracking-wider rounded-md ${isPaid ? 'bg-[#0D9488]' : 'bg-[#D97706]'}`}>
+                                {isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />} {isPaid ? 'PAID' : 'PENDING'}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Tenant ID */}
-                    {booking?.guestPhone && (
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
-                            <p className="text-xs font-mono font-black text-slate-700">
-                                {`RP-TN-${booking.guestPhone.replace(/\D/g, '').slice(-10)}`}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-2">TENANT DETAILS</p>
+                            <p className="font-black text-[#0F172A] text-base">{booking?.guestName || '—'}</p>
+                            {booking?.guestPhone && <p className="text-xs text-[#64748B] mt-1 font-mono">RP-TN-{booking.guestPhone.replace(/\D/g, '').slice(-10)}</p>}
+                            {booking?.guestEmail && <p className="text-xs text-[#64748B] mt-1">{booking.guestEmail}</p>}
+                            <p className="text-xs text-[#64748B] mt-1">Room: {roomDisplay}{bedDisplay ? ` · Bed ${bedDisplay}` : ''}</p>
+                        </div>
+                        <div className="bg-[#F0FDF4] border border-[#DCFCE7] rounded-xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#4ADE80] mb-2">PROPERTY DETAILS</p>
+                            <p className="font-black text-[#166534] text-base">{booking?.propertyName || '—'}</p>
+                            <p className="text-xs text-[#15803D] mt-1 leading-relaxed max-w-[200px]">
+                                Booking Ref: {booking?.displayId || '—'}
                             </p>
                         </div>
-                    )}
-
-                    {/* Transaction ID — always show, with fallback */}
-                    <div className={`rounded-xl p-3 ${txId ? 'bg-indigo-50 border border-indigo-100' : 'bg-amber-50 border border-amber-100'}`}>
-                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${txId ? 'text-indigo-400' : 'text-amber-500'}`}>Transaction ID (Razorpay)</p>
-                        <p className={`text-xs font-mono font-bold break-all ${txId ? 'text-indigo-700' : 'text-amber-600 italic'}`}>
-                            {txId || 'Pending / Not yet captured'}
-                        </p>
                     </div>
 
-                    {/* Breakdown */}
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
-                        <div className="flex justify-between items-center px-4 py-3">
-                            <div>
-                                <p className="text-sm font-black text-slate-800">Security Deposit</p>
-                                <p className="text-xs text-slate-400">One-time refundable deposit</p>
-                            </div>
-                            <p className="font-black text-slate-900">₹{(depositInfo?.amount || 0).toLocaleString('en-IN')}</p>
+                    <div>
+                        <div className="bg-[#0F766E] text-white px-4 py-2 rounded-t-xl text-[10px] font-black uppercase tracking-widest">
+                            PAYMENT SUMMARY
                         </div>
-                        {booking?.amount > 0 && (
-                            <div className="flex justify-between items-center px-4 py-3 bg-indigo-50/50">
-                                <div>
-                                    <p className="text-sm font-black text-slate-800">First Month Rent</p>
-                                    <p className="text-xs text-slate-400">Paid at joining</p>
+                        <div className="border border-[#E2E8F0] border-t-0 rounded-b-xl overflow-hidden text-sm divide-y divide-[#F1F5F9]">
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Receipt No.</span>
+                                <span className="font-bold text-[#0F172A]">{receiptNo}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Security Deposit</span>
+                                <span className="font-bold text-[#0F172A]">₹{depositAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            {firstMonthRent > 0 && (
+                                <div className="flex justify-between items-center px-4 py-3">
+                                    <span className="text-[#64748B]">First Month Rent</span>
+                                    <span className="font-bold text-[#0F172A]">₹{firstMonthRent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <p className="font-black text-indigo-700">₹{(booking.pendingAmount || booking.amount || 0).toLocaleString('en-IN')}</p>
+                            )}
+                            <div className="flex justify-between items-center px-4 py-4 bg-[#F8FAFC]">
+                                <span className="text-[#0F766E] font-black text-sm">Total Collected</span>
+                                <span className="font-black text-[#0F172A] text-base">₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
-                        )}
-                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
-                            <p className="text-sm font-black text-slate-600">Total Collected at Joining</p>
-                            <p className="font-black text-lg text-slate-900">₹{((depositInfo?.amount || 0) + (booking?.pendingAmount || booking?.amount || 0)).toLocaleString('en-IN')}</p>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Paid On</span>
+                                <span className="font-bold text-[#0F172A]">{paidDate}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Payment Method</span>
+                                <span className="font-bold text-[#0F172A]">{paymentMode}</span>
+                            </div>
+                            <div className="flex justify-between items-start px-4 py-3">
+                                <span className="text-[#64748B] shrink-0">Payment Ref</span>
+                                <span className="font-mono text-xs text-[#0F172A] text-right break-all max-w-[60%]">
+                                    {txId || 'Captured / Online Confirmation'}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Meta */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Paid On</p>
-                            <p className="text-sm font-black text-slate-700">{paidDate}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
-                            <p className="text-sm font-black text-slate-700">{paymentMode}</p>
-                        </div>
-                    </div>
-
-                    {/* Legal terms and disclaimer */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1.5 text-[10px] text-slate-500 leading-relaxed">
-                        <p className="font-bold text-slate-700 uppercase tracking-wider text-[9px]">Terms of Deposit Refund</p>
-                        <p>1. This deposit is held by the property owner and is fully refundable at the time of vacating, subject to checking out as per the lease terms.</p>
-                        <p>2. Deductions may apply for unpaid utility bills, rent arrears, notice period defaults, or physical damages to the room/property beyond normal wear and tear.</p>
-                        <p className="text-[9px] italic text-slate-400 mt-1">This is a computer-generated confirmation receipt. Signature not required. Subject to the realization of online payments.</p>
-                    </div>
-
-                    <p className="text-center text-[10px] text-slate-300 font-bold tracking-wider uppercase">
-                        RentPe Ecosystem • Prop-Tech OS for Modern Living • support@rentpe.in
-                    </p>
-
-                    <div className="flex gap-3">
-                        {depositPdfUrl ? (
-                            <a
-                                href={depositPdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-sm rounded-2xl transition-all"
-                            >
-                                <Download className="w-4 h-4" /> Download PDF
-                            </a>
-                        ) : null}
-                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            Close
-                        </button>
                     </div>
                 </div>
             </div>
@@ -310,189 +233,142 @@ function RentReceiptModal({ booking, invoice, onClose }: {
     booking: any; invoice: any; onClose: () => void;
 }) {
     const receiptNo = invoice?.displayId || `INV-${invoice?.id?.slice(-8).toUpperCase() || 'XXXXXXXX'}`;
-    // Direct PDF API URL — opens the 2-page HRA + Tax Invoice PDF
     const rentPdfUrl = invoice?.id ? `/api/receipts/${invoice.id}?download=1` : null;
     const paidDate = invoice?.paidAt
-        ? new Date(invoice.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        ? new Date(invoice.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '—';
     const dueDate = invoice?.dueDate
-        ? new Date(invoice.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+        ? new Date(invoice.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         : '—';
-
-    // Find verified payment
     const payment = invoice?.payments?.find((p: any) => p.status === 'VERIFIED' || p.status === 'SUCCESS') || invoice?.payments?.[0];
     const txId = payment?.razorpayId || payment?.razorpayOrderId || null;
     const rawMethod = invoice?.paymentMethod || payment?.method || booking?.paymentMethod || null;
-    const paymentMode = rawMethod === 'CASH' ? 'Cash'
-        : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
-        : rawMethod ? rawMethod : '—';
-
-    // Extract room number and bed number from roomAssigned
+    const paymentMode = rawMethod === 'CASH' ? 'CASH'
+        : rawMethod === 'ONLINE' ? 'ONLINE'
+        : rawMethod ? rawMethod.toUpperCase() : '—';
+    const rentAmount = Number(invoice?.rentAmount || invoice?.amount || 0);
+    const totalAmount = Number(invoice?.amount || 0);
     const roomAssigned = booking?.roomAssigned || '';
     const roomParts = roomAssigned.split('—');
     const roomDisplay = roomParts[0]?.replace(/room/i, '').trim() || roomAssigned || '—';
-    const bedDisplay = roomParts[1]?.replace(/bed/i, '').trim() || null;
-
-    // Financial calculations
-    const rentAmount = Number(invoice?.rentAmount || invoice?.amount || 0);
-    const foodAmount = Number(invoice?.foodAmount || 0);
-    const creditApplied = Number(invoice?.creditApplied || 0);
-    const totalAmount = Number(invoice?.amount || 0);
+    const bedDisplay = roomParts[1]?.replace(/bed/i, '').trim() || '';
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-y-auto max-h-[92vh] print:shadow-none print:max-h-none">
-                {/* Header */}
-                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white relative overflow-hidden">
-                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
-                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10 print:hidden">
-                        <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-3 mb-3 relative z-10">
-                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <Home className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Rent Receipt</p>
-                            <p className="font-black text-lg">{receiptNo}</p>
-                        </div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-4 overflow-hidden print:shadow-none">
+                {/* Title Bar */}
+                <div className="bg-[#4C28D5] px-4 py-3 flex items-center justify-between text-white">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                        <FileText className="w-4 h-4" /> Rent Receipt <span className="text-[#A78BFA]">#{receiptNo}</span>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full relative z-10 bg-emerald-500/30 border border-emerald-400/40 text-emerald-100">
-                        <CheckCircle2 className="w-3 h-3" /> Paid
-                    </span>
-                </div>
-
-                {/* Body */}
-                <div className="p-6 space-y-4">
-                    {/* Room + Type strip at top */}
-                    {roomAssigned && (
-                        <div className="flex gap-3">
-                            <div className="flex-1 bg-slate-50 rounded-xl p-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Room</p>
-                                <p className="text-sm font-black text-slate-800">{roomDisplay}</p>
-                            </div>
-                            {bedDisplay && (
-                                <div className="flex-1 bg-slate-50 rounded-xl p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Bed</p>
-                                    <p className="text-sm font-black text-slate-800">{bedDisplay}</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Tenant */}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
-                        <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
-                        {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
-                        {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
-                        {booking?.roomAssigned && <p className="text-sm text-slate-400">Room: {booking.roomAssigned}</p>}
-                        {(booking?.agreementSignedAt || booking?.activeAt) && (
-                            <p className="text-sm text-slate-400">Stay from: <span className="font-bold text-slate-700">{new Date(booking.agreementSignedAt || booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
-                        )}
-                    </div>
-
-                    {/* Reference IDs */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">Billing Month</p>
-                            <p className="text-xs font-mono font-black text-indigo-700">{invoice?.month || '—'}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking ID</p>
-                            <p className="text-xs font-mono font-black text-slate-700">{booking?.displayId || '—'}</p>
-                        </div>
-                    </div>
-
-                    {/* Tenant ID */}
-                    {booking?.guestPhone && (
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
-                            <p className="text-xs font-mono font-black text-slate-700">
-                                {`RP-TN-${booking.guestPhone.replace(/\D/g, '').slice(-10)}`}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Transaction ID */}
-                    <div className={`rounded-xl p-3 ${txId ? 'bg-indigo-50 border border-indigo-100' : 'bg-amber-50 border border-amber-100'}`}>
-                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${txId ? 'text-indigo-400' : 'text-amber-500'}`}>Transaction ID (Razorpay)</p>
-                        <p className={`text-xs font-mono font-bold break-all ${txId ? 'text-indigo-700' : 'text-amber-600 italic'}`}>
-                            {txId || 'Captured / Online Confirmation'}
-                        </p>
-                    </div>
-
-                    {/* Breakdown */}
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
-                        <div className="flex justify-between items-center px-4 py-3">
-                            <div>
-                                <p className="text-sm font-black text-slate-800">Rent Amount</p>
-                                <p className="text-xs text-slate-400">Monthly accommodation rent</p>
-                            </div>
-                            <p className="font-black text-slate-900">₹{rentAmount.toLocaleString('en-IN')}</p>
-                        </div>
-                        {foodAmount > 0 && (
-                            <div className="flex justify-between items-center px-4 py-3">
-                                <div>
-                                    <p className="text-sm font-black text-slate-800">Food Charges</p>
-                                    <p className="text-xs text-slate-400">Monthly meal services</p>
-                                </div>
-                                <p className="font-black text-slate-900">₹{foodAmount.toLocaleString('en-IN')}</p>
-                            </div>
-                        )}
-                        {creditApplied > 0 && (
-                            <div className="flex justify-between items-center px-4 py-3 bg-emerald-50/50">
-                                <div>
-                                    <p className="text-sm font-black text-emerald-800">Credit Applied</p>
-                                    <p className="text-xs text-emerald-500">Discount or adjustment</p>
-                                </div>
-                                <p className="font-black text-emerald-700">-₹{creditApplied.toLocaleString('en-IN')}</p>
-                            </div>
-                        )}
-                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
-                            <p className="text-sm font-black text-slate-600">Total Paid</p>
-                            <p className="font-black text-lg text-slate-900">₹{totalAmount.toLocaleString('en-IN')}</p>
-                        </div>
-                    </div>
-
-                    {/* Meta */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Paid On</p>
-                            <p className="text-sm font-black text-slate-700">{paidDate}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
-                            <p className="text-sm font-black text-slate-700">{paymentMode}</p>
-                        </div>
-                    </div>
-
-                    {/* Legal terms and disclaimer */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1.5 text-[10px] text-slate-500 leading-relaxed">
-                        <p className="font-bold text-slate-700 uppercase tracking-wider text-[9px]">Important Information</p>
-                        <p>1. This receipt confirms realization of monthly rent/charges for the period specified above.</p>
-                        <p>2. Rent is due on or before the due date. Late payment charges may apply for delayed dues as per standard terms.</p>
-                        <p className="text-[9px] italic text-slate-400 mt-1">This is a computer-generated confirmation receipt. Signature not required. Subject to the realization of online payments.</p>
-                    </div>
-
-                    <p className="text-center text-[10px] text-slate-300 font-bold tracking-wider uppercase">
-                        RentPe Ecosystem • Prop-Tech OS for Modern Living • support@rentpe.in
-                    </p>
-
-                    <div className="flex gap-3">
-                        {rentPdfUrl ? (
+                    <div className="flex items-center gap-2">
+                        {rentPdfUrl && (
                             <a
                                 href={rentPdfUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-2xl transition-all"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981] hover:bg-[#059669] text-white text-xs font-bold rounded-lg transition-all"
                             >
-                                <Download className="w-4 h-4" /> Download PDF
+                                <Download className="w-3.5 h-3.5" /> Download PDF
                             </a>
-                        ) : null}
-                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            Close
+                        )}
+                        <button onClick={onClose} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-all">
+                            <X className="w-3.5 h-3.5" /> Close
                         </button>
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 md:p-8 space-y-6">
+                    {/* Purple Banner */}
+                    <div className="bg-[#6332F6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+                        <div>
+                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                            <p className="text-indigo-200 text-sm font-medium mt-1">Verified PGs & Hostels</p>
+                        </div>
+                        <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">
+                            <h3 className="text-lg font-black uppercase tracking-widest">RENT RECEIPT</h3>
+                            <p className="text-indigo-200 text-sm font-bold mb-2">#{receiptNo}</p>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#10B981] text-white text-[10px] font-black uppercase tracking-wider rounded-md">
+                                <CheckCircle2 className="w-3 h-3" /> PAID
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Details Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-2">TENANT DETAILS</p>
+                            <p className="font-black text-[#0F172A] text-base">{booking?.guestName || '—'}</p>
+                            {booking?.guestPhone && <p className="text-xs text-[#64748B] mt-1 font-mono">RP-TN-{booking.guestPhone.replace(/\D/g, '').slice(-10)}</p>}
+                            {booking?.guestEmail && <p className="text-xs text-[#64748B] mt-1">{booking.guestEmail}</p>}
+                            <p className="text-xs text-[#64748B] mt-1">Room: {roomDisplay}{bedDisplay ? ` · Bed ${bedDisplay}` : ''}</p>
+                            {(booking?.agreementSignedAt || booking?.activeAt) && (
+                                <p className="text-xs text-[#64748B] mt-1">Stay from: <span className="font-bold text-[#334155]">{new Date(booking.agreementSignedAt || booking.activeAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
+                            )}
+                        </div>
+                        <div className="bg-[#F0F9FF] border border-[#E0F2FE] rounded-xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#7DD3FC] mb-2">PROPERTY DETAILS</p>
+                            <p className="font-black text-[#0369A1] text-base">{booking?.propertyName || '—'}</p>
+                            <p className="text-xs text-[#0284C7] mt-1 leading-relaxed max-w-[200px]">
+                                {booking?.propertyAddress || 'Bangalore, Karnataka - India'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Payment Summary */}
+                    <div>
+                        <div className="bg-[#4C28D5] text-white px-4 py-2 rounded-t-xl text-[10px] font-black uppercase tracking-widest">
+                            PAYMENT SUMMARY
+                        </div>
+                        <div className="border border-[#E2E8F0] border-t-0 rounded-b-xl overflow-hidden text-sm divide-y divide-[#F1F5F9]">
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Period / Month</span>
+                                <span className="font-bold text-[#0F172A]">{invoice?.month || '—'}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Invoice No.</span>
+                                <span className="font-bold text-[#0F172A]">{receiptNo}</span>
+                            </div>
+                            {booking?.guestPhone && (
+                                <div className="flex justify-between items-center px-4 py-3">
+                                    <span className="text-[#64748B]">Tenant ID</span>
+                                    <span className="font-mono text-[#0F172A]">RP-TN-{booking.guestPhone.replace(/\D/g, '').slice(-10)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Rent Amount</span>
+                                <span className="font-bold text-[#0F172A]">₹{rentAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-4 bg-[#F8FAFC]">
+                                <span className="text-[#4C28D5] font-black text-sm">Gross Rent Collected</span>
+                                <span className="font-black text-[#0F172A] text-base">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Due Date</span>
+                                <span className="font-bold text-[#0F172A]">{dueDate}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Paid On</span>
+                                <span className="font-bold text-[#0F172A]">{paidDate}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Payment Method</span>
+                                <span className="font-bold text-[#0F172A]">{paymentMode}</span>
+                            </div>
+                            <div className="flex justify-between items-start px-4 py-3">
+                                <span className="text-[#64748B] shrink-0">Payment Ref</span>
+                                <span className="font-mono text-xs text-[#0F172A] text-right break-all max-w-[60%]">
+                                    {txId || 'Captured / Online Confirmation'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#FFFBEB] border border-[#FEF3C7] rounded-xl px-4 py-3 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-[#D97706]" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#B45309]">RENTPE VERIFIED TRANSACTION</span>
                     </div>
                 </div>
             </div>
@@ -505,142 +381,100 @@ function TokenReceiptModal({ booking, onClose }: {
     booking: any; onClose: () => void;
 }) {
     const receiptNo = `TKN-RP-${booking?.displayId || 'XXXXXX'}`;
-    // Direct PDF API URL — opens the professional token receipt PDF
     const tokenPdfUrl = booking?.id ? `/api/receipts/token/${booking.id}?download=1` : null;
     const paidDate = booking?.tokenPaidAt
-        ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '—';
-
     const txId = booking?.tokenPaymentId || null;
     const rawMethod = booking?.paymentMethod || null;
-    const paymentMode = rawMethod === 'CASH' ? 'Cash'
-        : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
-        : rawMethod ? rawMethod : '—';
-
-    // Financial calculations
+    const paymentMode = rawMethod === 'CASH' ? 'CASH'
+        : rawMethod === 'ONLINE' ? 'ONLINE'
+        : rawMethod ? rawMethod.toUpperCase() : '—';
     const tokenAmount = Number(booking?.tokenAmount || 1000);
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-y-auto max-h-[92vh] print:shadow-none print:max-h-none">
-                {/* Header */}
-                <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white relative overflow-hidden">
-                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
-                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10 print:hidden">
-                        <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-3 mb-3 relative z-10">
-                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <Tag className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-violet-200">Token Payment Receipt</p>
-                            <p className="font-black text-lg">{receiptNo}</p>
-                        </div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-4 overflow-hidden print:shadow-none">
+                <div className="bg-[#4C28D5] px-4 py-3 flex items-center justify-between text-white">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                        <Tag className="w-4 h-4" /> Token Receipt <span className="text-[#A78BFA]">#{receiptNo}</span>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full relative z-10 bg-emerald-500/30 border border-emerald-400/40 text-emerald-100">
-                        <CheckCircle2 className="w-3 h-3" /> Paid
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {tokenPdfUrl && (
+                            <a href={tokenPdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981] hover:bg-[#059669] text-white text-xs font-bold rounded-lg transition-all">
+                                <Download className="w-3.5 h-3.5" /> Download PDF
+                            </a>
+                        )}
+                        <button onClick={onClose} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-all">
+                            <X className="w-3.5 h-3.5" /> Close
+                        </button>
+                    </div>
                 </div>
 
-                {/* Body */}
-                <div className="p-6 space-y-4">
-                    {/* Tenant */}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenant Details</p>
-                        <p className="font-black text-slate-900 text-base">{booking?.guestName || '—'}</p>
-                        {booking?.guestPhone && <p className="text-sm text-slate-500">{booking.guestPhone}</p>}
-                        {booking?.guestEmail && <p className="text-sm text-slate-400">{booking.guestEmail}</p>}
-                    </div>
-
-                    {/* Reference IDs */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-violet-50 border border-violet-100 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-violet-500 mb-1">Receipt ID</p>
-                            <p className="text-xs font-mono font-black text-violet-700">{receiptNo}</p>
+                <div className="p-6 md:p-8 space-y-6">
+                    <div className="bg-[#8B5CF6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+                        <div>
+                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                            <p className="text-indigo-100 text-sm font-medium mt-1">Verified PGs & Hostels</p>
                         </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Booking Ref</p>
-                            <p className="text-xs font-mono font-black text-slate-700">{booking?.displayId || '—'}</p>
+                        <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">
+                            <h3 className="text-lg font-black uppercase tracking-widest">TOKEN RECEIPT</h3>
+                            <p className="text-indigo-100 text-sm font-bold mb-2">#{receiptNo}</p>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#10B981] text-white text-[10px] font-black uppercase tracking-wider rounded-md">
+                                <CheckCircle2 className="w-3 h-3" /> PAID
+                            </span>
                         </div>
                     </div>
 
-                    {/* Tenant ID */}
-                    {booking?.guestPhone && (
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tenant ID</p>
-                            <p className="text-xs font-mono font-black text-slate-700">
-                                {`RP-TN-${booking.guestPhone.replace(/\D/g, '').slice(-10)}`}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8] mb-2">TENANT DETAILS</p>
+                            <p className="font-black text-[#0F172A] text-base">{booking?.guestName || '—'}</p>
+                            {booking?.guestPhone && <p className="text-xs text-[#64748B] mt-1 font-mono">RP-TN-{booking.guestPhone.replace(/\D/g, '').slice(-10)}</p>}
+                            {booking?.guestEmail && <p className="text-xs text-[#64748B] mt-1">{booking.guestEmail}</p>}
+                        </div>
+                        <div className="bg-[#F0F9FF] border border-[#E0F2FE] rounded-xl p-5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#7DD3FC] mb-2">PROPERTY DETAILS</p>
+                            <p className="font-black text-[#0369A1] text-base">{booking?.propertyName || '—'}</p>
+                            <p className="text-xs text-[#0284C7] mt-1 leading-relaxed max-w-[200px]">
+                                Booking Ref: {booking?.displayId || '—'}
                             </p>
                         </div>
-                    )}
-
-                    {/* Transaction ID */}
-                    <div className={`rounded-xl p-3 ${txId ? 'bg-indigo-50 border border-indigo-100' : 'bg-amber-50 border border-amber-100'}`}>
-                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${txId ? 'text-indigo-400' : 'text-amber-500'}`}>Transaction ID (Razorpay)</p>
-                        <p className={`text-xs font-mono font-bold break-all ${txId ? 'text-indigo-700' : 'text-amber-600 italic'}`}>
-                            {txId || 'Captured / Online Confirmation'}
-                        </p>
                     </div>
 
-                    {/* Warning note */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 leading-relaxed font-bold">
-                        ⚠️ IMPORTANT: This token amount is non-refundable and confirms your booking intent for {booking?.propertyName || 'the selected property'}.
-                    </div>
-
-                    {/* Breakdown */}
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
-                        <div className="flex justify-between items-center px-4 py-3">
-                            <div>
-                                <p className="text-sm font-black text-slate-800">Booking Token Payment</p>
-                                <p className="text-xs text-slate-400">Confirmation / seat reservation</p>
+                    <div>
+                        <div className="bg-[#4C28D5] text-white px-4 py-2 rounded-t-xl text-[10px] font-black uppercase tracking-widest">
+                            PAYMENT SUMMARY
+                        </div>
+                        <div className="border border-[#E2E8F0] border-t-0 rounded-b-xl overflow-hidden text-sm divide-y divide-[#F1F5F9]">
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Receipt No.</span>
+                                <span className="font-bold text-[#0F172A]">{receiptNo}</span>
                             </div>
-                            <p className="font-black text-slate-900">₹{tokenAmount.toLocaleString('en-IN')}</p>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Token Amount</span>
+                                <span className="font-bold text-[#0F172A]">₹{tokenAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-4 bg-[#F8FAFC]">
+                                <span className="text-[#4C28D5] font-black text-sm">Total Paid</span>
+                                <span className="font-black text-[#0F172A] text-base">₹{tokenAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Paid On</span>
+                                <span className="font-bold text-[#0F172A]">{paidDate}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-3">
+                                <span className="text-[#64748B]">Payment Method</span>
+                                <span className="font-bold text-[#0F172A]">{paymentMode}</span>
+                            </div>
+                            <div className="flex justify-between items-start px-4 py-3">
+                                <span className="text-[#64748B] shrink-0">Payment Ref</span>
+                                <span className="font-mono text-xs text-[#0F172A] text-right break-all max-w-[60%]">
+                                    {txId || 'Captured / Online Confirmation'}
+                                </span>
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
-                            <p className="text-sm font-black text-slate-600">Total Paid</p>
-                            <p className="font-black text-lg text-slate-900">₹{tokenAmount.toLocaleString('en-IN')}</p>
-                        </div>
-                    </div>
-
-                    {/* Meta */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Paid On</p>
-                            <p className="text-sm font-black text-slate-700">{paidDate}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-xl p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
-                            <p className="text-sm font-black text-slate-700">{paymentMode}</p>
-                        </div>
-                    </div>
-
-                    {/* Legal terms and disclaimer */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1.5 text-[10px] text-slate-500 leading-relaxed">
-                        <p className="font-bold text-slate-700 uppercase tracking-wider text-[9px]">Important Information</p>
-                        <p>1. This token amount confirms your commitment to lease. The PG/Hostel room booking will be verified and held for you.</p>
-                        <p>2. If you withdraw the booking, the token amount is forfeited and is non-refundable as per RentPe booking guidelines.</p>
-                        <p className="text-[9px] italic text-slate-400 mt-1">This is a computer-generated confirmation receipt. Signature not required. Subject to the realization of online payments.</p>
-                    </div>
-
-                    <p className="text-center text-[10px] text-slate-300 font-bold tracking-wider uppercase">
-                        RentPe Ecosystem • Prop-Tech OS for Modern Living • support@rentpe.in
-                    </p>
-
-                    <div className="flex gap-3">
-                        {tokenPdfUrl ? (
-                            <a
-                                href={tokenPdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 text-white font-black text-sm rounded-2xl transition-all"
-                            >
-                                <Download className="w-4 h-4" /> Download PDF
-                            </a>
-                        ) : null}
-                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
-                            Close
-                        </button>
                     </div>
                 </div>
             </div>
