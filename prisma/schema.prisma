@@ -756,7 +756,9 @@ model PlatformSettings {
   id                       String   @id @default("singleton")
   feesEnabled              Boolean  @default(false)
   studentRentFeeFlat       Float    @default(9)
+  studentRentFeeType       String   @default("FLAT")
   ownerRentFeeFlat         Float    @default(9)
+  ownerRentFeeType         String   @default("FLAT")
   ownerOnboardingFeeFlat   Float    @default(99)
   platformWalletBalance    Float    @default(0)
   globalCommissionRate     Float    @default(10)
@@ -770,7 +772,9 @@ model PlatformSettings {
   allowCashPayment         Boolean  @default(false)
   tokenFeesEnabled         Boolean  @default(false)
   studentTokenFeeFlat      Float    @default(0)
+  studentTokenFeeType      String   @default("FLAT")
   ownerTokenFeeFlat        Float    @default(0)
+  ownerTokenFeeType        String   @default("FLAT")
   updatedAt                DateTime @updatedAt
 }
 

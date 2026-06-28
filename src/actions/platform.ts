@@ -24,12 +24,16 @@ export async function getPlatformSettings() {
 export async function updatePlatformSettings(data: {
     feesEnabled?: boolean;
     studentRentFeeFlat?: number;
+    studentRentFeeType?: string;
     ownerRentFeeFlat?: number;
+    ownerRentFeeType?: string;
     ownerOnboardingFeeFlat?: number;
     allowCashPayment?: boolean;
     tokenFeesEnabled?: boolean;
     studentTokenFeeFlat?: number;
+    studentTokenFeeType?: string;
     ownerTokenFeeFlat?: number;
+    ownerTokenFeeType?: string;
 }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -132,9 +136,17 @@ export async function calculateFees(amountStr: string, userId?: string, property
     // Customer fee: use token or rent fee based on payment type
     let customerFee: number;
     if (isToken) {
-        customerFee = (tokenFeesEnabled && !exemptCustomerToken) ? studentTokenFeeFlat : 0;
+        const tokenType = (settings as any).studentTokenFeeType || 'FLAT';
+        const rawFee = (tokenFeesEnabled && !exemptCustomerToken) ? studentTokenFeeFlat : 0;
+        customerFee = tokenType === 'PERCENT'
+            ? Math.round((grossAmount * rawFee) / 100 * 100) / 100
+            : rawFee;
     } else {
-        customerFee = exemptCustomer ? 0 : settings.studentRentFeeFlat;
+        const rentType = (settings as any).studentRentFeeType || 'FLAT';
+        const rawFee = exemptCustomer ? 0 : settings.studentRentFeeFlat;
+        customerFee = rentType === 'PERCENT'
+            ? Math.round((grossAmount * rawFee) / 100 * 100) / 100
+            : rawFee;
         // Check custom student fee override
         if (!exemptCustomer && exemptions.length > 0) {
             for (const ex of exemptions) {
@@ -150,7 +162,11 @@ export async function calculateFees(amountStr: string, userId?: string, property
     const totalCharged = grossAmount + customerFee;
 
     // Per-owner commission override — check owner's commissionRate first
-    let commissionRate = settings.ownerRentFeeFlat; // default flat fee
+    const globalOwnerRentType = (settings as any).ownerRentFeeType || 'FLAT';
+    let commissionRate = globalOwnerRentType === 'PERCENT'
+        ? Math.round((grossAmount * settings.ownerRentFeeFlat) / 100 * 100) / 100
+        : settings.ownerRentFeeFlat;
+
     if (ownerId) {
         const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { commissionRate: true } as any });
         if (owner && (owner as any).commissionRate != null) {
@@ -172,7 +188,11 @@ export async function calculateFees(amountStr: string, userId?: string, property
 
     let ownerFee: number;
     if (isToken) {
-        ownerFee = (tokenFeesEnabled && !exemptOwnerToken) ? ownerTokenFeeFlat : 0;
+        const tokenOwnerType = (settings as any).ownerTokenFeeType || 'FLAT';
+        const rawFee = (tokenFeesEnabled && !exemptOwnerToken) ? ownerTokenFeeFlat : 0;
+        ownerFee = tokenOwnerType === 'PERCENT'
+            ? Math.round((grossAmount * rawFee) / 100 * 100) / 100
+            : rawFee;
     } else {
         ownerFee = exemptOwner ? 0 : commissionRate;
     }

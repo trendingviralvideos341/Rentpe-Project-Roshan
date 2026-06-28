@@ -25,11 +25,15 @@ export default function PlatformFeesPage() {
     const [feesEnabled, setFeesEnabled] = useState(false);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [studentRentFeeFlat, setStudentRentFeeFlat] = useState(9);
+    const [studentRentFeeType, setStudentRentFeeType] = useState("FLAT");
     const [ownerRentFeeFlat, setOwnerRentFeeFlat] = useState(9);
+    const [ownerRentFeeType, setOwnerRentFeeType] = useState("FLAT");
     const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
     const [tokenFeesEnabled, setTokenFeesEnabled] = useState(false);
     const [studentTokenFeeFlat, setStudentTokenFeeFlat] = useState(0);
+    const [studentTokenFeeType, setStudentTokenFeeType] = useState("FLAT");
     const [ownerTokenFeeFlat, setOwnerTokenFeeFlat] = useState(0);
+    const [ownerTokenFeeType, setOwnerTokenFeeType] = useState("FLAT");
     const [exemptions, setExemptions] = useState<any[]>([]);
 
     // Exemption data
@@ -81,11 +85,15 @@ export default function PlatformFeesPage() {
             setFeesEnabled(s.feesEnabled);
             setAllowCashPayment(s.allowCashPayment ?? false);
             setStudentRentFeeFlat(s.studentRentFeeFlat);
+            setStudentRentFeeType(s.studentRentFeeType || "FLAT");
             setOwnerRentFeeFlat(s.ownerRentFeeFlat);
+            setOwnerRentFeeType(s.ownerRentFeeType || "FLAT");
             setOwnerOnboardingFeeFlat(s.ownerOnboardingFeeFlat);
             setTokenFeesEnabled((s as any).tokenFeesEnabled ?? false);
             setStudentTokenFeeFlat((s as any).studentTokenFeeFlat ?? 0);
+            setStudentTokenFeeType((s as any).studentTokenFeeType || "FLAT");
             setOwnerTokenFeeFlat((s as any).ownerTokenFeeFlat ?? 0);
+            setOwnerTokenFeeType((s as any).ownerTokenFeeType || "FLAT");
             setFees(f);
             setChangeLogs(l);
             setExemptions(ex);
@@ -100,7 +108,20 @@ export default function PlatformFeesPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updatePlatformSettings({ feesEnabled, allowCashPayment, studentRentFeeFlat, ownerRentFeeFlat, ownerOnboardingFeeFlat, tokenFeesEnabled, studentTokenFeeFlat: studentTokenFeeFlat, ownerTokenFeeFlat: ownerTokenFeeFlat } as any);
+            await updatePlatformSettings({
+                feesEnabled,
+                allowCashPayment,
+                studentRentFeeFlat,
+                studentRentFeeType,
+                ownerRentFeeFlat,
+                ownerRentFeeType,
+                ownerOnboardingFeeFlat,
+                tokenFeesEnabled,
+                studentTokenFeeFlat,
+                studentTokenFeeType,
+                ownerTokenFeeFlat,
+                ownerTokenFeeType
+            } as any);
             await fetchAll();
             alert("✅ Platform fee settings saved successfully.");
         } catch (e: any) { alert(`Failed: ${e.message}`); }
@@ -243,10 +264,14 @@ export default function PlatformFeesPage() {
     };
 
     // Live preview calculations (with GST 18% exclusive + TDS 1%)
-    const customerFee    = feesEnabled ? studentRentFeeFlat : 0;
+    const customerFee    = feesEnabled
+        ? (studentRentFeeType === 'PERCENT' ? Math.round((previewAmount * studentRentFeeFlat) / 100 * 100) / 100 : studentRentFeeFlat)
+        : 0;
     const gstPreview     = feesEnabled ? Math.round(customerFee * 0.18 * 100) / 100 : 0;
     const totalCharged   = previewAmount + customerFee + gstPreview;
-    const ownerFee       = feesEnabled ? ownerRentFeeFlat : 0;
+    const ownerFee       = feesEnabled
+        ? (ownerRentFeeType === 'PERCENT' ? Math.round((previewAmount * ownerRentFeeFlat) / 100 * 100) / 100 : ownerRentFeeFlat)
+        : 0;
     const gstOnOwner     = feesEnabled ? Math.round(ownerFee * 0.18 * 100) / 100 : 0;
     const tdsPreview     = feesEnabled ? Math.round(previewAmount * 0.01 * 100) / 100 : 0;
     const ownerNet       = previewAmount - ownerFee - gstOnOwner - tdsPreview;
@@ -436,49 +461,93 @@ export default function PlatformFeesPage() {
                         <Card className="border-blue-200">
                             <CardContent className="p-5 space-y-3">
                                 <h3 className="font-bold text-blue-800">👤 Customer (Student) Rent Fee</h3>
-                                <p className="text-xs text-muted-foreground">Added ON TOP of monthly rent payment.</p>
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
-                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={studentRentFeeFlat} min={0} step={1} onChange={e => setStudentRentFeeFlat(parseFloat(e.target.value) || 0)} />
+                                <p className="text-xs text-muted-foreground font-medium">Added ON TOP of monthly rent payment.</p>
+                                <div className="space-y-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">Fee Type</label>
+                                        <select className="w-full border rounded-md p-2 text-sm bg-white cursor-pointer" value={studentRentFeeType} onChange={e => setStudentRentFeeType(e.target.value)}>
+                                            <option value="FLAT">₹ Flat Fee</option>
+                                            <option value="PERCENT">% Percentage</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">
+                                            {studentRentFeeType === "FLAT" ? "Amount (₹)" : "Rate (%)"}
+                                        </label>
+                                        <input type="number" className="w-full border rounded-md p-2 text-sm" value={studentRentFeeFlat} min={0} step={studentRentFeeType === "FLAT" ? 1 : 0.1} onChange={e => setStudentRentFeeFlat(parseFloat(e.target.value) || 0)} />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
                         <Card className="border-orange-200">
                             <CardContent className="p-5 space-y-3">
                                 <h3 className="font-bold text-orange-800">🏠 Owner Rent Fee</h3>
-                                <p className="text-xs text-muted-foreground">Deducted FROM the rent the owner receives.</p>
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
-                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerRentFeeFlat} min={0} step={1} onChange={e => setOwnerRentFeeFlat(parseFloat(e.target.value) || 0)} />
+                                <p className="text-xs text-muted-foreground font-medium">Deducted FROM the rent the owner receives.</p>
+                                <div className="space-y-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">Fee Type</label>
+                                        <select className="w-full border rounded-md p-2 text-sm bg-white cursor-pointer" value={ownerRentFeeType} onChange={e => setOwnerRentFeeType(e.target.value)}>
+                                            <option value="FLAT">₹ Flat Fee</option>
+                                            <option value="PERCENT">% Percentage</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">
+                                            {ownerRentFeeType === "FLAT" ? "Amount (₹)" : "Rate (%)"}
+                                        </label>
+                                        <input type="number" className="w-full border rounded-md p-2 text-sm" value={ownerRentFeeFlat} min={0} step={ownerRentFeeType === "FLAT" ? 1 : 0.1} onChange={e => setOwnerRentFeeFlat(parseFloat(e.target.value) || 0)} />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
                         <Card className="border-yellow-200">
                             <CardContent className="p-5 space-y-3">
                                 <h3 className="font-bold text-yellow-800">🪙 Student Token Fee</h3>
-                                <p className="text-xs text-muted-foreground">Added on top of ₹1,000 token payment by student.</p>
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
-                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={studentTokenFeeFlat} min={0} step={1} onChange={e => setStudentTokenFeeFlat(parseFloat(e.target.value) || 0)} />
+                                <p className="text-xs text-muted-foreground font-medium">Added on top of ₹1,000 token payment by student.</p>
+                                <div className="space-y-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">Fee Type</label>
+                                        <select className="w-full border rounded-md p-2 text-sm bg-white cursor-pointer" value={studentTokenFeeType} onChange={e => setStudentTokenFeeType(e.target.value)}>
+                                            <option value="FLAT">₹ Flat Fee</option>
+                                            <option value="PERCENT">% Percentage</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">
+                                            {studentTokenFeeType === "FLAT" ? "Amount (₹)" : "Rate (%)"}
+                                        </label>
+                                        <input type="number" className="w-full border rounded-md p-2 text-sm" value={studentTokenFeeFlat} min={0} step={studentTokenFeeType === "FLAT" ? 1 : 0.1} onChange={e => setStudentTokenFeeFlat(parseFloat(e.target.value) || 0)} />
+                                    </div>
                                 </div>
-                                {!tokenFeesEnabled && <p className="text-xs text-amber-600">⚠️ Token Fees toggle is OFF</p>}
+                                {!tokenFeesEnabled && <p className="text-xs text-amber-600 font-medium">⚠️ Token Fees toggle is OFF</p>}
                             </CardContent>
                         </Card>
                         <Card className="border-red-200">
                             <CardContent className="p-5 space-y-3">
                                 <h3 className="font-bold text-red-800">🏠 Owner Token Fee</h3>
-                                <p className="text-xs text-muted-foreground">Deducted when admin releases token payout to owner.</p>
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
-                                    <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerTokenFeeFlat} min={0} step={1} onChange={e => setOwnerTokenFeeFlat(parseFloat(e.target.value) || 0)} />
+                                <p className="text-xs text-muted-foreground font-medium">Deducted when admin releases token payout to owner.</p>
+                                <div className="space-y-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">Fee Type</label>
+                                        <select className="w-full border rounded-md p-2 text-sm bg-white cursor-pointer" value={ownerTokenFeeType} onChange={e => setOwnerTokenFeeType(e.target.value)}>
+                                            <option value="FLAT">₹ Flat Fee</option>
+                                            <option value="PERCENT">% Percentage</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-muted-foreground">
+                                            {ownerTokenFeeType === "FLAT" ? "Amount (₹)" : "Rate (%)"}
+                                        </label>
+                                        <input type="number" className="w-full border rounded-md p-2 text-sm" value={ownerTokenFeeFlat} min={0} step={ownerTokenFeeType === "FLAT" ? 1 : 0.1} onChange={e => setOwnerTokenFeeFlat(parseFloat(e.target.value) || 0)} />
+                                    </div>
                                 </div>
-                                {!tokenFeesEnabled && <p className="text-xs text-amber-600">⚠️ Token Fees toggle is OFF</p>}
+                                {!tokenFeesEnabled && <p className="text-xs text-amber-600 font-medium">⚠️ Token Fees toggle is OFF</p>}
                             </CardContent>
                         </Card>
                         <Card className="border-green-200">
                             <CardContent className="p-5 space-y-3">
-                                <h3 className="font-bold text-green-800">🚀 Owner Onboarding Fee</h3>
-                                <p className="text-xs text-muted-foreground">Paid once per property activation.</p>
+                                <h3 className="font-bold text-green-800">🚀 Owner Per Property Onboarding Fee</h3>
+                                <p className="text-xs text-muted-foreground font-medium">Paid once per property activation.</p>
                                 <div>
                                     <label className="text-xs font-bold uppercase text-muted-foreground">Flat Fee (₹)</label>
                                     <input type="number" className="w-full border rounded-md p-2 text-sm mt-1" value={ownerOnboardingFeeFlat} min={0} step={1} onChange={e => setOwnerOnboardingFeeFlat(parseFloat(e.target.value) || 0)} />
@@ -999,29 +1068,25 @@ export default function PlatformFeesPage() {
                                 </label>
                                 {pgExemptOnboarding && (
                                     <div className="ml-7 flex gap-2 items-center">
-                                        <select
-                                            className="border rounded-md px-2 py-1.5 text-xs bg-white"
-                                            value={pgOnboardingFeeType}
-                                            onChange={e => setPgOnboardingFeeType(e.target.value as any)}
-                                        >
-                                            <option value="FLAT">₹ Flat</option>
-                                            <option value="PERCENT">% Percent</option>
-                                        </select>
+                                        <span className="text-xs font-bold text-slate-600 bg-slate-100 border px-2 py-1.5 rounded-md">₹ Flat Fee</span>
                                         <input
-                                            type="number" min={0} step={0.5}
+                                            type="number" min={0} step={1}
                                             className="border rounded-md px-2 py-1.5 text-xs w-24"
-                                            placeholder={pgOnboardingFeeType === "FLAT" ? "e.g. 0" : "e.g. 0.5"}
+                                            placeholder="e.g. 0"
                                             value={pgOnboardingFeeValue}
-                                            onChange={e => setPgOnboardingFeeValue(e.target.value)}
+                                            onChange={e => {
+                                                setPgOnboardingFeeValue(e.target.value);
+                                                setPgOnboardingFeeType("FLAT");
+                                            }}
                                         />
-                                        <span className="text-xs text-slate-500">{pgOnboardingFeeType === "FLAT" ? "₹" : "% of rent"}</span>
+                                        <span className="text-xs text-slate-500">₹</span>
                                     </div>
                                 )}
                                 {pgExemptOnboarding && pgOnboardingFeeValue === "0" && (
                                     <p className="text-[10px] text-emerald-600 ml-7">✅ Onboarding fee = ₹0 — Will be hidden from owner receipt.</p>
                                 )}
                                 {pgExemptOnboarding && pgOnboardingFeeValue !== "" && parseFloat(pgOnboardingFeeValue) > 0 && (
-                                    <p className="text-[10px] text-blue-600 ml-7">ℹ️ Owner will be charged {pgOnboardingFeeType === "FLAT" ? `₹${pgOnboardingFeeValue}` : `${pgOnboardingFeeValue}% of rent`} instead of global ₹{ownerOnboardingFeeFlat}.</p>
+                                    <p className="text-[10px] text-blue-600 ml-7">ℹ️ Owner will be charged ₹{pgOnboardingFeeValue} instead of global ₹{ownerOnboardingFeeFlat}.</p>
                                 )}
                             </div>
 
