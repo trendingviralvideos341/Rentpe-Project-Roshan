@@ -112,7 +112,7 @@ export async function GET(
         const SAC_CODE   = "998314"; // Platform intermediary / IT-enabled services
 
         // ── Receipt Data ──────────────────────────────────────────────────────
-        const receiptNo      = `OBD-RP-${property.displayId || propertyId.slice(-6).toUpperCase()}`;
+        const receiptNo      = property.displayId ? `OBD-${property.displayId}` : `OBD-RP-${propertyId.slice(-6).toUpperCase()}`;
         const ownerName      = property.owner?.name || "—";
         const ownerEmail     = property.owner?.email || "—";
         const ownerPhone     = property.owner?.phone || "—";

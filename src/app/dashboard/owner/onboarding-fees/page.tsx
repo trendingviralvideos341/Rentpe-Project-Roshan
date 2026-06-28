@@ -284,7 +284,7 @@ function OnboardingReceiptModal({
     property: PropertyFeeEntry;
     onClose: () => void;
 }) {
-    const receiptNo = property.displayId ? `OBD-RP-${property.displayId}` : `OBD-RP-${property.id.slice(-6).toUpperCase()}`;
+    const receiptNo = property.displayId ? `OBD-${property.displayId}` : `OBD-RP-${property.id.slice(-6).toUpperCase()}`;
     const paidDate = property.onboardingPaidAt ? format(new Date(property.onboardingPaidAt), "dd MMM yyyy, HH:mm") : "—";
     const paymentMethod = property.onboardingPaymentMethod === "ONLINE" ? "Online (Razorpay)" : property.onboardingPaymentMethod === "CASH" ? "Cash" : "—";
     const pdfUrl = `/api/receipts/onboarding/${property.id}?download=1`;
