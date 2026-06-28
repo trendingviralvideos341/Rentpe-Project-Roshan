@@ -887,7 +887,7 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
                                     paidAt: new Date(),
                                     paymentMethod: method,
                                     confirmedBy: 'SYSTEM',
-                                    confirmedByName: `Auto â€” Joining Payment (${proratedNoteStr})`,
+                                    confirmedByName: `Auto - Joining Payment (${proratedNoteStr})`,
                                     lockedAt: new Date(),
                                 }
                             });
