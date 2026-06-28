@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import {
     Building2, CheckCircle2, Clock, Download, IndianRupee,
-    ArrowLeft, Search, Filter, TrendingUp, Users, AlertCircle
+    ArrowLeft, Search, Filter, TrendingUp, Users, AlertCircle, X
 } from "lucide-react";
 import Link from "next/link";
 
@@ -50,9 +50,120 @@ function StatusBadge({ paid }: { paid: boolean }) {
     );
 }
 
+function OnboardingReceiptModal({
+    property,
+    onClose
+}: {
+    property: PropertyEntry;
+    onClose: () => void;
+}) {
+    const receiptNo = property.displayId ? `OBD-RP-${property.displayId}` : `OBD-RP-${property.id.slice(-6).toUpperCase()}`;
+    const paidDate = property.onboardingPaidAt ? format(new Date(property.onboardingPaidAt), "dd MMM yyyy, HH:mm") : "—";
+    const paymentMethod = property.onboardingPaymentMethod === "ONLINE" ? "Online (Razorpay)" : property.onboardingPaymentMethod === "CASH" ? "Cash" : "—";
+    const pdfUrl = `/api/receipts/onboarding/${property.id}?download=1`;
+
+    const GST_RATE = 0.18;
+    const feeBase = Math.round((property.feeAmount / (1 + GST_RATE)) * 100) / 100;
+    const gst = Math.round((property.feeAmount - feeBase) * 100) / 100;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md my-4 overflow-y-auto max-h-[92vh] print:shadow-none print:max-h-none">
+                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
+                    <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-10 print:hidden">
+                        <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-3 mb-3 relative z-10">
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Onboarding Receipt</p>
+                            <p className="font-black text-lg">{receiptNo}</p>
+                        </div>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full relative z-10 bg-emerald-500/30 border border-emerald-400/40 text-emerald-100">
+                        <CheckCircle2 className="w-3 h-3" /> Paid
+                    </span>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner Details</p>
+                            <p className="font-black text-slate-900 text-sm">{property.owner.name}</p>
+                            <p className="text-xs text-slate-500">{property.owner.displayId}</p>
+                        </div>
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Property Details</p>
+                            <p className="font-black text-indigo-900 text-sm">{property.name}</p>
+                            <p className="text-xs text-indigo-700">{property.city}</p>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl p-3 bg-indigo-50 border border-indigo-100">
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-indigo-400">Transaction ID (Razorpay)</p>
+                        <p className="text-xs font-mono font-bold break-all text-indigo-700">
+                            {property.onboardingRazorpayId || property.onboardingRazorpayOrderId || '—'}
+                        </p>
+                    </div>
+
+                    <div className="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                        <div className="flex justify-between items-center px-4 py-3">
+                            <div>
+                                <p className="text-sm font-black text-slate-800">Platform Onboarding Fee</p>
+                                <p className="text-xs text-slate-400">One-time service fee</p>
+                            </div>
+                            <p className="font-black text-slate-900">₹{feeBase.toFixed(2)}</p>
+                        </div>
+                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50">
+                            <div>
+                                <p className="text-sm font-black text-slate-800">GST (18%)</p>
+                                <p className="text-xs text-slate-400">CGST 9% + SGST 9%</p>
+                            </div>
+                            <p className="font-black text-slate-900">₹{gst.toFixed(2)}</p>
+                        </div>
+                        <div className="flex justify-between items-center px-4 py-3 bg-indigo-50/50">
+                            <p className="text-sm font-black text-slate-600">Total Paid</p>
+                            <p className="font-black text-lg text-slate-900">₹{property.feeAmount.toLocaleString('en-IN')}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Paid On</p>
+                            <p className="text-sm font-black text-slate-700">{paidDate}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Mode</p>
+                            <p className="text-sm font-black text-slate-700">{paymentMethod}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <a
+                            href={pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-2xl transition-all shadow-lg shadow-indigo-200"
+                        >
+                            <Download className="w-4 h-4" /> Download PDF
+                        </a>
+                        <button onClick={onClose} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm rounded-2xl transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AdminOnboardingFeesClient({ data }: { data: PageData }) {
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<"ALL" | "PAID" | "PENDING">("ALL");
+    const [selectedReceipt, setSelectedReceipt] = useState<PropertyEntry | null>(null);
 
     const filtered = useMemo(() => {
         return data.properties.filter(p => {
@@ -230,14 +341,12 @@ export default function AdminOnboardingFeesClient({ data }: { data: PageData }) 
                                                 <td className="px-4 py-3.5"><StatusBadge paid={p.isPaid} /></td>
                                                 <td className="px-4 py-3.5">
                                                     {p.isPaid ? (
-                                                        <a
-                                                            href={`/api/receipts/onboarding/${p.id}?download=1`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all"
+                                                        <button
+                                                            onClick={() => setSelectedReceipt(p)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all cursor-pointer"
                                                         >
                                                             <Download className="w-3 h-3" /> PDF
-                                                        </a>
+                                                        </button>
                                                     ) : (
                                                         <span className="text-slate-300 text-xs font-bold">—</span>
                                                     )}
@@ -268,14 +377,12 @@ export default function AdminOnboardingFeesClient({ data }: { data: PageData }) 
                                             )}
                                         </div>
                                         {p.isPaid && (
-                                            <a
-                                                href={`/api/receipts/onboarding/${p.id}?download=1`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-black rounded-xl border border-indigo-100"
+                                            <button
+                                                onClick={() => setSelectedReceipt(p)}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-black rounded-xl border border-indigo-100 cursor-pointer"
                                             >
-                                                <Download className="w-3.5 h-3.5" /> Download Receipt
-                                            </a>
+                                                <Download className="w-3.5 h-3.5" /> View Receipt
+                                            </button>
                                         )}
                                     </div>
                                 ))}
@@ -288,6 +395,14 @@ export default function AdminOnboardingFeesClient({ data }: { data: PageData }) 
                     All amounts include 18% GST (CGST 9% + SGST 9%). SAC Code 998314. For refund queries, check admin support tickets.
                 </p>
             </div>
+            
+            {/* Receipt Modal */}
+            {selectedReceipt && (
+                <OnboardingReceiptModal
+                    property={selectedReceipt}
+                    onClose={() => setSelectedReceipt(null)}
+                />
+            )}
         </div>
     );
 }
