@@ -122,7 +122,7 @@ export default function AdminFinancialLedgerPage() {
                 'Student Name', 'Student Email', 'Student ID',
                 'Property Name', 'City', 'Room Type',
                 'Owner Name', 'Owner ID', 'Owner Email',
-                'Gross Amount', 'Platform Fee (Student)', 'Platform Fee (Owner)',
+                'Gross Amount', 'Convenience Fee (Student)', 'Platform Commission (Owner)',
                 'GST on Student Fee', 'GST on Owner Fee', 'CGST', 'SGST',
                 'TDS Deducted', 'Owner Net Payout', 'Total Charged',
                 'Platform Earned', 'SAC Code', 'Payment Method', 'Status', 'Date'
@@ -203,7 +203,7 @@ export default function AdminFinancialLedgerPage() {
                 head: [[
                     'Booking ID', 'RP Order ID', 'RP Payment ID', 'RP Transfer ID',
                     'Student', 'Property', 'Owner',
-                    'Gross', 'Plat.Fee', 'GST', 'TDS', 'Owner Net', 'Date'
+                    'Gross', 'Conv/Comm Fee', 'GST', 'TDS', 'Owner Net', 'Date'
                 ]],
                 body: filteredRows.map((r: any) => [
                     r.rentpeBookingId,
