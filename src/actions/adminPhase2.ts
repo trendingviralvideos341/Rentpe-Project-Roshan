@@ -758,6 +758,64 @@ export async function processBulkPayouts(payoutIds: string[]) {
     return { succeeded, failed, total: payoutIds.length };
 }
 
+export async function getPayoutDetails(payoutId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const payout = await prisma.ownerPayout.findUnique({
+        where: { id: payoutId }
+    });
+    if (!payout) throw new Error("Payout not found");
+
+    let bIds: string[] = [];
+    try {
+        bIds = JSON.parse(payout.bookingIds || '[]');
+    } catch {
+        bIds = [];
+    }
+
+    const platformFees = await prisma.platformFee.findMany({
+        where: { bookingId: { in: bIds } },
+        include: {
+            booking: {
+                select: {
+                    id: true,
+                    displayId: true,
+                    guestName: true,
+                    guestPhone: true,
+                    roomAssigned: true,
+                    occupancy: true,
+                    propertyName: true,
+                    tenant: {
+                        select: {
+                            id: true,
+                            displayId: true,
+                            phone: true,
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    return platformFees.map(fee => ({
+        id: fee.id,
+        bookingId: fee.bookingId,
+        bookingDisplayId: fee.booking.displayId,
+        studentName: fee.booking.guestName,
+        phone: fee.booking.tenant?.phone || fee.booking.guestPhone || "N/A",
+        tenantDisplayId: fee.booking.tenant?.displayId || "N/A",
+        roomBed: `${fee.booking.roomAssigned || "TBD"} (${fee.booking.occupancy})`,
+        propertyName: fee.booking.propertyName,
+        grossAmount: fee.grossAmount,
+        tdsAmount: fee.tdsAmount,
+        gstAmount: fee.gstOnStudentFee + fee.gstOnOwnerFee,
+        ownerFee: fee.ownerFee,
+        customerFee: fee.customerFee,
+        netAmount: fee.ownerNet
+    }));
+}
+
 // ─────────────────────────────────────────────────────────
 // ADMIN ANALYTICS
 // ─────────────────────────────────────────────────────────
