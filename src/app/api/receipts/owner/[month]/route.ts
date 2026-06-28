@@ -126,6 +126,22 @@ export async function GET(
         });
         const hasTdsExemption = tdsExemptions.length > 0;
 
+        // Fetch paid onboarding fees for this owner in the month
+        const onboardingPaid = await prisma.property.findMany({
+            where: {
+                ownerId,
+                onboardingPaidAt: { gte: monthStart, lte: monthEnd }
+            },
+            select: {
+                id: true,
+                displayId: true,
+                name: true,
+                onboardingPaidAt: true,
+                onboardingRazorpayOrderId: true,
+                onboardingRazorpayId: true,
+            }
+        });
+
         // ── Aggregate totals ──────────────────────────────────────────────────
         let totalGross        = 0;
         let totalOwnerFee     = 0;
@@ -133,19 +149,13 @@ export async function GET(
         let totalTds          = 0;
         let totalNetPayout    = 0;
 
-        const rows = payments.map((p: any) => {
+        const rentalRows = payments.map((p: any) => {
             const fee          = feeMap.get(p.bookingId) as any;
             const gross        = Number(p.amount);
             const ownerFee     = fee ? Number(fee.ownerFee)       : 0;
             const gstOnOwner   = fee ? Number(fee.gstOnOwnerFee)  : 0;
             const tds          = fee ? Number(fee.tdsAmount)       : 0;
             const netPayout    = gross - ownerFee - gstOnOwner - tds;
-
-            totalGross      += gross;
-            totalOwnerFee   += ownerFee;
-            totalGstOnOwner += gstOnOwner;
-            totalTds        += tds;
-            totalNetPayout  += netPayout;
 
             return {
                 date:        format(new Date(p.createdAt), "dd MMM yyyy"),
@@ -158,7 +168,40 @@ export async function GET(
                 tds,
                 netPayout,
                 paymentRef:  (p as any).razorpayId || p.id.slice(0, 8).toUpperCase(),
+                type:        'RENT_COLLECTION',
             };
+        });
+
+        const onboardingRows = onboardingPaid.map((p: any) => {
+            const cgst = 7.55;
+            const sgst = 7.55;
+            const baseAmount = 83.90;
+            const onboardingFeeAmount = 99;
+            return {
+                date:        format(new Date(p.onboardingPaidAt!), "dd MMM yyyy"),
+                tenant:      "RentPe Platform",
+                tenantId:    "B2B-SVC",
+                property:    p.name || "—",
+                gross:       0,
+                ownerFee:    baseAmount,
+                gstOnOwner:  cgst + sgst,
+                tds:         0,
+                netPayout:   -onboardingFeeAmount,
+                paymentRef:  p.onboardingRazorpayId || "—",
+                type:        'PROPERTY_ONBOARDING',
+            };
+        });
+
+        const rows = [...rentalRows, ...onboardingRows].sort((a: any, b: any) => {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
+
+        rows.forEach((r: any) => {
+            totalGross      += r.gross;
+            totalOwnerFee   += r.ownerFee;
+            totalGstOnOwner += r.gstOnOwner;
+            totalTds        += r.tds;
+            totalNetPayout  += r.netPayout;
         });
 
         const monthLabel     = format(monthStart, "MMMM yyyy");
@@ -460,11 +503,15 @@ export async function GET(
                     });
                 };
 
+                const isOnboarding = row.type === 'PROPERTY_ONBOARDING';
+                const currentSac = isOnboarding ? "998314" : "997312";
+                const serviceDesc = isOnboarding ? "Property Onboarding Platform Services" : "Platform Convenience & Lead Gen. Services";
+
                 drawBillingBlock([
                     "RentPe (Antigravity Project)",
                     "Platform Service Provider",
                     "GSTIN: PENDING REGISTRATION",
-                    "SAC: 997312",
+                    `SAC: ${currentSac}`,
                 ], PL, "BILLED BY (SUPPLIER)");
 
                 drawBillingBlock([
@@ -481,7 +528,7 @@ export async function GET(
                     { label: "Invoice Number",        value: taxInvoiceNo },
                     { label: "Invoice Date",          value: row.date },
                     { label: "For Month",             value: monthLabel },
-                    { label: "Tenant",                value: `${row.tenant} (${row.tenantId})` },
+                    { label: "Billed Item",           value: isOnboarding ? "Property Onboarding" : `Tenant: ${row.tenant}` },
                     { label: "Payment Reference",     value: row.paymentRef },
                     { label: "Place of Supply",       value: (row.property || "India").substring(0, 28) },
                 ];
@@ -552,8 +599,8 @@ export async function GET(
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(7.5);
                 doc.setTextColor(15, 23, 42);
-                doc.text("Platform Convenience & Lead Gen. Services", gcols.desc, iy + 6.5);
-                doc.text("997312", gcols.sac, iy + 6.5, { align: "right" });
+                doc.text(serviceDesc, gcols.desc, iy + 6.5);
+                doc.text(currentSac, gcols.sac, iy + 6.5, { align: "right" });
                 doc.text(inr(feeBase), gcols.base, iy + 6.5, { align: "right" });
                 doc.text(inr(cgst), gcols.cgst, iy + 6.5, { align: "right" });
                 doc.text(inr(sgst), gcols.sgst, iy + 6.5, { align: "right" });
@@ -586,14 +633,23 @@ export async function GET(
                 doc.text("PAYOUT RECONCILIATION", PL + 4, iy + 6);
                 iy += 11;
 
-                const payoutItems = [
-                    { label: "Gross Rent Collected from Tenant",      value: inr(row.gross), bold: false },
-                    { label: "Less: Platform Commission (incl. GST)", value: `- ${inr(row.ownerFee)}`, red: true },
-                ];
-                if (row.tds > 0) {
+                const onboardingTotal = Math.round((row.ownerFee + row.gstOnOwner) * 100) / 100;
+                const payoutItems = isOnboarding
+                    ? [
+                        { label: "B2B Service Fee (excl. GST)", value: inr(row.ownerFee), bold: false },
+                        { label: "Add: GST 18% (SAC 998314)", value: `+ ${inr(row.gstOnOwner)}`, bold: false },
+                        { label: "TOTAL PAID BY OWNER (INCLUSIVE)", value: inr(onboardingTotal), bold: true, red: true },
+                      ]
+                    : [
+                        { label: "Gross Rent Collected from Tenant",      value: inr(row.gross), bold: false },
+                        { label: "Less: Platform Commission (incl. GST)", value: `- ${inr(row.ownerFee)}`, red: true },
+                      ];
+                if (!isOnboarding && row.tds > 0) {
                     payoutItems.push({ label: `Less: TDS Deducted (1% u/s 194-O on Rent)`, value: `- ${inr(row.tds)}`, amber: true } as any);
                 }
-                payoutItems.push({ label: "NET PAYOUT TO OWNER BANK ACCOUNT",         value: inr(row.netPayout), bold: true, green: true } as any);
+                if (!isOnboarding) {
+                    payoutItems.push({ label: "NET PAYOUT TO OWNER BANK ACCOUNT",         value: inr(row.netPayout), bold: true, green: true } as any);
+                }
 
                 payoutItems.forEach((pi: any, pii: number) => {
                     const pEven = pii % 2 === 0;
@@ -630,8 +686,13 @@ export async function GET(
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(7);
                 doc.setTextColor(92, 45, 5);
-                doc.text(`1. Declare Gross Rent of ${inr(row.gross)} as Rental Income in ITR. NOT the net payout.`, PL + 4, iy + 13);
-                doc.text(`2. Platform Commission of ${inr(row.ownerFee)} is an allowable business expense — deductible from taxable income.`, PL + 4, iy + 18);
+                if (isOnboarding) {
+                    doc.text("1. This Property Onboarding Fee is a capital business expense, not a rental commission.", PL + 4, iy + 13);
+                    doc.text(`2. You paid ${inr(onboardingTotal)} (including GST). You can claim ${inr(row.gstOnOwner)} as Input Tax Credit (ITC).`, PL + 4, iy + 18);
+                } else {
+                    doc.text(`1. Declare Gross Rent of ${inr(row.gross)} as Rental Income in ITR. NOT the net payout.`, PL + 4, iy + 13);
+                    doc.text(`2. Platform Commission of ${inr(row.ownerFee)} is an allowable business expense — deductible from taxable income.`, PL + 4, iy + 18);
+                }
                 iy += 24;
 
                 // ── Page footer ─────────────────────────────────────────────

@@ -714,22 +714,75 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
             paymentMethod: p.method || '—',
             status: p.status,
             date: p.createdAt,
+            type: 'RENT_COLLECTION',
         };
     });
+
+    // Fetch all properties with paid onboarding fees in the range
+    const onboardingPaidProperties = await prisma.property.findMany({
+        where: {
+            onboardingPaidAt: { gte: from, lte: to }
+        },
+        include: {
+            owner: { select: { id: true, name: true, displayId: true, email: true } }
+        }
+    });
+
+    const cgstVal = 7.55;
+    const sgstVal = 7.55;
+    const baseAmount = 83.90;
+    const onboardingFeeAmount = 99;
+
+    const onboardingRows = onboardingPaidProperties.map((p: any) => ({
+        rentpePaymentId: `ONB-PAY-${p.id.slice(0, 8).toUpperCase()}`,
+        rentpeBookingId: `ONB-${p.displayId || p.id.slice(0, 6).toUpperCase()}`,
+        razorpayOrderId: p.onboardingRazorpayOrderId || '—',
+        razorpayPaymentId: p.onboardingRazorpayId || '—',
+        razorpayTransferId: '—',
+        studentName: '—',
+        studentEmail: '—',
+        studentId: '—',
+        propertyName: p.name || '—',
+        propertyCity: p.city || '—',
+        roomType: 'Property Onboarding',
+        ownerName: p.owner?.name || '—',
+        ownerId: p.owner?.displayId || '—',
+        ownerEmail: p.owner?.email || '—',
+        grossAmount: 0,
+        platformFeeStudent: 0,
+        platformFeeOwner: baseAmount,
+        gstOnStudentFee: 0,
+        gstOnOwnerFee: cgstVal + sgstVal,
+        cgst: cgstVal,
+        sgst: sgstVal,
+        tdsDeducted: 0,
+        ownerNetPayout: -onboardingFeeAmount,
+        totalCharged: onboardingFeeAmount,
+        platformEarned: baseAmount,
+        sacCode: '998314',
+        paymentMethod: 'Razorpay',
+        status: 'SUCCESS',
+        date: p.onboardingPaidAt!,
+        type: 'PROPERTY_ONBOARDING',
+    }));
+
+    const combinedRows = [...rows, ...onboardingRows].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // === Aggregate totals ===
     const totals = {
         totalGrossCollected: rows.reduce((s: number, r: any) => s + r.grossAmount, 0),
-        totalPlatformEarned: rows.reduce((s: number, r: any) => s + r.platformEarned, 0),
-        totalGstCollected: rows.reduce((s: number, r: any) => s + r.gstOnStudentFee + r.gstOnOwnerFee, 0),
-        totalCgst: rows.reduce((s: number, r: any) => s + r.cgst, 0),
-        totalSgst: rows.reduce((s: number, r: any) => s + r.sgst, 0),
+        totalPlatformEarned: combinedRows.reduce((s: number, r: any) => s + r.platformEarned, 0),
+        totalGstCollected: combinedRows.reduce((s: number, r: any) => s + r.gstOnStudentFee + r.gstOnOwnerFee, 0),
+        totalCgst: combinedRows.reduce((s: number, r: any) => s + r.cgst, 0),
+        totalSgst: combinedRows.reduce((s: number, r: any) => s + r.sgst, 0),
         totalTdsWithheld: rows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
-        totalOwnerPayouts: rows.reduce((s: number, r: any) => s + r.ownerNetPayout, 0),
-        transactionCount: rows.length,
+        totalOwnerPayouts: combinedRows.reduce((s: number, r: any) => s + r.ownerNetPayout, 0),
+        transactionCount: combinedRows.length,
+        totalOnboardingEarned: onboardingRows.reduce((s: number, r: any) => s + r.platformFeeOwner, 0),
+        totalOnboardingGst: onboardingRows.reduce((s: number, r: any) => s + r.gstOnOwnerFee, 0),
     };
 
-    return { rows, totals, generatedAt: new Date(), from, to };
+    return { rows: combinedRows, totals, generatedAt: new Date(), from, to };
 }
 
 // ── ADMIN: Monthly GST + TDS tax liability summary ──
@@ -753,19 +806,43 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
         orderBy: { createdAt: 'asc' }
     });
 
+    const onboardingPaidProperties = await prisma.property.findMany({
+        where: { onboardingPaidAt: { gte: from, lte: to } },
+        include: {
+            owner: { select: { id: true, name: true, displayId: true, email: true } }
+        }
+    });
+
     // Group by month
     const monthlyMap: Record<string, any> = {};
     for (const f of fees) {
         const d = new Date(f.createdAt);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0 };
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0, onboardingFees: 0, onboardingGst: 0 };
         monthlyMap[key].gst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
         monthlyMap[key].cgst += f.gstOnStudentFee ? f.gstOnStudentFee / 2 : 0;
         monthlyMap[key].sgst += f.gstOnStudentFee ? f.gstOnStudentFee / 2 : 0;
         monthlyMap[key].tds += f.tdsAmount || 0;
         monthlyMap[key].transactions++;
         monthlyMap[key].platformEarned += f.platformEarned || 0;
+    }
+
+    for (const p of onboardingPaidProperties) {
+        const d = new Date(p.onboardingPaidAt!);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0, onboardingFees: 0, onboardingGst: 0 };
+        const cgstVal = 7.55;
+        const sgstVal = 7.55;
+        const baseAmount = 83.90;
+        monthlyMap[key].gst += cgstVal + sgstVal;
+        monthlyMap[key].cgst += cgstVal;
+        monthlyMap[key].sgst += sgstVal;
+        monthlyMap[key].transactions++;
+        monthlyMap[key].platformEarned += baseAmount;
+        monthlyMap[key].onboardingFees += 99;
+        monthlyMap[key].onboardingGst += cgstVal + sgstVal;
     }
 
     // TDS by owner
@@ -793,6 +870,8 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
         totalSgst: monthly.reduce((s: number, m: any) => s + m.sgst, 0),
         totalTds: monthly.reduce((s: number, m: any) => s + m.tds, 0),
         totalPlatformEarned: monthly.reduce((s: number, m: any) => s + m.platformEarned, 0),
+        totalOnboardingFees: monthly.reduce((s: number, m: any) => s + (m.onboardingFees || 0), 0),
+        totalOnboardingGst: monthly.reduce((s: number, m: any) => s + (m.onboardingGst || 0), 0),
     };
 
     return { monthly, ownerTds, exemptOwners, totals, generatedAt: new Date(), from, to };

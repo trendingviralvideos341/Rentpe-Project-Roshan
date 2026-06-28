@@ -463,10 +463,62 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             gstCharged: fee.gstOnStudentFee || 0,
             tdsDeducted: fee.tdsAmount || 0,
             ownerNetPayout: fee.ownerNet || 0,
+            type: 'RENT_COLLECTION',
         };
     });
 
+    // Fetch property onboarding fees paid by this owner in this period
+    const onboardingPaidProperties = await prisma.property.findMany({
+        where: {
+            ownerId,
+            onboardingPaidAt: { gte: from, lte: to }
+        },
+        select: {
+            id: true,
+            displayId: true,
+            name: true,
+            onboardingPaidAt: true,
+            onboardingRazorpayOrderId: true,
+            onboardingRazorpayId: true,
+        }
+    });
+
+    const onboardingRows = onboardingPaidProperties.map((p: any) => {
+        const cgst = 7.55;
+        const sgst = 7.55;
+        const baseAmount = 83.90;
+        const onboardingFeeAmount = 99;
+        return {
+            bookingId: `ONB-${p.displayId || p.id.slice(0, 6).toUpperCase()}`,
+            internalBookingId: p.id,
+            tenantName: "RentPe Platform",
+            property: p.name,
+            roomType: "Property Onboarding",
+            amount: onboardingFeeAmount,
+            status: "PAID",
+            date: p.onboardingPaidAt!,
+            razorpayOrderId: p.onboardingRazorpayOrderId || '—',
+            razorpayPaymentId: p.onboardingRazorpayId || '—',
+            razorpayTransferId: '—',
+            paymentMethod: 'Razorpay',
+            revenueContribution: 0,
+            refundAmount: 0,
+            netRevenue: 0,
+            platformFeeCharged: baseAmount,
+            gstCharged: cgst + sgst,
+            tdsDeducted: 0,
+            ownerNetPayout: -onboardingFeeAmount,
+            type: 'PROPERTY_ONBOARDING',
+        };
+    });
+
+    const combinedReport = [...report, ...onboardingRows].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     const revenueRows = report.filter((r: any) => ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(r.status));
+
+    const totalOnboardingPaid = onboardingRows.reduce((s: number, r: any) => s + r.amount, 0);
+    const totalOnboardingGst = onboardingRows.reduce((s: number, r: any) => s + r.gstCharged, 0);
+    const totalOnboardingBase = onboardingRows.reduce((s: number, r: any) => s + r.platformFeeCharged, 0);
 
     const summary = {
         ownerName: owner?.name || 'Owner',
@@ -486,9 +538,13 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
         tdsExempt: !!exemption,
         tdsExemptionReason: exemption?.tdsExemptionReason || null,
         tdsCertificateUrl: exemption?.tdsCertificateUrl || null,
+        // === ONBOARDING SPECIFIC SUMMARY ===
+        totalOnboardingPaid,
+        totalOnboardingGst,
+        totalOnboardingBase,
     };
 
-    return { report, summary, generatedAt: new Date() };
+    return { report: combinedReport, summary, generatedAt: new Date() };
 }
 
 // ── Owner: Monthly GST + TDS breakdown for tax summary page ──
@@ -511,6 +567,16 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
         orderBy: { createdAt: 'asc' }
     });
 
+    const onboardingPaid = await prisma.property.findMany({
+        where: {
+            ownerId,
+            onboardingPaidAt: { gte: from, lte: to }
+        },
+        select: {
+            onboardingPaidAt: true,
+        }
+    });
+
     const bookingDateMap: Record<string, Date> = {};
     for (const b of bookingIds) bookingDateMap[b.id] = b.createdAt;
 
@@ -519,13 +585,27 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
         const d = new Date(f.createdAt);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0 };
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0, onboardingFees: 0, onboardingGst: 0 };
         monthlyMap[key].grossRent += f.grossAmount || 0;
         monthlyMap[key].platformFee += (f.customerFee || 0) + (f.ownerFee || 0);
         monthlyMap[key].gst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
         monthlyMap[key].tds += f.tdsAmount || 0;
         monthlyMap[key].netPayout += f.ownerNet || 0;
         monthlyMap[key].transactions++;
+    }
+
+    for (const p of onboardingPaid) {
+        const d = new Date(p.onboardingPaidAt!);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0, onboardingFees: 0, onboardingGst: 0 };
+        if (monthlyMap[key].onboardingFees === undefined) {
+            monthlyMap[key].onboardingFees = 0;
+            monthlyMap[key].onboardingGst = 0;
+        }
+        monthlyMap[key].onboardingFees += 99;
+        monthlyMap[key].onboardingGst += 15.10;
+        monthlyMap[key].netPayout -= 99;
     }
 
     return Object.values(monthlyMap).sort((a: any, b: any) => a.key.localeCompare(b.key));

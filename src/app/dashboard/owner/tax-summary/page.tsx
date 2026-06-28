@@ -239,6 +239,9 @@ export default function TaxSummaryPage() {
                         <KpiCard label="TDS Deducted (1%)" value={s.tdsExempt ? '₹0 (Exempt)' : fmtShort(s.totalTdsDeducted)} icon={Shield} color={s.tdsExempt ? 'emerald' : 'rose'} sub="Sec 194-O" />
                         <KpiCard label="Your Net Payout" value={fmtShort(s.totalOwnerNetPayout)} icon={TrendingUp} color="emerald" sub="After fees + TDS" />
                         <KpiCard label="Total Refunds" value={fmtShort(s.totalRefunds)} icon={Download} color="rose" sub="Processed refunds" />
+                        {s.totalOnboardingPaid > 0 && (
+                            <KpiCard label="Property Onboarding Paid" value={fmtShort(s.totalOnboardingPaid)} icon={Building2} color="indigo" sub={`Incl. ${fmtShort(s.totalOnboardingGst)} GST ITC`} />
+                        )}
                     </div>
                 )}
 
@@ -448,9 +451,14 @@ export default function TaxSummaryPage() {
                                             <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                             <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
                                             <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate">{r.razorpayOrderId}</td>
-                                            <td className="px-3 py-2.5 font-bold text-slate-700">{r.tenantName}</td>
+                                            <td className="px-3 py-2.5 font-bold text-slate-700">
+                                                {r.tenantName}
+                                                {r.type === 'PROPERTY_ONBOARDING' && (
+                                                    <span className="ml-1.5 bg-blue-100 text-blue-700 text-[8px] px-1 py-0.5 rounded font-black uppercase">B2B Exp</span>
+                                                )}
+                                            </td>
                                             <td className="px-3 py-2.5 text-slate-600 max-w-[120px] truncate">{r.property}</td>
-                                            <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.amount || 0)}</td>
+                                            <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.revenueContribution || 0)}</td>
                                             <td className="px-3 py-2.5 font-bold text-amber-600">{fmtShort(r.platformFeeCharged)}</td>
                                             <td className="px-3 py-2.5 font-bold text-violet-600">{fmtShort(r.gstCharged)}</td>
                                             <td className="px-3 py-2.5 font-bold text-rose-600">
@@ -459,12 +467,14 @@ export default function TaxSummaryPage() {
                                             <td className="px-3 py-2.5 font-black text-emerald-600">{fmtShort(r.ownerNetPayout)}</td>
                                             <td className="px-3 py-2.5">
                                                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                                    ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(r.status)
+                                                    r.type === 'PROPERTY_ONBOARDING'
+                                                        ? 'bg-blue-100 text-blue-700'
+                                                        : ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(r.status)
                                                         ? 'bg-emerald-100 text-emerald-700'
                                                         : r.status === 'CANCELLED'
                                                         ? 'bg-rose-100 text-rose-700'
                                                         : 'bg-slate-100 text-slate-500'
-                                                }`}>{r.status}</span>
+                                                }`}>{r.type === 'PROPERTY_ONBOARDING' ? 'PAID' : r.status}</span>
                                             </td>
                                         </tr>
                                     ))}
