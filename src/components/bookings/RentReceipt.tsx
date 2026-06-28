@@ -8,7 +8,10 @@ interface ReceiptProps {
     booking: {
         displayId: string;
         propertyName: string;
-        amount: string;
+        amount: any;
+        depositAmount?: any;
+        pendingAmount?: any; // prorated rent
+        tokenAmount?: any;
         guestName: string;
         moveInDate: string;
         createdAt: string;
@@ -21,9 +24,19 @@ export default function RentReceipt({ booking, onClose }: ReceiptProps) {
         window.print();
     };
 
+    const rentAmt = Number(booking.pendingAmount || booking.amount || 0);
+    const depositAmt = Number(booking.depositAmount || 0);
+    const tokenAmt = Number(booking.tokenAmount || 0);
+    
+    // For older legacy receipts that didn't have these fields, we fallback to just booking.amount
+    const isLegacy = depositAmt === 0 && tokenAmt === 0 && !booking.pendingAmount;
+    
+    const subtotal = isLegacy ? rentAmt : (rentAmt + depositAmt);
+    const totalPaid = isLegacy ? rentAmt : Math.max(0, subtotal - tokenAmt);
+
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <Card className="w-full max-w-2xl bg-white text-black shadow-2xl print:shadow-none print:m-0 print:border-0 relative">
+            <Card className="w-full max-w-2xl bg-white text-black shadow-2xl print:shadow-none print:m-0 print:border-0 relative mt-10">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -67,13 +80,40 @@ export default function RentReceipt({ booking, onClose }: ReceiptProps) {
                             <span className="text-muted-foreground">Description</span>
                             <span className="font-medium">Amount</span>
                         </div>
-                        <div className="flex justify-between items-center text-lg">
-                            <div>
-                                <p className="font-bold">Booking Deposit / First Month Rent</p>
-                                <p className="text-xs text-muted-foreground">Move-in Date: {booking.moveInDate}</p>
+                        
+                        {isLegacy ? (
+                            <div className="flex justify-between items-center text-lg">
+                                <div>
+                                    <p className="font-bold">Booking Deposit / First Month Rent</p>
+                                    <p className="text-xs text-muted-foreground">Move-in Date: {booking.moveInDate}</p>
+                                </div>
+                                <p className="font-bold">₹{rentAmt.toLocaleString('en-IN')}</p>
                             </div>
-                            <p className="font-bold">{booking.amount}</p>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="flex justify-between items-center text-lg">
+                                    <div>
+                                        <p className="font-bold">First Month Rent (Prorated)</p>
+                                        <p className="text-xs text-muted-foreground">Move-in Date: {booking.moveInDate ? new Date(booking.moveInDate).toLocaleDateString('en-IN', {dateStyle:'medium'}) : ''}</p>
+                                    </div>
+                                    <p className="font-bold">₹{rentAmt.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div className="flex justify-between items-center text-lg">
+                                    <div>
+                                        <p className="font-bold text-emerald-700">Security Deposit</p>
+                                    </div>
+                                    <p className="font-bold text-emerald-700">₹{depositAmt.toLocaleString('en-IN')}</p>
+                                </div>
+                                {tokenAmt > 0 && (
+                                    <div className="flex justify-between items-center text-lg pt-2 border-t border-dashed">
+                                        <div>
+                                            <p className="font-bold text-indigo-700">Token Paid Already</p>
+                                        </div>
+                                        <p className="font-bold text-indigo-700">- ₹{tokenAmt.toLocaleString('en-IN')}</p>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
 
                     <div className="flex justify-between items-start pt-4">
@@ -89,14 +129,14 @@ export default function RentReceipt({ booking, onClose }: ReceiptProps) {
                                 This is a computer-generated receipt and does not require a physical signature. Issued on {new Date().toLocaleString()}.
                             </p>
                         </div>
-                        <div className="text-right space-y-2">
+                        <div className="text-right space-y-2 min-w-[200px]">
                             <div className="flex justify-between gap-8">
                                 <span className="text-muted-foreground">Subtotal</span>
-                                <span>{booking.amount}</span>
+                                <span>₹{subtotal.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="flex justify-between gap-8 border-t pt-2">
                                 <span className="font-bold text-xl uppercase">Total Paid</span>
-                                <span className="font-bold text-2xl text-primary print:text-black">{booking.amount}</span>
+                                <span className="font-bold text-2xl text-primary print:text-black">₹{totalPaid.toLocaleString('en-IN')}</span>
                             </div>
                         </div>
                     </div>
