@@ -19,8 +19,10 @@ export default async function StudentLayout({
                     displayId={user?.displayId}
                 />
             </Suspense>
-            <main className="flex-1 p-4 md:p-8 min-h-screen overflow-y-auto w-full">
-                {children}
+            <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8 min-h-screen overflow-y-auto w-full">
+                <Suspense fallback={<div className="flex h-full items-center justify-center p-8"><div className="animate-pulse flex flex-col items-center"><div className="h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-slate-500 font-medium">Loading Dashboard...</p></div></div>}>
+                    {children}
+                </Suspense>
             </main>
         </div>
     );

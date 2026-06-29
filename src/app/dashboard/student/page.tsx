@@ -10,7 +10,7 @@ import { changeFoodPreference } from "@/actions/food";
 import { getPendingRentInvoice } from "@/actions/rent";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X, Clock, MapPin } from "lucide-react";
+import { RefreshCcw, FileText, BedDouble, Calendar, CreditCard, CheckCircle, XCircle, UploadCloud, ChevronDown, ChevronUp, AlertTriangle, Phone, Mail, User, History, Shield, Building2, Download, Star, Lock, X, Clock, MapPin, Utensils, Ticket, Bell } from "lucide-react";
 import { getStudentPaymentHistory } from "@/actions/payments";
 import RentReceipt from "@/components/bookings/RentReceipt";
 import { SubmitReviewModal } from "@/components/reviews/SubmitReviewModal";
@@ -952,96 +952,186 @@ export default function StudentDashboardPage() {
     );
 
     return (
-        <div className="container mx-auto py-8 px-4 max-w-4xl">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">My Dashboard</h1>
-                    <p className="text-muted-foreground">Track your bookings, onboarding status and payment history.</p>
+        <div className="container mx-auto py-6 px-4 max-w-4xl space-y-8 pb-24 md:pb-12">
+            {/* Header / Greeting */}
+            <div className="flex justify-between items-center bg-gradient-to-r from-slate-900 to-indigo-950 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-slate-800">
+                <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl" />
+                <div className="relative z-10 space-y-1">
+                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Student Portal</span>
+                    <h1 className="text-2xl md:text-3xl font-black">
+                        👋 Hey, {profile?.name ? profile.name.split(' ')[0] : 'Resident'}!
+                    </h1>
+                    <p className="text-slate-300 text-xs md:text-sm font-medium">
+                        Welcome to your premium digital stay companion.
+                    </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchData}>
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={fetchData} 
+                    className="text-white hover:bg-white/10 rounded-xl border border-white/20 shrink-0 relative z-10"
+                >
                     <RefreshCcw className="h-4 w-4 mr-2" /> Refresh
                 </Button>
             </div>
 
-            <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="flex flex-wrap md:flex-nowrap w-full mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner h-auto">
-                    {bookings.some((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status)) && (
-                        <TabsTrigger value="active-stay" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
-                            <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
-                        </TabsTrigger>
-                    )}
-                    <TabsTrigger value="bookings" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
-                        <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> My Bookings
-                    </TabsTrigger>
+            {/* ── Active Stay & Rent Status Hero Section ── */}
+            {(() => {
+                const activeStay = bookings.find((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
+                if (!activeStay) return null;
 
-                    <TabsTrigger value="profile" className="flex-1 font-bold py-3 text-sm whitespace-nowrap">
+                const rentAmount = pendingRent?.invoice?.amount;
+                const rentMonth = pendingRent?.invoice?.month;
+
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Rent Status Card */}
+                        <div className={`md:col-span-2 rounded-3xl p-6 border-2 transition-all duration-300 ${
+                            pendingRent && !rentBannerDismissed
+                                ? "bg-gradient-to-br from-rose-500 to-red-600 border-red-500 text-white shadow-lg shadow-red-200/50"
+                                : "bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-500 text-white shadow-lg shadow-emerald-200/50"
+                        }`}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Financial Summary</span>
+                                    <h3 className="text-xl font-black mt-1">
+                                        {pendingRent && !rentBannerDismissed 
+                                            ? `Rent Pending • ${rentMonth}` 
+                                            : "Rent Fully Paid 🎉"}
+                                    </h3>
+                                    <p className="text-xs opacity-90 mt-1">
+                                        {pendingRent && !rentBannerDismissed
+                                            ? `₹${rentAmount.toLocaleString('en-IN')} is due. Pay before the 5th to avoid late fees.`
+                                            : `All good! Your next invoice will be generated on the 1st of next month.`}
+                                    </p>
+                                </div>
+                                <div className="p-2 rounded-2xl bg-white/20">
+                                    <CreditCard className="h-6 w-6 text-white" />
+                                </div>
+                            </div>
+
+                            {/* Circular / Linear Progress bar mockup */}
+                            <div className="mt-6 space-y-1.5">
+                                <div className="flex justify-between text-[10px] font-black uppercase tracking-wider opacity-90">
+                                    <span>Payment Cycle</span>
+                                    <span>{pendingRent && !rentBannerDismissed ? "Action Required" : "100% Paid"}</span>
+                                </div>
+                                <div className="w-full bg-white/20 h-2.5 rounded-full overflow-hidden">
+                                    <div 
+                                        className={`h-full rounded-full transition-all duration-500 ${
+                                            pendingRent && !rentBannerDismissed ? "bg-amber-300 w-1/3" : "bg-white w-full"
+                                        }`} 
+                                    />
+                                </div>
+                            </div>
+
+                            {pendingRent && !rentBannerDismissed ? (
+                                <button
+                                    onClick={() => router.push(`/secure/payment?id=${pendingRent.bookingId}&type=rent&invoiceId=${pendingRent.invoice.id}`)}
+                                    className="mt-6 w-full py-3 bg-white text-red-600 font-black text-sm rounded-2xl hover:bg-slate-50 transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
+                                >
+                                    💳 Pay ₹{rentAmount.toLocaleString('en-IN')} Online
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => onTabChange('bookings')}
+                                    className="mt-6 w-full py-3 bg-white/20 text-white font-black text-sm rounded-2xl hover:bg-white/30 transition-all active:scale-[0.98] border border-white/30 flex items-center justify-center gap-2"
+                                >
+                                    <History className="h-4 w-4" /> View Payment History
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Active Stay Quick Details */}
+                        <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">My Room Info</span>
+                                <h4 className="font-black text-slate-800 text-lg mt-1 truncate">{activeStay.propertyName}</h4>
+                                <p className="text-xs text-slate-500 font-medium truncate mt-1">Bed Assigned: {activeStay.roomAssigned || 'Processing...'}</p>
+                                
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <div className="bg-slate-50 p-2.5 rounded-xl text-center border">
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Room Type</p>
+                                        <p className="text-xs font-black text-indigo-600 mt-0.5">{formatOccupancy(activeStay.occupancy)}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-2.5 rounded-xl text-center border">
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Status</p>
+                                        <p className="text-xs font-black text-emerald-600 mt-0.5">Checked In</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full mt-6 rounded-xl font-bold text-xs" 
+                                onClick={() => setSelectedBooking(activeStay)}
+                            >
+                                <Building2 className="h-3.5 w-3.5 mr-2" /> View Full Stay Card
+                            </Button>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ── Quick Actions Grid ── */}
+            <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Quick Services</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                    {[
+                        { label: "Pay Rent", href: "/dashboard/student/payments", icon: CreditCard, color: "bg-indigo-50 border-indigo-100 text-indigo-600" },
+                        { label: "Food Menu", href: "/dashboard/student/food-menu", icon: Utensils, color: "bg-orange-50 border-orange-100 text-orange-600" },
+                        { label: "Raise Ticket", href: "/dashboard/student/tickets", icon: Ticket, color: "bg-rose-50 border-rose-100 text-rose-600" },
+                        { label: "My Documents", href: "/dashboard/student/documents", icon: FileText, color: "bg-sky-50 border-sky-100 text-sky-600" },
+                        { label: "Notice Board", href: "/dashboard/student/notice", icon: Bell, color: "bg-violet-50 border-violet-100 text-violet-600" },
+                        { label: "Room Change", href: "/dashboard/student/room-change", icon: RefreshCcw, color: "bg-emerald-50 border-emerald-100 text-emerald-600" },
+                    ].map((act) => {
+                        const Icon = act.icon;
+                        return (
+                            <Link 
+                                key={act.label} 
+                                href={act.href}
+                                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 hover:-translate-y-1 hover:shadow-md ${act.color}`}
+                            >
+                                <Icon className="h-6 w-6 mb-2" />
+                                <span className="text-xs font-black text-center">{act.label}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Main Tabs Segment */}
+            <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+                <TabsList className="grid grid-cols-3 w-full p-1 bg-slate-100 rounded-2xl border shadow-inner h-auto">
+                    <TabsTrigger value="active-stay" className="font-bold py-3 text-xs md:text-sm whitespace-nowrap">
+                        <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
+                    </TabsTrigger>
+                    <TabsTrigger value="bookings" className="font-bold py-3 text-xs md:text-sm whitespace-nowrap">
+                        <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> Bookings & Status
+                    </TabsTrigger>
+                    <TabsTrigger value="profile" className="font-bold py-3 text-xs md:text-sm whitespace-nowrap">
                         <User className="h-4 w-4 mr-2 hidden sm:block" /> My Profile
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="active-stay" className="space-y-6">
-                    {/* ── RENT PENDING BLINKING BANNER ── */}
-                    {pendingRent && !rentBannerDismissed && (
-                        <div className="relative overflow-hidden rounded-2xl border-2 border-red-500 shadow-xl shadow-red-200/60 animate-[pulse_1.2s_ease-in-out_infinite] bg-gradient-to-r from-red-600 via-rose-600 to-red-700">
-                            {/* Animated shine overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_2s_linear_infinite]" />
-                            <div className="relative z-10 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-start gap-3">
-                                        {/* Pulsing red dot */}
-                                        <div className="shrink-0 mt-1">
-                                            <span className="relative flex h-4 w-4">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                                                <span className="relative inline-flex rounded-full h-4 w-4 bg-white" />
-                                            </span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-white font-black text-sm uppercase tracking-wider">
-                                                🔴 Rent Pending — {pendingRent.invoice.month}
-                                            </p>
-                                            <p className="text-red-100 text-xs mt-0.5 font-bold">
-                                                ₹{pendingRent.invoice.amount.toLocaleString('en-IN')} due &bull; Pay before the 5th to avoid late fees
-                                            </p>
-                                            {/* IDs row */}
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                <span className="inline-flex items-center gap-1 bg-white/20 border border-white/30 text-white text-[10px] font-black px-2 py-0.5 rounded-full font-mono">
-                                                    🪪 {pendingRent.tenantDisplayId}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1 bg-white/20 border border-white/30 text-white text-[10px] font-black px-2 py-0.5 rounded-full font-mono">
-                                                    🔖 {pendingRent.bookingDisplayId}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {/* Dismiss X */}
-                                    <button
-                                        onClick={() => setRentBannerDismissed(true)}
-                                        className="shrink-0 p-1 hover:bg-white/20 rounded-lg transition-all"
-                                        aria-label="Dismiss"
-                                    >
-                                        <X className="h-4 w-4 text-white" />
-                                    </button>
-                                </div>
-                                {/* Pay button */}
-                                <button
-                                    onClick={() => router.push(`/secure/payment?id=${pendingRent.bookingId}&type=rent&invoiceId=${pendingRent.invoice.id}`)}
-                                    className="mt-3 w-full flex items-center justify-center gap-2 bg-white text-red-700 font-black text-sm py-2.5 px-4 rounded-xl hover:bg-red-50 active:scale-95 transition-all shadow-lg"
-                                >
-                                    <CreditCard className="h-4 w-4" />
-                                    💳 Pay ₹{pendingRent.invoice.amount.toLocaleString('en-IN')} Online via Razorpay
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                {/* ── Active Stay Tab Content ── */}
+                <TabsContent value="active-stay" className="space-y-6 pt-4">
                     {(() => {
                         const activeStay = bookings.find((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
-                        if (!activeStay) return <div className="p-8 text-center text-muted-foreground">No active stay found.</div>;
+                        if (!activeStay) {
+                            return (
+                                <Card className="border-2 border-dashed p-12 text-center space-y-4">
+                                    <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">🏠</div>
+                                    <div>
+                                        <p className="font-bold text-slate-800">No active stay details found</p>
+                                        <p className="text-xs text-muted-foreground">Complete your onboarding bookings to activate your stay details.</p>
+                                    </div>
+                                </Card>
+                            );
+                        }
                         return (
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 px-1">
-                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">My Active Stay</h2>
-                                </div>
+                            <div className="space-y-6">
                                 <BookingCard 
                                     booking={activeStay} 
                                     isActiveStay={true}
@@ -1057,16 +1147,14 @@ export default function StudentDashboardPage() {
                                     handleCancel={handleCancel}
                                     cancellingId={cancellingId}
                                 />
+                                <MyDepositSection />
                             </div>
                         );
                     })()}
-
-                    {/* ── Component 4: My Deposit Section ── */}
-                    <MyDepositSection />
-
                 </TabsContent>
 
-                <TabsContent value="bookings" className="space-y-6">
+                {/* ── Bookings & Onboarding Tab Content ── */}
+                <TabsContent value="bookings" className="space-y-6 pt-4">
                     {(() => {
                         const otherBookings = bookings
                             .filter((b: any) => !['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status))
@@ -1074,100 +1162,43 @@ export default function StudentDashboardPage() {
 
                         return (
                             <div className="space-y-6">
-                                {/* ── Banners & Alerts Section ── */}
-                                <div className="space-y-3">
-                                    {/* Sharing Change Alerts */}
-                                    {bookings.some((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id) && 
-                                        bookings.filter((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id).map((b: any) => (
-                                        <div key={`sharing-alert-${b.id}`} className="bg-red-50 border-2 border-red-400 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
-                                            <div className="flex items-start gap-3">
-                                                <span className="text-2xl mt-0.5">⚠️</span>
-                                                <div>
-                                                    <p className="font-black text-red-800 text-sm">Your Sharing Type Was Changed</p>
-                                                    <p className="text-red-700 text-xs mt-1">You applied for <strong>{b.originalOccupancy}</strong> but management assigned <strong>{b.occupancy}</strong> at <strong>{b.propertyName}</strong>.</p>
-                                                </div>
+                                {/* Sharing Change Alerts */}
+                                {bookings.some((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id) && 
+                                    bookings.filter((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id).map((b: any) => (
+                                    <div key={`sharing-alert-${b.id}`} className="bg-red-50 border-2 border-red-400 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-start gap-3">
+                                            <span className="text-2xl mt-0.5">⚠️</span>
+                                            <div>
+                                                <p className="font-black text-red-800 text-sm">Your Sharing Type Was Changed</p>
+                                                <p className="text-red-700 text-xs mt-1">You applied for <strong>{b.originalOccupancy}</strong> but management assigned <strong>{b.occupancy}</strong> at <strong>{b.propertyName}</strong>.</p>
                                             </div>
-                                            <button onClick={() => setDismissedSharingAlert(b.id)} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5">
-                                                <X className="h-5 w-5" />
-                                            </button>
                                         </div>
-                                    ))}
+                                        <button onClick={() => setDismissedSharingAlert(b.id)} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5">
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                ))}
 
-                                    {/* Room Allocation Notifications */}
-                                    {roomAllocNotifs.map((n: any) => (
-                                        <div key={`room-alloc-${n.id}`} className="bg-red-50 border-2 border-red-500 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
-                                            <div className="flex items-start gap-3">
-                                                <span className="text-2xl mt-0.5">🏠</span>
-                                                <div>
-                                                    <p className="font-black text-red-800 text-sm">Room / Bed Update</p>
-                                                    <p className="text-red-700 text-xs mt-1">{n.message}</p>
-                                                </div>
+                                {/* Room Allocation Notifications */}
+                                {roomAllocNotifs.map((n: any) => (
+                                    <div key={`room-alloc-${n.id}`} className="bg-red-50 border-2 border-red-500 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-start gap-3">
+                                            <span className="text-2xl mt-0.5">🏠</span>
+                                            <div>
+                                                <p className="font-black text-red-800 text-sm">Room / Bed Update</p>
+                                                <p className="text-red-700 text-xs mt-1">{n.message}</p>
                                             </div>
-                                            <button onClick={async () => { await markNotificationRead(n.id); setRoomAllocNotifs(prev => prev.filter(x => x.id !== n.id)); }} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5">
-                                                <X className="h-5 w-5" />
-                                            </button>
                                         </div>
-                                    ))}
+                                        <button onClick={async () => { await markNotificationRead(n.id); setRoomAllocNotifs(prev => prev.filter(x => x.id !== n.id)); }} className="text-red-400 hover:text-red-600 shrink-0 mt-0.5">
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                ))}
 
-                                    {/* Lifecycle Action Banners */}
-                                    {otherBookings.map((booking: any) => {
-                                        if (booking.status === 'APPROVED_PENDING_TOKEN')
-                                            return <AlertBanner key={`alert-token-${booking.id}`} type="warning" message={`🔐 Pay ₹1,000 token to reserve your bed at ${booking.propertyName}.`} actionLabel="Pay Token" onAction={() => router.push(`/secure/payment?id=${booking.id}&type=token`)} />;
-                                        if (booking.status === 'PHYSICAL_VERIFIED' && !booking.agreementSigned)
-                                            return <AlertBanner key={`alert-phys-${booking.id}`} type="info" message={`✅ Physical check-in confirmed at ${booking.propertyName}! Your Tenant ID is assigned — sign your rental agreement now.`} actionLabel="Sign Agreement Now" onAction={() => setSigningBooking(booking)} />;
-                                        if (booking.status === 'ROOM_RESERVED' && !booking.agreementSigned)
-                                            return (
-                                                <div key={`alert-checkin-pending-${booking.id}`} className="flex items-center justify-between p-4 rounded-lg border shadow-sm mb-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-50 border-amber-200 text-amber-800">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 rounded-full bg-amber-100">
-                                                            <AlertTriangle className="h-5 w-5" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold">Physical Check-In Pending</p>
-                                                            <p className="text-xs opacity-90">To sign your rental agreement, please physically visit <strong>{booking.propertyName}</strong> and complete your in-person check-in first. Once the owner or their team confirms your physical check-in, your agreement will be unlocked for signing.</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 ml-4 shrink-0">
-                                                        <Lock className="h-4 w-4 text-amber-600" />
-                                                        <span className="text-xs font-black text-amber-700 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-full whitespace-nowrap">Agreement Locked</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        if (booking.status === 'AGREEMENT_PENDING')
-                                            return null;
-                                        if (booking.status === 'MOVE_IN_SCHEDULED' || booking.status === 'BOOKING_CONFIRMED') {
-                                            const rentAmount = Number(booking.amount || 0);
-                                            const depositAmount = Number(booking.depositAmount || 0);
-                                            
-                                            let moveInDateObj = new Date();
-                                            if (booking.onboardingDate) {
-                                                const d = new Date(booking.onboardingDate);
-                                                if (!isNaN(d.getTime())) moveInDateObj = d;
-                                            } else if (booking.moveInDate) {
-                                                const d = new Date(booking.moveInDate);
-                                                if (!isNaN(d.getTime())) moveInDateObj = d;
-                                            }
-                                            
-                                            const daysInThisMonth = new Date(moveInDateObj.getFullYear(), moveInDateObj.getMonth() + 1, 0).getDate();
-                                            const daysRemaining = daysInThisMonth - moveInDateObj.getDate() + 1;
-                                            const dailyRate = Math.round((rentAmount / daysInThisMonth) * 100) / 100;
-                                            const proratedRent = Math.round(dailyRate * daysRemaining);
-                                            const isFirstOfMonth = moveInDateObj.getDate() === 1;
-                                            const effectiveRent = isFirstOfMonth ? rentAmount : proratedRent;
-                                            
-                                            const subtotal = effectiveRent + depositAmount;
-                                            const finalAmt = Math.max(0, subtotal - 1000);
-                                            
-                                            return <AlertBanner key={`alert-final-${booking.id}`} type="brand" message={`⚡ Final Payment Due: ₹${finalAmt.toLocaleString('en-IN')} — Visit ${booking.propertyName} in person to pay and complete check-in.`} actionLabel="Pay Now" onAction={() => router.push(`/secure/payment?id=${booking.id}`)} />;
-                                        }
-                                        return null;
-                                    })}
-                                </div>
-
-                                {/* ── Onboarding / Other Bookings ── */}
+                                {/* Onboarding / Other Bookings List */}
                                 {otherBookings.length > 0 ? (
                                     <div className="space-y-4">
-                                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-500 px-1">Onboarding & Other Bookings</h2>
+                                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-500 px-1">Booking Checklist & History</h2>
                                         {otherBookings.map((booking: any) => (
                                             <BookingCard 
                                                 key={booking.id} 
@@ -1187,12 +1218,12 @@ export default function StudentDashboardPage() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <Card>
+                                    <Card className="border-2 border-dashed">
                                         <CardContent className="p-12 text-center space-y-4">
                                             <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">🔎</div>
                                             <div className="space-y-1">
-                                                <p className="font-bold text-slate-800">No active or pending bookings</p>
-                                                <p className="text-sm text-muted-foreground">Discover verified student housing across India with RentPe.</p>
+                                                <p className="font-bold text-slate-800">No pending bookings</p>
+                                                <p className="text-xs text-muted-foreground">Discover verified student housing across India with RentPe.</p>
                                             </div>
                                             <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold" asChild>
                                                 <Link href="/search">Find PG</Link>
@@ -1203,38 +1234,52 @@ export default function StudentDashboardPage() {
                             </div>
                         );
                     })()}
-
                 </TabsContent>
 
-
-
-                <TabsContent value="profile" className="space-y-6">
-                    <Card className="border-none shadow-xl bg-white overflow-hidden">
-                        <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-8">
+                {/* ── Profile Tab Content ── */}
+                <TabsContent value="profile" className="space-y-6 pt-4">
+                    <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
+                        <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8">
                             <div className="flex items-center gap-6">
-                                <div className="h-20 w-20 rounded-2xl bg-white/20 flex items-center justify-center border-2 border-white/30 text-white"><User className="h-10 w-10" /></div>
-                                <div><CardTitle className="text-3xl font-black">{profile?.name || "Verified Resident"}</CardTitle><CardDescription className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">{profile?.displayId} • Verified Resident</CardDescription></div>
+                                <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center border-2 border-white/20 text-white">
+                                    <User className="h-10 w-10" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-2xl font-black">{profile?.name || "Verified Resident"}</CardTitle>
+                                    <CardDescription className="text-slate-300 font-bold mt-1 uppercase tracking-widest text-[10px]">
+                                        ID: {profile?.displayId || '—'} • Verified Resident
+                                    </CardDescription>
+                                </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Full Legal Name</label><div className="text-lg font-black text-slate-800">{profile?.name}</div></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official Email</label><div className="text-lg font-black text-slate-800">{profile?.email}</div></div>
+                        <CardContent className="p-6 md:p-8 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Full Legal Name</label>
+                                        <div className="text-sm font-bold text-slate-800">{profile?.name || '—'}</div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Official Email</label>
+                                        <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
+                                    </div>
                                 </div>
-                                <div className="space-y-6">
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Occupancy Status</label><Badge className="bg-indigo-100 text-indigo-700 px-4 py-1.5 font-black text-[10px] uppercase">ACTIVE RESIDENT</Badge></div>
-                                    <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between"><div><p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Loyalty Points</p><p className="text-xl font-black text-indigo-700">{profile?.loyaltyPoints || 0} Points</p></div><CreditCard className="h-8 w-8 text-indigo-200" /></div>
-                                </div>
-                            </div>
-                            <div className="p-8 bg-slate-900 rounded-[32px] text-white shadow-2xl border-4 border-slate-800 relative overflow-hidden">
-                                <div className="relative z-10 flex justify-between items-start mb-12">
-                                    <div><div className="text-[10px] font-black tracking-[0.2em] text-indigo-400 uppercase mb-1">RentPe Digital Identity</div><div className="text-2xl font-black italic tracking-tighter">VERIFIED PASS</div></div>
-                                    <Shield className="h-10 w-10 text-indigo-400" />
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-6">
-                                    <div><p className="text-[9px] text-slate-500 uppercase mb-1.5">Identity</p><p className="text-sm font-black">{profile?.name}</p></div>
-                                    <div><p className="text-[9px] text-slate-500 uppercase mb-1.5">Member Code</p><p className="text-sm font-black font-mono">{profile?.displayId}</p></div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Status</label>
+                                        <div>
+                                            <Badge className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1 font-black text-[9px] uppercase rounded-full">
+                                                ACTIVE RESIDENT
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Loyalty Points</p>
+                                            <p className="text-lg font-black text-indigo-700">{profile?.loyaltyPoints || 0} Points</p>
+                                        </div>
+                                        <CreditCard className="h-8 w-8 text-indigo-200" />
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -1242,10 +1287,42 @@ export default function StudentDashboardPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Models */}
-                        {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
+            {/* Notice Board Widget (Community Hub) */}
+            <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                    <div className="flex items-center gap-2">
+                        <Bell className="h-5 w-5 text-indigo-600" />
+                        <h4 className="font-black text-slate-800 text-base">Property Notice Board</h4>
+                    </div>
+                    <Badge variant="outline" className="border-indigo-200 text-indigo-700 font-bold bg-indigo-50/50 text-[10px] rounded-full">
+                        Live Notices
+                    </Badge>
+                </div>
+                <div className="space-y-3">
+                    {[
+                        { title: "📶 High-Speed Wi-Fi Upgrade", desc: "Our tech team is performing high-speed fiber line upgrades in the East wing this Saturday between 2 AM to 5 AM.", date: "Today" },
+                        { title: "🍕 Friday Pizza Social", desc: "Join us in the common recreation area this Friday at 7 PM for a meet & greet event. Free entry and food!", date: "2 days ago" },
+                        { title: "🧹 Weekly Deep Cleaning Schedule", desc: "Deep cleaning schedules have been updated. Ensure your personal items are organized on Sunday morning.", date: "4 days ago" }
+                    ].map((notice, idx) => (
+                        <div key={idx} className="flex gap-4 p-3 hover:bg-slate-50/50 rounded-2xl transition-all border border-transparent hover:border-slate-100">
+                            <span className="text-xl">📌</span>
+                            <div className="space-y-0.5">
+                                <div className="flex justify-between items-center gap-2">
+                                    <p className="font-bold text-slate-800 text-xs md:text-sm">{notice.title}</p>
+                                    <span className="text-[9px] font-bold text-slate-400 shrink-0">{notice.date}</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{notice.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Modals */}
+            {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
             {selectedBooking && <RentReceipt booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
             <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
+            
             <PropertyAgreementModal
                 isOpen={!!signingBooking}
                 onClose={() => setSigningBooking(null)}

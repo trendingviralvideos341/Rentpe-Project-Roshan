@@ -104,11 +104,8 @@ export default function DashboardSidebar(props: SidebarProps) {
 
     // Close mobile drawer on route change
     useEffect(() => {
-        if (mobileOpen) {
-            const timer = setTimeout(() => setMobileOpen(false), 0);
-            return () => clearTimeout(timer);
-        }
-    }, [pathname, mobileOpen]);
+        setMobileOpen(false);
+    }, [pathname]);
 
     const ownerSections: SidebarSection[] = [
         {
@@ -377,15 +374,60 @@ export default function DashboardSidebar(props: SidebarProps) {
                 {navContent}
             </aside>
 
-            {/* Mobile Hamburger Button */}
-            <button
-                onClick={() => setMobileOpen(true)}
-                className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-                aria-label="Open menu"
-                suppressHydrationWarning
-            >
-                <Menu className="w-6 h-6" />
-            </button>
+            {/* Mobile Bottom Navigation for Student OR Hamburger for staff/owners/admins */}
+            {role === "student" ? (
+                <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-lg border-t border-border/60 shadow-lg px-2 py-1.5 flex justify-around items-center">
+                    {(() => {
+                        const tabs = [
+                            { href: "/dashboard/student", label: "Home", icon: LayoutDashboard },
+                            { href: "/dashboard/student/payments", label: "Payments", icon: CreditCard },
+                            { href: "/dashboard/student/food-menu", label: "Food", icon: Utensils },
+                            { href: "/dashboard/student/tickets", label: "Tickets", icon: Ticket },
+                        ];
+                        return (
+                            <>
+                                {tabs.map((tab) => {
+                                    const Icon = tab.icon;
+                                    const isActive = pathname === tab.href;
+                                    return (
+                                        <Link
+                                            key={tab.href}
+                                            href={tab.href}
+                                            className={cn(
+                                                "flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition-all duration-200",
+                                                isActive 
+                                                    ? "text-primary font-bold scale-105" 
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            <Icon className={cn("h-5 w-5 mb-0.5", isActive && "stroke-[2.5px]")} />
+                                            <span className="text-[10px] tracking-tight">{tab.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                                {/* Menu Toggle Tab */}
+                                <button
+                                    onClick={() => setMobileOpen(true)}
+                                    className="flex flex-col items-center justify-center flex-1 py-1 text-muted-foreground hover:text-foreground"
+                                >
+                                    <Menu className="h-5 w-5 mb-0.5" />
+                                    <span className="text-[10px] tracking-tight">Menu</span>
+                                </button>
+                            </>
+                        );
+                    })()}
+                </div>
+            ) : (
+                /* Mobile Hamburger Button for non-students */
+                <button
+                    onClick={() => setMobileOpen(true)}
+                    className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                    aria-label="Open menu"
+                    suppressHydrationWarning
+                >
+                    <Menu className="w-6 h-6" />
+                </button>
+            )}
 
             {/* Mobile Drawer Overlay */}
             {mobileOpen && (
