@@ -696,6 +696,9 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
             owner: {
                 select: { id: true, name: true, email: true, phone: true }
             },
+            assignedAdmin: {
+                select: { id: true, name: true, email: true, role: true }
+            },
             rooms: {
                 include: {
                     beds: { select: { id: true, status: true } }

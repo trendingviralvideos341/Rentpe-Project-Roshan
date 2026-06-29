@@ -14,7 +14,8 @@ import {
     rollbackPropertyStatus,
     logCorrectionView
 } from "@/actions/admin";
-import { requestBankDetails, manualMakePropertyLive } from "@/actions/properties";
+import { requestBankDetails, manualMakePropertyLive, getPlatformVerifiers, assignPropertyToVerifier } from "@/actions/properties";
+import { getCurrentUser } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +23,7 @@ import { toast } from "sonner";
 import { 
     Building, RefreshCcw, Eye, CheckCircle, XCircle, AlertTriangle, 
     FileText, Check, CreditCard, Trash2, DollarSign,
-    MapPin, User as UserIcon, Calendar, ArrowRight, ShieldOff
+    MapPin, User as UserIcon, Calendar, ArrowRight, ShieldOff, Shield
 } from "lucide-react";
 import Link from "next/link";
 
@@ -71,6 +72,11 @@ export default function AdminPropertiesPage() {
     const [actionReason, setActionReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [searchQ, setSearchQ] = useState("");
+    
+    // Staff assignment state
+    const [verifiers, setVerifiers] = useState<any[]>([]);
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -89,6 +95,22 @@ export default function AdminPropertiesPage() {
     }, [filter]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        async function loadInitialData() {
+            try {
+                const [user, team] = await Promise.all([
+                    getCurrentUser(),
+                    getPlatformVerifiers()
+                ]);
+                setCurrentUser(user);
+                setVerifiers(team);
+            } catch (err) {
+                console.error("Failed to load platform team data", err);
+            }
+        }
+        loadInitialData();
+    }, []);
 
     const handleAction = async () => {
         if (!actionModal) return;
@@ -143,11 +165,18 @@ export default function AdminPropertiesPage() {
         }
     };
 
-    const filtered = properties.filter((p: any) =>
-        !searchQ || p.id === searchQ || p.name?.toLowerCase().includes(searchQ.toLowerCase()) ||
-        p.city?.toLowerCase().includes(searchQ.toLowerCase()) ||
-        p.owner?.name?.toLowerCase().includes(searchQ.toLowerCase())
-    );
+    const filtered = properties.filter((p: any) => {
+        const matchesSearch = !searchQ || p.id === searchQ || p.name?.toLowerCase().includes(searchQ.toLowerCase()) ||
+            p.city?.toLowerCase().includes(searchQ.toLowerCase()) ||
+            p.owner?.name?.toLowerCase().includes(searchQ.toLowerCase());
+        
+        if (!matchesSearch) return false;
+        
+        if (assigneeFilter === "ALL") return true;
+        if (assigneeFilter === "UNASSIGNED") return !p.assignedAdminId;
+        if (assigneeFilter === "ME") return p.assignedAdminId === currentUser?.id;
+        return p.assignedAdminId === assigneeFilter;
+    });
 
     return (
         <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 space-y-8">
@@ -166,28 +195,27 @@ export default function AdminPropertiesPage() {
                 </div>
             </div>
 
-            {/* Quick Stats — 8 Clickable Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            {/* Quick Stats — Neubrutalist Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
                 {([
-                    { key: "PENDING_VERIFICATION",    label: "Pending Applications",  color: "text-blue-600",    bg: "bg-blue-50 border-blue-100",     ring: "hover:ring-blue-300" },
-                    { key: "VERIFYING_DOCUMENTS",     label: "Pending Verification",  color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
-                    { key: "NEEDS_CORRECTION",        label: "Needs Correction",      color: "text-amber-600",   bg: "bg-amber-50 border-amber-100",   ring: "hover:ring-amber-300" },
-                    { key: "AWAITING_BANK_DETAILS",   label: "Awaiting Bank",         color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
-                    { key: "BANK_DETAILS_SUBMITTED",  label: "Bank Submitted",        color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
-                    { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payments",      color: "text-orange-600",  bg: "bg-orange-50 border-orange-100", ring: "hover:ring-orange-300" },
-                    { key: "LIVE",                   label: "Live Properties",       color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100",ring: "hover:ring-emerald-300" },
-                    { key: "REJECTED",                label: "Rejected",              color: "text-red-600",     bg: "bg-red-50 border-red-100",       ring: "hover:ring-red-300" },
-                    { key: "SUSPENDED",               label: "Suspended",             color: "text-slate-600",   bg: "bg-slate-50 border-slate-200",   ring: "hover:ring-slate-300" },
+                    { key: "PENDING_VERIFICATION",    label: "Applications",    color: "text-blue-600",    border: "border-blue-600",    bg: "bg-blue-50/50" },
+                    { key: "VERIFYING_DOCUMENTS",     label: "Verification",    color: "text-purple-600",  border: "border-purple-600",  bg: "bg-purple-50/50" },
+                    { key: "NEEDS_CORRECTION",        label: "Corrections",     color: "text-amber-600",   border: "border-amber-500",   bg: "bg-amber-50/50" },
+                    { key: "AWAITING_BANK_DETAILS",   label: "Awaiting Bank",   color: "text-indigo-600",  border: "border-indigo-600",  bg: "bg-indigo-50/50" },
+                    { key: "BANK_DETAILS_SUBMITTED",  label: "Bank Submitted",  color: "text-violet-600",  border: "border-violet-600",  bg: "bg-violet-50/50" },
+                    { key: "APPROVED_PENDING_PAYMENT",label: "Payments",        color: "text-orange-600",  border: "border-orange-500",  bg: "bg-orange-50/50" },
+                    { key: "LIVE",                   label: "Live Inventory",  color: "text-emerald-600", border: "border-emerald-600", bg: "bg-emerald-50/50" },
+                    { key: "REJECTED",                label: "Rejected",        color: "text-red-600",     border: "border-red-600",     bg: "bg-red-50/50" },
                 ] as const).map((s) => (
                     <button
                         key={s.key}
                         onClick={() => setFilter(s.key)}
-                        className={`p-3 rounded-2xl border-2 shadow-sm ${s.bg} flex flex-col gap-1 transition-all hover:scale-[1.03] hover:shadow-md hover:ring-2 ${s.ring} cursor-pointer text-left ${
-                            filter === s.key ? "ring-2 scale-[1.03] shadow-md " + s.ring : ""
+                        className={`p-4 rounded-2xl border-[3px] border-slate-950 flex flex-col gap-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${s.bg} ${
+                            filter === s.key ? "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-1 bg-white ring-4 ring-indigo-50" : "shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                         }`}
                     >
                         <span className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-tight">{s.label}</span>
-                        <span className={`text-xl font-black ${s.color}`}>{statusCounts[s.key] || 0}</span>
+                        <span className={`text-2xl font-black ${s.color}`}>{statusCounts[s.key] || 0}</span>
                     </button>
                 ))}
             </div>
@@ -220,17 +248,37 @@ export default function AdminPropertiesPage() {
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="max-w-md relative group">
-                <input 
-                    type="text" 
-                    placeholder="Search by ID, Name, City or Owner..."
-                    className="w-full h-12 bg-white border-2 border-slate-200 rounded-2xl px-5 text-sm font-medium focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition-all shadow-sm"
-                    value={searchQ}
-                    onChange={(e) => setSearchQ(e.target.value)}
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                    🔍
+            {/* Search and Filtering Toolbar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                <div className="flex-1 max-w-md relative group">
+                    <input 
+                        type="text" 
+                        placeholder="Search by ID, Name, City or Owner..."
+                        className="w-full h-12 bg-white border-2 border-slate-200 rounded-2xl px-5 text-sm font-medium focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition-all shadow-sm"
+                        value={searchQ}
+                        onChange={(e) => setSearchQ(e.target.value)}
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors">
+                        🔍
+                    </div>
+                </div>
+
+                <div className="relative">
+                    <select
+                        value={assigneeFilter}
+                        onChange={(e) => setAssigneeFilter(e.target.value)}
+                        className="h-12 bg-white border-2 border-slate-200 rounded-2xl pl-4 pr-10 text-xs font-black uppercase tracking-wider focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition-all cursor-pointer appearance-none"
+                    >
+                        <option value="ALL">📋 All Assignments</option>
+                        <option value="ME">👤 Assigned to Me</option>
+                        <option value="UNASSIGNED">⚪ Unassigned Tasks</option>
+                        {verifiers.map((v) => (
+                            <option key={v.id} value={v.id}>👥 {v.name || v.email}</option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">
+                        ▼
+                    </div>
                 </div>
             </div>
 
@@ -316,6 +364,33 @@ export default function AdminPropertiesPage() {
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Submitted</span>
                                                     <span className="text-xs font-bold text-slate-700">{new Date(prop.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                                                    <Shield className="h-4 w-4 text-purple-600" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Assignee</span>
+                                                    <select
+                                                        className="text-xs font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer border-none p-0 focus:ring-0 max-w-[120px]"
+                                                        value={prop.assignedAdminId || ""}
+                                                        onChange={async (e) => {
+                                                            const val = e.target.value || null;
+                                                            try {
+                                                                await assignPropertyToVerifier(prop.id, val);
+                                                                toast.success("Assignment updated successfully!");
+                                                                fetchData();
+                                                            } catch {
+                                                                toast.error("Failed to update assignment");
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="">Unassigned</option>
+                                                        {verifiers.map((v) => (
+                                                            <option key={v.id} value={v.id}>{v.name || v.email}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                             </div>
                                         </div>
@@ -547,6 +622,16 @@ export default function AdminPropertiesPage() {
                     </Card>
                 </div>
             )}
+            {/* Custom Global Scrollbar Styles */}
+            <style dangerouslySetInnerHTML={{__html: `
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none !important;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none !important;
+                    scrollbar-width: none !important;
+                }
+            `}} />
         </div>
     );
 }

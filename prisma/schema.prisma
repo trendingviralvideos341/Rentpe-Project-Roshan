@@ -74,6 +74,7 @@ model User {
   notifications          Notification[]
   ownerOnboardings       OwnerOnboarding[]    @relation("OnboardedBy")
   properties             Property[]
+  assignedProperties     Property[]           @relation("PropertyVerifier")
   roleUpgradeRequests    RoleUpgradeRequest[]
   savedProperties        SavedProperty[]
   tenancies              Tenancy[]
@@ -185,6 +186,8 @@ model Property {
   bookings                   Booking[]
   foodMenu                   FoodMenu[]
   owner                      User                         @relation(fields: [ownerId], references: [id])
+  assignedAdminId            String?
+  assignedAdmin              User?                        @relation("PropertyVerifier", fields: [assignedAdminId], references: [id])
   reviews                    Review[]
   rooms                      Room[]
   savedBy                    SavedProperty[]

@@ -1446,3 +1446,69 @@ export async function manualMakePropertyLive(propertyId: string) {
     });
 }
 
+export async function getPlatformVerifiers() {
+    const session = await getSession();
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'VERIFIER' && session.role !== 'ONBOARDER')) {
+        throw new Error("Unauthorized");
+    }
+
+    return prisma.user.findMany({
+        where: {
+            role: { in: ['ONBOARDER', 'VERIFIER', 'ADMIN'] },
+            status: 'ACTIVE'
+        },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, email: true, role: true, displayId: true }
+    });
+}
+
+export async function assignPropertyToVerifier(propertyId: string, verifierId: string | null) {
+    const session = await getSession();
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'VERIFIER' && session.role !== 'ONBOARDER')) {
+        throw new Error("Unauthorized");
+    }
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.property.update({
+            where: { id: propertyId },
+            data: { assignedAdminId: verifierId }
+        });
+
+        let assigneeName = "Unassigned";
+        if (verifierId) {
+            const assignee = await tx.user.findUnique({ where: { id: verifierId } });
+            assigneeName = assignee?.name || assignee?.email || "Unknown";
+
+            await tx.notification.create({
+                data: {
+                    userId: verifierId,
+                    type: 'SYSTEM_ALERT',
+                    message: `New Assignment: Property "${property.name}" has been assigned to you for verification.`,
+                    targetRole: 'ADMIN'
+                }
+            });
+        }
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role as string,
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin property assignment updated. Assigned to: ${assigneeName}`,
+                newValue: { assignedAdminId: verifierId },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        return { success: true };
+    });
+}
+
+
