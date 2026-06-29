@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Plus, X, AlertTriangle, ShieldCheck, Shield, Info, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera, CheckCircle } from "lucide-react";
+import { Eye, Plus, X, AlertTriangle, ShieldCheck, Shield, Info, UploadCloud, Loader2, Building2, Users, BedDouble, ParkingCircle, ImageIcon, Camera, CheckCircle, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { createProperty } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
@@ -37,6 +37,7 @@ export default function AddPropertyPage() {
     const router = useRouter();
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [currentStep, setCurrentStep] = useState(1);
 
     // Form state
     const [name, setName] = useState("");
@@ -648,6 +649,78 @@ export default function AddPropertyPage() {
         return Object.keys(errs).length === 0;
     };
 
+    const validateStep = (step: number): boolean => {
+        const errs: Record<string, string> = {};
+        if (step === 1) {
+            if (!name.trim()) errs.name = "Property name is required";
+            const ownerErr = validateName(ownerName);
+            if (ownerErr) errs.ownerName = ownerErr;
+            const phoneErr = validatePhone(phone);
+            if (phoneErr) errs.phone = phoneErr;
+            if ((propertyType === "PG" || propertyType === "Hostel") && !licenseNumber.trim()) {
+                errs.licenseNumber = "PG/Hostel Licence Number is required";
+            }
+            if (propertyType === "Other" && !otherPropertyType.trim()) {
+                errs.propertyType = "Please specify the property type";
+            }
+            if (!hasGstNumber) {
+                errs.hasGstNumber = "Please specify if you have a GST number";
+            } else if (hasGstNumber === "yes") {
+                if (!gstNumber.trim()) {
+                    errs.gstNumber = "GST Number is required";
+                } else {
+                    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i;
+                    if (!gstRegex.test(gstNumber.trim())) {
+                        errs.gstNumber = "Invalid GSTIN format";
+                    }
+                }
+            }
+        }
+        if (step === 2) {
+            if (!address.trim()) errs.address = "Street address is required";
+            if (!pincode.trim() || !/^\d{6}$/.test(pincode)) errs.pincode = "Valid 6-digit PIN required";
+            if (!city.trim()) errs.city = "City is required (enter valid PIN)";
+            if (!state.trim()) errs.state = "State is required (enter valid PIN)";
+        }
+        if (step === 3) {
+            if (!gender) errs.gender = "Gender type is required";
+            if (!description.trim()) errs.description = "Description is required";
+            if (amenities.length === 0) errs.amenities = "Select at least one amenity";
+        }
+        if (step === 4) {
+            if (foodType === 'OPTIONAL' && (!foodPricePerMonth.trim() || parseFloat(foodPricePerMonth) <= 0)) {
+                errs.foodPricePerMonth = "Monthly food price is required for Optional food service";
+            }
+            if (!foodType) {
+                errs.foodType = "Please select a food service option (Mandatory)";
+            }
+        }
+        if (step === 5) {
+            if (rooms.length === 0) errs.rooms = "Add at least one room";
+            rooms.forEach((room, i) => {
+                if (!room.roomNumber.trim()) errs[`room_${i}_number`] = `Room ${i + 1}: Room number required`;
+                if (!room.price || parseFloat(room.price) <= 0) errs[`room_${i}_price`] = `Room ${i + 1}: Valid price required`;
+                if (!room.availability || parseInt(room.availability) <= 0) errs[`room_${i}_avail`] = `Room ${i + 1}: Availability required`;
+                if (!room.securityDeposit || (room.securityDeposit !== '1' && room.securityDeposit !== '2')) errs[`room_${i}_deposit`] = `Room ${i + 1}: Security deposit selection is required`;
+            });
+        }
+        
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const handleNext = () => {
+        if (validateStep(currentStep)) {
+            setCurrentStep(s => s + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+    
+    const handlePrev = () => {
+        setCurrentStep(s => s - 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const [successData, setSuccessData] = useState<{ displayId: string; name: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -805,8 +878,30 @@ export default function AddPropertyPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Basic Info */}
-                <Card className="border-[7px] border-purple-200 shadow-xl shadow-purple-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                {/* Stepper UI */}
+                <div className="flex items-center justify-between mb-8 overflow-x-auto pb-4 gap-2">
+                    {[
+                        { num: 1, title: 'Basic' },
+                        { num: 2, title: 'Address' },
+                        { num: 3, title: 'Details' },
+                        { num: 4, title: 'Food' },
+                        { num: 5, title: 'Rooms' },
+                        { num: 6, title: 'Uploads' }
+                    ].map((step, idx) => (
+                        <div key={step.num} className="flex items-center">
+                            <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-full font-black text-sm border-2 transition-all ${currentStep === step.num ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg scale-110' : currentStep > step.num ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}>
+                                {currentStep > step.num ? <CheckCircle className="h-5 w-5" /> : step.num}
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${currentStep === step.num ? 'text-indigo-700' : 'text-slate-400'}`}>{step.title}</span>
+                            {idx < 5 && <div className={`w-8 md:w-12 h-1 mx-2 rounded-full ${currentStep > step.num ? 'bg-indigo-200' : 'bg-slate-100'}`}></div>}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Basic Info - Step 1 */}
+                {currentStep === 1 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Card className="border-[7px] border-purple-200 shadow-xl shadow-purple-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
                     <CardHeader className="bg-linear-to-r from-purple-100/80 via-white/50 to-transparent p-6 border-b border-purple-100">
                         <CardTitle className="text-xl font-black text-purple-700 flex items-center gap-3">
                             <Plus className="h-6 w-6" /> Basic Details
@@ -993,9 +1088,18 @@ export default function AddPropertyPage() {
                         </div>
                     </CardContent>
                 </Card>
+                    <div className="flex justify-end pt-4">
+                        <Button type="button" onClick={handleNext} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-xl shadow-lg active:scale-95 transition-all">
+                            NEXT STEP <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
+                )}
 
-                {/* Address with Pincode Auto-Fetch */}
-                <Card className="border-[7px] border-blue-200 shadow-xl shadow-blue-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                {/* Address with Pincode Auto-Fetch - Step 2 */}
+                {currentStep === 2 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Card className="border-[7px] border-blue-200 shadow-xl shadow-blue-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
                     <CardHeader className="bg-linear-to-r from-blue-100/80 via-white/50 to-transparent p-6 border-b border-blue-100">
                         <CardTitle className="text-xl font-black text-blue-700">Property Address</CardTitle>
                         <CardDescription>Enter PIN code to auto-fill city and state.</CardDescription>
@@ -1051,9 +1155,21 @@ export default function AddPropertyPage() {
                         )}
                     </CardContent>
                 </Card>
+                    <div className="flex justify-between pt-4">
+                        <Button type="button" onClick={handlePrev} variant="outline" className="h-14 px-8 border-2 border-slate-200 text-slate-600 font-black text-lg rounded-xl active:scale-95 transition-all">
+                            PREVIOUS
+                        </Button>
+                        <Button type="button" onClick={handleNext} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-xl shadow-lg active:scale-95 transition-all">
+                            NEXT STEP <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
+                )}
 
-                {/* Property Details */}
-                <Card className="border-[7px] border-orange-200 shadow-xl shadow-orange-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                {/* Property Details - Step 3 */}
+                {currentStep === 3 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Card className="border-[7px] border-orange-200 shadow-xl shadow-orange-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
                     <CardHeader className="bg-linear-to-r from-orange-100/80 via-white/50 to-transparent p-6 border-b border-orange-100">
                         <CardTitle className="text-xl font-black text-orange-700">Property Details</CardTitle>
                         <CardDescription>Gender type, description, and amenities.</CardDescription>
@@ -1157,9 +1273,21 @@ export default function AddPropertyPage() {
                         {errors.amenities && <p className="text-xs text-red-500 mt-2">{errors.amenities}</p>}
                     </CardContent>
                 </Card>
+                    <div className="flex justify-between pt-4">
+                        <Button type="button" onClick={handlePrev} variant="outline" className="h-14 px-8 border-2 border-slate-200 text-slate-600 font-black text-lg rounded-xl active:scale-95 transition-all">
+                            PREVIOUS
+                        </Button>
+                        <Button type="button" onClick={handleNext} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-xl shadow-lg active:scale-95 transition-all">
+                            NEXT STEP <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
+                )}
 
-                {/* ── Food & Mess Service ── */}
-                <Card className="border-[7px] border-orange-200 shadow-xl shadow-orange-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                {/* ── Food & Mess Service ── Step 4 */}
+                {currentStep === 4 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Card className="border-[7px] border-orange-200 shadow-xl shadow-orange-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
                     <CardHeader className="bg-linear-to-r from-orange-100/80 via-white/50 to-transparent p-6 border-b border-orange-100">
                         <CardTitle className="text-xl font-black text-orange-700 flex items-center gap-3">
                             🍽 Food & Mess Service
@@ -1238,9 +1366,21 @@ export default function AddPropertyPage() {
                         {errors.foodType && <p className="text-[10px] text-red-500 font-bold uppercase italic mt-1">{errors.foodType}</p>}
                     </CardContent>
                 </Card>
+                    <div className="flex justify-between pt-4">
+                        <Button type="button" onClick={handlePrev} variant="outline" className="h-14 px-8 border-2 border-slate-200 text-slate-600 font-black text-lg rounded-xl active:scale-95 transition-all">
+                            PREVIOUS
+                        </Button>
+                        <Button type="button" onClick={handleNext} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-xl shadow-lg active:scale-95 transition-all">
+                            NEXT STEP <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
+                )}
 
-                {/* Rooms */}
-                <Card className="border-[7px] border-rose-200 shadow-xl shadow-rose-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                {/* Rooms - Step 5 */}
+                {currentStep === 5 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Card className="border-[7px] border-rose-200 shadow-xl shadow-rose-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
                     <CardHeader className="bg-linear-to-r from-rose-100/80 via-white/50 to-transparent p-6 border-b border-rose-100">
                         <CardTitle className="text-xl font-black text-rose-700">Rooms <span className="text-red-500">*</span></CardTitle>
                         <CardDescription>Add rooms with pricing and availability. (At least 1 room required)</CardDescription>
@@ -1457,9 +1597,21 @@ export default function AddPropertyPage() {
                         )}
                     </CardContent>
                 </Card>
+                    <div className="flex justify-between pt-4">
+                        <Button type="button" onClick={handlePrev} variant="outline" className="h-14 px-8 border-2 border-slate-200 text-slate-600 font-black text-lg rounded-xl active:scale-95 transition-all">
+                            PREVIOUS
+                        </Button>
+                        <Button type="button" onClick={handleNext} className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-xl shadow-lg active:scale-95 transition-all">
+                            NEXT STEP <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </div>
+                </div>
+                )}
 
-                {/* Photos & Documents */}
-                <Card className="border-[7px] border-purple-200 shadow-xl shadow-purple-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
+                {/* Photos & Documents - Step 6 */}
+                {currentStep === 6 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Card className="border-[7px] border-purple-200 shadow-xl shadow-purple-900/5 overflow-hidden bg-white/80 backdrop-blur-md">
                     <CardHeader className="bg-linear-to-r from-purple-100/80 via-white/50 to-transparent p-6 border-b border-purple-100">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex-1">
@@ -1716,6 +1868,14 @@ export default function AddPropertyPage() {
                 <div className="flex justify-center items-center gap-4 pt-6 mb-12">
                     <Button 
                         type="button" 
+                        onClick={handlePrev} 
+                        variant="outline" 
+                        className="px-10 h-14 border-2 border-slate-200 text-slate-600 font-black tracking-widest uppercase rounded-xl active:scale-95 transition-all text-sm"
+                    >
+                        PREVIOUS
+                    </Button>
+                    <Button 
+                        type="button" 
                         variant="destructive"
                         onClick={() => router.back()} 
                         className="px-10 h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-red-200 uppercase tracking-widest font-black text-sm"
@@ -1735,6 +1895,8 @@ export default function AddPropertyPage() {
                         )}
                     </Button>
                 </div>
+                </div>
+                )}
             </form>
 
             {/* Simple Lightbox for Viewing Images */}

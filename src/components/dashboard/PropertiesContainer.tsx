@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building, Plus, MapPin, AlertCircle, ArrowRight, CreditCard, Trash2, RefreshCcw } from "lucide-react";
+import { Building, Plus, MapPin, AlertCircle, ArrowRight, CreditCard, Trash2, RefreshCcw, Activity, CheckCircle, BedDouble } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { getProperties } from "@/actions/properties";
@@ -162,6 +162,35 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                     )}
                 </div>
             </div>
+
+            {/* Portfolio Stats Banner */}
+            {!loading && properties.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div className="bg-linear-to-br from-indigo-500 to-indigo-700 rounded-2xl p-5 text-white shadow-xl shadow-indigo-200 border border-indigo-400 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-indigo-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><Building className="h-3.5 w-3.5" /> Total Properties</p>
+                            <h3 className="text-4xl font-black">{properties.length}</h3>
+                        </div>
+                        <Activity className="absolute -right-4 -bottom-4 h-24 w-24 text-indigo-400/30 group-hover:scale-110 transition-transform duration-500" />
+                    </div>
+                    
+                    <div className="bg-linear-to-br from-emerald-500 to-emerald-700 rounded-2xl p-5 text-white shadow-xl shadow-emerald-200 border border-emerald-400 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-emerald-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5" /> Live & Approved</p>
+                            <h3 className="text-4xl font-black">{properties.filter(p => p.status === 'LIVE' || p.status === 'APPROVED').length}</h3>
+                        </div>
+                        <CheckCircle className="absolute -right-4 -bottom-4 h-24 w-24 text-emerald-400/30 group-hover:scale-110 transition-transform duration-500" />
+                    </div>
+                    
+                    <div className="bg-linear-to-br from-purple-500 to-purple-700 rounded-2xl p-5 text-white shadow-xl shadow-purple-200 border border-purple-400 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-purple-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5" /> Total Rooms</p>
+                            <h3 className="text-4xl font-black">{properties.reduce((sum, p) => sum + (p.rooms?.length || 0), 0)}</h3>
+                        </div>
+                        <BedDouble className="absolute -right-4 -bottom-4 h-24 w-24 text-purple-400/30 group-hover:scale-110 transition-transform duration-500" />
+                    </div>
+                </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {properties.map((property) => (
