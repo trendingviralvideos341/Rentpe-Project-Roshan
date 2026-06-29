@@ -154,6 +154,7 @@ model Property {
   bankAccountNo              String?
   bankIfsc                   String?
   bankName                   String?
+  cancelChequeUrl            String?
   videoUrl                   String?
   isVerified                 Boolean                      @default(false)
   createdAt                  DateTime                     @default(now())

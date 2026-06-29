@@ -11,6 +11,8 @@ import { ImageCarousel } from "@/components/ImageCarousel";
 import { PropertyStepper } from "@/components/property/PropertyStepper";
 import { payOnboardingFee, deleteProperty } from "@/actions/properties";
 import { getPlatformSettings } from "@/actions/platform";
+import { BankDetailsModal } from "./BankDetailsModal";
+import { Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -38,6 +40,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
     // Custom Modal State
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [propertyToCancel, setPropertyToCancel] = useState<{ id: string; name: string } | null>(null);
+    const [bankModalOpen, setBankModalOpen] = useState(false);
+    const [propertyForBank, setPropertyForBank] = useState<{ id: string; name: string } | null>(null);
 
     const fetchProperties = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -215,6 +219,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             property.status === 'NEEDS_CORRECTION' ? "bg-orange-500" :
                                             property.status === 'CORRECTED' ? "bg-indigo-600" :
                                             ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? "bg-amber-500 animate-pulse" :
+                                            property.status === 'AWAITING_BANK_DETAILS' ? "bg-purple-600 animate-pulse" :
+                                            property.status === 'BANK_DETAILS_SUBMITTED' ? "bg-purple-600" :
                                             property.status === 'VERIFIED_SUCCESSFULLY' ? "bg-emerald-600" :
                                             property.status === 'SUSPENDED' ? "bg-orange-600" : "bg-red-600"
                                         )}>
@@ -223,6 +229,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                              property.status === 'NEEDS_CORRECTION' ? 'Pending' :
                                              property.status === 'CORRECTED' ? 'Resubmitted' :
                                              ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? 'Action Needed' :
+                                             property.status === 'AWAITING_BANK_DETAILS' ? 'Action Needed' :
+                                             property.status === 'BANK_DETAILS_SUBMITTED' ? 'Verifying Bank' :
                                              property.status === 'VERIFIED_SUCCESSFULLY' ? 'Verified' :
                                              property.status === 'SUSPENDED' ? 'Suspended' : 'Rejected'}
                                         </Badge>
@@ -305,6 +313,14 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                                 <div className="flex items-center gap-1.5 text-amber-600 font-bold text-xs uppercase tracking-tight">
                                                     <CreditCard className="h-4 w-4" /> ₹{onboardingFee} Fee Pending
                                                 </div>
+                                        ) : property.status === 'AWAITING_BANK_DETAILS' ? (
+                                                <div className="flex items-center gap-1.5 text-purple-600 font-bold text-xs uppercase tracking-tight">
+                                                    <Landmark className="h-4 w-4" /> Bank Details Needed
+                                                </div>
+                                        ) : property.status === 'BANK_DETAILS_SUBMITTED' ? (
+                                                <div className="flex items-center gap-1.5 text-purple-600 font-bold text-xs uppercase tracking-tight">
+                                                    <CheckCircle className="h-4 w-4" /> Verifying Bank Details
+                                                </div>
                                         ) : (
                                             <div className="flex items-center gap-2 bg-slate-50/80 px-4 py-2 rounded-2xl border-2 border-slate-100 shadow-inner">
                                                 <Building className="h-5 w-5 text-indigo-600" />
@@ -321,6 +337,16 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                                     disabled={processingId === property.id}
                                                 >
                                                     {processingId === property.id ? "Processing..." : "PAY ₹99"}
+                                                </Button>
+                                            )}
+                                            {property.status === 'AWAITING_BANK_DETAILS' && (role === 'owner' || permissions.includes('manage_properties')) && (
+                                                <Button 
+                                                    variant="default" 
+                                                    size="sm" 
+                                                    className="bg-purple-600 hover:bg-purple-700 text-white font-black uppercase text-[10px] h-8 px-4 shadow-lg active:scale-95 shadow-purple-200" 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPropertyForBank({ id: property.id, name: property.name }); setBankModalOpen(true); }}
+                                                >
+                                                    Add Bank Details
                                                 </Button>
                                             )}
                                             {property.status !== 'APPROVED' && property.status !== 'LIVE' && (role === 'owner' || permissions.includes('manage_properties')) && (
@@ -384,6 +410,19 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                     <Building className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-xl font-bold text-slate-500">No properties listed yet.</p>
                 </div>
+            )}
+            {/* Bank Details Modal */}
+            {propertyForBank && (
+                <BankDetailsModal 
+                    isOpen={bankModalOpen}
+                    onClose={() => {
+                        setBankModalOpen(false);
+                        setPropertyForBank(null);
+                    }}
+                    propertyId={propertyForBank.id}
+                    propertyName={propertyForBank.name}
+                    onSuccess={() => fetchProperties(true)}
+                />
             )}
         </div>
     );

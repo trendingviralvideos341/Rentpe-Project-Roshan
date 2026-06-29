@@ -14,6 +14,7 @@ import {
     rollbackPropertyStatus,
     logCorrectionView
 } from "@/actions/admin";
+import { requestBankDetails, manualMakePropertyLive } from "@/actions/properties";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +31,8 @@ const STATUS_TABS = [
     { key: "VERIFYING_DOCUMENTS",    label: "Pending Verification",  icon: Eye,           color: "bg-purple-600" },
     { key: "NEEDS_CORRECTION",       label: "Needs Correction",      icon: AlertTriangle, color: "bg-amber-500" },
     { key: "VERIFIED_SUCCESSFULLY",  label: "Verified Successfully", icon: Check,         color: "bg-teal-600" },
+    { key: "AWAITING_BANK_DETAILS",  label: "Awaiting Bank Details", icon: FileText,      color: "bg-purple-600" },
+    { key: "BANK_DETAILS_SUBMITTED", label: "Bank Submitted",        icon: CreditCard,    color: "bg-purple-600" },
     { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payment",      icon: CreditCard,    color: "bg-orange-500" },
     { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",    icon: DollarSign,    color: "bg-cyan-600" },
     { key: "LIVE",                   label: "Live Properties",       icon: Building,      color: "bg-green-600" },
@@ -43,6 +46,8 @@ function StatusBadge({ status }: { status: string }) {
         VERIFYING_DOCUMENTS: { label: "VERIFYING DOCUMENTS", color: "bg-purple-50 text-purple-600 border-purple-200" },
         NEEDS_CORRECTION: { label: "NEEDS CORRECTION", color: "bg-amber-50 text-amber-600 border-amber-200" },
         VERIFIED_SUCCESSFULLY: { label: "VERIFIED SUCCESSFULLY", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+        AWAITING_BANK_DETAILS: { label: "AWAITING BANK DETAILS", color: "bg-purple-50 text-purple-600 border-purple-200" },
+        BANK_DETAILS_SUBMITTED: { label: "BANK DETAILS SUBMITTED", color: "bg-purple-50 text-purple-600 border-purple-200" },
         APPROVED_PENDING_PAYMENT: { label: "PENDING PAYMENT", color: "bg-orange-50 text-orange-600 border-orange-200" },
         LIVE: { label: "LIVE & ACTIVE", color: "bg-green-50 text-green-600 border-green-200" },
         REJECTED: { label: "REJECTED", color: "bg-red-50 text-red-600 border-red-200" },
@@ -62,7 +67,7 @@ export default function AdminPropertiesPage() {
     const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
     const [filter, setFilter] = useState("PENDING_VERIFICATION");
     const [loading, setLoading] = useState(true);
-    const [actionModal, setActionModal] = useState<{ type: "reject" | "correction" | "approve" | "verify" | "payment" | "rollback" | "view_correction"; prop: any } | null>(null);
+    const [actionModal, setActionModal] = useState<{ type: "reject" | "correction" | "approve" | "verify" | "payment" | "rollback" | "view_correction" | "request_bank" | "make_live"; prop: any } | null>(null);
     const [actionReason, setActionReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [searchQ, setSearchQ] = useState("");
@@ -108,6 +113,12 @@ export default function AdminPropertiesPage() {
             } else if (actionModal.type === "payment") {
                 await requirePropertyPayment(propId);
                 toast.success(`Onboarding payment requested for "${propName}"`);
+            } else if (actionModal.type === "request_bank") {
+                await requestBankDetails(propId);
+                toast.success(`Requested Bank Details for "${propName}"`);
+            } else if (actionModal.type === "make_live") {
+                await manualMakePropertyLive(propId);
+                toast.success(`"${propName}" is now LIVE!`);
             } else if (actionModal.type === "reject") {
                 if (!actionReason.trim()) throw new Error("Reason required");
                 await rejectProperty(propId, actionReason);
@@ -161,8 +172,9 @@ export default function AdminPropertiesPage() {
                     { key: "PENDING_VERIFICATION",    label: "Pending Applications",  color: "text-blue-600",    bg: "bg-blue-50 border-blue-100",     ring: "hover:ring-blue-300" },
                     { key: "VERIFYING_DOCUMENTS",     label: "Pending Verification",  color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
                     { key: "NEEDS_CORRECTION",        label: "Needs Correction",      color: "text-amber-600",   bg: "bg-amber-50 border-amber-100",   ring: "hover:ring-amber-300" },
+                    { key: "AWAITING_BANK_DETAILS",   label: "Awaiting Bank",         color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
+                    { key: "BANK_DETAILS_SUBMITTED",  label: "Bank Submitted",        color: "text-purple-600",  bg: "bg-purple-50 border-purple-100", ring: "hover:ring-purple-300" },
                     { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payments",      color: "text-orange-600",  bg: "bg-orange-50 border-orange-100", ring: "hover:ring-orange-300" },
-                    { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",     color: "text-cyan-600",    bg: "bg-cyan-50 border-cyan-100",     ring: "hover:ring-cyan-300" },
                     { key: "LIVE",                   label: "Live Properties",       color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100",ring: "hover:ring-emerald-300" },
                     { key: "REJECTED",                label: "Rejected",              color: "text-red-600",     bg: "bg-red-50 border-red-100",       ring: "hover:ring-red-300" },
                     { key: "SUSPENDED",               label: "Suspended",             color: "text-slate-600",   bg: "bg-slate-50 border-slate-200",   ring: "hover:ring-slate-300" },
@@ -369,11 +381,28 @@ export default function AdminPropertiesPage() {
                                         )}
 
                                         {prop.status === 'VERIFIED_SUCCESSFULLY' && (
+                                            <>
+                                                <Button 
+                                                    className="w-full h-9 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-purple-100"
+                                                    onClick={() => setActionModal({ type: "request_bank", prop })}
+                                                >
+                                                    Request Bank Details <CreditCard className="h-3 w-3 ml-1.5" />
+                                                </Button>
+                                                <Button 
+                                                    className="w-full h-9 bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-orange-100"
+                                                    onClick={() => setActionModal({ type: "payment", prop })}
+                                                >
+                                                    Request Payment (Legacy) <CreditCard className="h-3 w-3 ml-1.5" />
+                                                </Button>
+                                            </>
+                                        )}
+
+                                        {prop.status === 'BANK_DETAILS_SUBMITTED' && (
                                             <Button 
-                                                className="w-full h-9 bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-orange-100"
-                                                onClick={() => setActionModal({ type: "payment", prop })}
+                                                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-emerald-100"
+                                                onClick={() => setActionModal({ type: "make_live", prop })}
                                             >
-                                                Request Payment <CreditCard className="h-3 w-3 ml-1.5" />
+                                                Review Bank & Make Live <CheckCircle className="h-3 w-3 ml-1.5" />
                                             </Button>
                                         )}
 
@@ -423,9 +452,13 @@ export default function AdminPropertiesPage() {
                                 {actionModal.type === 'view_correction' && <FileText className="h-6 w-6 text-orange-500" />}
                                 {actionModal.type === 'rollback' && <RefreshCcw className="h-6 w-6 text-slate-500" />}
                                 {actionModal.type === 'reject' && <Trash2 className="h-6 w-6 text-red-500" />}
+                                {actionModal.type === 'make_live' && <CheckCircle className="h-6 w-6 text-emerald-500" />}
+                                {actionModal.type === 'request_bank' && <FileText className="h-6 w-6 text-purple-500" />}
                                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
                                     {actionModal.type === 'approve' ? (actionModal.prop.status === 'APPROVED_PENDING_PAYMENT' ? 'Final Activation' : 'Approve Submission') : 
                                      actionModal.type === 'verify' ? 'Confirm Verification' :
+                                     actionModal.type === 'make_live' ? 'Verify Bank & Make Live' :
+                                     actionModal.type === 'request_bank' ? 'Request Bank Details' :
                                      actionModal.type === 'correction' ? 'Request Correction' :
                                      actionModal.type === 'view_correction' ? 'Correction Details' :
                                      actionModal.type === 'rollback' ? 'Rollback Status' :
@@ -460,6 +493,31 @@ export default function AdminPropertiesPage() {
                                     <div className="w-full bg-orange-50 border-2 border-orange-100 rounded-2xl p-4 text-sm font-bold text-orange-900 min-h-[100px]">
                                         {actionModal.prop.adminNotes || "No correction notes found."}
                                     </div>
+                                </div>
+                            )}
+
+                            {actionModal.type === 'make_live' && (
+                                <div className="space-y-3">
+                                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
+                                        <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">Bank Account</p>
+                                        <p className="text-sm font-mono font-black text-slate-900">{actionModal.prop.bankAccountNo}</p>
+                                    </div>
+                                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
+                                        <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">IFSC Code</p>
+                                        <p className="text-sm font-mono font-black text-slate-900 uppercase">{actionModal.prop.bankIfsc}</p>
+                                    </div>
+                                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
+                                        <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">Beneficiary Name</p>
+                                        <p className="text-sm font-black text-slate-900">{actionModal.prop.bankName}</p>
+                                    </div>
+                                    {actionModal.prop.cancelChequeUrl && (
+                                        <div className="mt-4">
+                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Cancelled Cheque Photo</p>
+                                            <a href={actionModal.prop.cancelChequeUrl} target="_blank" rel="noopener noreferrer">
+                                                <img src={actionModal.prop.cancelChequeUrl} alt="Cancelled Cheque" className="w-full h-40 object-cover rounded-xl border-2 border-slate-200 shadow-sm" />
+                                            </a>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

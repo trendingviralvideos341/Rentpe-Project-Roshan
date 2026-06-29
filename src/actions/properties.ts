@@ -1305,3 +1305,144 @@ export async function adminGetAllOnboardingFees() {
     };
 }
 
+// --- BANK DETAILS COLLECTION WORKFLOW (OPTION B) -------------------------------
+
+export async function requestBankDetails(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
+
+    return prisma.$transaction(async (tx) => {
+        await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'AWAITING_BANK_DETAILS' }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin verified property and requested Bank Details. Status changed to AWAITING_BANK_DETAILS.`,
+                newValue: { status: 'AWAITING_BANK_DETAILS' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: 'SYSTEM_ALERT',
+                message: `Action Required: Your property "${property.name}" has been verified! Please submit your bank details to proceed.`,
+                targetRole: 'OWNER'
+            }
+        });
+
+        return { success: true };
+    });
+}
+
+export async function submitBankDetails(propertyId: string, bankData: { bankAccountNo: string, bankIfsc: string, bankName: string, cancelChequeUrl?: string }) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error('Unauthorized');
+
+    const effectiveOwnerId = await getEffectiveOwnerId(session);
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    
+    if (!property) throw new Error('Property not found');
+    if (property.ownerId !== effectiveOwnerId) throw new Error('Unauthorized');
+    if (property.status !== 'AWAITING_BANK_DETAILS') throw new Error('Property is not awaiting bank details');
+
+    return prisma.$transaction(async (tx) => {
+        await tx.property.update({
+            where: { id: propertyId },
+            data: {
+                bankAccountNo: bankData.bankAccountNo,
+                bankIfsc: bankData.bankIfsc,
+                bankName: bankData.bankName,
+                cancelChequeUrl: bankData.cancelChequeUrl,
+                status: 'BANK_DETAILS_SUBMITTED'
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'OWNER',
+                actorName: session.name || 'Owner',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Owner submitted bank details for property "${property.name}".`,
+                newValue: { status: 'BANK_DETAILS_SUBMITTED', bankIfsc: bankData.bankIfsc },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
+        if (admin) {
+            await tx.notification.create({
+                data: {
+                    userId: admin.id,
+                    type: 'PROPERTY_PENDING',
+                    message: `Bank Details Submitted: Owner has submitted bank details for "${property.name}". Please review and make property live.`,
+                    targetRole: 'ADMIN'
+                }
+            });
+        }
+
+        return { success: true };
+    });
+}
+
+export async function manualMakePropertyLive(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
+    if (property.status !== 'BANK_DETAILS_SUBMITTED' && property.status !== 'APPROVED_PAYMENT_VERIFIED') {
+        throw new Error('Property must have bank details submitted to go live manually.');
+    }
+
+    return prisma.$transaction(async (tx) => {
+        await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'LIVE', isVerified: true }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'APPROVE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin verified bank details and manually made property "${property.name}" LIVE.`,
+                newValue: { status: 'LIVE' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: 'PROPERTY_LIVE',
+                message: `Congratulations! Your bank details have been verified and your property "${property.name}" is now LIVE on RentPe.`,
+                targetRole: 'OWNER'
+            }
+        });
+
+        return { success: true };
+    });
+}
+
