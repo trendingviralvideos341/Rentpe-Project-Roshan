@@ -30,6 +30,20 @@ function getCurrentFY() {
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtShort = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
+function Tip({ content }: { content: string }) {
+    const [show, setShow] = useState(false);
+    return (
+        <span className="relative inline-flex items-center ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={(e) => { e.stopPropagation(); setShow(!show); }}>
+            <Info className={`w-3 h-3 cursor-pointer transition-colors ${show ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`} />
+            {show && (
+                <span className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 w-48 p-2 text-[10px] font-bold leading-normal text-white bg-slate-800 rounded-lg shadow-xl text-center select-none animate-in fade-in zoom-in-95 duration-100">
+                    {content}
+                </span>
+            )}
+        </span>
+    );
+}
+
 function KpiCard({ label, value, sub, icon: Icon, color = 'indigo' }: any) {
     const colors: Record<string, string> = {
         indigo: 'from-indigo-500 to-indigo-700',
@@ -67,6 +81,7 @@ export default function TaxSummaryPage() {
     const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
     const [bulkDownloading, setBulkDownloading] = useState(false);
     const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'monthly' | 'transactions'>('overview');
 
     // Search and filters
     const [search, setSearch] = useState('');
@@ -332,373 +347,429 @@ export default function TaxSummaryPage() {
                     </div>
                 )}
 
-                {/* KPI Cards */}
-                {s && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <KpiCard label="Total Gross Rent" value={fmtShort(s.totalGross)} icon={IndianRupee} color="indigo" sub={`${s.confirmedBookings} paid bookings`} />
-                        <KpiCard label="Platform Commission" value={fmtShort(s.totalPlatformFeeCharged)} icon={Building2} color="amber" sub="Platform commission charged" />
-                        <KpiCard label="GST Charged (18%)" value={fmtShort(s.totalGstCharged)} icon={Receipt} color="violet" sub="On platform commission only" />
-                        <KpiCard label="TDS Deducted (1%)" value={s.tdsExempt ? '₹0 (Exempt)' : fmtShort(s.totalTdsDeducted)} icon={Shield} color={s.tdsExempt ? 'emerald' : 'rose'} sub="Sec 194-O" />
-                        <KpiCard label="Your Net Payout" value={fmtShort(s.totalOwnerNetPayout)} icon={TrendingUp} color="emerald" sub="After fees + TDS" />
-                        <KpiCard label="Total Refunds" value={fmtShort(s.totalRefunds)} icon={Download} color="rose" sub="Processed refunds" />
-                        {s.totalOnboardingPaid > 0 && (
-                            <KpiCard label="Property Onboarding Paid" value={fmtShort(s.totalOnboardingPaid)} icon={Building2} color="indigo" sub={`Incl. ${fmtShort(s.totalOnboardingGst)} GST ITC`} />
+                {/* Modern Tabs Bar */}
+                <div className="flex bg-white border border-slate-100 p-1.5 rounded-2xl shadow-md gap-1.5 max-w-lg mx-auto">
+                    {[
+                        { id: 'overview', label: '📊 Financial Overview' },
+                        { id: 'monthly', label: '🧾 Monthly Statements' },
+                        { id: 'transactions', label: '🔎 Payout Ledger' },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${
+                                activeTab === tab.id
+                                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-100'
+                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* ── Tab 1: Financial Overview ── */}
+                {activeTab === 'overview' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* Summary Banner */}
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-700 font-medium">
+                            📊 This tab displays your high-level earnings, platform expenses, and legal CA guidance to help you file taxes.
+                        </div>
+
+                        {/* KPI Cards */}
+                        {s && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <KpiCard label="Total Gross Rent" value={fmtShort(s.totalGross)} icon={IndianRupee} color="indigo" sub={`${s.confirmedBookings} paid bookings`} />
+                                <KpiCard label="Platform Commission" value={fmtShort(s.totalPlatformFeeCharged)} icon={Building2} color="amber" sub="Platform commission charged" />
+                                <KpiCard label="GST Charged (18%)" value={fmtShort(s.totalGstCharged)} icon={Receipt} color="violet" sub="On platform commission only" />
+                                <KpiCard label="TDS Deducted (1%)" value={s.tdsExempt ? '₹0 (Exempt)' : fmtShort(s.totalTdsDeducted)} icon={Shield} color={s.tdsExempt ? 'emerald' : 'rose'} sub="Sec 194-O" />
+                                <KpiCard label="Your Net Payout" value={fmtShort(s.totalOwnerNetPayout)} icon={TrendingUp} color="emerald" sub="After fees + TDS" />
+                                <KpiCard label="Total Refunds" value={fmtShort(s.totalRefunds)} icon={Download} color="rose" sub="Processed refunds" />
+                                {s.totalOnboardingPaid > 0 && (
+                                    <KpiCard label="Property Onboarding Paid" value={fmtShort(s.totalOnboardingPaid)} icon={Building2} color="indigo" sub={`Incl. ${fmtShort(s.totalOnboardingGst)} GST ITC`} />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Visual Analytics */}
+                        {monthly.length > 0 && (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
+                                <h3 className="font-black text-slate-900 text-lg">Earnings vs. Commission Charges</h3>
+                                <p className="text-xs text-slate-500 mb-6">Compare gross rent processed against total platform fees paid (excl. TDS)</p>
+                                <div className="h-64 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                            <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                            <ChartTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`]} />
+                                            <Legend />
+                                            <Bar dataKey="Rent" name="Gross Rent processed" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="Commission" name="Platform Commission + GST" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* RentPe Commission Breakdown */}
+                        {s && s.confirmedBookings > 0 && (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                                <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                            <Building2 className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-white text-base">💼 RentPe Commission Breakdown</h3>
+                                            <p className="text-indigo-200 text-xs mt-0.5">How your platform commission is calculated (per transaction)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-slate-700 text-sm">Gross Rent Collected from Student</p>
+                                                <p className="text-xs text-slate-400">This is the full rent amount. Your taxable income.</p>
+                                            </div>
+                                            <span className="font-black text-slate-900 text-lg">{fmtShort(s.totalGross)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-3 border-t border-b border-dashed border-slate-200">
+                                            <div>
+                                                <p className="font-bold text-rose-600 text-sm flex items-center gap-1">
+                                                    <span>− RentPe Platform Commission</span>
+                                                    <span className="bg-rose-100 text-rose-600 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">Business Expense</span>
+                                                </p>
+                                                <div className="mt-1 ml-2 space-y-0.5 text-[11px] text-slate-400">
+                                                    <p>├─ Base Platform Commission (excl. GST): <span className="font-bold text-slate-600">₹7.63</span></p>
+                                                    <p>└─ GST 18% (SAC 997312): CGST <span className="font-bold">₹0.68</span> + SGST <span className="font-bold">₹0.69</span> = <span className="font-bold">₹1.37</span></p>
+                                                </div>
+                                            </div>
+                                            <span className="font-black text-rose-600 text-lg whitespace-nowrap">− {fmtShort(s.totalPlatformFeeCharged)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-black text-emerald-700 text-sm flex items-center gap-2">
+                                                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse inline-block" />
+                                                    ✅ Net Payout to Your Account
+                                                </p>
+                                                <p className="text-xs text-slate-400">Gross Rent − Platform Commission</p>
+                                            </div>
+                                            <span className="font-black text-emerald-700 text-2xl">{fmtShort(s.totalOwnerNetPayout)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                                        <BadgeCheck className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                        <div className="space-y-1">
+                                            <p className="font-black text-amber-800 text-sm">CA Note: Your Taxable Rental Income</p>
+                                            <p className="text-xs text-amber-700">
+                                                ✅ For <strong>Income Tax (IT Act)</strong>: Your gross rental income is <strong>{fmtShort(s.totalGross)}</strong>.
+                                                Report this full amount to your CA when filing ITR.
+                                            </p>
+                                            <p className="text-xs text-amber-700">
+                                                ✅ The <strong>Platform Commission (₹9/transaction)</strong> is your allowable business expense
+                                                deductible under the IT Act.
+                                            </p>
+                                            <p className="text-xs text-amber-700">
+                                                ✅ RentPe issues a <strong>Tax Invoice (SAC 997312)</strong> for the platform commission. Request it from support for your records.
+                                            </p>
+                                            {!s.tdsExempt && (
+                                                <p className="text-xs text-amber-700">
+                                                    ✅ <strong>TDS (1% u/s 194-O)</strong> will be deducted when your annual earnings via RentPe exceed ₹5,00,000.
+                                                    Your Form 26AS will reflect this for ITR filing.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}
 
-                {/* ── Visual Analytics: Rent vs Commission Chart ──────────────────────── */}
-                {monthly.length > 0 && (
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                        <h3 className="font-black text-slate-900 text-lg">Earnings vs. Commission Charges</h3>
-                        <p className="text-xs text-slate-500 mb-6">Compare gross rent processed against total platform fees paid (excl. TDS)</p>
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                    <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                    <ChartTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`]} />
-                                    <Legend />
-                                    <Bar dataKey="Rent" name="Gross Rent processed" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="Commission" name="Platform Commission + GST" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                {/* ── Tab 2: Monthly Statements ── */}
+                {activeTab === 'monthly' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* Summary Banner */}
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-700 font-medium">
+                            🧾 Download detailed monthly statements and individual GST invoices here for claiming Input Tax Credits (ITC).
+                        </div>
+
+                        {/* Monthly Tax Breakdown Table */}
+                        {monthly.length > 0 && (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                                <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net payout</p>
+                                    </div>
+                                    <button
+                                        onClick={toggleSelectAll}
+                                        className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5"
+                                    >
+                                        {selectedMonths.length === monthly.length ? (
+                                            <>
+                                                <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+                                                <span>Deselect All</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Square className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>Select All ({monthly.length})</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-4 py-3 text-left w-12"></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Month <Tip content="Billing month for rent collection" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Transactions <Tip content="Number of completed bookings processed this month" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Gross Rent <Tip content="Total money collected from students before any platform commission or TDS" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Platform Commission <Tip content="RentPe platform fee commission (expense for owner)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">GST (18%) <Tip content="18% GST charged on the platform commission (claimable as Input Tax Credit)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">TDS (1%) <Tip content="1% TDS deducted under Section 194-O (sent to Income Tax Dept on your behalf)" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Your Net Payout <Tip content="Actual money sent to your bank account after platform commission, GST, and TDS" /></th>
+                                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Action <Tip content="Statements and invoice preview options" /></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {monthly.map((m: any) => {
+                                                const isSelected = selectedMonths.includes(String(m.key));
+                                                return (
+                                                    <tr key={m.key} className={`transition-colors duration-150 ${isSelected ? 'bg-indigo-50/20' : 'hover:bg-slate-50/50'}`}>
+                                                        <td className="px-4 py-3">
+                                                            <button onClick={() => toggleSelectMonth(String(m.key))} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                                                                {isSelected ? (
+                                                                    <CheckSquare className="w-4 h-4 text-indigo-600" />
+                                                                ) : (
+                                                                    <Square className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-4 py-3 font-bold text-slate-800">{m.month}</td>
+                                                        <td className="px-4 py-3 text-slate-500">{m.transactions}</td>
+                                                        <td className="px-4 py-3 font-black text-slate-900">{fmtShort(m.grossRent)}</td>
+                                                        <td className="px-4 py-3 font-bold text-amber-600">{fmtShort(m.platformFee)}</td>
+                                                        <td className="px-4 py-3 font-bold text-violet-600">{fmtShort(m.gst)}</td>
+                                                        <td className="px-4 py-3 font-bold text-rose-600">
+                                                            {s?.tdsExempt ? <span className="text-emerald-600">₹0 ✓</span> : fmtShort(m.tds)}
+                                                        </td>
+                                                        <td className="px-4 py-3 font-black text-emerald-600">{fmtShort(m.netPayout)}</td>
+                                                        <td className="px-4 py-3 flex gap-2">
+                                                            <button
+                                                                onClick={() => setPreviewMonth(String(m.key))}
+                                                                className="px-2.5 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                                <span>Preview</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleExportPDF(String(m.key))}
+                                                                disabled={exporting !== null}
+                                                                className="px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1 disabled:opacity-50"
+                                                            >
+                                                                <Download className="w-3.5 h-3.5" />
+                                                                <span>PDF</span>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="bg-slate-900 text-white font-black text-sm">
+                                                <td></td>
+                                                <td className="px-4 py-3">TOTAL</td>
+                                                <td className="px-4 py-3">{monthly.reduce((s, m) => s + m.transactions, 0)}</td>
+                                                <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.grossRent, 0))}</td>
+                                                <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.platformFee, 0))}</td>
+                                                <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.gst, 0))}</td>
+                                                <td className="px-4 py-3">{s?.tdsExempt ? '₹0 ✓' : fmtShort(monthly.reduce((s, m) => s + m.tds, 0))}</td>
+                                                <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.netPayout, 0))}</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Export Section */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
+                            <h3 className="font-black text-slate-900 text-lg mb-1">Export for Your CA / Accountant</h3>
+                            <p className="text-sm text-slate-500 mb-1">
+                                Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
+                            </p>
+                            <p className="text-xs text-indigo-600 font-bold mb-5 flex items-center gap-1.5">
+                                <Info className="w-4 h-4 flex-shrink-0" />
+                                <span>📋 PDFs include individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for claiming Input Tax Credit.</span>
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <button onClick={() => handleExportPDF(currentDownloadMonth)} disabled={exporting !== null}
+                                        className="w-full flex items-center gap-4 p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl hover:from-indigo-100 hover:to-violet-100 transition-all disabled:opacity-50 text-left">
+                                        {exporting === 'pdf'
+                                            ? <Loader2 className="w-10 h-10 text-indigo-500 animate-spin flex-shrink-0" />
+                                            : <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-white" /></div>
+                                        }
+                                        <div>
+                                            <p className="font-black text-slate-900">📄 Download Monthly PDF</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">Page 1: Summary · Page 2+: Individual GST Tax Invoices</p>
+                                            <p className="text-[10px] text-indigo-500 font-bold mt-0.5">Month: {currentDownloadMonth}</p>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <button onClick={handleExportCSV} disabled={exporting !== null}
+                                    className="flex items-center gap-4 p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl hover:from-emerald-100 hover:to-teal-100 transition-all disabled:opacity-50 text-left">
+                                    {exporting === 'csv'
+                                        ? <Loader2 className="w-10 h-10 text-emerald-500 animate-spin flex-shrink-0" />
+                                        : <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0"><Download className="w-5 h-5 text-white" /></div>
+                                    }
+                                    <div>
+                                        <p className="font-black text-slate-900">📊 Download CSV</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">All 18 columns — Razorpay IDs, GST, TDS, Net Payout per transaction</p>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* ── RentPe Commission Breakdown Card ─────────────────────────────────── */}
-                {s && s.confirmedBookings > 0 && (
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-6 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                    <Building2 className="w-5 h-5 text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="font-black text-white text-base">💼 RentPe Commission Breakdown</h3>
-                                    <p className="text-indigo-200 text-xs mt-0.5">How your platform commission is calculated (per transaction)</p>
-                                </div>
-                            </div>
+                {/* ── Tab 3: Payout Ledger ── */}
+                {activeTab === 'transactions' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* Summary Banner */}
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-700 font-medium">
+                            🔎 A detailed transaction log showing exactly when payments were processed, who paid (including Tenant IDs), and Razorpay references.
                         </div>
-                        <div className="p-6 space-y-4">
-                            {/* Typical transaction breakdown */}
-                            <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
-                                {/* Row 1: Gross */}
-                                <div className="flex justify-between items-center">
+
+                        {/* Transaction Preview Table */}
+                        {report?.report?.length > 0 && (
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                                <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
                                     <div>
-                                        <p className="font-bold text-slate-700 text-sm">Gross Rent Collected from Student</p>
-                                        <p className="text-xs text-slate-400">This is the full rent amount. Your taxable income.</p>
+                                        <h3 className="font-black text-slate-900 text-lg">Transaction Preview</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Showing {filteredRows.slice(0, 25).length} of {filteredRows.length} records • Use CSV/PDF to download full audit trail</p>
                                     </div>
-                                    <span className="font-black text-slate-900 text-lg">{fmtShort(s.totalGross)}</span>
                                 </div>
-                                {/* Row 2: Platform Fee */}
-                                <div className="flex justify-between items-center py-3 border-t border-b border-dashed border-slate-200">
-                                    <div>
-                                        <p className="font-bold text-rose-600 text-sm flex items-center gap-1">
-                                            <span>− RentPe Platform Commission</span>
-                                            <span className="bg-rose-100 text-rose-600 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">Business Expense</span>
-                                        </p>
-                                        {/* GST breakup */}
-                                        <div className="mt-1 ml-2 space-y-0.5 text-[11px] text-slate-400">
-                                            <p>├─ Base Platform Commission (excl. GST): <span className="font-bold text-slate-600">₹7.63</span></p>
-                                            <p>└─ GST 18% (SAC 997312): CGST <span className="font-bold">₹0.68</span> + SGST <span className="font-bold">₹0.69</span> = <span className="font-bold">₹1.37</span></p>
-                                        </div>
+
+                                {/* Search and Filters Bar */}
+                                <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center gap-3 flex-wrap">
+                                    <div className="relative flex-1 min-w-[200px]">
+                                        <input
+                                            className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-4 pr-10 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                            placeholder="Search by Tenant Name, Tenant ID, Booking ID..."
+                                            value={search}
+                                            onChange={e => setSearch(e.target.value)}
+                                        />
                                     </div>
-                                    <span className="font-black text-rose-600 text-lg whitespace-nowrap">− {fmtShort(s.totalPlatformFeeCharged)}</span>
-                                </div>
-                                {/* Row 3: Net Payout */}
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="font-black text-emerald-700 text-sm flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse inline-block" />
-                                            ✅ Net Payout to Your Account
-                                        </p>
-                                        <p className="text-xs text-slate-400">Gross Rent − Platform Commission</p>
+
+                                    {/* Property Dropdown Filter */}
+                                    <select
+                                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        value={selectedProperty}
+                                        onChange={e => setSelectedProperty(e.target.value)}
+                                    >
+                                        <option value="ALL">All Properties</option>
+                                        {uniqueProperties.map(p => (
+                                            <option key={p} value={p}>{p}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Date Range Filters */}
+                                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 h-10">
+                                        <input
+                                            type="date"
+                                            className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer font-bold"
+                                            value={startDate}
+                                            onChange={e => setStartDate(e.target.value)}
+                                        />
+                                        <span className="text-[10px] text-slate-400 font-bold">to</span>
+                                        <input
+                                            type="date"
+                                            className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer font-bold"
+                                            value={endDate}
+                                            onChange={e => setEndDate(e.target.value)}
+                                        />
+                                        {(startDate || endDate) && (
+                                            <button 
+                                                onClick={() => { setStartDate(''); setEndDate(''); }}
+                                                className="text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold px-1.5 py-0.5 rounded ml-1"
+                                            >
+                                                Clear
+                                            </button>
+                                        )}
                                     </div>
-                                    <span className="font-black text-emerald-700 text-2xl">{fmtShort(s.totalOwnerNetPayout)}</span>
                                 </div>
-                            </div>
-                            {/* Legal / CA Note */}
-                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-                                <BadgeCheck className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                <div className="space-y-1">
-                                    <p className="font-black text-amber-800 text-sm">CA Note: Your Taxable Rental Income</p>
-                                    <p className="text-xs text-amber-700">
-                                        ✅ For <strong>Income Tax (IT Act)</strong>: Your gross rental income is <strong>{fmtShort(s.totalGross)}</strong>.
-                                        Report this full amount to your CA when filing ITR.
-                                    </p>
-                                    <p className="text-xs text-amber-700">
-                                        ✅ The <strong>Platform Commission (₹9/transaction)</strong> is your allowable business expense
-                                        deductible under the IT Act.
-                                    </p>
-                                    <p className="text-xs text-amber-700">
-                                        ✅ RentPe issues a <strong>Tax Invoice (SAC 997312)</strong> for the platform commission. Request it from support for your records.
-                                    </p>
-                                    {!s.tdsExempt && (
-                                        <p className="text-xs text-amber-700">
-                                            ✅ <strong>TDS (1% u/s 194-O)</strong> will be deducted when your annual earnings via RentPe exceed ₹5,00,000.
-                                            Your Form 26AS will reflect this for ITR filing.
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="bg-slate-800 text-white">
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Date <Tip content="Date the transaction was processed" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Booking ID <Tip content="RentPe's unique reference ID for the booking" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Tenant ID <Tip content="Student's permanent tenant ID on the platform" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">RP Order ID <Tip content="Razorpay order reference ID" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Tenant Name <Tip content="Full name of the student who paid" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Property <Tip content="Name of the building where the room is allocated" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Gross <Tip content="Rent amount paid before platform deductions" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Platform Commission <Tip content="RentPe platform commission charged on this transaction" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">GST <Tip content="18% GST on the platform commission" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">TDS <Tip content="1% TDS withheld under Section 194-O" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Net Payout <Tip content="Final payout amount sent to your bank account" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Status <Tip content="Current status of the transaction (e.g. CONFIRMED, PAID, etc.)" /></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {filteredRows.slice(0, 25).map((r: any, i: number) => (
+                                                <tr key={i} className="hover:bg-indigo-50/20 transition-colors">
+                                                    <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
+                                                    <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
+                                                    <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.tenantId}</td>
+                                                    <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate">{r.razorpayOrderId}</td>
+
+                                                    <td className="px-3 py-2.5 font-bold text-slate-700">
+                                                        {r.tenantName}
+                                                        {r.type === 'PROPERTY_ONBOARDING' && (
+                                                            <span className="ml-1.5 bg-blue-100 text-blue-700 text-[8px] px-1 py-0.5 rounded font-black uppercase">B2B Exp</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 text-slate-600 max-w-[120px] truncate">{r.property}</td>
+                                                    <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.revenueContribution || 0)}</td>
+                                                    <td className="px-3 py-2.5 font-bold text-amber-600">{fmtShort(r.platformFeeCharged)}</td>
+                                                    <td className="px-3 py-2.5 font-bold text-violet-600">{fmtShort(r.gstCharged)}</td>
+                                                    <td className="px-3 py-2.5 font-bold text-rose-600">
+                                                        {s?.tdsExempt ? <span className="text-emerald-600">₹0</span> : fmtShort(r.tdsDeducted)}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 font-black text-emerald-600">{fmtShort(r.ownerNetPayout)}</td>
+                                                    <td className="px-3 py-2.5">
+                                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                                            r.type === 'PROPERTY_ONBOARDING'
+                                                                ? 'bg-blue-100 text-blue-700'
+                                                                : ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(r.status)
+                                                                ? 'bg-emerald-100 text-emerald-700'
+                                                                : r.status === 'CANCELLED'
+                                                                ? 'bg-rose-100 text-rose-700'
+                                                                : 'bg-slate-100 text-slate-500'
+                                                        }`}>{r.type === 'PROPERTY_ONBOARDING' ? 'PAID' : r.status}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {filteredRows.length > 25 && (
+                                        <p className="text-center text-xs text-slate-400 py-3 font-bold border-t border-slate-50">
+                                            Showing 25 of {filteredRows.length} records. Download CSV/PDF to see all.
                                         </p>
                                     )}
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Monthly Tax Breakdown Table */}
-                {monthly.length > 0 && (
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                            <div>
-                                <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net payout</p>
-                            </div>
-                            {/* Checkbox bulk actions */}
-                            <button
-                                onClick={toggleSelectAll}
-                                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5"
-                            >
-                                {selectedMonths.length === monthly.length ? (
-                                    <>
-                                        <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
-                                        <span>Deselect All</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Square className="w-3.5 h-3.5 text-slate-400" />
-                                        <span>Select All ({monthly.length})</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-100">
-                                        <th className="px-4 py-3 text-left w-12"></th>
-                                        {['Month', 'Transactions', 'Gross Rent', 'Platform Commission', 'GST (18%)', 'TDS (1%)', 'Your Net Payout', 'Action'].map(h => (
-                                            <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {monthly.map((m: any) => {
-                                        const isSelected = selectedMonths.includes(String(m.key));
-                                        return (
-                                            <tr key={m.key} className={`transition-colors duration-150 ${isSelected ? 'bg-indigo-50/20' : 'hover:bg-slate-50/50'}`}>
-                                                <td className="px-4 py-3">
-                                                    <button onClick={() => toggleSelectMonth(String(m.key))} className="text-slate-400 hover:text-indigo-600 transition-colors">
-                                                        {isSelected ? (
-                                                            <CheckSquare className="w-4 h-4 text-indigo-600" />
-                                                        ) : (
-                                                            <Square className="w-4 h-4" />
-                                                        )}
-                                                    </button>
-                                                </td>
-                                                <td className="px-4 py-3 font-bold text-slate-800">{m.month}</td>
-                                                <td className="px-4 py-3 text-slate-500">{m.transactions}</td>
-                                                <td className="px-4 py-3 font-black text-slate-900">{fmtShort(m.grossRent)}</td>
-                                                <td className="px-4 py-3 font-bold text-amber-600">{fmtShort(m.platformFee)}</td>
-                                                <td className="px-4 py-3 font-bold text-violet-600">{fmtShort(m.gst)}</td>
-                                                <td className="px-4 py-3 font-bold text-rose-600">
-                                                    {s?.tdsExempt ? <span className="text-emerald-600">₹0 ✓</span> : fmtShort(m.tds)}
-                                                </td>
-                                                <td className="px-4 py-3 font-black text-emerald-600">{fmtShort(m.netPayout)}</td>
-                                                <td className="px-4 py-3 flex gap-2">
-                                                    <button
-                                                        onClick={() => setPreviewMonth(String(m.key))}
-                                                        className="px-2.5 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                        <span>Preview</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleExportPDF(String(m.key))}
-                                                        disabled={exporting !== null}
-                                                        className="px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1 disabled:opacity-50"
-                                                    >
-                                                        <Download className="w-3.5 h-3.5" />
-                                                        <span>PDF</span>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                                <tfoot>
-                                    <tr className="bg-slate-900 text-white font-black text-sm">
-                                        <td></td>
-                                        <td className="px-4 py-3">TOTAL</td>
-                                        <td className="px-4 py-3">{monthly.reduce((s, m) => s + m.transactions, 0)}</td>
-                                        <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.grossRent, 0))}</td>
-                                        <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.platformFee, 0))}</td>
-                                        <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.gst, 0))}</td>
-                                        <td className="px-4 py-3">{s?.tdsExempt ? '₹0 ✓' : fmtShort(monthly.reduce((s, m) => s + m.tds, 0))}</td>
-                                        <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.netPayout, 0))}</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Export Section */}
-                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                    <h3 className="font-black text-slate-900 text-lg mb-1">Export for Your CA / Accountant</h3>
-                    <p className="text-sm text-slate-500 mb-1">
-                        Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
-                    </p>
-                    <p className="text-xs text-indigo-600 font-bold mb-5 flex items-center gap-1.5">
-                        <Info className="w-4 h-4 flex-shrink-0" />
-                        <span>📋 PDFs include individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for claiming Input Tax Credit.</span>
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                        {/* Monthly PDF button — per month individual tax invoices */}
-                        <div className="space-y-2">
-                            <button onClick={() => handleExportPDF(currentDownloadMonth)} disabled={exporting !== null}
-                                className="w-full flex items-center gap-4 p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl hover:from-indigo-100 hover:to-violet-100 transition-all disabled:opacity-50 text-left">
-                                {exporting === 'pdf'
-                                    ? <Loader2 className="w-10 h-10 text-indigo-500 animate-spin flex-shrink-0" />
-                                    : <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-white" /></div>
-                                }
-                                <div>
-                                    <p className="font-black text-slate-900">📄 Download Monthly PDF</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">Page 1: Summary · Page 2+: Individual GST Tax Invoices</p>
-                                    <p className="text-[10px] text-indigo-500 font-bold mt-0.5">Month: {currentDownloadMonth}</p>
-                                </div>
-                            </button>
-                        </div>
-
-                        <button onClick={handleExportCSV} disabled={exporting !== null}
-                            className="flex items-center gap-4 p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl hover:from-emerald-100 hover:to-teal-100 transition-all disabled:opacity-50 text-left">
-                            {exporting === 'csv'
-                                ? <Loader2 className="w-10 h-10 text-emerald-500 animate-spin flex-shrink-0" />
-                                : <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0"><Download className="w-5 h-5 text-white" /></div>
-                            }
-                            <div>
-                                <p className="font-black text-slate-900">📊 Download CSV</p>
-                                <p className="text-xs text-slate-500 mt-0.5">All 18 columns — Razorpay IDs, GST, TDS, Net Payout per transaction</p>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Transaction Preview Table */}
-                {report?.report?.length > 0 && (
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
-                            <div>
-                                <h3 className="font-black text-slate-900 text-lg">Transaction Preview</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">Showing {filteredRows.slice(0, 25).length} of {filteredRows.length} records • Use CSV/PDF to download full audit trail</p>
-                            </div>
-                        </div>
-
-                        {/* Search and Filters Bar */}
-                        <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center gap-3 flex-wrap">
-                            <div className="relative flex-1 min-w-[200px]">
-                                <input
-                                    className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-4 pr-10 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                    placeholder="Search by Tenant Name, Tenant ID, Booking ID..."
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Property Dropdown Filter */}
-                            <select
-                                className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                value={selectedProperty}
-                                onChange={e => setSelectedProperty(e.target.value)}
-                            >
-                                <option value="ALL">All Properties</option>
-                                {uniqueProperties.map(p => (
-                                    <option key={p} value={p}>{p}</option>
-                                ))}
-                            </select>
-
-                            {/* Date Range Filters */}
-                            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 h-10">
-                                <input
-                                    type="date"
-                                    className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer font-bold"
-                                    value={startDate}
-                                    onChange={e => setStartDate(e.target.value)}
-                                />
-                                <span className="text-[10px] text-slate-400 font-bold">to</span>
-                                <input
-                                    type="date"
-                                    className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer font-bold"
-                                    value={endDate}
-                                    onChange={e => setEndDate(e.target.value)}
-                                />
-                                {(startDate || endDate) && (
-                                    <button 
-                                        onClick={() => { setStartDate(''); setEndDate(''); }}
-                                        className="text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold px-1.5 py-0.5 rounded ml-1"
-                                    >
-                                        Clear
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                                <thead>
-                                    <tr className="bg-slate-800 text-white">
-                                        {['Date', 'Booking ID', 'Tenant ID', 'RP Order ID', 'Tenant Name', 'Property', 'Gross', 'Platform Commission', 'GST', 'TDS', 'Net Payout', 'Status'].map(h => (
-                                            <th key={h} className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {filteredRows.slice(0, 25).map((r: any, i: number) => (
-                                        <tr key={i} className="hover:bg-indigo-50/20 transition-colors">
-                                            <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
-                                            <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
-                                            <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.tenantId}</td>
-                                            <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate">{r.razorpayOrderId}</td>
-
-                                            <td className="px-3 py-2.5 font-bold text-slate-700">
-                                                {r.tenantName}
-                                                {r.type === 'PROPERTY_ONBOARDING' && (
-                                                    <span className="ml-1.5 bg-blue-100 text-blue-700 text-[8px] px-1 py-0.5 rounded font-black uppercase">B2B Exp</span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-2.5 text-slate-600 max-w-[120px] truncate">{r.property}</td>
-                                            <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.revenueContribution || 0)}</td>
-                                            <td className="px-3 py-2.5 font-bold text-amber-600">{fmtShort(r.platformFeeCharged)}</td>
-                                            <td className="px-3 py-2.5 font-bold text-violet-600">{fmtShort(r.gstCharged)}</td>
-                                            <td className="px-3 py-2.5 font-bold text-rose-600">
-                                                {s?.tdsExempt ? <span className="text-emerald-600">₹0</span> : fmtShort(r.tdsDeducted)}
-                                            </td>
-                                            <td className="px-3 py-2.5 font-black text-emerald-600">{fmtShort(r.ownerNetPayout)}</td>
-                                            <td className="px-3 py-2.5">
-                                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                                    r.type === 'PROPERTY_ONBOARDING'
-                                                        ? 'bg-blue-100 text-blue-700'
-                                                        : ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(r.status)
-                                                        ? 'bg-emerald-100 text-emerald-700'
-                                                        : r.status === 'CANCELLED'
-                                                        ? 'bg-rose-100 text-rose-700'
-                                                        : 'bg-slate-100 text-slate-500'
-                                                }`}>{r.type === 'PROPERTY_ONBOARDING' ? 'PAID' : r.status}</span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {filteredRows.length > 25 && (
-                                <p className="text-center text-xs text-slate-400 py-3 font-bold border-t border-slate-50">
-                                    Showing 25 of {filteredRows.length} records. Download CSV/PDF to see all.
-                                </p>
-                            )}
-                        </div>
+                        )}
                     </div>
                 )}
             </div>
