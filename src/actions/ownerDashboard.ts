@@ -439,7 +439,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
         (prisma as any).platformFee.findMany({ where: { bookingId: { in: bookingIds } } }),
         (prisma as any).payment.findMany({
             where: { bookingId: { in: bookingIds }, status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] } },
-            select: { bookingId: true, razorpayOrderId: true, razorpayId: true, razorpayTransferId: true, method: true }
+            select: { bookingId: true, razorpayOrderId: true, razorpayId: true, method: true }
         }),
     ]);
 
