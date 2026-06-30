@@ -5,9 +5,44 @@ import { getAdminFinancialLedger, getAdminTaxLiability, getAdminPropertyUnitEcon
 import { toast } from 'sonner';
 import {
     Download, FileText, Loader2, IndianRupee, TrendingUp, Shield,
-    Building2, RefreshCcw, Search, Filter, ChevronDown, Receipt,
-    BadgeCheck, AlertTriangle, BarChart3, Users
+    Building2, RefreshCcw, Search, Filter, Receipt,
+    BadgeCheck, BarChart3, Users, Info
 } from 'lucide-react';
+
+// ── Tooltip Component ────────────────────────────────────────────────────────
+function Tip({ text }: { text: string }) {
+    const [show, setShow] = useState(false);
+    return (
+        <span className="relative inline-flex items-center ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+            <Info className="w-3 h-3 text-slate-400 cursor-help hover:text-indigo-400 transition-colors" />
+            {show && (
+                <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-slate-900 text-white text-[11px] font-normal rounded-xl px-3 py-2 shadow-2xl leading-relaxed whitespace-normal pointer-events-none">
+                    {text}
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                </span>
+            )}
+        </span>
+    );
+}
+
+// ── Tab Summary Banner ───────────────────────────────────────────────────────
+function TabSummary({ icon, color, title, desc }: { icon: string; color: string; title: string; desc: string }) {
+    const colors: Record<string, string> = {
+        indigo: 'bg-indigo-50 border-indigo-200 text-indigo-800',
+        amber: 'bg-amber-50 border-amber-200 text-amber-800',
+        violet: 'bg-violet-50 border-violet-200 text-violet-800',
+        emerald: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    };
+    return (
+        <div className={`flex items-start gap-3 border rounded-2xl px-5 py-4 ${colors[color]}`}>
+            <span className="text-2xl flex-shrink-0">{icon}</span>
+            <div>
+                <p className="font-black text-sm">{title}</p>
+                <p className="text-xs font-medium opacity-80 mt-0.5 leading-relaxed">{desc}</p>
+            </div>
+        </div>
+    );
+}
 
 const TABS = [
     { id: 'overview', label: 'Revenue Overview', icon: TrendingUp },
@@ -348,6 +383,12 @@ export default function AdminFinancialLedgerPage() {
                 {/* ── TAB 1: REVENUE OVERVIEW ── */}
                 {activeTab === 'overview' && (
                     <>
+                        <TabSummary
+                            icon="📊"
+                            color="indigo"
+                            title="Money Summary — The Big Picture"
+                            desc="This tab shows the total money collected across all properties for the selected financial year. It tells you: how much rent came in, how much RentPe earned in fees, how much GST was collected for the government, and how much TDS was withheld from owners. Your CA will use this tab to file taxes."
+                        />
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <StatCard label="Total Gross Collected" value={fmt(T.totalGrossCollected)} icon={IndianRupee} color="indigo" sub={`${T.transactionCount} transactions`} />
                             <StatCard label="Platform Earned" value={fmt(T.totalPlatformEarned)} icon={TrendingUp} color="emerald" sub="Convenience fee (net)" />
@@ -422,6 +463,13 @@ export default function AdminFinancialLedgerPage() {
 
                 {/* ── TAB 2: TRANSACTION LEDGER ── */}
                 {activeTab === 'ledger' && (
+                    <div className="space-y-4">
+                    <TabSummary
+                        icon="🧾"
+                        color="amber"
+                        title="All Payments — One Row Per Transaction"
+                        desc="Every single payment ever made on RentPe is listed here — like a detailed bank statement. Each row shows who paid, for which property, how much went to the owner, how much was kept as platform fee, and the exact Razorpay IDs for reconciliation. Use Search to find any specific student, property, or Razorpay ID instantly."
+                    />
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                         <div className="p-5 border-b border-slate-100 flex items-center gap-3 flex-wrap">
                             <div className="relative flex-1 min-w-[200px]">
@@ -450,12 +498,25 @@ export default function AdminFinancialLedgerPage() {
                             <table className="w-full text-xs">
                                 <thead>
                                     <tr className="bg-slate-900 text-white">
-                                        {[
-                                            'Date', 'Booking ID', 'RP Order ID', 'RP Payment ID', 'RP Transfer ID',
-                                            'Student', 'Property', 'Owner',
-                                            'Gross', 'Plat.Fee', 'GST', 'TDS', 'Owner Net', 'Status'
-                                        ].map(h => (
-                                            <th key={h} className="px-3 py-3 text-left font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                        {([
+                                            ['Date', 'The exact date and time this payment was made.'],
+                                            ['Booking ID', 'RentPe internal booking reference number (e.g. RP-B-00010).'],
+                                            ['RP Order ID', 'Razorpay Order ID — created before the student pays. Use this to trace a payment on Razorpay dashboard.'],
+                                            ['RP Payment ID', 'Razorpay Payment ID — generated after the student successfully pays. This is the actual money receipt.'],
+                                            ['RP Transfer ID', 'Razorpay Transfer ID — set when money is sent from RentPe\'s Razorpay account to the owner. Blank if transfer is pending.'],
+                                            ['Student', 'The student (tenant) who made this payment.'],
+                                            ['Property', 'The PG/hostel this payment is for.'],
+                                            ['Owner', 'The property owner who will receive the payout.'],
+                                            ['Gross', 'Total rent amount the student paid (before any deductions).'],
+                                            ['Plat.Fee', 'Platform fee charged — includes convenience fee from student + commission from owner.'],
+                                            ['GST', 'Goods & Services Tax (18%) collected on the platform fee. This goes to the government.'],
+                                            ['TDS', 'Tax Deducted at Source (1% under Section 194-O). Deducted from owner payout and deposited with Income Tax Dept.'],
+                                            ['Owner Net', 'Final amount the owner receives: Gross Rent minus Platform Commission minus TDS.'],
+                                            ['Status', 'Payment status — VERIFIED means money received and confirmed.']
+                                        ] as [string, string][]).map(([h, tip]) => (
+                                            <th key={h} className="px-3 py-3 text-left font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
+                                                <span className="flex items-center gap-0.5">{h}<Tip text={tip} /></span>
+                                            </th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -500,14 +561,21 @@ export default function AdminFinancialLedgerPage() {
                             </div>
                         )}
                     </div>
+                    </div>
                 )}
 
                 {/* ── TAB 3: TAX LIABILITY ── */}
                 {activeTab === 'tax' && (
                     <>
+                        <TabSummary
+                            icon="🏛️"
+                            color="violet"
+                            title="GST & TDS Report — What We Owe The Government"
+                            desc="This tab is for your CA / finance team. GST (18%) is collected on platform fees and must be deposited with the government every quarter. TDS (1%) is deducted from each owner's payout under Section 194-O and deposited with the Income Tax Department. Owners with a lower/nil TDS certificate are shown as 'Exempt'."
+                        />
                         {/* GST Summary */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                            <h3 className="font-black text-slate-900 text-lg mb-1">GST Liability Summary</h3>
+                            <h3 className="font-black text-slate-900 text-lg mb-1">GST Liability Summary <Tip text="GST = Goods & Services Tax. RentPe collects 18% GST on its platform fee. This entire GST amount must be deposited with the government. It is split equally as CGST (9%) + SGST (9%)." /></h3>
                             <p className="text-sm text-slate-500 mb-5">SAC Code: 997312 — Short-term accommodation/leasing services</p>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <TaxBadge label="Total GST Collected" value={fmt(taxT.totalGst)} color="orange" />
@@ -519,7 +587,7 @@ export default function AdminFinancialLedgerPage() {
 
                         {/* TDS Summary */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                            <h3 className="font-black text-slate-900 text-lg mb-1">TDS Liability Summary</h3>
+                            <h3 className="font-black text-slate-900 text-lg mb-1">TDS Liability Summary <Tip text="TDS = Tax Deducted at Source. RentPe must deduct 1% TDS from each owner payout and deposit it with the Income Tax Department under Section 194-O. This applies to all e-commerce aggregators like Zomato, Amazon — and RentPe." /></h3>
                             <p className="text-sm text-slate-500 mb-5">Section 194-O — 1% TDS on gross rent by e-commerce aggregator</p>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                                 <TaxBadge label="Total TDS Withheld" value={fmt(taxT.totalTds)} color="red" />
@@ -586,6 +654,13 @@ export default function AdminFinancialLedgerPage() {
 
                 {/* ── TAB 4: UNIT ECONOMICS ── */}
                 {activeTab === 'unit' && (
+                    <div className="space-y-4">
+                    <TabSummary
+                        icon="🏢"
+                        color="emerald"
+                        title="Per Property Breakdown — Which PG Earns The Most?"
+                        desc="This tab breaks down every financial metric per property. You can see which PG generated the most rent, how many students stayed there, how much platform fee was earned from it, and what the owner received. The last row shows the total across all properties."
+                    />
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                         <div className="p-5 border-b border-slate-100">
                             <h3 className="font-black text-slate-900 text-lg">Property Unit Economics</h3>
@@ -595,11 +670,22 @@ export default function AdminFinancialLedgerPage() {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="bg-slate-900 text-white">
-                                        {[
-                                            'Property', 'City', 'Owner', 'Transactions', 'Students',
-                                            'Gross Rent', 'Platform Fee', 'GST', 'TDS', 'Owner Payout', 'Platform Earned'
-                                        ].map(h => (
-                                            <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                        {([
+                                            ['Property', 'Name of the PG / hostel.'],
+                                            ['City', 'City where this property is located.'],
+                                            ['Owner', 'The property owner who listed this PG on RentPe.'],
+                                            ['Transactions', 'Total number of successful payments received for this property.'],
+                                            ['Students', 'Number of unique students who have paid for this property.'],
+                                            ['Gross Rent', 'Total rent collected from students for this property.'],
+                                            ['Platform Fee', 'Total platform fees earned from this property (student convenience fee + owner commission).'],
+                                            ['GST', 'Total GST (18%) collected on platform fees from this property — to be deposited with the government.'],
+                                            ['TDS', 'Total TDS (1%) withheld from this owner\'s payouts — deposited with Income Tax Dept.'],
+                                            ['Owner Payout', 'Total amount actually transferred to the owner: Gross Rent minus fees minus TDS.'],
+                                            ['Platform Earned', 'Net revenue RentPe earned from this property (fees minus GST, which goes to govt).']
+                                        ] as [string, string][]).map(([h, tip]) => (
+                                            <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                                                <span className="flex items-center gap-0.5">{h}<Tip text={tip} /></span>
+                                            </th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -639,6 +725,7 @@ export default function AdminFinancialLedgerPage() {
                                 )}
                             </table>
                         </div>
+                    </div>
                     </div>
                 )}
             </div>
