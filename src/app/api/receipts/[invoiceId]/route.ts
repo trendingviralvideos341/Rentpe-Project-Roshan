@@ -506,7 +506,7 @@ export async function GET(
             drawBillingCard([
                 "RentPe (Antigravity Project)",
                 "Service Provider",
-                "GSTIN: PENDING REGISTRATION",
+                `GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"}`,
                 "PAN: PENDING",
                 "rentpe.in",
             ], L, "BILLED BY (SUPPLIER)");

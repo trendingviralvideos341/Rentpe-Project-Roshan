@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
             const csvLines = [
                 `RentPe — Admin Platform Tax Summary Report`,
                 `Period: ${rangeLabel} | Generated: ${generatedOn}`,
-                `GSTIN: PENDING REGISTRATION | SAC: 997312 | GST: 18% (CGST 9% + SGST 9%) | TDS Sec 194-O: 1%`,
+                `GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"} | SAC: 997312 | GST: 18% (CGST 9% + SGST 9%) | TDS Sec 194-O: 1%`,
                 "",
                 "Date,Booking ID,Owner,Property,Tenant,Gross Rent (Rs.),Student Fee (Rs.),Owner Comm. (Rs.),GST-Student (Rs.),GST-Owner (Rs.),Total GST (Rs.),TDS 1% (Rs.),Platform Earned (Rs.)",
                 ...rows.map((r: any) =>
@@ -297,7 +297,7 @@ export async function GET(req: NextRequest) {
         doc.setFontSize(6);
         doc.setTextColor(100, 116, 139);
         doc.text(
-            `GSTIN: PENDING REGISTRATION | SAC: 997312 | GST: 18% (CGST 9% + SGST 9%) | TDS Sec 194-O @ 1% | ADMIN CONFIDENTIAL`,
+            `GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"} | SAC: 997312 | GST: 18% (CGST 9% + SGST 9%) | TDS Sec 194-O @ 1% | ADMIN CONFIDENTIAL`,
             pageW / 2, pageH - 7, { align: "center" }
         );
 

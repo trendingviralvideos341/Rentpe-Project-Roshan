@@ -5,8 +5,12 @@ import { getOwnerFinancialReport, getOwnerMonthlyTaxBreakdown } from '@/actions/
 import { toast } from 'sonner';
 import {
     Download, FileText, Loader2, IndianRupee, Shield,
-    BadgeCheck, AlertTriangle, TrendingUp, Receipt, Building2
+    BadgeCheck, AlertTriangle, TrendingUp, Receipt, Building2,
+    Eye, X, Info, CheckSquare, Square, CalendarDays, HelpCircle
 } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer
+} from 'recharts';
 
 function buildFYOptions() {
     const year = new Date().getFullYear();
@@ -58,11 +62,16 @@ export default function TaxSummaryPage() {
         fyOptions.find(f => f.label === getCurrentFY()) || fyOptions[0]
     );
 
+    // UX states
+    const [previewMonth, setPreviewMonth] = useState<string | null>(null);
+    const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+    const [bulkDownloading, setBulkDownloading] = useState(false);
+    const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
     // Get the most recent month within selectedFY for per-month download
     const currentDownloadMonth: string = (() => {
         const now = new Date();
         const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        // fyFrom and fyTo may be Date or string — normalize both to YYYY-MM for comparison
         const toMonthStr = (d: Date | string) => {
             const dt = typeof d === 'string' ? new Date(d) : d;
             return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
@@ -75,6 +84,7 @@ export default function TaxSummaryPage() {
 
     const reload = (fy: typeof fyOptions[0]) => {
         setLoading(true);
+        setSelectedMonths([]);
         Promise.all([
             getOwnerFinancialReport(fy.from, fy.to),
             getOwnerMonthlyTaxBreakdown(fy.from, fy.to),
@@ -90,7 +100,6 @@ export default function TaxSummaryPage() {
 
     useEffect(() => { reload(selectedFY); }, [selectedFY]);
 
-    // ── Server-Side PDF Export (multi-page: summary + individual tax invoices) ──
     const handleExportPDF = async (month?: string) => {
         if (!report) return;
         setExporting('pdf');
@@ -114,7 +123,6 @@ export default function TaxSummaryPage() {
         }
     };
 
-    // ── CSV Export (upgraded with GST/TDS + all IDs) ──
     const handleExportCSV = () => {
         if (!report) return;
         setExporting('csv');
@@ -156,6 +164,52 @@ export default function TaxSummaryPage() {
         }
     };
 
+    const handleBulkDownloadZIP = async () => {
+        if (selectedMonths.length === 0) return;
+        setBulkDownloading(true);
+        try {
+            const JSZip = (await import('jszip')).default;
+            const zip = new JSZip();
+
+            await Promise.all(selectedMonths.map(async (m) => {
+                const res = await fetch(`/api/receipts/owner/${m}?format=pdf`);
+                if (res.ok) {
+                    const arrayBuffer = await res.arrayBuffer();
+                    zip.file(`RentPe-Owner-Statement-${m}.pdf`, arrayBuffer);
+                }
+            }));
+
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `RentPe-TaxInvoices-Bulk-${selectedFY.label.replace(/\s/g, '-')}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('ZIP Archive containing all selected invoices compiled and downloaded!');
+        } catch (e) {
+            console.error(e);
+            toast.error('Failed to create ZIP package');
+        } finally {
+            setBulkDownloading(false);
+            setSelectedMonths([]);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedMonths.length === monthly.length) {
+            setSelectedMonths([]);
+        } else {
+            setSelectedMonths(monthly.map(m => String(m.key)));
+        }
+    };
+
+    const toggleSelectMonth = (mKey: string) => {
+        setSelectedMonths(prev =>
+            prev.includes(mKey) ? prev.filter(k => k !== mKey) : [...prev, mKey]
+        );
+    };
+
     if (loading) return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-9 h-9 text-indigo-600 animate-spin" />
@@ -164,6 +218,13 @@ export default function TaxSummaryPage() {
     );
 
     const s = report?.summary;
+
+    // Map data for charts
+    const chartData = [...monthly].reverse().map(m => ({
+        name: m.month.split(' ')[0],
+        Rent: m.grossRent,
+        Commission: m.platformFee + m.gst,
+    }));
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20">
@@ -242,6 +303,27 @@ export default function TaxSummaryPage() {
                         {s.totalOnboardingPaid > 0 && (
                             <KpiCard label="Property Onboarding Paid" value={fmtShort(s.totalOnboardingPaid)} icon={Building2} color="indigo" sub={`Incl. ${fmtShort(s.totalOnboardingGst)} GST ITC`} />
                         )}
+                    </div>
+                )}
+
+                {/* ── Visual Analytics: Rent vs Commission Chart ──────────────────────── */}
+                {monthly.length > 0 && (
+                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
+                        <h3 className="font-black text-slate-900 text-lg">Earnings vs. Commission Charges</h3>
+                        <p className="text-xs text-slate-500 mb-6">Compare gross rent processed against total platform fees paid (excl. TDS)</p>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                    <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                    <ChartTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`]} />
+                                    <Legend />
+                                    <Bar dataKey="Rent" name="Gross Rent processed" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="Commission" name="Platform Commission + GST" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 )}
 
@@ -328,36 +410,86 @@ export default function TaxSummaryPage() {
                 {/* Monthly Tax Breakdown Table */}
                 {monthly.length > 0 && (
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className="p-5 border-b border-slate-100">
-                            <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net payout</p>
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-black text-slate-900 text-lg">Monthly Tax Breakdown</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Month-by-month view of gross rent, platform commission, GST, TDS, and your net payout</p>
+                            </div>
+                            {/* Checkbox bulk actions */}
+                            <button
+                                onClick={toggleSelectAll}
+                                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1.5"
+                            >
+                                {selectedMonths.length === monthly.length ? (
+                                    <>
+                                        <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+                                        <span>Deselect All</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Square className="w-3.5 h-3.5 text-slate-400" />
+                                        <span>Select All ({monthly.length})</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
-                                        {['Month', 'Transactions', 'Gross Rent', 'Platform Commission', 'GST (18%)', 'TDS (1%)', 'Your Net Payout'].map(h => (
+                                        <th className="px-4 py-3 text-left w-12"></th>
+                                        {['Month', 'Transactions', 'Gross Rent', 'Platform Commission', 'GST (18%)', 'TDS (1%)', 'Your Net Payout', 'Action'].map(h => (
                                             <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {monthly.map((m: any) => (
-                                        <tr key={m.key} className="hover:bg-indigo-50/30 transition-colors">
-                                            <td className="px-4 py-3 font-bold text-slate-800">{m.month}</td>
-                                            <td className="px-4 py-3 text-slate-500">{m.transactions}</td>
-                                            <td className="px-4 py-3 font-black text-slate-900">{fmtShort(m.grossRent)}</td>
-                                            <td className="px-4 py-3 font-bold text-amber-600">{fmtShort(m.platformFee)}</td>
-                                            <td className="px-4 py-3 font-bold text-violet-600">{fmtShort(m.gst)}</td>
-                                            <td className="px-4 py-3 font-bold text-rose-600">
-                                                {s?.tdsExempt ? <span className="text-emerald-600">₹0 ✓</span> : fmtShort(m.tds)}
-                                            </td>
-                                            <td className="px-4 py-3 font-black text-emerald-600">{fmtShort(m.netPayout)}</td>
-                                        </tr>
-                                    ))}
+                                    {monthly.map((m: any) => {
+                                        const isSelected = selectedMonths.includes(String(m.key));
+                                        return (
+                                            <tr key={m.key} className={`transition-colors duration-150 ${isSelected ? 'bg-indigo-50/20' : 'hover:bg-slate-50/50'}`}>
+                                                <td className="px-4 py-3">
+                                                    <button onClick={() => toggleSelectMonth(String(m.key))} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                                                        {isSelected ? (
+                                                            <CheckSquare className="w-4 h-4 text-indigo-600" />
+                                                        ) : (
+                                                            <Square className="w-4 h-4" />
+                                                        )}
+                                                    </button>
+                                                </td>
+                                                <td className="px-4 py-3 font-bold text-slate-800">{m.month}</td>
+                                                <td className="px-4 py-3 text-slate-500">{m.transactions}</td>
+                                                <td className="px-4 py-3 font-black text-slate-900">{fmtShort(m.grossRent)}</td>
+                                                <td className="px-4 py-3 font-bold text-amber-600">{fmtShort(m.platformFee)}</td>
+                                                <td className="px-4 py-3 font-bold text-violet-600">{fmtShort(m.gst)}</td>
+                                                <td className="px-4 py-3 font-bold text-rose-600">
+                                                    {s?.tdsExempt ? <span className="text-emerald-600">₹0 ✓</span> : fmtShort(m.tds)}
+                                                </td>
+                                                <td className="px-4 py-3 font-black text-emerald-600">{fmtShort(m.netPayout)}</td>
+                                                <td className="px-4 py-3 flex gap-2">
+                                                    <button
+                                                        onClick={() => setPreviewMonth(String(m.key))}
+                                                        className="px-2.5 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" />
+                                                        <span>Preview</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExportPDF(String(m.key))}
+                                                        disabled={exporting !== null}
+                                                        className="px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1 disabled:opacity-50"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                        <span>PDF</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                                 <tfoot>
                                     <tr className="bg-slate-900 text-white font-black text-sm">
+                                        <td></td>
                                         <td className="px-4 py-3">TOTAL</td>
                                         <td className="px-4 py-3">{monthly.reduce((s, m) => s + m.transactions, 0)}</td>
                                         <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.grossRent, 0))}</td>
@@ -365,6 +497,7 @@ export default function TaxSummaryPage() {
                                         <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.gst, 0))}</td>
                                         <td className="px-4 py-3">{s?.tdsExempt ? '₹0 ✓' : fmtShort(monthly.reduce((s, m) => s + m.tds, 0))}</td>
                                         <td className="px-4 py-3">{fmtShort(monthly.reduce((s, m) => s + m.netPayout, 0))}</td>
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -378,8 +511,9 @@ export default function TaxSummaryPage() {
                     <p className="text-sm text-slate-500 mb-1">
                         Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
                     </p>
-                    <p className="text-xs text-indigo-600 font-bold mb-5">
-                        📋 PDF now includes individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for CA Input Tax Credit filing.
+                    <p className="text-xs text-indigo-600 font-bold mb-5 flex items-center gap-1.5">
+                        <Info className="w-4 h-4 flex-shrink-0" />
+                        <span>📋 PDFs include individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for claiming Input Tax Credit.</span>
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -397,22 +531,6 @@ export default function TaxSummaryPage() {
                                     <p className="text-[10px] text-indigo-500 font-bold mt-0.5">Month: {currentDownloadMonth}</p>
                                 </div>
                             </button>
-                            {/* Per-month buttons from monthly breakdown */}
-                            {monthly.length > 0 && (
-                                <div className="flex flex-wrap gap-2 pl-1">
-                                    <p className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest">Download by month:</p>
-                                    {monthly.map((m: any) => (
-                                        <button
-                                            key={String(m.key)}
-                                            onClick={() => handleExportPDF(String(m.key))}
-                                            disabled={exporting !== null}
-                                            className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-50"
-                                        >
-                                            {String(m.month)}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
 
                         <button onClick={handleExportCSV} disabled={exporting !== null}
@@ -490,6 +608,86 @@ export default function TaxSummaryPage() {
                     </div>
                 )}
             </div>
+
+            {/* ── In-Browser PDF Preview Modal ────────────────────────────────────── */}
+            {previewMonth && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="font-black text-base">📄 Statement Preview</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">Month: {previewMonth} · Includes summary & GST Tax Invoices</p>
+                            </div>
+                            <button
+                                onClick={() => setPreviewMonth(null)}
+                                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 bg-slate-100 overflow-y-auto p-4 flex justify-center">
+                            <iframe
+                                src={`/api/receipts/owner/${previewMonth}?format=pdf#toolbar=0`}
+                                className="w-full h-[65vh] rounded-xl border border-slate-200 bg-white"
+                                title="Statement PDF Preview"
+                            />
+                        </div>
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                            <button
+                                onClick={() => setPreviewMonth(null)}
+                                className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl text-sm transition-colors"
+                            >
+                                Close Preview
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleExportPDF(previewMonth);
+                                    setPreviewMonth(null);
+                                }}
+                                className="px-4 py-2 bg-indigo-600 text-white font-bold hover:bg-indigo-700 rounded-xl text-sm transition-colors flex items-center gap-1.5 shadow-md"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span>Download PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Checkbox Bulk Export Floating Bar ─────────────────────────────────── */}
+            {selectedMonths.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur border border-slate-800 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 animate-in slide-in-from-bottom duration-300">
+                    <div>
+                        <p className="text-white font-black text-sm">{selectedMonths.length} statement{selectedMonths.length > 1 ? 's' : ''} selected</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Ready to compile as ZIP</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setSelectedMonths([])}
+                            className="px-3 py-2 text-slate-400 font-bold hover:text-white text-xs transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleBulkDownloadZIP}
+                            disabled={bulkDownloading}
+                            className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-black text-xs hover:from-indigo-600 hover:to-violet-700 rounded-xl shadow-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                            {bulkDownloading ? (
+                                <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Packing ZIP...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Download ZIP</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

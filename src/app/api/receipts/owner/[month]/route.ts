@@ -79,10 +79,10 @@ export async function GET(
         if (!owner) return new NextResponse("Owner not found", { status: 404 });
 
         // Fetch all paid bookings for this owner in the given month
-        const payments = await (prisma as any).payment.findMany({
+        const payments = await prisma.payment.findMany({
             where: {
                 status: "VERIFIED",
-                createdAt: { gte: monthStart, lte: monthEnd },
+                date: { gte: monthStart, lte: monthEnd },
                 booking: {
                     room: {
                         property: { ownerId }
@@ -101,12 +101,12 @@ export async function GET(
                     }
                 }
             },
-            orderBy: { createdAt: "asc" }
+            orderBy: { date: "asc" }
         });
 
         // Fetch platform fee records for all payments
         const paymentIds = payments.map((p: any) => p.id).filter(Boolean);
-        const platformFees = await (prisma as any).platformFee.findMany({
+        const platformFees = await prisma.platformFee.findMany({
             where: { paymentId: { in: paymentIds } }
         });
         const feeMap = new Map(platformFees.map((f: any) => [f.paymentId, f]));
@@ -117,7 +117,7 @@ export async function GET(
             select: { name: true }
         });
         const propertyNames = ownerProperties.map(p => p.name);
-        const tdsExemptions = await (prisma as any).feeExemption.findMany({
+        const tdsExemptions = await prisma.feeExemption.findMany({
             where: {
                 propertyName: { in: propertyNames },
                 exemptTds: true,
@@ -158,7 +158,7 @@ export async function GET(
             const netPayout    = gross - ownerFee - gstOnOwner - tds;
 
             return {
-                date:        format(new Date(p.createdAt), "dd MMM yyyy"),
+                date:        format(new Date(p.date), "dd MMM yyyy"),
                 tenant:      p.booking?.user?.name || "—",
                 tenantId:    p.booking?.user?.displayId || "—",
                 property:    p.booking?.room?.property?.name || p.booking?.propertyName || "—",
@@ -226,8 +226,8 @@ export async function GET(
                 `TOTALS,,,,${totalGross.toFixed(2)},${totalOwnerFee.toFixed(2)},${totalGstOnOwner.toFixed(2)},${totalTds.toFixed(2)},${totalNetPayout.toFixed(2)},`,
                 "",
                 hasTdsExemption
-                    ? `NOTE: TDS Certificate reference — Section 194-O. TDS exempted based on Lower/Nil certificate on record. Deductor: RentPe (Antigravity Project). GSTIN: PENDING REGISTRATION.`
-                    : `NOTE: TDS Certificate (Form 16C equivalent) reference — Section 194-O. Deductor: RentPe (Antigravity Project). GSTIN: PENDING REGISTRATION.`,
+                    ? `NOTE: TDS Certificate reference — Section 194-O. TDS exempted based on Lower/Nil certificate on record. Deductor: RentPe (Antigravity Project). GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"}.`
+                    : `NOTE: TDS Certificate (Form 16C equivalent) reference — Section 194-O. Deductor: RentPe (Antigravity Project). GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"}.`,
             ];
 
             return new NextResponse(csvLines.join("\n"), {
@@ -410,7 +410,7 @@ export async function GET(
         doc.setFontSize(6.5);
         doc.setTextColor(100, 116, 139);
         doc.text(
-            `Deductor: RentPe (Antigravity Project) | GSTIN: PENDING REGISTRATION | SAC Code: 997312 | TDS: Sec 194-O @ 1% on RENT ONLY (NOT on security deposit) | GST: 18% (CGST 9% + SGST 9%)`,
+            `Deductor: RentPe (Antigravity Project) | GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"} | SAC Code: ${process.env.RENTPE_SAC_COMMISSION || "997312"} | TDS: Sec 194-O @ 1% on RENT ONLY (NOT on security deposit) | GST: 18% (CGST 9% + SGST 9%)`,
             pageW / 2, pageH - 10, { align: "center" }
         );
         doc.setFont("helvetica", "bold");
@@ -504,13 +504,13 @@ export async function GET(
                 };
 
                 const isOnboarding = row.type === 'PROPERTY_ONBOARDING';
-                const currentSac = isOnboarding ? "998314" : "997312";
+                const currentSac = isOnboarding ? (process.env.RENTPE_SAC_ONBOARDING || "998314") : (process.env.RENTPE_SAC_COMMISSION || "997312");
                 const serviceDesc = isOnboarding ? "Property Onboarding Platform Services" : "Platform Commission";
 
                 drawBillingBlock([
                     "RentPe (Antigravity Project)",
                     "Platform Service Provider",
-                    "GSTIN: PENDING REGISTRATION",
+                    `GSTIN: ${process.env.RENTPE_GSTIN || "PENDING REGISTRATION"}`,
                     `SAC: ${currentSac}`,
                 ], PL, "BILLED BY (SUPPLIER)");
 
