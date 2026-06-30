@@ -634,7 +634,7 @@ export async function updateOwnerRazorpayAccount(accountId: string | null) {
 }
 
 // ── ADMIN: Get full financial ledger with all IDs and tax breakdown ──
-export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
+export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, limit?: number) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
@@ -647,14 +647,16 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
             status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] }
         },
         orderBy: { date: 'desc' },
+        ...(limit ? { take: limit } : {}),
         include: {
             booking: {
                 select: {
-                    id: true, displayId: true, propertyName: true, propertyId: true, roomType: true,
+                    id: true, displayId: true, propertyName: true, propertyId: true,
                     status: true, createdAt: true,
                     user: { select: { id: true, name: true, email: true, phone: true, displayId: true } },
                     room: {
                         select: {
+                            type: true,
                             property: {
                                 select: {
                                     id: true, name: true, city: true,
@@ -695,7 +697,7 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
             // === What For ===
             propertyName: property.name || booking.propertyName || '—',
             propertyCity: property.city || '—',
-            roomType: booking.roomType || '—',
+            roomType: booking.room?.type || '—',
             // === Owner ===
             ownerName: owner.name || '—',
             ownerId: owner.displayId || '—',

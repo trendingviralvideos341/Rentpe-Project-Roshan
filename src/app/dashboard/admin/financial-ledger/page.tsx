@@ -81,7 +81,7 @@ export default function AdminFinancialLedgerPage() {
         setLoading(true);
         try {
             const [l, t, u] = await Promise.all([
-                getAdminFinancialLedger(fy.from, fy.to),
+                getAdminFinancialLedger(fy.from, fy.to, 100),
                 getAdminTaxLiability(fy.from, fy.to),
                 getAdminPropertyUnitEconomics(fy.from, fy.to),
             ]);
@@ -112,10 +112,31 @@ export default function AdminFinancialLedgerPage() {
         );
     });
 
-    const handleExportCSV = () => {
-        if (!ledger?.rows?.length) return;
+    const handleExportCSV = async () => {
         setExporting('csv');
         try {
+            toast.loading('Fetching full ledger for export...', { id: 'export-csv' });
+            const fullLedger = await getAdminFinancialLedger(selectedFY.from, selectedFY.to);
+            const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
+                const q = search.toLowerCase();
+                if (!q) return true;
+                return (
+                    r.studentName?.toLowerCase().includes(q) ||
+                    r.studentEmail?.toLowerCase().includes(q) ||
+                    r.propertyName?.toLowerCase().includes(q) ||
+                    r.ownerName?.toLowerCase().includes(q) ||
+                    r.rentpeBookingId?.toLowerCase().includes(q) ||
+                    r.razorpayOrderId?.toLowerCase().includes(q) ||
+                    r.razorpayPaymentId?.toLowerCase().includes(q) ||
+                    r.razorpayTransferId?.toLowerCase().includes(q)
+                );
+            });
+
+            if (!rowsToExport.length) {
+                toast.error('No transactions to export', { id: 'export-csv' });
+                return;
+            }
+
             const headers = [
                 'RentPe Payment ID', 'RentPe Booking ID',
                 'Razorpay Order ID', 'Razorpay Payment ID', 'Razorpay Transfer ID',
@@ -127,7 +148,7 @@ export default function AdminFinancialLedgerPage() {
                 'TDS Deducted', 'Owner Net Payout', 'Total Charged',
                 'Platform Earned', 'SAC Code', 'Payment Method', 'Status', 'Date'
             ];
-            const rows = filteredRows.map((r: any) => [
+            const rows = rowsToExport.map((r: any) => [
                 r.rentpePaymentId, r.rentpeBookingId,
                 r.razorpayOrderId, r.razorpayPaymentId, r.razorpayTransferId,
                 r.studentName, r.studentEmail, r.studentId,
@@ -149,19 +170,38 @@ export default function AdminFinancialLedgerPage() {
             a.download = `RentPe-FinancialLedger-${selectedFY.label.replace(/\s/g, '-')}.csv`;
             a.click();
             URL.revokeObjectURL(url);
-            toast.success('CSV exported with all transaction details!');
-        } catch { toast.error('Export failed'); }
-        finally { setExporting(null); }
+            toast.success('CSV exported with all transaction details!', { id: 'export-csv' });
+        } catch { 
+            toast.error('Export failed', { id: 'export-csv' }); 
+        } finally { 
+            setExporting(null); 
+        }
     };
 
     const handleExportPDF = async () => {
-        if (!ledger) return;
         setExporting('pdf');
         try {
+            toast.loading('Fetching full ledger for PDF export...', { id: 'export-pdf' });
+            const fullLedger = await getAdminFinancialLedger(selectedFY.from, selectedFY.to);
+            const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
+                const q = search.toLowerCase();
+                if (!q) return true;
+                return (
+                    r.studentName?.toLowerCase().includes(q) ||
+                    r.studentEmail?.toLowerCase().includes(q) ||
+                    r.propertyName?.toLowerCase().includes(q) ||
+                    r.ownerName?.toLowerCase().includes(q) ||
+                    r.rentpeBookingId?.toLowerCase().includes(q) ||
+                    r.razorpayOrderId?.toLowerCase().includes(q) ||
+                    r.razorpayPaymentId?.toLowerCase().includes(q) ||
+                    r.razorpayTransferId?.toLowerCase().includes(q)
+                );
+            });
+
             const { jsPDF } = await import('jspdf');
             const autoTable = (await import('jspdf-autotable')).default;
             const doc = new jsPDF({ orientation: 'landscape' });
-            const t = ledger.totals;
+            const t = fullLedger.totals;
 
             // Header
             doc.setFillColor(67, 56, 202);
@@ -205,7 +245,7 @@ export default function AdminFinancialLedgerPage() {
                     'Student', 'Property', 'Owner',
                     'Gross', 'Conv/Comm Fee', 'GST', 'TDS', 'Owner Net', 'Date'
                 ]],
-                body: filteredRows.map((r: any) => [
+                body: rowsToExport.map((r: any) => [
                     r.rentpeBookingId,
                     r.razorpayOrderId?.slice(-12) || '—',
                     r.razorpayPaymentId?.slice(-12) || '—',
@@ -226,9 +266,13 @@ export default function AdminFinancialLedgerPage() {
             });
 
             doc.save(`RentPe-FinancialLedger-${selectedFY.label.replace(/\s/g, '-')}.pdf`);
-            toast.success('PDF downloaded with complete audit trail!');
-        } catch (e) { console.error(e); toast.error('PDF generation failed'); }
-        finally { setExporting(null); }
+            toast.success('PDF downloaded with complete audit trail!', { id: 'export-pdf' });
+        } catch (e) { 
+            console.error(e); 
+            toast.error('PDF generation failed', { id: 'export-pdf' }); 
+        } finally { 
+            setExporting(null); 
+        }
     };
 
     if (loading) return (
@@ -451,8 +495,8 @@ export default function AdminFinancialLedgerPage() {
                             </table>
                         </div>
                         {filteredRows.length > 0 && (
-                            <div className="p-4 border-t border-slate-100 text-xs text-slate-400 text-center font-medium">
-                                Showing {filteredRows.length} records. Use Export CSV for full data with all 29 columns.
+                            <div className="p-4 border-t border-slate-100 text-xs text-indigo-500 text-center font-bold">
+                                ℹ️ Showing the 100 most recent records for performance. Use "Export CSV" or "Export PDF" above to fetch and download the full audit trail.
                             </div>
                         )}
                     </div>
