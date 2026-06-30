@@ -13,12 +13,12 @@ import {
 function Tip({ text }: { text: string }) {
     const [show, setShow] = useState(false);
     return (
-        <span className="relative inline-flex items-center ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-            <Info className="w-3 h-3 text-slate-400 cursor-help hover:text-indigo-400 transition-colors" />
+        <span className="relative inline-flex items-center ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={(e) => { e.stopPropagation(); setShow(!show); }}>
+            <Info className={`w-3 h-3 cursor-pointer transition-colors ${show ? 'text-indigo-500' : 'text-slate-400 hover:text-indigo-400'}`} />
             {show && (
-                <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-slate-900 text-white text-[11px] font-normal rounded-xl px-3 py-2 shadow-2xl leading-relaxed whitespace-normal pointer-events-none">
+                <span className="absolute z-[9999] top-full mt-2 left-1/2 -translate-x-1/2 w-52 bg-slate-900 text-white text-[11px] font-normal rounded-xl px-3 py-2 shadow-2xl leading-relaxed whitespace-normal pointer-events-none">
                     {text}
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
                 </span>
             )}
         </span>
