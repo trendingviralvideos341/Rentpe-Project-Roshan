@@ -641,12 +641,12 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date) {
     const from = fromDate || new Date(new Date().getFullYear(), 3, 1); // April 1 of current year
     const to = toDate || new Date();
 
-    const payments = await (prisma as any).payment.findMany({
+    const payments = await prisma.payment.findMany({
         where: {
-            createdAt: { gte: from, lte: to },
+            date: { gte: from, lte: to },
             status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { date: 'desc' },
         include: {
             booking: {
                 select: {
