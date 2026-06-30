@@ -717,7 +717,7 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
             sacCode: fee.sacCode || '997312',
             paymentMethod: p.method || '—',
             status: p.status,
-            date: p.createdAt,
+            date: p.date,
             type: 'RENT_COLLECTION',
         };
     });
