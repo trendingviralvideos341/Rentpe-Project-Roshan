@@ -405,11 +405,12 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
         select: { name: true, businessName: true, displayId: true }
     });
 
-    const bookings = await (prisma.booking as any).findMany({
+    const bookings = await prisma.booking.findMany({
         where: { propertyId: { in: propIdList }, createdAt: { gte: from, lte: to } },
         select: {
-            id: true, displayId: true, propertyName: true, propertyId: true, roomType: true,
-            amount: true, status: true, createdAt: true, cancelReason: true,
+            id: true, displayId: true, propertyName: true, propertyId: true,
+            amount: true, status: true, createdAt: true, cancelReason: true, occupancy: true,
+            room: { select: { type: true } },
             user: { select: { name: true } }
         }
     });
@@ -447,7 +448,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             internalBookingId: b.id,
             tenantName: b.user?.name || 'N/A',
             property: b.propertyName,
-            roomType: b.roomType,
+            roomType: b.room?.type || b.occupancy || '—',
             amount: b.amount,
             status: b.status,
             date: b.createdAt,
@@ -558,7 +559,7 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
 
     const propIdList = (await prisma.property.findMany({ where: { ownerId }, select: { id: true } })).map(p => p.id);
     const bookingIds = (await prisma.booking.findMany({
-        where: { propertyId: { in: propIdList }, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'] }, createdAt: { gte: from, lte: to } },
+        where: { propertyId: { in: propIdList }, status: { in: ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'ACTIVE', 'VERIFIED'] }, createdAt: { gte: from, lte: to } },
         select: { id: true, createdAt: true }
     }));
 
