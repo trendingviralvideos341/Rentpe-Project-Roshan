@@ -111,6 +111,10 @@ export default function AdminFinancialLedgerPage() {
     const [search, setSearch] = useState('');
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
     const [typeFilter, setTypeFilter] = useState('ALL');
+    const [selectedProperty, setSelectedProperty] = useState('ALL');
+    const [selectedOwner, setSelectedOwner] = useState('ALL');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     const fetchAll = useCallback(async (fy: typeof fyOptions[0]) => {
         setLoading(true);
@@ -130,21 +134,48 @@ export default function AdminFinancialLedgerPage() {
         }
     }, []);
 
-    useEffect(() => { fetchAll(selectedFY); }, [selectedFY, fetchAll]);
+    useEffect(() => {
+        setSearch('');
+        setSelectedProperty('ALL');
+        setSelectedOwner('ALL');
+        setStartDate('');
+        setEndDate('');
+        fetchAll(selectedFY);
+    }, [selectedFY, fetchAll]);
+
+    const uniqueProperties = Array.from(new Set((ledger?.rows || []).map((r: any) => r.propertyName))).filter(Boolean).sort() as string[];
+    const uniqueOwners = Array.from(new Set((ledger?.rows || []).map((r: any) => r.ownerName))).filter(Boolean).sort() as string[];
 
     const filteredRows = (ledger?.rows || []).filter((r: any) => {
         const q = search.toLowerCase();
-        if (!q) return true;
-        return (
-            r.studentName?.toLowerCase().includes(q) ||
-            r.studentEmail?.toLowerCase().includes(q) ||
-            r.propertyName?.toLowerCase().includes(q) ||
-            r.ownerName?.toLowerCase().includes(q) ||
-            r.rentpeBookingId?.toLowerCase().includes(q) ||
-            r.razorpayOrderId?.toLowerCase().includes(q) ||
-            r.razorpayPaymentId?.toLowerCase().includes(q) ||
-            r.razorpayTransferId?.toLowerCase().includes(q)
-        );
+        if (q) {
+            const match = (
+                r.studentName?.toLowerCase().includes(q) ||
+                r.studentEmail?.toLowerCase().includes(q) ||
+                r.propertyName?.toLowerCase().includes(q) ||
+                r.ownerName?.toLowerCase().includes(q) ||
+                r.rentpeBookingId?.toLowerCase().includes(q) ||
+                r.razorpayOrderId?.toLowerCase().includes(q) ||
+                r.razorpayPaymentId?.toLowerCase().includes(q) ||
+                r.razorpayTransferId?.toLowerCase().includes(q)
+            );
+            if (!match) return false;
+        }
+        if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
+        if (selectedOwner !== 'ALL' && r.ownerName !== selectedOwner) return false;
+        if (startDate) {
+            const d = new Date(r.date);
+            const s = new Date(startDate);
+            s.setHours(0,0,0,0);
+            if (d < s) return false;
+        }
+        if (endDate) {
+            const d = new Date(r.date);
+            const e = new Date(endDate);
+            e.setHours(23,59,59,999);
+            if (d > e) return false;
+        }
+        return true;
     });
 
     const handleExportCSV = async () => {
@@ -154,17 +185,34 @@ export default function AdminFinancialLedgerPage() {
             const fullLedger = await getAdminFinancialLedger(selectedFY.from, selectedFY.to);
             const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
                 const q = search.toLowerCase();
-                if (!q) return true;
-                return (
-                    r.studentName?.toLowerCase().includes(q) ||
-                    r.studentEmail?.toLowerCase().includes(q) ||
-                    r.propertyName?.toLowerCase().includes(q) ||
-                    r.ownerName?.toLowerCase().includes(q) ||
-                    r.rentpeBookingId?.toLowerCase().includes(q) ||
-                    r.razorpayOrderId?.toLowerCase().includes(q) ||
-                    r.razorpayPaymentId?.toLowerCase().includes(q) ||
-                    r.razorpayTransferId?.toLowerCase().includes(q)
-                );
+                if (q) {
+                    const match = (
+                        r.studentName?.toLowerCase().includes(q) ||
+                        r.studentEmail?.toLowerCase().includes(q) ||
+                        r.propertyName?.toLowerCase().includes(q) ||
+                        r.ownerName?.toLowerCase().includes(q) ||
+                        r.rentpeBookingId?.toLowerCase().includes(q) ||
+                        r.razorpayOrderId?.toLowerCase().includes(q) ||
+                        r.razorpayPaymentId?.toLowerCase().includes(q) ||
+                        r.razorpayTransferId?.toLowerCase().includes(q)
+                    );
+                    if (!match) return false;
+                }
+                if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
+                if (selectedOwner !== 'ALL' && r.ownerName !== selectedOwner) return false;
+                if (startDate) {
+                    const d = new Date(r.date);
+                    const s = new Date(startDate);
+                    s.setHours(0,0,0,0);
+                    if (d < s) return false;
+                }
+                if (endDate) {
+                    const d = new Date(r.date);
+                    const e = new Date(endDate);
+                    e.setHours(23,59,59,999);
+                    if (d > e) return false;
+                }
+                return true;
             });
 
             if (!rowsToExport.length) {
@@ -220,17 +268,34 @@ export default function AdminFinancialLedgerPage() {
             const fullLedger = await getAdminFinancialLedger(selectedFY.from, selectedFY.to);
             const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
                 const q = search.toLowerCase();
-                if (!q) return true;
-                return (
-                    r.studentName?.toLowerCase().includes(q) ||
-                    r.studentEmail?.toLowerCase().includes(q) ||
-                    r.propertyName?.toLowerCase().includes(q) ||
-                    r.ownerName?.toLowerCase().includes(q) ||
-                    r.rentpeBookingId?.toLowerCase().includes(q) ||
-                    r.razorpayOrderId?.toLowerCase().includes(q) ||
-                    r.razorpayPaymentId?.toLowerCase().includes(q) ||
-                    r.razorpayTransferId?.toLowerCase().includes(q)
-                );
+                if (q) {
+                    const match = (
+                        r.studentName?.toLowerCase().includes(q) ||
+                        r.studentEmail?.toLowerCase().includes(q) ||
+                        r.propertyName?.toLowerCase().includes(q) ||
+                        r.ownerName?.toLowerCase().includes(q) ||
+                        r.rentpeBookingId?.toLowerCase().includes(q) ||
+                        r.razorpayOrderId?.toLowerCase().includes(q) ||
+                        r.razorpayPaymentId?.toLowerCase().includes(q) ||
+                        r.razorpayTransferId?.toLowerCase().includes(q)
+                    );
+                    if (!match) return false;
+                }
+                if (selectedProperty !== 'ALL' && r.propertyName !== selectedProperty) return false;
+                if (selectedOwner !== 'ALL' && r.ownerName !== selectedOwner) return false;
+                if (startDate) {
+                    const d = new Date(r.date);
+                    const s = new Date(startDate);
+                    s.setHours(0,0,0,0);
+                    if (d < s) return false;
+                }
+                if (endDate) {
+                    const d = new Date(r.date);
+                    const e = new Date(endDate);
+                    e.setHours(23,59,59,999);
+                    if (d > e) return false;
+                }
+                return true;
             });
 
             const { jsPDF } = await import('jspdf');
@@ -476,11 +541,61 @@ export default function AdminFinancialLedgerPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <input
                                     className="pl-10 w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                    placeholder="Search student, property, booking ID, Razorpay ID..."
+                                    placeholder="Search student, property, booking ID..."
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
                                 />
                             </div>
+
+                            {/* Property Dropdown Filter */}
+                            <select
+                                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium text-slate-700 cursor-pointer"
+                                value={selectedProperty}
+                                onChange={e => setSelectedProperty(e.target.value)}
+                            >
+                                <option value="ALL">All Properties</option>
+                                {uniqueProperties.map(p => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+
+                            {/* Owner Dropdown Filter */}
+                            <select
+                                className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium text-slate-700 cursor-pointer"
+                                value={selectedOwner}
+                                onChange={e => setSelectedOwner(e.target.value)}
+                            >
+                                <option value="ALL">All Owners</option>
+                                {uniqueOwners.map(o => (
+                                    <option key={o} value={o}>{o}</option>
+                                ))}
+                            </select>
+
+                            {/* Date Range Filters */}
+                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 h-10">
+                                <input
+                                    type="date"
+                                    className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer"
+                                    value={startDate}
+                                    onChange={e => setStartDate(e.target.value)}
+                                />
+                                <span className="text-xs text-slate-400 font-bold">to</span>
+                                <input
+                                    type="date"
+                                    className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer"
+                                    value={endDate}
+                                    onChange={e => setEndDate(e.target.value)}
+                                />
+                                {(startDate || endDate) && (
+                                    <button 
+                                        onClick={() => { setStartDate(''); setEndDate(''); }}
+                                        className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-1.5 py-0.5 rounded ml-1"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+
                             <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
                                 <Filter className="w-4 h-4" />
                                 {filteredRows.length} of {ledger?.rows?.length || 0} records
@@ -533,6 +648,7 @@ export default function AdminFinancialLedgerPage() {
                                             <td className="px-3 py-2.5">
                                                 <div className="font-bold text-slate-800">{r.studentName}</div>
                                                 <div className="text-[10px] text-slate-400">{r.studentEmail}</div>
+                                                <div className="text-[10px] text-indigo-600 font-black mt-0.5">{r.studentId}</div>
                                             </td>
                                             <td className="px-3 py-2.5">
                                                 <div className="font-medium text-slate-700">{r.propertyName}</div>
