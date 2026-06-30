@@ -68,6 +68,43 @@ export default function TaxSummaryPage() {
     const [bulkDownloading, setBulkDownloading] = useState(false);
     const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
+    // Search and filters
+    const [search, setSearch] = useState('');
+    const [selectedProperty, setSelectedProperty] = useState('ALL');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    const uniqueProperties = Array.from(new Set((report?.report || []).map((r: any) => r.property))).filter(Boolean).sort() as string[];
+
+    const filteredRows = (report?.report || []).filter((r: any) => {
+        const q = search.toLowerCase();
+        if (q) {
+            const match = (
+                r.tenantName?.toLowerCase().includes(q) ||
+                r.tenantId?.toLowerCase().includes(q) ||
+                r.bookingId?.toLowerCase().includes(q) ||
+                r.property?.toLowerCase().includes(q) ||
+                r.razorpayTransferId?.toLowerCase().includes(q) ||
+                r.roomType?.toLowerCase().includes(q)
+            );
+            if (!match) return false;
+        }
+        if (selectedProperty !== 'ALL' && r.property !== selectedProperty) return false;
+        if (startDate) {
+            const d = new Date(r.date);
+            const s = new Date(startDate);
+            s.setHours(0,0,0,0);
+            if (d < s) return false;
+        }
+        if (endDate) {
+            const d = new Date(r.date);
+            const e = new Date(endDate);
+            e.setHours(23,59,59,999);
+            if (d > e) return false;
+        }
+        return true;
+    });
+
     // Get the most recent month within selectedFY for per-month download
     const currentDownloadMonth: string = (() => {
         const now = new Date();
@@ -85,6 +122,10 @@ export default function TaxSummaryPage() {
     const reload = (fy: typeof fyOptions[0]) => {
         setLoading(true);
         setSelectedMonths([]);
+        setSearch('');
+        setSelectedProperty('ALL');
+        setStartDate('');
+        setEndDate('');
         Promise.all([
             getOwnerFinancialReport(fy.from, fy.to),
             getOwnerMonthlyTaxBreakdown(fy.from, fy.to),
@@ -92,8 +133,8 @@ export default function TaxSummaryPage() {
             setReport(r);
             setMonthly(m);
             setLoading(false);
-        }).catch(() => {
-            toast.error('Failed to load financial data');
+        }).catch((e: any) => {
+            toast.error(e.message || 'Failed to load financial data');
             setLoading(false);
         });
     };
@@ -129,7 +170,7 @@ export default function TaxSummaryPage() {
         try {
             const s = report.summary;
             const headers = [
-                'Booking ID', 'Internal Booking ID',
+                'Booking ID', 'Tenant ID', 'Internal Booking ID',
                 'Razorpay Order ID', 'Razorpay Payment ID', 'Razorpay Transfer ID',
                 'Tenant Name', 'Property', 'Room Type', 'Payment Method',
                 'Gross Amount', 'Platform Commission', 'GST Charged (18%)',
@@ -137,8 +178,8 @@ export default function TaxSummaryPage() {
                 'Refund Amount', 'Net Revenue',
                 'Status', 'Date'
             ];
-            const rows = report.report.map((r: any) => [
-                r.bookingId, r.internalBookingId,
+            const rows = filteredRows.map((r: any) => [
+                r.bookingId, r.tenantId, r.internalBookingId,
                 r.razorpayOrderId, r.razorpayPaymentId, r.razorpayTransferId,
                 r.tenantName, r.property, r.roomType, r.paymentMethod,
                 r.amount, r.platformFeeCharged, r.gstCharged,
@@ -550,24 +591,77 @@ export default function TaxSummaryPage() {
                 {/* Transaction Preview Table */}
                 {report?.report?.length > 0 && (
                     <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="font-black text-slate-900">Transaction Preview</h3>
-                            <span className="text-xs text-slate-400 font-bold">{report.report.length} records • Download for full audit trail</span>
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <h3 className="font-black text-slate-900 text-lg">Transaction Preview</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Showing {filteredRows.slice(0, 25).length} of {filteredRows.length} records • Use CSV/PDF to download full audit trail</p>
+                            </div>
                         </div>
+
+                        {/* Search and Filters Bar */}
+                        <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center gap-3 flex-wrap">
+                            <div className="relative flex-1 min-w-[200px]">
+                                <input
+                                    className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-4 pr-10 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                    placeholder="Search by Tenant Name, Tenant ID, Booking ID..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Property Dropdown Filter */}
+                            <select
+                                className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                value={selectedProperty}
+                                onChange={e => setSelectedProperty(e.target.value)}
+                            >
+                                <option value="ALL">All Properties</option>
+                                {uniqueProperties.map(p => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+
+                            {/* Date Range Filters */}
+                            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 h-10">
+                                <input
+                                    type="date"
+                                    className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer font-bold"
+                                    value={startDate}
+                                    onChange={e => setStartDate(e.target.value)}
+                                />
+                                <span className="text-[10px] text-slate-400 font-bold">to</span>
+                                <input
+                                    type="date"
+                                    className="bg-transparent text-xs text-slate-600 focus:outline-none cursor-pointer font-bold"
+                                    value={endDate}
+                                    onChange={e => setEndDate(e.target.value)}
+                                />
+                                {(startDate || endDate) && (
+                                    <button 
+                                        onClick={() => { setStartDate(''); setEndDate(''); }}
+                                        className="text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold px-1.5 py-0.5 rounded ml-1"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-xs">
                                 <thead>
                                     <tr className="bg-slate-800 text-white">
-                                        {['Date', 'Booking ID', 'RP Order ID', 'Tenant', 'Property', 'Gross', 'Platform Commission', 'GST', 'TDS', 'Net Payout', 'Status'].map(h => (
+                                        {['Date', 'Booking ID', 'Tenant ID', 'RP Order ID', 'Tenant Name', 'Property', 'Gross', 'Platform Commission', 'GST', 'TDS', 'Net Payout', 'Status'].map(h => (
                                             <th key={h} className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {report.report.slice(0, 25).map((r: any, i: number) => (
+                                    {filteredRows.slice(0, 25).map((r: any, i: number) => (
                                         <tr key={i} className="hover:bg-indigo-50/20 transition-colors">
                                             <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                             <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
+                                            <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.tenantId}</td>
                                             <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate">{r.razorpayOrderId}</td>
 
                                             <td className="px-3 py-2.5 font-bold text-slate-700">
@@ -599,9 +693,9 @@ export default function TaxSummaryPage() {
                                     ))}
                                 </tbody>
                             </table>
-                            {report.report.length > 25 && (
+                            {filteredRows.length > 25 && (
                                 <p className="text-center text-xs text-slate-400 py-3 font-bold border-t border-slate-50">
-                                    Showing 25 of {report.report.length} records. Download CSV/PDF to see all.
+                                    Showing 25 of {filteredRows.length} records. Download CSV/PDF to see all.
                                 </p>
                             )}
                         </div>

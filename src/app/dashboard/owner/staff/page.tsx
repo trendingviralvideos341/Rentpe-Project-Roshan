@@ -33,6 +33,7 @@ const ownerPermissionsList = [
     { id: "request_deactivation", label: "Request Property Deactivation" },
     { id: "food_menu", label: "Manage Food Menu" },
     { id: "support", label: "Handle Support Tickets" },
+    { id: "view_financials", label: "View Tax Summary & Financial Statements" },
 ];
 
 const emptyForm = {

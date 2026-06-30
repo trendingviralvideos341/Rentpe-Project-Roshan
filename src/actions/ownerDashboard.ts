@@ -391,8 +391,25 @@ export async function updateOwnerProfile(data: {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error('Unauthorized');
-    const ownerId = (session as any).userId;
+    if (!session) throw new Error('Unauthorized');
+
+    let ownerId: string;
+    if (session.role === 'OWNER') {
+        ownerId = (session as any).userId;
+    } else if (session.role === 'STAFF') {
+        const staffUser = await prisma.user.findUnique({
+            where: { id: (session as any).userId },
+            select: { parentOwnerId: true, staffPermissions: true }
+        });
+        if (!staffUser || !staffUser.parentOwnerId) throw new Error('Unauthorized');
+        const permissions = JSON.parse(staffUser.staffPermissions || '[]');
+        if (!permissions.includes('view_financials')) {
+            throw new Error('You do not have permission to view financial statements.');
+        }
+        ownerId = staffUser.parentOwnerId;
+    } else {
+        throw new Error('Unauthorized');
+    }
 
     const from = fromDate || new Date(new Date().setMonth(new Date().getMonth() - 12));
     const to = toDate || new Date();
@@ -411,7 +428,8 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             id: true, displayId: true, propertyName: true, propertyId: true,
             amount: true, status: true, createdAt: true, cancelReason: true, occupancy: true,
             room: { select: { type: true } },
-            user: { select: { name: true } }
+            user: { select: { name: true } },
+            tenant: { select: { displayId: true } }
         }
     });
 
@@ -447,6 +465,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             bookingId: b.displayId,
             internalBookingId: b.id,
             tenantName: b.user?.name || 'N/A',
+            tenantId: b.tenant?.displayId || '—',
             property: b.propertyName,
             roomType: b.room?.type || b.occupancy || '—',
             amount: b.amount,
@@ -459,9 +478,9 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             revenueContribution: gross,
             refundAmount,
             netRevenue: gross - refundAmount,
-            // === Tax Breakdown ===
-            platformFeeCharged: fee.customerFee || 0,
-            gstCharged: fee.gstOnStudentFee || 0,
+            // === Tax Breakdown (Owner commission and GST only) ===
+            platformFeeCharged: fee.ownerFee || 0,
+            gstCharged: fee.gstOnOwnerFee || 0,
             tdsDeducted: fee.tdsAmount || 0,
             ownerNetPayout: fee.ownerNet || 0,
             type: 'RENT_COLLECTION',
@@ -510,6 +529,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             tdsDeducted: 0,
             ownerNetPayout: -onboardingFeeAmount,
             type: 'PROPERTY_ONBOARDING',
+            tenantId: '—',
         };
     });
 
@@ -551,8 +571,25 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
 // ── Owner: Monthly GST + TDS breakdown for tax summary page ──
 export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date) {
     const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error('Unauthorized');
-    const ownerId = (session as any).userId;
+    if (!session) throw new Error('Unauthorized');
+
+    let ownerId: string;
+    if (session.role === 'OWNER') {
+        ownerId = (session as any).userId;
+    } else if (session.role === 'STAFF') {
+        const staffUser = await prisma.user.findUnique({
+            where: { id: (session as any).userId },
+            select: { parentOwnerId: true, staffPermissions: true }
+        });
+        if (!staffUser || !staffUser.parentOwnerId) throw new Error('Unauthorized');
+        const permissions = JSON.parse(staffUser.staffPermissions || '[]');
+        if (!permissions.includes('view_financials')) {
+            throw new Error('You do not have permission to view financial statements.');
+        }
+        ownerId = staffUser.parentOwnerId;
+    } else {
+        throw new Error('Unauthorized');
+    }
 
     const from = fromDate || new Date(new Date().getFullYear(), 3, 1);
     const to = toDate || new Date();
@@ -588,8 +625,8 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
         const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
         if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0, onboardingFees: 0, onboardingGst: 0 };
         monthlyMap[key].grossRent += f.grossAmount || 0;
-        monthlyMap[key].platformFee += (f.customerFee || 0) + (f.ownerFee || 0);
-        monthlyMap[key].gst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
+        monthlyMap[key].platformFee += f.ownerFee || 0;
+        monthlyMap[key].gst += f.gstOnOwnerFee || 0;
         monthlyMap[key].tds += f.tdsAmount || 0;
         monthlyMap[key].netPayout += f.ownerNet || 0;
         monthlyMap[key].transactions++;
