@@ -722,6 +722,184 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
         };
     });
 
+    // Fetch paid cash rent invoices
+    const cashInvoices = await prisma.rentInvoice.findMany({
+        where: {
+            paidAt: { gte: from, lte: to },
+            status: 'PAID',
+            paymentMethod: 'CASH',
+        },
+        include: {
+            billingProfile: {
+                include: {
+                    tenant: {
+                        select: { id: true, displayId: true, name: true, email: true, phone: true, roomNumber: true, roomType: true }
+                    }
+                }
+            },
+            booking: {
+                select: {
+                    id: true, displayId: true, propertyName: true, propertyId: true,
+                    room: {
+                        select: {
+                            type: true,
+                            property: {
+                                select: {
+                                    id: true, name: true, city: true,
+                                    owner: { select: { id: true, name: true, displayId: true, email: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Fetch paid cash bookings (both token and joining payments)
+    const cashBookings = await prisma.booking.findMany({
+        where: {
+            paymentMethod: 'CASH',
+            OR: [
+                { paidAt: { gte: from, lte: to }, paymentStatus: 'PAID' },
+                { tokenPaidAt: { gte: from, lte: to } }
+            ]
+        },
+        include: {
+            user: { select: { id: true, name: true, email: true, phone: true, displayId: true } },
+            room: {
+                select: {
+                    type: true,
+                    property: {
+                        select: {
+                            id: true, name: true, city: true,
+                            owner: { select: { id: true, name: true, displayId: true, email: true } }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const cashRows: any[] = [];
+
+    // Map cash rent invoices
+    cashInvoices.forEach((inv: any) => {
+        const tenant = inv.billingProfile?.tenant || {};
+        const booking = inv.booking || {};
+        const property = booking?.room?.property || {};
+        const owner = property?.owner || {};
+        cashRows.push({
+            rentpePaymentId: `CASH-INV-${inv.id.slice(0, 8).toUpperCase()}`,
+            rentpeBookingId: booking.displayId || booking.id || '—',
+            razorpayOrderId: '—',
+            razorpayPaymentId: '—',
+            razorpayTransferId: '—',
+            studentName: tenant.name || '—',
+            studentEmail: tenant.email || '—',
+            studentId: tenant.displayId || '—',
+            propertyName: property.name || booking.propertyName || '—',
+            propertyCity: property.city || '—',
+            roomType: tenant.roomType || booking.room?.type || '—',
+            ownerName: owner.name || '—',
+            ownerId: owner.displayId || '—',
+            ownerEmail: owner.email || '—',
+            grossAmount: inv.amount,
+            platformFeeStudent: 0,
+            platformFeeOwner: 0,
+            gstOnStudentFee: 0,
+            gstOnOwnerFee: 0,
+            cgst: 0,
+            sgst: 0,
+            tdsDeducted: 0,
+            ownerNetPayout: inv.amount,
+            totalCharged: inv.amount,
+            platformEarned: 0,
+            sacCode: '997312',
+            paymentMethod: 'CASH',
+            status: 'SUCCESS',
+            date: inv.paidAt || new Date(),
+            type: 'RENT_COLLECTION',
+        });
+    });
+
+    // Map cash bookings (token reservation and joining balance)
+    cashBookings.forEach((b: any) => {
+        const property = b.room?.property || {};
+        const owner = property?.owner || {};
+
+        if (b.tokenPaidAt && b.tokenPaidAt >= from && b.tokenPaidAt <= to) {
+            const tokenAmt = b.tokenAmount || 1000;
+            cashRows.push({
+                rentpePaymentId: `CASH-TKN-${b.id.slice(0, 8).toUpperCase()}`,
+                rentpeBookingId: b.displayId || b.id,
+                razorpayOrderId: '—',
+                razorpayPaymentId: '—',
+                razorpayTransferId: '—',
+                studentName: b.guestName || b.user?.name || '—',
+                studentEmail: b.guestEmail || b.user?.email || '—',
+                studentId: b.user?.displayId || '—',
+                propertyName: property.name || b.propertyName || '—',
+                propertyCity: property.city || '—',
+                roomType: b.occupancy || b.room?.type || '—',
+                ownerName: owner.name || '—',
+                ownerId: owner.displayId || '—',
+                ownerEmail: owner.email || '—',
+                grossAmount: tokenAmt,
+                platformFeeStudent: 0,
+                platformFeeOwner: 0,
+                gstOnStudentFee: 0,
+                gstOnOwnerFee: 0,
+                cgst: 0,
+                sgst: 0,
+                tdsDeducted: 0,
+                ownerNetPayout: tokenAmt,
+                totalCharged: tokenAmt,
+                platformEarned: 0,
+                sacCode: '997312',
+                paymentMethod: 'CASH',
+                status: 'SUCCESS',
+                date: b.tokenPaidAt,
+                type: 'TOKEN_PAYMENT',
+            });
+        }
+
+        if (b.paidAt && b.paymentStatus === 'PAID' && b.paidAt >= from && b.paidAt <= to) {
+            cashRows.push({
+                rentpePaymentId: `CASH-JOIN-${b.id.slice(0, 8).toUpperCase()}`,
+                rentpeBookingId: b.displayId || b.id,
+                razorpayOrderId: '—',
+                razorpayPaymentId: '—',
+                razorpayTransferId: '—',
+                studentName: b.guestName || b.user?.name || '—',
+                studentEmail: b.guestEmail || b.user?.email || '—',
+                studentId: b.user?.displayId || '—',
+                propertyName: property.name || b.propertyName || '—',
+                propertyCity: property.city || '—',
+                roomType: b.occupancy || b.room?.type || '—',
+                ownerName: owner.name || '—',
+                ownerId: owner.displayId || '—',
+                ownerEmail: owner.email || '—',
+                grossAmount: b.amount,
+                platformFeeStudent: 0,
+                platformFeeOwner: 0,
+                gstOnStudentFee: 0,
+                gstOnOwnerFee: 0,
+                cgst: 0,
+                sgst: 0,
+                tdsDeducted: 0,
+                ownerNetPayout: b.amount,
+                totalCharged: b.amount,
+                platformEarned: 0,
+                sacCode: '997312',
+                paymentMethod: 'CASH',
+                status: 'SUCCESS',
+                date: b.paidAt,
+                type: 'JOINING_PAYMENT',
+            });
+        }
+    });
+
     // Fetch all properties with paid onboarding fees in the range
     const onboardingPaidProperties = await prisma.property.findMany({
         where: {
@@ -740,8 +918,8 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
     const onboardingRows = onboardingPaidProperties.map((p: any) => ({
         rentpePaymentId: `ONB-PAY-${p.id.slice(0, 8).toUpperCase()}`,
         rentpeBookingId: `ONB-${p.displayId || p.id.slice(0, 6).toUpperCase()}`,
-        razorpayOrderId: p.onboardingRazorpayOrderId || '—',
-        razorpayPaymentId: p.onboardingRazorpayId || '—',
+        razorpayOrderId: '—',
+        razorpayPaymentId: '—',
         razorpayTransferId: '—',
         studentName: '—',
         studentEmail: '—',
@@ -770,16 +948,17 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
         type: 'PROPERTY_ONBOARDING',
     }));
 
-    const combinedRows = [...rows, ...onboardingRows].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const combinedRows = [...rows, ...onboardingRows, ...cashRows].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // === Aggregate totals ===
+    const rentCollectionRows = combinedRows.filter((r: any) => r.type === 'RENT_COLLECTION' || r.type === 'TOKEN_PAYMENT' || r.type === 'JOINING_PAYMENT');
     const totals = {
-        totalGrossCollected: rows.reduce((s: number, r: any) => s + r.grossAmount, 0),
+        totalGrossCollected: rentCollectionRows.reduce((s: number, r: any) => s + r.grossAmount, 0),
         totalPlatformEarned: combinedRows.reduce((s: number, r: any) => s + r.platformEarned, 0),
         totalGstCollected: combinedRows.reduce((s: number, r: any) => s + r.gstOnStudentFee + r.gstOnOwnerFee, 0),
         totalCgst: combinedRows.reduce((s: number, r: any) => s + r.cgst, 0),
         totalSgst: combinedRows.reduce((s: number, r: any) => s + r.sgst, 0),
-        totalTdsWithheld: rows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
+        totalTdsWithheld: combinedRows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
         totalOwnerPayouts: combinedRows.reduce((s: number, r: any) => s + r.ownerNetPayout, 0),
         transactionCount: combinedRows.length,
         totalOnboardingEarned: onboardingRows.reduce((s: number, r: any) => s + r.platformFeeOwner, 0),

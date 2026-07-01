@@ -529,11 +529,7 @@ function CommissionModal({
                                                     <span>₹{(record.amount - ownerFee).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="pt-2 border-t border-amber-100/80 text-[10px] text-slate-400 italic">
-                                                Commission is not applicable (Cash / Direct settlement).
-                                            </div>
-                                        )}
+                                        ) : null}
                                     </div>
                                 );
                             })
