@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
     Download, FileText, Loader2, IndianRupee, Shield,
     BadgeCheck, AlertTriangle, TrendingUp, Receipt, Building2,
-    Eye, X, Info, CheckSquare, Square, CalendarDays, HelpCircle
+    Eye, X, Info, CheckSquare, Square, CalendarDays, HelpCircle, Search
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer
@@ -34,10 +34,11 @@ function Tip({ content }: { content: string }) {
     const [show, setShow] = useState(false);
     return (
         <span className="relative inline-flex items-center ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={(e) => { e.stopPropagation(); setShow(!show); }}>
-            <Info className={`w-3 h-3 cursor-pointer transition-colors ${show ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`} />
+            <Info className={`w-3.5 h-3.5 cursor-pointer transition-colors ${show ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`} />
             {show && (
-                <span className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 w-48 p-2 text-[10px] font-bold leading-normal text-white bg-slate-800 rounded-lg shadow-xl text-center select-none animate-in fade-in zoom-in-95 duration-100">
+                <span className="absolute z-[9999] top-full mt-2 left-1/2 -translate-x-1/2 w-52 bg-slate-900 text-white text-[11px] font-normal rounded-xl px-3 py-2 shadow-2xl leading-relaxed whitespace-normal pointer-events-none text-center">
                     {content}
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
                 </span>
             )}
         </span>
@@ -54,12 +55,12 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'indigo' }: any) {
     };
     return (
         <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5 flex items-start gap-4 hover:shadow-lg transition-all duration-200">
-            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${colors[color]} flex items-center justify-center flex-shrink-0 shadow`}>
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors[color]} flex items-center justify-center flex-shrink-0 shadow`}>
                 <Icon className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-                <p className="text-xl font-black text-slate-900 truncate">{value}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">{label}</p>
+                <p className="text-2xl font-black text-slate-900 truncate">{value}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-0.5">{label}</p>
                 {sub && <p className="text-[10px] text-slate-400 mt-1">{sub}</p>}
             </div>
         </div>
@@ -287,15 +288,15 @@ export default function TaxSummaryPage() {
             {/* Premium Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 px-6 pt-10 pb-24 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #a78bfa 0%, transparent 60%)' }} />
-                <div className="max-w-5xl mx-auto relative z-10">
+                <div className="max-w-7xl mx-auto relative z-10">
                     <div className="flex items-start justify-between flex-wrap gap-4">
                         <div>
                             <div className="flex items-center gap-2 mb-3">
                                 <Receipt className="w-5 h-5 text-indigo-200" />
                                 <span className="text-indigo-200 text-xs font-bold uppercase tracking-widest">Financial Statement</span>
                             </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Tax Summary & Payout Ledger</h1>
-                            <p className="text-indigo-200 text-sm font-medium mt-2">Your complete financial picture — GST, TDS, and net payouts</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">Tax Summary & Payout Ledger</h1>
+                            <p className="text-indigo-100 text-sm font-medium mt-2">Your complete financial picture — GST, TDS, and net payouts</p>
                         </div>
                         {/* FY Selector */}
                         <div className="flex bg-white/15 rounded-xl p-1 gap-1">
@@ -311,10 +312,32 @@ export default function TaxSummaryPage() {
                             ))}
                         </div>
                     </div>
+
+                    {/* Tab Navigation */}
+                    <div className="flex gap-1.5 mt-8 bg-white/10 rounded-2xl p-1 w-fit">
+                        {[
+                            { id: 'overview', label: 'Financial Overview', icon: TrendingUp },
+                            { id: 'monthly', label: 'Monthly Statements', icon: Receipt },
+                            { id: 'transactions', label: 'Payout Ledger', icon: Search },
+                        ].map(tab => {
+                            const Icon = tab.icon;
+                            return (
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                                        activeTab === tab.id
+                                            ? 'bg-white text-indigo-700 shadow-lg'
+                                            : 'text-indigo-100 hover:text-white hover:bg-white/10'
+                                    }`}>
+                                    <Icon className="w-4 h-4" />
+                                    <span>{tab.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 -mt-14 relative z-10 space-y-6">
+            <div className="max-w-7xl mx-auto px-4 -mt-14 relative z-10 space-y-6">
 
                 {/* TDS Exemption Banner */}
                 {s?.tdsExempt ? (
@@ -347,26 +370,6 @@ export default function TaxSummaryPage() {
                     </div>
                 )}
 
-                {/* Modern Tabs Bar */}
-                <div className="flex bg-white border border-slate-100 p-1.5 rounded-2xl shadow-md gap-1.5 max-w-lg mx-auto">
-                    {[
-                        { id: 'overview', label: '📊 Financial Overview' },
-                        { id: 'monthly', label: '🧾 Monthly Statements' },
-                        { id: 'transactions', label: '🔎 Payout Ledger' },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${
-                                activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-100'
-                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
 
                 {/* ── Tab 1: Financial Overview ── */}
                 {activeTab === 'overview' && (
