@@ -289,12 +289,14 @@ function HistoryModal({
     tenantName, 
     tenantDisplayId, 
     history, 
-    onClose 
+    onClose,
+    onSelectReceipt
 }: { 
     tenantName: string; 
     tenantDisplayId: string; 
     history: any[]; 
-    onClose: () => void 
+    onClose: () => void;
+    onSelectReceipt: (invoiceId: string) => void;
 }) {
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -330,9 +332,14 @@ function HistoryModal({
                                 return (
                                     <div 
                                         key={index} 
+                                        onClick={() => {
+                                            if (isPaid && record.id) {
+                                                onSelectReceipt(record.id);
+                                            }
+                                        }}
                                         className={`p-4 rounded-2xl border-2 transition-all hover:shadow-md ${
                                             isPaid 
-                                                ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' 
+                                                ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200 cursor-pointer' 
                                                 : 'bg-red-50/50 border-red-100 hover:border-red-200'
                                         }`}
                                     >
@@ -345,20 +352,21 @@ function HistoryModal({
                                                     ₹{record.amount?.toLocaleString('en-IN')}
                                                 </p>
                                             </div>
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                isPaid 
-                                                    ? 'bg-emerald-100 text-emerald-800' 
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {isPaid ? (
-                                                    <>
+                                            {isPaid ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                         Paid
-                                                    </>
-                                                ) : (
-                                                    'Unpaid'
-                                                )}
-                                            </span>
+                                                    </span>
+                                                    <span className="text-[9px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1">
+                                                        <Eye className="w-3 h-3" /> Click to View Receipt
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-800">
+                                                    Unpaid
+                                                </span>
+                                            )}
                                         </div>
 
                                         {isPaid && (
@@ -404,6 +412,137 @@ function HistoryModal({
     );
 }
 
+// ── Commission Modal ───────────────────────────────────
+function CommissionModal({ 
+    tenantName, 
+    tenantDisplayId, 
+    history, 
+    onClose 
+}: { 
+    tenantName: string; 
+    tenantDisplayId: string; 
+    history: any[]; 
+    onClose: () => void 
+}) {
+    const paidRecords = history.filter((r: any) => r.status === 'PAID');
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white shrink-0">
+                    <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-amber-200" />
+                        <div>
+                            <h3 className="font-black text-sm tracking-wide">Platform Commission Invoices</h3>
+                            <p className="text-[10px] text-amber-100 font-medium">Tenant: <span className="font-bold">{tenantName}</span> · {tenantDisplayId}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 overflow-y-auto space-y-4">
+                    <div className="space-y-3">
+                        {paidRecords.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400">
+                                <FileText className="w-12 h-12 mx-auto text-slate-200 mb-2" />
+                                <p className="text-sm font-bold">No commission invoices generated yet.</p>
+                                <p className="text-xs text-slate-400 mt-1">Platform commissions are only billed on paid rent transactions.</p>
+                            </div>
+                        ) : (
+                            paidRecords.map((record: any, index: number) => {
+                                const payment = record.payments?.[0];
+                                const platformFee = payment?.platformFee;
+                                const ownerFee = platformFee ? Number(platformFee.ownerFee) : 0;
+                                
+                                // Calculate GST decomposition (inclusive)
+                                const GST_RATE = 0.18;
+                                const ownerFeeGst = ownerFee > 0 ? Math.round((ownerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
+                                const ownerFeeBase = ownerFee > 0 ? Math.round((ownerFee - ownerFeeGst) * 100) / 100 : 0;
+                                const ownerCgst = Math.round((ownerFeeGst / 2) * 100) / 100;
+                                const ownerSgst = Math.round((ownerFeeGst - ownerCgst) * 100) / 100;
+
+                                const downloadUrl = `/api/receipts/${record.id}?download=1`;
+
+                                return (
+                                    <div 
+                                        key={index} 
+                                        className="p-5 rounded-2xl border-2 border-amber-100 bg-amber-50/30 space-y-3"
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <span className="text-xs font-black text-slate-900 tracking-tight">
+                                                    {record.month}
+                                                </span>
+                                                <p className="text-sm text-slate-500 mt-0.5">
+                                                    Rent Paid: <span className="font-bold text-slate-700">₹{record.amount?.toLocaleString('en-IN')}</span>
+                                                </p>
+                                            </div>
+                                            <a
+                                                href={downloadUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-amber-600/10 hover:shadow-lg"
+                                            >
+                                                <Download className="w-3.5 h-3.5" /> Download Tax Invoice
+                                            </a>
+                                        </div>
+
+                                        {ownerFee > 0 ? (
+                                            <div className="pt-3 border-t border-amber-100/80 space-y-1.5 text-xs text-slate-600">
+                                                <div className="flex justify-between">
+                                                    <span>Platform Service Charge (Base)</span>
+                                                    <span className="font-semibold text-slate-800">₹{ownerFeeBase.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[11px] text-slate-500 pl-3">
+                                                    <span>CGST (9%)</span>
+                                                    <span>₹{ownerCgst.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[11px] text-slate-500 pl-3">
+                                                    <span>SGST (9%)</span>
+                                                    <span>₹{ownerSgst.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between border-t border-amber-100/50 pt-1.5 mt-1 font-bold">
+                                                    <span className="text-amber-800">Total Platform Commission (GST Incl.)</span>
+                                                    <span className="text-amber-800">₹{ownerFee.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[11px] text-emerald-700 font-black pt-1">
+                                                    <span>Estimated Net Payout</span>
+                                                    <span>₹{(record.amount - ownerFee).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="pt-2 border-t border-amber-100/80 text-[10px] text-slate-400 italic">
+                                                Commission is not applicable (Cash / Direct settlement).
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="px-5 py-2 bg-slate-600 hover:bg-slate-700 text-white font-black text-xs rounded-xl transition-all"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── MAIN COMPONENT ────────────────────────────────────
 export function RentCollectionContainer() {
     const [invoices, setInvoices] = useState<any[]>([]);
@@ -417,6 +556,7 @@ export function RentCollectionContainer() {
     const [cashModal, setCashModal] = useState<any>(null);
     const [receiptModal, setReceiptModal] = useState<string | null>(null);
     const [historyModal, setHistoryModal] = useState<{ tenantName: string; tenantDisplayId: string; history: any[] } | null>(null);
+    const [commissionModal, setCommissionModal] = useState<{ tenantName: string; tenantDisplayId: string; history: any[] } | null>(null);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [sendingId, setSendingId] = useState<string | null>(null);
@@ -670,7 +810,7 @@ export function RentCollectionContainer() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50/60">
-                                        {['Tenant', 'Tenant ID', 'Phone', 'Room', 'PG Name', 'Amount', 'Month', 'Status', 'Paid On', 'Paid By', 'History', 'Action'].map(h => (
+                                        {['Tenant', 'Tenant ID', 'Phone', 'Room', 'PG Name', 'Amount', 'Month', 'Status', 'Paid On', 'Paid By', 'Rent Payment History', 'Reminder Action', 'Platform Commission Invoice'].map(h => (
                                             <th key={h} className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">{h}</th>
                                         ))}
                                     </tr>
@@ -715,46 +855,55 @@ export function RentCollectionContainer() {
                                                         className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black rounded-xl border bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all whitespace-nowrap"
                                                     >
                                                         <History className="w-3 h-3 text-slate-400" />
-                                                        {inv.history?.length || 0} months
+                                                        {inv.history?.filter((r: any) => r.status === 'PAID').length || 0} / {inv.history?.length || 0} months
                                                     </button>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         {inv.txnType === 'TOKEN_PAYMENT' ? (
                                                             <div className="space-y-1">
-                                                                <span className="px-2.5 py-1.5 bg-teal-50 border border-teal-200 text-teal-700 text-[10px] font-black rounded-lg flex items-center gap-1">
-                                                                    🔐 Room Reserved
-                                                                </span>
-                                                                <p className="text-[9px] text-slate-400 font-mono">{inv.tenantDisplayId}</p>
-                                                            </div>
-                                                        ) : isPaid ? (
-                                                            <button
-                                                                onClick={() => setReceiptModal(inv.id)}
-                                                                className="px-2.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black rounded-lg flex items-center gap-1 hover:bg-indigo-100 transition-colors"
-                                                            >
-                                                                <Eye className="w-3 h-3" /> Receipt
-                                                            </button>
-                                                        ) : (
-                                                            <>
-                                                                {allowCashPayment && (
-                                                                    <button onClick={() => setCashModal(inv)}
-                                                                        className="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 whitespace-nowrap">
-                                                                        <Banknote className="w-3 h-3" /> Cash Paid
-                                                                    </button>
-                                                                )}
-                                                                <button
-                                                                    onClick={() => handleReminder(inv)}
-                                                                    disabled={isPending && sendingId === inv.id}
-                                                                    className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 disabled:opacity-50">
-                                                                    {isPending && sendingId === inv.id
-                                                                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                                                                        : <MessageCircle className="w-3 h-3" />}
-                                                                    Remind
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </td>
+                                                                 <span className="px-2.5 py-1.5 bg-teal-50 border border-teal-200 text-teal-700 text-[10px] font-black rounded-lg flex items-center gap-1">
+                                                                     🔐 Room Reserved
+                                                                 </span>
+                                                                 <p className="text-[9px] text-slate-400 font-mono">{inv.tenantDisplayId}</p>
+                                                             </div>
+                                                         ) : isPaid ? (
+                                                             <button
+                                                                 disabled
+                                                                 className="px-2.5 py-1.5 bg-slate-100 border border-slate-200 text-slate-400 text-[10px] font-black rounded-lg flex items-center gap-1 cursor-not-allowed whitespace-nowrap"
+                                                             >
+                                                                 ✓ Paid
+                                                             </button>
+                                                         ) : (
+                                                             <>
+                                                                 {allowCashPayment && (
+                                                                     <button onClick={() => setCashModal(inv)}
+                                                                         className="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 whitespace-nowrap">
+                                                                         <Banknote className="w-3 h-3" /> Cash Paid
+                                                                     </button>
+                                                                 )}
+                                                                 <button
+                                                                     onClick={() => handleReminder(inv)}
+                                                                     disabled={isPending && sendingId === inv.id}
+                                                                     className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 disabled:opacity-50">
+                                                                     {isPending && sendingId === inv.id
+                                                                         ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                                         : <MessageCircle className="w-3 h-3" />}
+                                                                     Remind
+                                                                 </button>
+                                                             </>
+                                                         )}
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-4 py-3">
+                                                     <button
+                                                         onClick={() => setCommissionModal({ tenantName: inv.tenantName, tenantDisplayId: inv.tenantDisplayId || '—', history: inv.history })}
+                                                         className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black rounded-xl border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:text-amber-800 transition-all whitespace-nowrap"
+                                                     >
+                                                         <FileText className="w-3 h-3 text-amber-600" />
+                                                         Commission
+                                                     </button>
+                                                 </td>
                                             </tr>
                                         );
                                     })}
@@ -843,6 +992,20 @@ export function RentCollectionContainer() {
                     tenantDisplayId={historyModal.tenantDisplayId}
                     history={historyModal.history}
                     onClose={() => setHistoryModal(null)}
+                    onSelectReceipt={(invoiceId) => {
+                        setHistoryModal(null);
+                        setReceiptModal(invoiceId);
+                    }}
+                />
+            )}
+
+            {/* Commission Preview Modal */}
+            {commissionModal && (
+                <CommissionModal
+                    tenantName={commissionModal.tenantName}
+                    tenantDisplayId={commissionModal.tenantDisplayId}
+                    history={commissionModal.history}
+                    onClose={() => setCommissionModal(null)}
                 />
             )}
         </div>

@@ -114,7 +114,30 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
     const tenantIds = [...new Set(invoices.map((inv: any) => inv.tenantId))];
     const allInvoices = tenantIds.length > 0 ? await prisma.rentInvoice.findMany({
         where: { tenantId: { in: tenantIds } },
-        select: { tenantId: true, month: true, billingMonth: true, amount: true, paidAmount: true, status: true, paidAt: true, paymentMethod: true, confirmedByName: true },
+        select: {
+            id: true,
+            tenantId: true,
+            month: true,
+            billingMonth: true,
+            amount: true,
+            paidAmount: true,
+            status: true,
+            paidAt: true,
+            paymentMethod: true,
+            confirmedByName: true,
+            payments: {
+                where: { status: 'VERIFIED' },
+                select: {
+                    id: true,
+                    platformFee: {
+                        select: {
+                            ownerFee: true,
+                            gstOnOwnerFee: true,
+                        }
+                    }
+                }
+            }
+        },
         orderBy: { createdAt: 'desc' }
     }) : [];
 
