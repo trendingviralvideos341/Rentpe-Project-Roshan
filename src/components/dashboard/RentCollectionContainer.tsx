@@ -86,7 +86,7 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
                                         <div className="flex items-center gap-2">
                                             <p className="text-white text-xl font-black tracking-tight">RentPe</p>
                                             <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
-                                                Customer Copy
+                                                Landlord Copy
                                             </span>
                                         </div>
                                         <p className="text-indigo-200 text-xs mt-0.5">Verified PGs &amp; Hostels</p>
