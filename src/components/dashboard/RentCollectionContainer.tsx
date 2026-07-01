@@ -81,15 +81,17 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
 
                             {/* Header band */}
                             <div className="rounded-xl overflow-hidden">
-                                <div className="bg-gradient-to-r from-indigo-700 to-violet-600 px-6 py-5 flex items-start justify-between">
+                                <div className="bg-gradient-to-r from-indigo-700 to-violet-600 px-6 py-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-white text-xl font-black tracking-tight">RentPe</p>
-                                            <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
-                                                Landlord Copy
-                                            </span>
-                                        </div>
+                                        <p className="text-white text-xl font-black tracking-tight">RentPe</p>
                                         <p className="text-indigo-200 text-xs mt-0.5">Verified PGs &amp; Hostels</p>
+                                    </div>
+
+                                    {/* Centered Copy Label */}
+                                    <div className="my-1 md:my-0 flex justify-center items-center relative z-10">
+                                        <span className="inline-flex items-center px-2.5 py-1 bg-white/15 text-white text-[10px] font-black rounded-lg uppercase tracking-widest border border-white/10">
+                                            Landlord Copy
+                                        </span>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-white text-base font-black tracking-widest uppercase">Rent Receipt</p>

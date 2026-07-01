@@ -153,13 +153,15 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
                     <div className="bg-[#14B8A6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3" />
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
-                                    Tenant Copy
-                                </span>
-                            </div>
+                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
                             <p className="text-teal-100 text-sm font-medium mt-1">Verified PGs & Hostels</p>
+                        </div>
+
+                        {/* Centered Copy Label */}
+                        <div className="my-3 md:my-0 flex justify-center items-center relative z-10">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-white/15 text-white text-[10px] font-black rounded-lg uppercase tracking-widest border border-white/10">
+                                Tenant Copy
+                            </span>
                         </div>
                         <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">
                             <h3 className="text-lg font-black uppercase tracking-widest">DEPOSIT RECEIPT</h3>
@@ -294,13 +296,15 @@ function RentReceiptModal({ booking, invoice, onClose }: {
                     <div className="bg-[#6332F6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
-                                <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
-                                    Tenant Copy
-                                </span>
-                            </div>
+                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
                             <p className="text-indigo-200 text-sm font-medium mt-1">Verified PGs & Hostels</p>
+                        </div>
+                        
+                        {/* Centered Copy Label */}
+                        <div className="my-3 md:my-0 flex justify-center items-center relative z-10">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-white/15 text-white text-[10px] font-black rounded-lg uppercase tracking-widest border border-white/10">
+                                Tenant Copy
+                            </span>
                         </div>
                         <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">
                             <h3 className="text-lg font-black uppercase tracking-widest">RENT RECEIPT</h3>
