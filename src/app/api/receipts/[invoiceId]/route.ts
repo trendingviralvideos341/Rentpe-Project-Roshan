@@ -33,7 +33,7 @@ function drawPageBorder(doc: jsPDF) {
 }
 
 // ─── Header Block ─────────────────────────────────────────────────────────────
-function drawHeader(doc: jsPDF, title: string, subtitle: string, badgeText: string, badgeColor: [number, number, number]) {
+function drawHeader(doc: jsPDF, title: string, subtitle: string, badgeText: string, badgeColor: [number, number, number], cornerLabel?: string) {
     const pageW = doc.internal.pageSize.getWidth();
     const L = 14; const R = 196;
 
@@ -63,6 +63,15 @@ function drawHeader(doc: jsPDF, title: string, subtitle: string, badgeText: stri
     doc.setFont("helvetica", "normal");
     doc.setTextColor(199, 210, 254);
     doc.text(subtitle, R, 24, { align: "right" });
+
+    if (cornerLabel) {
+        doc.setFillColor(255, 255, 255, 0.15); // Transparent white
+        doc.roundedRect(L, 30, 32, 5, 1, 1, "F");
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(255, 255, 255);
+        doc.text(cornerLabel, L + 16, 33.5, { align: "center" });
+    }
 
     // Status badge
     doc.setFillColor(...badgeColor);
@@ -333,7 +342,7 @@ export async function GET(
         // PAGE 1: STUDENT RENT RECEIPT (HRA-Compliant)
         // ───────────────────────────────────────────────────────────────────────
         drawPageBorder(doc);
-        drawHeader(doc, "RENT RECEIPT", `#${studentReceiptNo}`, "✓  PAID", [16, 185, 129]);
+        drawHeader(doc, "RENT RECEIPT", `#${studentReceiptNo}`, "✓  PAID", [16, 185, 129], "CUSTOMER COPY");
 
         let y = 50;
 
@@ -470,11 +479,11 @@ export async function GET(
 
             // Original / Duplicate badge
             doc.setFillColor(99, 102, 241);
-            doc.roundedRect(166, 27, 30, 8, 2, 2, "F");
+            doc.roundedRect(156, 27, 40, 8, 2, 2, "F");
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(7.5);
+            doc.setFontSize(6.5);
             doc.setFont("helvetica", "bold");
-            doc.text("ORIGINAL", 181, 32.5, { align: "center" });
+            doc.text("ORIGINAL FOR RECIPIENT", 176, 32.5, { align: "center" });
 
             y = 50;
 
