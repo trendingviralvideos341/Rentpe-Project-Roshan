@@ -153,7 +153,12 @@ function DepositReceiptModal({ booking, depositInfo, rawPayments, onClose }: {
                     <div className="bg-[#14B8A6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3" />
                         <div>
-                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
+                                    Tenant Copy
+                                </span>
+                            </div>
                             <p className="text-teal-100 text-sm font-medium mt-1">Verified PGs & Hostels</p>
                         </div>
                         <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">
@@ -289,7 +294,12 @@ function RentReceiptModal({ booking, invoice, onClose }: {
                     <div className="bg-[#6332F6] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
                         <div>
-                            <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-2xl font-black tracking-tight">RentPe</h2>
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
+                                    Tenant Copy
+                                </span>
+                            </div>
                             <p className="text-indigo-200 text-sm font-medium mt-1">Verified PGs & Hostels</p>
                         </div>
                         <div className="text-left md:text-right mt-4 md:mt-0 relative z-10">

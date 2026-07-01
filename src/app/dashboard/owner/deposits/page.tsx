@@ -53,7 +53,12 @@ function ReceiptModal({ dep, onClose }: { dep: any; onClose: () => void }) {
                             <Shield className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Security Deposit Receipt</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Security Deposit Receipt</p>
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-white/15 text-white text-[8px] font-black rounded uppercase tracking-wider">
+                                    Landlord Copy
+                                </span>
+                            </div>
                             <p className="font-black text-lg">{receiptNo}</p>
                         </div>
                     </div>

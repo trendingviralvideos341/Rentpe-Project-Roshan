@@ -163,6 +163,16 @@ export async function GET(
         doc.setFont("helvetica", "bold");
         doc.text("SECURITY DEPOSIT", L + 21, 32.5, { align: "center" });
 
+        // Copy label badge
+        const isOwnerOrAdmin = role === "OWNER" || role === "OWNER_STAFF" || role === "ADMIN" || role === "ADMIN_STAFF";
+        const copyLabel = isOwnerOrAdmin ? "LANDLORD COPY" : "TENANT COPY";
+        doc.setFillColor(255, 255, 255, 0.15); // transparent white
+        doc.roundedRect(59, 27, 28, 8, 2, 2, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(6.5);
+        doc.setFont("helvetica", "bold");
+        doc.text(copyLabel, 73, 32.5, { align: "center" });
+
         // Title (right)
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");

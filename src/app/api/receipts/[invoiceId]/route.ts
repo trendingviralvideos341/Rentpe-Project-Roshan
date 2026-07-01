@@ -342,7 +342,7 @@ export async function GET(
         // PAGE 1: STUDENT RENT RECEIPT (HRA-Compliant)
         // ───────────────────────────────────────────────────────────────────────
         const isOwnerOrAdmin = (session as any).role === "OWNER" || (session as any).role === "OWNER_STAFF" || (session as any).role === "ADMIN" || (session as any).role === "ADMIN_STAFF";
-        const copyLabel = isOwnerOrAdmin ? "LANDLORD COPY" : "CUSTOMER COPY";
+        const copyLabel = isOwnerOrAdmin ? "LANDLORD COPY" : "TENANT COPY";
         drawPageBorder(doc);
         drawHeader(doc, "RENT RECEIPT", `#${studentReceiptNo}`, "✓  PAID", [16, 185, 129], copyLabel);
 
