@@ -448,6 +448,12 @@ export async function getAllStudentBookingsWithPayments() {
             agreementSigned: true,
             agreementSignedAt: true,
             moveInDate: true,
+            property: {
+                select: {
+                    address: true,
+                    city: true,
+                }
+            }
         }
     });
 
@@ -500,6 +506,8 @@ export async function getAllStudentBookingsWithPayments() {
                 agreementSigned: b.agreementSigned,
                 agreementSignedAt: b.agreementSignedAt,
                 moveInDate: b.moveInDate,
+                propertyAddress: b.property?.address || '',
+                propertyCity: b.property?.city || '',
             },
             invoices: invoices.map(inv => ({
                 id: inv.id,
@@ -593,6 +601,15 @@ export async function getInvoiceForReceipt(invoiceId: string) {
     const platformSettings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
     const feesEnabled = platformSettings?.feesEnabled ?? false;
     const grossRent = Number(invoice.amount);
+
+    // Calculate student convenience fee
+    const totalAmountPaidByStudent = payment ? Number(payment.amount) : grossRent;
+    const studentFee = Math.max(0, totalAmountPaidByStudent - grossRent);
+    const GST_RATE = 0.18;
+    const studentFeeGst = studentFee > 0 ? Math.round((studentFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
+    const studentFeeBase = studentFee > 0 ? Math.round((studentFee - studentFeeGst) * 100) / 100 : 0;
+    const studentFeeGstCgst = Math.round((studentFeeGst / 2) * 100) / 100;
+    const studentFeeGstSgst = Math.round((studentFeeGst - studentFeeGstCgst) * 100) / 100;
     // Check if owner has a custom commission rate
     const ownerUser = booking?.property ? await prisma.user.findFirst({ where: { properties: { some: { id: booking.property.id } } }, select: { commissionRate: true } as any }) : null;
     let ownerFee = 0;  // Total fee incl. GST (what's deducted from payout)
@@ -604,7 +621,6 @@ export async function getInvoiceForReceipt(invoiceId: string) {
         }
     }
     // GST-INCLUSIVE decomposition (₹9 incl. GST → base ₹7.63 + GST ₹1.37)
-    const GST_RATE = 0.18;
     const ownerFeeGst  = feesEnabled && ownerFee > 0 ? Math.round((ownerFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
     const ownerFeeBase = feesEnabled && ownerFee > 0 ? Math.round((ownerFee - ownerFeeGst) * 100) / 100 : 0;
     const ownerFeeGstCgst = Math.round((ownerFeeGst / 2) * 100) / 100;
@@ -626,6 +642,12 @@ export async function getInvoiceForReceipt(invoiceId: string) {
         creditApplied: Number((invoice as any).creditApplied || 0),
         amount: grossRent,
         paidAmount: Number(invoice.paidAmount),
+        // Student convenience fee fields
+        studentFee,
+        studentFeeBase,
+        studentFeeGst,
+        studentFeeGstCgst,
+        studentFeeGstSgst,
         // Platform commission fields for owner's receipt (GST-inclusive breakdown)
         feesEnabled,
         ownerFee,             // ₹9 — all-in platform fee (incl. GST)

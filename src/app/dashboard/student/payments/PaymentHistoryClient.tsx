@@ -248,6 +248,11 @@ function RentReceiptModal({ booking, invoice, onClose }: {
         : rawMethod ? rawMethod.toUpperCase() : '—';
     const rentAmount = Number(invoice?.rentAmount || invoice?.amount || 0);
     const totalAmount = Number(invoice?.amount || 0);
+    const totalAmountPaid = payment ? Number(payment.amount) : totalAmount;
+    const convenienceFee = Math.max(0, totalAmountPaid - totalAmount);
+    const GST_RATE = 0.18;
+    const convenienceFeeGst = convenienceFee > 0 ? Math.round((convenienceFee * GST_RATE / (1 + GST_RATE)) * 100) / 100 : 0;
+    const convenienceFeeBase = convenienceFee > 0 ? Math.round((convenienceFee - convenienceFeeGst) * 100) / 100 : 0;
     const roomAssigned = booking?.roomAssigned || '';
     const roomParts = roomAssigned.split('—');
     const roomDisplay = roomParts[0]?.replace(/room/i, '').trim() || roomAssigned || '—';
@@ -341,9 +346,21 @@ function RentReceiptModal({ booking, invoice, onClose }: {
                                 <span className="text-[#64748B]">Rent Amount</span>
                                 <span className="font-bold text-[#0F172A]">₹{rentAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
+                            {convenienceFee > 0 && (
+                                <>
+                                    <div className="flex justify-between items-center px-4 py-3 bg-violet-50/50">
+                                        <span className="text-[#64748B] font-medium">RentPe Convenience Fee (Base)</span>
+                                        <span className="font-bold text-[#0F172A]">₹{convenienceFeeBase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-4 py-3 bg-violet-50/50">
+                                        <span className="text-[#64748B] font-medium">GST (18% inclusive)</span>
+                                        <span className="font-bold text-[#0F172A]">₹{convenienceFeeGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                </>
+                            )}
                             <div className="flex justify-between items-center px-4 py-4 bg-[#F8FAFC]">
-                                <span className="text-[#4C28D5] font-black text-sm">Gross Rent Collected</span>
-                                <span className="font-black text-[#0F172A] text-base">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                <span className="text-[#4C28D5] font-black text-sm">Total Paid by You</span>
+                                <span className="font-black text-[#0F172A] text-base">₹{totalAmountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div className="flex justify-between items-center px-4 py-3">
                                 <span className="text-[#64748B]">Due Date</span>
