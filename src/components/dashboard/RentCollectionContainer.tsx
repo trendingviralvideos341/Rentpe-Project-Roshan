@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, useCallback } from 'react';
 import { getOwnerRentCollection, sendRentReminder, markInvoiceAsCashPaid } from '@/actions/ownerRentCollection';
 import { getInvoiceForReceipt } from '@/actions/payments';
+import { getCashPaymentEnabled } from '@/actions/platform';
 import { toast } from 'sonner';
 import {
     IndianRupee, AlertCircle, Loader2, MessageCircle,
@@ -283,39 +284,122 @@ function CashConfirmModal({ inv, onClose, onConfirm }: { inv: any; onClose: () =
     );
 }
 
-// ── History Dropdown ──────────────────────────────────
-function HistoryDropdown({ history }: { history: any[] }) {
-    const [open, setOpen] = useState(false);
+// ── History Modal ─────────────────────────────────────
+function HistoryModal({ 
+    tenantName, 
+    tenantDisplayId, 
+    history, 
+    onClose 
+}: { 
+    tenantName: string; 
+    tenantDisplayId: string; 
+    history: any[]; 
+    onClose: () => void 
+}) {
     return (
-        <div className="relative">
-            <button
-                onClick={() => setOpen(o => !o)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black rounded-xl border-2 transition-all ${open ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100'}`}
-            >
-                <History className="w-3 h-3" />
-                {history.length} months
-                {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-            {open && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl border-2 border-slate-100 shadow-2xl z-20 p-3 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">📅 Rent History</p>
-                    <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
-                        {history.length === 0 && <p className="text-[10px] text-slate-400 italic text-center py-4">No history</p>}
-                        {history.map((h: any, i: number) => (
-                            <div key={i} className={`text-[10px] p-2 rounded-xl border ${h.status === 'PAID' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                                <div className="flex justify-between font-black">
-                                    <span>{h.month}</span>
-                                    <span>{h.status === 'PAID' ? (h.paymentMethod === 'CASH' ? '💵 Cash' : '🌐 Online') : '❌ Unpaid'}</span>
-                                </div>
-                                <div className="flex justify-between mt-0.5 opacity-70 font-medium">
-                                    <span>₹{h.amount?.toLocaleString('en-IN')}</span>
-                                    <span>{h.paidAt ? format(new Date(h.paidAt), 'd MMM yy') : '—'}</span>
-                                </div>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-indigo-700 to-violet-600 text-white shrink-0">
+                    <div className="flex items-center gap-2">
+                        <History className="w-5 h-5 text-indigo-200" />
+                        <div>
+                            <h3 className="font-black text-sm tracking-wide">Rent Payment History</h3>
+                            <p className="text-[10px] text-indigo-200 font-medium">Tenant: <span className="font-bold">{tenantName}</span> · {tenantDisplayId}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 overflow-y-auto space-y-4">
+                    <div className="space-y-3">
+                        {history.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400">
+                                <History className="w-12 h-12 mx-auto text-slate-200 mb-2" />
+                                <p className="text-sm font-bold">No payment history records found.</p>
                             </div>
-                        ))}
+                        ) : (
+                            history.map((record: any, index: number) => {
+                                const isPaid = record.status === 'PAID';
+                                return (
+                                    <div 
+                                        key={index} 
+                                        className={`p-4 rounded-2xl border-2 transition-all hover:shadow-md ${
+                                            isPaid 
+                                                ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' 
+                                                : 'bg-red-50/50 border-red-100 hover:border-red-200'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <span className="text-xs font-black text-slate-900 tracking-tight">
+                                                    {record.month}
+                                                </span>
+                                                <p className="text-lg font-black text-slate-900 mt-1">
+                                                    ₹{record.amount?.toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                isPaid 
+                                                    ? 'bg-emerald-100 text-emerald-800' 
+                                                    : 'bg-red-100 text-red-800'
+                                            }`}>
+                                                {isPaid ? (
+                                                    <>
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                        Paid
+                                                    </>
+                                                ) : (
+                                                    'Unpaid'
+                                                )}
+                                            </span>
+                                        </div>
+
+                                        {isPaid && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-[10px]">
+                                                <div>
+                                                    <span className="text-slate-400 font-bold block uppercase tracking-wider">Paid On</span>
+                                                    <span className="text-slate-700 font-black">
+                                                        {record.paidAt ? format(new Date(record.paidAt), 'dd MMM yyyy') : '—'}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-400 font-bold block uppercase tracking-wider">Payment Method</span>
+                                                    <span className="text-slate-700 font-black">
+                                                        {record.paymentMethod === 'CASH' ? '💵 Cash' : '🌐 Online'}
+                                                    </span>
+                                                </div>
+                                                {record.paymentMethod === 'CASH' && record.confirmedByName && (
+                                                    <div className="col-span-2 mt-1 bg-slate-100/50 p-2 rounded-xl border border-slate-200/50">
+                                                        <span className="text-slate-400 font-bold block uppercase tracking-wider">Confirmed By</span>
+                                                        <span className="text-slate-700 font-black">{record.confirmedByName}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
-            )}
+
+                {/* Footer */}
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-lg transition-all"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -332,6 +416,8 @@ export function RentCollectionContainer() {
     const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
     const [cashModal, setCashModal] = useState<any>(null);
     const [receiptModal, setReceiptModal] = useState<string | null>(null);
+    const [historyModal, setHistoryModal] = useState<{ tenantName: string; tenantDisplayId: string; history: any[] } | null>(null);
+    const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [sendingId, setSendingId] = useState<string | null>(null);
 
@@ -344,6 +430,10 @@ export function RentCollectionContainer() {
     };
 
     useEffect(() => { reload(month); }, [month]);
+
+    useEffect(() => {
+        getCashPaymentEnabled().then(setAllowCashPayment).catch(console.error);
+    }, []);
 
     // ── summary stats ──
     const tokenPayments = invoices.filter(i => i.txnType === 'TOKEN_PAYMENT');
@@ -620,7 +710,13 @@ export function RentCollectionContainer() {
                                                     ) : '—'}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <HistoryDropdown history={inv.history} />
+                                                    <button
+                                                        onClick={() => setHistoryModal({ tenantName: inv.tenantName, tenantDisplayId: inv.tenantDisplayId || '—', history: inv.history })}
+                                                        className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black rounded-xl border bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all whitespace-nowrap"
+                                                    >
+                                                        <History className="w-3 h-3 text-slate-400" />
+                                                        {inv.history?.length || 0} months
+                                                    </button>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -640,10 +736,12 @@ export function RentCollectionContainer() {
                                                             </button>
                                                         ) : (
                                                             <>
-                                                                <button onClick={() => setCashModal(inv)}
-                                                                    className="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 whitespace-nowrap">
-                                                                    <Banknote className="w-3 h-3" /> Cash Paid
-                                                                </button>
+                                                                {allowCashPayment && (
+                                                                    <button onClick={() => setCashModal(inv)}
+                                                                        className="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg flex items-center gap-1 whitespace-nowrap">
+                                                                        <Banknote className="w-3 h-3" /> Cash Paid
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     onClick={() => handleReminder(inv)}
                                                                     disabled={isPending && sendingId === inv.id}
@@ -683,14 +781,22 @@ export function RentCollectionContainer() {
                                                 <p className="font-black text-slate-900">₹{inv.amount.toLocaleString('en-IN')}</p>
                                                 <p className="text-xs text-slate-400">{inv.month}</p>
                                             </div>
-                                            <HistoryDropdown history={inv.history} />
+                                            <button
+                                                onClick={() => setHistoryModal({ tenantName: inv.tenantName, tenantDisplayId: inv.tenantDisplayId || '—', history: inv.history })}
+                                                className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black rounded-xl border bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all"
+                                            >
+                                                <History className="w-3 h-3 text-slate-400" />
+                                                {inv.history?.length || 0} months
+                                            </button>
                                         </div>
                                         {!isPaid && (
                                             <div className="flex gap-2">
-                                                <button onClick={() => setCashModal(inv)}
-                                                    className="flex-1 py-2 bg-green-600 text-white text-xs font-black rounded-xl flex items-center justify-center gap-1">
-                                                    <Banknote className="w-3.5 h-3.5" /> Cash Paid
-                                                </button>
+                                                {allowCashPayment && (
+                                                    <button onClick={() => setCashModal(inv)}
+                                                        className="flex-1 py-2 bg-green-600 text-white text-xs font-black rounded-xl flex items-center justify-center gap-1">
+                                                        <Banknote className="w-3.5 h-3.5" /> Cash Paid
+                                                    </button>
+                                                )}
                                                 <button onClick={() => handleReminder(inv)} disabled={isPending}
                                                     className="flex-1 py-2 bg-indigo-600 text-white text-xs font-black rounded-xl flex items-center justify-center gap-1 disabled:opacity-50">
                                                     <MessageCircle className="w-3.5 h-3.5" /> Remind
@@ -727,6 +833,16 @@ export function RentCollectionContainer() {
                 <ReceiptModal
                     invoiceId={receiptModal}
                     onClose={() => setReceiptModal(null)}
+                />
+            )}
+
+            {/* History Preview Modal */}
+            {historyModal && (
+                <HistoryModal
+                    tenantName={historyModal.tenantName}
+                    tenantDisplayId={historyModal.tenantDisplayId}
+                    history={historyModal.history}
+                    onClose={() => setHistoryModal(null)}
                 />
             )}
         </div>
