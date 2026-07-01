@@ -482,9 +482,14 @@ function CommissionModal({
                                     >
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <span className="text-xs font-black text-slate-900 tracking-tight">
-                                                    {record.month}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black text-slate-900 tracking-tight">
+                                                        {record.month}
+                                                    </span>
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-amber-200/60 text-amber-800 text-[8px] font-black rounded uppercase tracking-wider">
+                                                        Original for Recipient
+                                                    </span>
+                                                </div>
                                                 <p className="text-sm text-slate-500 mt-0.5">
                                                     Rent Paid: <span className="font-bold text-slate-700">₹{record.amount?.toLocaleString('en-IN')}</span>
                                                 </p>
