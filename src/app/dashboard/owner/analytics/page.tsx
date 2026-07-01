@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getOwnerAnalytics } from '@/actions/ownerRentCollection';
 import { getPropertyPerformanceAnalytics } from '@/actions/ownerDashboard';
 import { BarChart3, Loader2, TrendingUp, TrendingDown, Building, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell } from 'recharts';
 
 type DateRange = '7d' | '30d' | '90d' | 'fy' | 'custom';
 
@@ -152,21 +152,78 @@ export default function AnalyticsPage() {
                     </div>
                 )}
 
-                {/* Revenue Chart */}
+                {/* Charts Grid */}
                 {data?.monthly?.length > 0 && (
-                    <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                        <h3 className="font-black text-slate-900 mb-4">Monthly Revenue Collection</h3>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={data.monthly}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
-                                <YAxis tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }}
-                                    tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
-                                <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                                <Bar dataKey="collected" fill="#4f46e5" name="Collected" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="expected" fill="#e0e7ff" name="Expected" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Monthly Revenue Chart */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 lg:col-span-2">
+                            <h3 className="font-black text-slate-900 mb-4">Monthly Revenue Collection</h3>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={data.monthly}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="month" tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
+                                    <YAxis tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }}
+                                        tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
+                                    <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                                    <Bar dataKey="collected" fill="#4f46e5" name="Collected" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="expected" fill="#e0e7ff" name="Expected" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* Cash vs Online Split Pie Chart */}
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 flex flex-col justify-between">
+                            <div>
+                                <h3 className="font-black text-slate-900">Payment Mode Split</h3>
+                                <p className="text-xs text-slate-400 font-bold mt-0.5">Distribution of collected rent</p>
+                            </div>
+                            <div className="relative h-[160px] w-full flex items-center justify-center">
+                                {((data?.paymentMethodSplit?.online || 0) === 0 && (data?.paymentMethodSplit?.cash || 0) === 0) ? (
+                                    <p className="text-xs text-slate-400 font-bold">No collections recorded in this period</p>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={[
+                                                    { name: 'Online Payments', value: data?.paymentMethodSplit?.online || 0 },
+                                                    { name: 'Cash Payments', value: data?.paymentMethodSplit?.cash || 0 },
+                                                ]}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={45}
+                                                outerRadius={65}
+                                                paddingAngle={3}
+                                                dataKey="value"
+                                                startAngle={90}
+                                                endAngle={-270}
+                                            >
+                                                <Cell key="cell-online" fill="#4f46e5" strokeWidth={0} />
+                                                <Cell key="cell-cash" fill="#f59e0b" strokeWidth={0} />
+                                            </Pie>
+                                            <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                )}
+                                {((data?.paymentMethodSplit?.online || 0) > 0 || (data?.paymentMethodSplit?.cash || 0) > 0) && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 10 }}>
+                                        <span className="text-sm font-black text-indigo-600">
+                                            {Math.round(((data?.paymentMethodSplit?.online || 0) / ((data?.paymentMethodSplit?.online || 0) + (data?.paymentMethodSplit?.cash || 0))) * 100)}%
+                                        </span>
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Online</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-around gap-2 text-xs font-bold text-slate-600">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0" />
+                                    <span>Online: ₹{(data?.paymentMethodSplit?.online || 0).toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                                    <span>Cash: ₹{(data?.paymentMethodSplit?.cash || 0).toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

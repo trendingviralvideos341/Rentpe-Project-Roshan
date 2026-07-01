@@ -89,7 +89,7 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
 
                                     {/* Centered Copy Label */}
                                     <div className="my-1 md:my-0 flex justify-center items-center relative z-10">
-                                        <span className="inline-flex items-center px-2.5 py-1 bg-white/15 text-white text-[10px] font-black rounded-lg uppercase tracking-widest border border-white/10">
+                                        <span className="inline-flex items-center px-4 py-1.5 bg-white/25 text-white text-sm font-black rounded-xl uppercase tracking-widest border border-white/20 shadow-sm">
                                             Landlord Copy
                                         </span>
                                     </div>
@@ -155,24 +155,43 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
                                 </table>
 
                                 {/* ✅ LEGAL: Platform Commission Breakdown for Owner */}
-                                {data.feesEnabled && data.ownerFee > 0 && (
-                                    <div className="bg-amber-50 border-t-2 border-amber-200 px-4 py-3 space-y-1.5">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-2">💼 RentPe Commission Breakdown</p>
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-slate-600">Gross Rent Collected</span>
-                                            <span className="font-black text-slate-800">{inr(data.amount)}</span>
+                                {data.feesEnabled && data.ownerFee > 0 && (() => {
+                                    const commission = Number(data.ownerFee || 0);
+                                    const gst = Math.round((commission * 0.18 / 1.18) * 100) / 100;
+                                    const base = Math.round((commission - gst) * 100) / 100;
+                                    const cgst = Math.round((gst / 2) * 100) / 100;
+                                    const sgst = Math.round((gst - cgst) * 100) / 100;
+                                    return (
+                                        <div className="bg-amber-50 border-t-2 border-amber-200 px-4 py-3 space-y-1.5">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-2">💼 RentPe Commission Breakdown</p>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-slate-600">Gross Rent Collected</span>
+                                                <span className="font-black text-slate-800">{inr(data.amount)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs font-bold text-slate-600">
+                                                <span className="text-amber-700">RentPe Platform Commission (Base)</span>
+                                                <span className="font-black text-amber-700">− {inr(base)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs pl-4 border-l border-amber-200 text-slate-500">
+                                                <span>CGST (9%)</span>
+                                                <span>− {inr(cgst)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs pl-4 border-l border-amber-200 text-slate-500">
+                                                <span>SGST (9%)</span>
+                                                <span>− {inr(sgst)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs pl-4 border-l border-amber-200 text-slate-500">
+                                                <span>Total GST (18%)</span>
+                                                <span>− {inr(gst)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs border-t border-amber-200 pt-1.5 mt-1">
+                                                <span className="font-black text-emerald-700">✅ Net Payout to You</span>
+                                                <span className="font-black text-emerald-700 text-sm">{inr(data.netPayout)}</span>
+                                            </div>
+                                            <p className="text-[9px] text-amber-600 italic mt-1">Commission deducted via Razorpay Route. Keep this for your income tax records.</p>
                                         </div>
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-amber-700">RentPe Platform Commission</span>
-                                            <span className="font-black text-amber-700">− {inr(data.ownerFee)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs border-t border-amber-200 pt-1.5 mt-1">
-                                            <span className="font-black text-emerald-700">✅ Net Payout to You</span>
-                                            <span className="font-black text-emerald-700 text-sm">{inr(data.netPayout)}</span>
-                                        </div>
-                                        <p className="text-[9px] text-amber-600 italic mt-1">Commission deducted via Razorpay Route. Keep this for your income tax records.</p>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
 
                             {/* Footer note */}

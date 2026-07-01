@@ -955,7 +955,7 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
             propertyId: { in: propertyIds },
             createdAt: { gte: from, lte: to },
         },
-        select: { propertyId: true, amount: true, paidAmount: true, status: true, billingMonth: true, rentAmount: true }
+        select: { propertyId: true, amount: true, paidAmount: true, status: true, billingMonth: true, rentAmount: true, paymentMethod: true }
     });
 
     const perProperty = properties.map((prop: any) => {
@@ -988,7 +988,20 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([, v]) => v);
 
-    return { perProperty, monthly, properties };
+    // Calculate Payment Method Split (Cash vs Online)
+    const cashCollected = invoices
+        .filter((inv: any) => inv.status === 'PAID' && inv.paymentMethod === 'CASH')
+        .reduce((s: number, inv: any) => s + inv.paidAmount, 0);
+    const onlineCollected = invoices
+        .filter((inv: any) => inv.status === 'PAID' && inv.paymentMethod !== 'CASH')
+        .reduce((s: number, inv: any) => s + inv.paidAmount, 0);
+
+    const paymentMethodSplit = {
+        cash: Math.round(cashCollected),
+        online: Math.round(onlineCollected),
+    };
+
+    return { perProperty, monthly, properties, paymentMethodSplit };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

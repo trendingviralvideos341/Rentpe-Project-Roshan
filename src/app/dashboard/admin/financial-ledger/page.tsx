@@ -8,6 +8,7 @@ import {
     Building2, RefreshCcw, Search, Filter, Receipt,
     BadgeCheck, BarChart3, Users, Info
 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 // ── Tooltip Component ────────────────────────────────────────────────────────
 function Tip({ text }: { text: string }) {
@@ -177,6 +178,13 @@ export default function AdminFinancialLedgerPage() {
         }
         return true;
     });
+
+    const cashCollected = filteredRows
+        .filter((r: any) => r.paymentMethod?.toUpperCase() === 'CASH')
+        .reduce((sum: number, r: any) => sum + (r.grossAmount || 0), 0);
+    const onlineCollected = filteredRows
+        .filter((r: any) => r.paymentMethod?.toUpperCase() !== 'CASH' && r.type !== 'PROPERTY_ONBOARDING')
+        .reduce((sum: number, r: any) => sum + (r.grossAmount || 0), 0);
 
     const handleExportCSV = async () => {
         setExporting('csv');
@@ -465,36 +473,99 @@ export default function AdminFinancialLedgerPage() {
                             <StatCard label="Transactions" value={T.transactionCount?.toString() || '0'} icon={Users} color="indigo" />
                         </div>
 
-                        {/* Monthly Trend from tax data */}
-                        {taxData?.monthly?.length > 0 && (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                                <h3 className="font-black text-slate-900 text-lg mb-4">Monthly Tax Collection Trend</h3>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b border-slate-100 bg-slate-50/50">
-                                                {['Month', 'Transactions', 'GST Collected', 'CGST', 'SGST', 'TDS Withheld', 'Platform Earned'].map(h => (
-                                                    <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {taxData.monthly.map((m: any) => (
-                                                <tr key={m.key} className="hover:bg-indigo-50/30 transition-colors">
-                                                    <td className="px-4 py-3 text-sm font-bold text-slate-800">{m.month}</td>
-                                                    <td className="px-4 py-3 text-sm text-slate-600">{m.transactions}</td>
-                                                    <td className="px-4 py-3 text-sm font-black text-amber-600">{fmt(m.gst)}</td>
-                                                    <td className="px-4 py-3 text-xs text-slate-500">{fmt(m.cgst)}</td>
-                                                    <td className="px-4 py-3 text-xs text-slate-500">{fmt(m.sgst)}</td>
-                                                    <td className="px-4 py-3 text-sm font-black text-violet-600">{fmt(m.tds)}</td>
-                                                    <td className="px-4 py-3 text-sm font-black text-emerald-600">{fmt(m.platformEarned)}</td>
+                        {/* Trend & Payment Split Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Monthly Trend Table */}
+                            {taxData?.monthly?.length > 0 && (
+                                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 lg:col-span-2">
+                                    <h3 className="font-black text-slate-900 text-lg mb-4">Monthly Tax Collection Trend</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 bg-slate-50/50">
+                                                    {['Month', 'Transactions', 'GST Collected', 'CGST', 'SGST', 'TDS Withheld', 'Platform Earned'].map(h => (
+                                                        <th key={h} className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
+                                                    ))}
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {taxData.monthly.map((m: any) => (
+                                                    <tr key={m.key} className="hover:bg-indigo-50/30 transition-colors">
+                                                        <td className="px-4 py-3 text-sm font-bold text-slate-800">{m.month}</td>
+                                                        <td className="px-4 py-3 text-sm text-slate-600">{m.transactions}</td>
+                                                        <td className="px-4 py-3 text-sm font-black text-amber-600">{fmt(m.gst)}</td>
+                                                        <td className="px-4 py-3 text-xs text-slate-500">{fmt(m.cgst)}</td>
+                                                        <td className="px-4 py-3 text-xs text-slate-500">{fmt(m.sgst)}</td>
+                                                        <td className="px-4 py-3 text-sm font-black text-violet-600">{fmt(m.tds)}</td>
+                                                        <td className="px-4 py-3 text-sm font-black text-emerald-600">{fmt(m.platformEarned)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Payment Mode Split Pie Chart */}
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 flex flex-col justify-between lg:col-span-1">
+                                <div>
+                                    <h3 className="font-black text-slate-900 text-lg">Payment Mode Split</h3>
+                                    <p className="text-xs text-slate-400 font-bold mt-0.5">Distribution of collected gross revenue</p>
+                                </div>
+                                <div className="relative h-[200px] w-full flex items-center justify-center">
+                                    {(cashCollected === 0 && onlineCollected === 0) ? (
+                                        <p className="text-xs text-slate-400 font-bold">No collections recorded in this period</p>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={[
+                                                        { name: 'Online Payments', value: onlineCollected },
+                                                        { name: 'Cash Payments', value: cashCollected },
+                                                    ]}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={55}
+                                                    outerRadius={75}
+                                                    paddingAngle={3}
+                                                    dataKey="value"
+                                                    startAngle={90}
+                                                    endAngle={-270}
+                                                >
+                                                    <Cell key="cell-online" fill="#4f46e5" strokeWidth={0} />
+                                                    <Cell key="cell-cash" fill="#f59e0b" strokeWidth={0} />
+                                                </Pie>
+                                                <RechartsTooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    )}
+                                    {(onlineCollected > 0 || cashCollected > 0) && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 10 }}>
+                                            <span className="text-base font-black text-indigo-600">
+                                                {Math.round((onlineCollected / (onlineCollected + cashCollected)) * 100)}%
+                                            </span>
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Online</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-2 text-xs font-bold text-slate-600 mt-2">
+                                    <div className="flex items-center justify-between border-b pb-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0" />
+                                            <span>Online</span>
+                                        </div>
+                                        <span>₹{onlineCollected.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                                            <span>Cash</span>
+                                        </div>
+                                        <span>₹{cashCollected.toLocaleString('en-IN')}</span>
+                                    </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
 
                         {/* Export section */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
@@ -627,6 +698,7 @@ export default function AdminFinancialLedgerPage() {
                                             ['GST', 'Goods & Services Tax (18%) collected on the platform fee. This goes to the government.'],
                                             ['TDS', 'Tax Deducted at Source (1% under Section 194-O). Deducted from owner payout and deposited with Income Tax Dept.'],
                                             ['Owner Net', 'Final amount the owner receives: Gross Rent minus Platform Commission minus TDS.'],
+                                            ['Method', 'Payment method — CASH or ONLINE.'],
                                             ['Status', 'Payment status — VERIFIED means money received and confirmed.']
                                         ] as [string, string][]).map(([h, tip]) => (
                                             <th key={h} className="px-3 py-3 text-left font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
@@ -660,6 +732,11 @@ export default function AdminFinancialLedgerPage() {
                                             <td className="px-3 py-2.5 font-bold text-amber-600">{fmtShort(r.gstOnStudentFee + r.gstOnOwnerFee)}</td>
                                             <td className="px-3 py-2.5 font-bold text-violet-600">{fmtShort(r.tdsDeducted)}</td>
                                             <td className="px-3 py-2.5 font-bold text-emerald-600">{fmtShort(r.ownerNetPayout)}</td>
+                                            <td className="px-3 py-2.5">
+                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                                    r.paymentMethod === 'CASH' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                                }`}>{r.paymentMethod || 'ONLINE'}</span>
+                                            </td>
                                             <td className="px-3 py-2.5">
                                                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                                                     r.status === 'SUCCESS' || r.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-700' :
