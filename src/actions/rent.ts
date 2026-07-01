@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { internalGenerateInvoice } from "@/actions/billing";
 
 /**
  * Returns the current month's pending (unpaid) RentInvoice for the logged-in
@@ -15,6 +16,62 @@ export async function getPendingRentInvoice() {
         if (!session || (session as any).role !== 'USER') return null;
 
         const userId = (session as any).userId;
+
+        // Ensure current month invoice is generated on-the-fly
+        const activeBooking = await prisma.booking.findFirst({
+            where: {
+                userId,
+                status: { in: ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'] },
+            },
+            select: {
+                id: true,
+                tenant: {
+                    select: {
+                        id: true,
+                        status: true,
+                        rent: true,
+                    }
+                }
+            }
+        });
+
+        if (activeBooking && activeBooking.tenant && activeBooking.tenant.status === 'Active') {
+            const tenant = activeBooking.tenant;
+            const now = new Date();
+            const billingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
+
+            const existingInvoice = await prisma.rentInvoice.findFirst({
+                where: { tenantId: tenant.id, billingMonth }
+            });
+
+            if (!existingInvoice) {
+                try {
+                    await internalGenerateInvoice(tenant.id, monthLabel, "SYSTEM");
+                } catch (e) {
+                    console.error("Error generating invoice on-the-fly in student portal:", e);
+                }
+            }
+
+            const existingRecord = await prisma.rentRecord.findFirst({
+                where: { tenantId: tenant.id, month: monthLabel }
+            });
+
+            if (!existingRecord) {
+                try {
+                    await prisma.rentRecord.create({
+                        data: {
+                            tenantId: tenant.id,
+                            month: monthLabel,
+                            amount: tenant.rent,
+                            paid: false,
+                        }
+                    });
+                } catch (e) {
+                    console.error("Error generating RentRecord on-the-fly in student portal:", e);
+                }
+            }
+        }
 
         // 1. Find the active booking for this user
         const booking = await prisma.booking.findFirst({

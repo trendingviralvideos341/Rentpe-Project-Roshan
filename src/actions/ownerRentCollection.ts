@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateMasterId } from "@/lib/ids";
 import { sendEmail } from "@/lib/email";
+import { internalGenerateInvoice } from "@/actions/billing";
 
 // ────────────────────────────────────────────────────────
 // HELPERS
@@ -35,6 +36,58 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
         : properties.map((p: any) => p.id);
 
     const targetMonth = month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+    // Ensure all active tenants in these properties have their invoices & rent records generated for targetMonth
+    const currentBillingMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    if (targetMonth <= currentBillingMonth) {
+        const activeTenants = await prisma.tenant.findMany({
+            where: {
+                propertyId: { in: propertyIds },
+                status: 'Active',
+            },
+            include: {
+                billingProfile: true
+            }
+        });
+
+        const [yr, mo] = targetMonth.split('-').map(Number);
+        const monthLabel = new Date(yr, mo - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
+        for (const tenant of activeTenants) {
+            if (!tenant.billingProfile) continue;
+
+            const existingInvoice = await prisma.rentInvoice.findFirst({
+                where: { tenantId: tenant.id, billingMonth: targetMonth }
+            });
+
+            if (!existingInvoice) {
+                try {
+                    await internalGenerateInvoice(tenant.id, monthLabel, "SYSTEM");
+                } catch (e) {
+                    console.error(`[getOwnerRentCollection] Error generating invoice for tenant ${tenant.id}:`, e);
+                }
+            }
+
+            const existingRecord = await prisma.rentRecord.findFirst({
+                where: { tenantId: tenant.id, month: monthLabel }
+            });
+
+            if (!existingRecord) {
+                try {
+                    await prisma.rentRecord.create({
+                        data: {
+                            tenantId: tenant.id,
+                            month: monthLabel,
+                            amount: tenant.rent,
+                            paid: false,
+                        }
+                    });
+                } catch (e) {
+                    console.error(`[getOwnerRentCollection] Error generating RentRecord for tenant ${tenant.id}:`, e);
+                }
+            }
+        }
+    }
 
     const invoices = await prisma.rentInvoice.findMany({
         where: {
@@ -691,7 +744,7 @@ export async function getTenantsForBulkInvoice(month: string) {
     });
 
     return profiles
-        .filter((p: any) => p.tenant && ['ACTIVE_TENANT', 'UPCOMING_MOVE_IN'].includes(p.tenant.status))
+        .filter((p: any) => p.tenant && ['Active', 'ACTIVE_TENANT', 'UPCOMING_MOVE_IN'].includes(p.tenant.status))
         .map((p: any) => ({
             tenantId: p.tenantId,
             billingProfileId: p.id,
