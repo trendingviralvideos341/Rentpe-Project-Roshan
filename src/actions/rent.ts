@@ -35,21 +35,25 @@ export async function getPendingRentInvoice() {
             }
         });
 
-        if (activeBooking && activeBooking.tenant && activeBooking.tenant.status === 'Active') {
+        if (activeBooking && activeBooking.tenant && ['Active', 'ACTIVE', 'ACTIVE_TENANT'].includes(activeBooking.tenant.status)) {
             const tenant = activeBooking.tenant;
             const now = new Date();
+            // YYYY-MM format required by internalGenerateInvoice
             const billingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            // Human readable "July 2026" — used by RentRecord
             const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
 
-            const existingInvoice = await prisma.rentInvoice.findFirst({
+            const existingInvoice = await (prisma as any).rentInvoice.findFirst({
                 where: { tenantId: tenant.id, billingMonth }
             });
 
             if (!existingInvoice) {
                 try {
-                    await internalGenerateInvoice(tenant.id, monthLabel, "SYSTEM");
+                    // IMPORTANT: pass billingMonth (YYYY-MM) NOT monthLabel — internalGenerateInvoice expects YYYY-MM
+                    await internalGenerateInvoice(tenant.id, billingMonth, "SYSTEM");
+                    console.log(`[getPendingRentInvoice] Auto-generated invoice for tenant ${tenant.id} for ${billingMonth}`);
                 } catch (e) {
-                    console.error("Error generating invoice on-the-fly in student portal:", e);
+                    console.error("[getPendingRentInvoice] Error generating invoice on-the-fly:", e);
                 }
             }
 
@@ -67,8 +71,9 @@ export async function getPendingRentInvoice() {
                             paid: false,
                         }
                     });
+                    console.log(`[getPendingRentInvoice] Auto-generated RentRecord for tenant ${tenant.id} for ${monthLabel}`);
                 } catch (e) {
-                    console.error("Error generating RentRecord on-the-fly in student portal:", e);
+                    console.error("[getPendingRentInvoice] Error generating RentRecord on-the-fly:", e);
                 }
             }
         }
@@ -118,8 +123,8 @@ export async function getPendingRentInvoice() {
         if (!booking || !booking.tenant) return null;
         const tenant = booking.tenant;
 
-        // Only show banner for Active tenants
-        if (tenant.status !== 'Active') return null;
+        // Only show banner for Active tenants — DB has mixed casing so check all variants
+        if (!['Active', 'ACTIVE', 'ACTIVE_TENANT'].includes(tenant.status)) return null;
 
         const pendingInvoice = tenant.billingProfile?.invoices?.[0] ?? null;
         if (!pendingInvoice) return null;

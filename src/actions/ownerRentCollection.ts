@@ -43,7 +43,8 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
         const activeTenants = await prisma.tenant.findMany({
             where: {
                 propertyId: { in: propertyIds },
-                status: 'Active',
+                // DB has mixed status values — include all active variants
+                status: { in: ['Active', 'ACTIVE', 'ACTIVE_TENANT'] },
             },
             include: {
                 billingProfile: true
@@ -62,7 +63,9 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
 
             if (!existingInvoice) {
                 try {
-                    await internalGenerateInvoice(tenant.id, monthLabel, "SYSTEM");
+                    // CRITICAL: internalGenerateInvoice expects YYYY-MM format, NOT the human label
+                    await internalGenerateInvoice(tenant.id, targetMonth, "SYSTEM");
+                    console.log(`[getOwnerRentCollection] Auto-generated invoice for tenant ${tenant.id} for ${targetMonth}`);
                 } catch (e) {
                     console.error(`[getOwnerRentCollection] Error generating invoice for tenant ${tenant.id}:`, e);
                 }
