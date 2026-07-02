@@ -196,6 +196,13 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                     <Info className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
                                     About Us
                                 </Link>
+                                <Link
+                                    href="/contact"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-black rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group whitespace-nowrap"
+                                >
+                                    <MessageSquare className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                                    Contact
+                                </Link>
                             </>
                         )}
                     </div>
@@ -351,6 +358,12 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                     <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
                                         <Info className="h-4 w-4" />
                                         About Us
+                                    </div>
+                                </Link>
+                                <Link href="/contact" className="block" onClick={() => setIsOpen(false)}>
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
+                                        <MessageSquare className="h-4 w-4" />
+                                        Contact Us
                                     </div>
                                 </Link>
                             </>

@@ -150,7 +150,7 @@ export default function SearchPage() {
                             <input
                                 type="number"
                                 placeholder="Min"
-                                className="w-14 outline-none text-slate-700 bg-transparent"
+                                className="w-20 outline-none text-slate-700 bg-transparent"
                                 value={filters.minPrice}
                                 onChange={e => setFilters(f => ({ ...f, minPrice: e.target.value }))}
                             />
@@ -158,7 +158,7 @@ export default function SearchPage() {
                             <input
                                 type="number"
                                 placeholder="Max"
-                                className="w-14 outline-none text-slate-700 bg-transparent"
+                                className="w-20 outline-none text-slate-700 bg-transparent"
                                 value={filters.maxPrice}
                                 onChange={e => setFilters(f => ({ ...f, maxPrice: e.target.value }))}
                             />

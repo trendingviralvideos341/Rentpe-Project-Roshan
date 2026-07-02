@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { getSession, signJWT } from "@/lib/auth";
 import { revalidatePath } from 'next/cache';
 import { logAuditEvent } from "@/lib/audit";
+import { UserRole } from "@/types/auth";
 
 export async function impersonateUser(targetUserId: string, reason: string) {
     const session = await getSession();
@@ -26,12 +27,16 @@ export async function impersonateUser(targetUserId: string, reason: string) {
 
     const payload = {
         userId: targetUser.id,
-        role: targetUser.role as any,
+        role: targetUser.role as UserRole,
         email: targetUser.email,
         name: targetUser.name,
         // The magic trace that proves this is a God Mode override:
         impersonatorId: session.userId,
-        roles: targetUser.roles, // Added for completeness
+        roles: Array.isArray(targetUser.roles)
+            ? targetUser.roles
+            : typeof targetUser.roles === 'string'
+                ? (targetUser.roles as string).split(',').map(r => r.trim())
+                : [targetUser.role],
     };
 
     const token = await signJWT(payload);
@@ -77,10 +82,14 @@ export async function stopImpersonation() {
 
     const payload = {
         userId: adminUser.id,
-        role: adminUser.role as any,
+        role: adminUser.role as UserRole,
         email: adminUser.email,
         name: adminUser.name,
-        roles: adminUser.roles,
+        roles: Array.isArray(adminUser.roles)
+            ? adminUser.roles
+            : typeof adminUser.roles === 'string'
+                ? (adminUser.roles as string).split(',').map(r => r.trim())
+                : [adminUser.role],
     };
 
     const token = await signJWT(payload);

@@ -62,13 +62,13 @@ export default function CookiePolicyPage() {
                         <h2 className="text-xl font-bold text-slate-900 mb-3">Cookie Categories</h2>
                         <div className="grid md:grid-cols-2 gap-4">
                             {[
-                                { color: "green", type: "Essential", desc: "Required for the platform to function. Cannot be disabled. Includes session authentication and CSRF protection." },
-                                { color: "purple", type: "Functional", desc: "Remember your preferences like city selection, dark mode, and search filters. Can be disabled without affecting core functionality." },
-                                { color: "blue", type: "Analytics", desc: "Help us understand how users interact with our platform so we can improve it. All data is anonymized." },
-                                { color: "orange", type: "Payment", desc: "Set by Razorpay during checkout. Required for processing payments securely. Managed by Razorpay Privacy Policy." },
-                            ].map(({ color, type, desc }) => (
-                                <div key={type} className={`bg-${color}-50 border border-${color}-100 rounded-xl p-4`}>
-                                    <p className={`font-bold text-${color}-800 mb-1`}>{type}</p>
+                                { bg: "bg-green-50", border: "border-green-100", titleColor: "text-green-800", type: "Essential", desc: "Required for the platform to function. Cannot be disabled. Includes session authentication and CSRF protection." },
+                                { bg: "bg-purple-50", border: "border-purple-100", titleColor: "text-purple-800", type: "Functional", desc: "Remember your preferences like city selection, dark mode, and search filters. Can be disabled without affecting core functionality." },
+                                { bg: "bg-blue-50", border: "border-blue-100", titleColor: "text-blue-800", type: "Analytics", desc: "Help us understand how users interact with our platform so we can improve it. All data is anonymized." },
+                                { bg: "bg-orange-50", border: "border-orange-100", titleColor: "text-orange-800", type: "Payment", desc: "Set by Razorpay during checkout. Required for processing payments securely. Managed by Razorpay Privacy Policy." },
+                            ].map(({ bg, border, titleColor, type, desc }) => (
+                                <div key={type} className={`${bg} border ${border} rounded-xl p-4`}>
+                                    <p className={`font-bold ${titleColor} mb-1`}>{type}</p>
                                     <p className="text-xs text-muted-foreground">{desc}</p>
                                 </div>
                             ))}

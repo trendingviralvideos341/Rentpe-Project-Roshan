@@ -93,7 +93,14 @@
 
 @layer base {
   * {
-    @apply border-border transition-colors duration-200;
+    @apply border-border;
+  }
+  /* Scope transitions to interactive elements only — applying globally to * causes
+     paint lag on heavy dashboard views with large tables and chart re-renders */
+  a, button, input, select, textarea,
+  [role="button"], [role="tab"], [role="menuitem"],
+  .hover-lift, .glass-card, .glass-panel, .glow-btn {
+    @apply transition-colors duration-200;
   }
   body {
     @apply bg-background text-foreground antialiased;

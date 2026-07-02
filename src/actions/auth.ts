@@ -248,8 +248,12 @@ export async function login(formData: FormData) {
         const token = await signJWT({
             userId: user.id,
             email: user.email,
-            role: user.role as any,
-            roles: user.roles,          // now a real String[] array
+            role: user.role as UserRole,
+            roles: Array.isArray(user.roles)
+                ? user.roles
+                : typeof user.roles === 'string'
+                    ? (user.roles as string).split(',').map((r: string) => r.trim())
+                    : [user.role],
             primaryRole: user.primaryRole ?? user.role,
             name: user.name,
             permissions,
@@ -343,8 +347,12 @@ export async function verify2FALogin(userId: string, token: string) {
         const jwtToken = await signJWT({
             userId: user.id,
             email: user.email,
-            role: user.role as any,
-            roles: user.roles,
+            role: user.role as UserRole,
+            roles: Array.isArray(user.roles)
+                ? user.roles
+                : typeof user.roles === 'string'
+                    ? (user.roles as string).split(',').map((r: string) => r.trim())
+                    : [user.role],
             primaryRole: (user as any).primaryRole ?? user.role,
             name: user.name,
             phone: user.phone,
@@ -505,7 +513,11 @@ export async function switchRole(targetRole: UserRole) {
         userId: user.id,
         email: user.email,
         role: targetRole,
-        roles: user.roles,
+        roles: Array.isArray(user.roles)
+            ? user.roles
+            : typeof user.roles === 'string'
+                ? (user.roles as string).split(',').map((r: string) => r.trim())
+                : [user.role],
         name: user.name,
         permissions,
         adminRole,

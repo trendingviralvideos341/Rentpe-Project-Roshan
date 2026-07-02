@@ -29,7 +29,7 @@ export default function BugBountyPage() {
                     <div className="bg-white p-6 rounded-2xl border shadow-sm">
                         <Terminal className="h-8 w-8 text-slate-700 mb-4" />
                         <h3 className="font-bold text-slate-900 mb-2">Eligibility</h3>
-                        <p className="text-xs text-slate-600">Individuals who find a vulerability and report it without causing harm or data loss.</p>
+                        <p className="text-xs text-slate-600">Individuals who find a vulnerability and report it without causing harm or data loss.</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border shadow-sm">
                         <Award className="h-8 w-8 text-amber-500 mb-4" />

@@ -45,6 +45,7 @@ export default function PropertyDetailPage() {
         occupationDetail: "",
     });
     const [foodSelected, setFoodSelected] = useState<boolean | null>(null); // null = not yet chosen (only for OPTIONAL)
+    const [selectedOccupancy, setSelectedOccupancy] = useState(""); // bound to select dropdown — replaces unsafe document.querySelector
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [legalAgreed, setLegalAgreed] = useState(false);
     const [legalError, setLegalError] = useState(false);
@@ -135,8 +136,12 @@ export default function PropertyDetailPage() {
 
         setBookingLoading(true);
         try {
-            const selectEl = document.querySelector("select") as HTMLSelectElement;
-            const occupancyFull = selectEl?.value || "Triple Sharing - ₹12,000";
+            // Use React state instead of direct DOM query (safer, works with SSR & multiple selects)
+            const occupancyFull = selectedOccupancy || (
+                property.rooms.length > 0
+                    ? `${property.rooms[0].type} - ₹${property.rooms[0].price.toLocaleString()}`
+                    : "Triple Sharing - ₹12,000"
+            );
             const occupancy = occupancyFull.split(" - ")[0];
             const baseAmount = Number(occupancyFull.split(" - ")[1]?.replace(/[^0-9.]/g, '') || "0");
 
@@ -385,7 +390,12 @@ export default function PropertyDetailPage() {
                             {/* Occupancy select */}
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium">Select Occupancy</label>
-                                <select className="w-full border rounded-md p-2 bg-background">
+                                <select
+                                    id="booking-occupancy-select"
+                                    className="w-full border rounded-md p-2 bg-background"
+                                    value={selectedOccupancy}
+                                    onChange={e => setSelectedOccupancy(e.target.value)}
+                                >
                                     {Object.values(
                                         property.rooms.reduce((acc: any, room: any) => {
                                             if (!acc[room.type]) acc[room.type] = room;
@@ -410,7 +420,7 @@ export default function PropertyDetailPage() {
                                 />
                                 {!currentUser && (
                                     <p className="text-[11px] text-red-600 font-bold italic mt-1">
-                                        ⚠️ Sign in first to proceed with the request booking
+                                    ⚠️ Sign in first to proceed with the booking request
                                     </p>
                                 )}
                             </div>
@@ -437,7 +447,7 @@ export default function PropertyDetailPage() {
                                 </div>
                                 {!currentUser && (
                                     <p className="text-[11px] text-red-600 font-bold italic mt-1">
-                                        ⚠️ Sign in first to proceed with the request booking
+                                    ⚠️ Sign in first to proceed with the booking request
                                     </p>
                                 )}
                             </div>
