@@ -1,6 +1,15 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+// ─── Month Label Helper ──────────────────────────────────────────────────────
+// Converts DB format "2026-07" → human-readable "July 2026" for PDF display
+const monthLabel = (m: string) => {
+    if (!m) return '';
+    const [y, mo] = m.split('-');
+    if (!y || !mo) return m;
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+};
+
 // ─── Shared brand constants ──────────────────────────────────────────────────
 const BRAND_BLUE: [number, number, number] = [30, 27, 75];
 const BRAND_ACCENT: [number, number, number] = [99, 102, 241];
@@ -322,7 +331,7 @@ export interface InvoiceData {
 
 export function generateInvoicePDF(data: InvoiceData) {
     const doc = new jsPDF();
-    drawHeader(doc, 'PAYMENT RECEIPT', data.month, data.invoiceId.substring(0, 12).toUpperCase());
+    drawHeader(doc, 'PAYMENT RECEIPT', monthLabel(data.month), data.invoiceId.substring(0, 12).toUpperCase());
     sectionLabel(doc, 'Billed To', 52);
     kvRow(doc, 'Name', data.tenantName || 'Resident', 61);
     kvRow(doc, 'Date', data.date, 69, true);

@@ -4,6 +4,15 @@ import prisma from "@/lib/prisma";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 
+// ─── Month Label Helper ──────────────────────────────────────────────────────
+// Converts DB format "2026-07" → human-readable "July 2026" for PDF display
+const monthLabel = (m: string) => {
+    if (!m) return '';
+    const [y, mo] = m.split('-');
+    if (!y || !mo) return m;
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+};
+
 // ─── Currency Helpers ─────────────────────────────────────────────────────────
 // jsPDF does not support the ₹ glyph. We use "Rs." — standard on Indian receipts.
 function inr(amount: number): string {
@@ -391,7 +400,7 @@ export async function GET(
         y += 11;
 
         const rows: Array<{ label: string; value: string; bold?: boolean; highlight?: "blue" | "green" | "red" | "amber"; indent?: boolean; divider?: boolean }> = [
-            { label: "Period / Month",  value: invoice.month || "—" },
+            { label: "Period / Month",  value: invoice.month ? monthLabel(invoice.month) : "—" },
             { label: "Receipt No.",     value: studentReceiptNo },
             { label: "Tenant ID",       value: tenantId },
         ];

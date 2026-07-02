@@ -37,8 +37,8 @@ export async function GET(request: Request) {
     }
 
     const now = new Date();
-    // Human-readable month label e.g. "June 2026"
-    const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
+    // YYYY-MM format e.g. "2026-07" — stored in DB
+    const monthLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     // ── All active tenants ────────────────────────────────────────────────────
     const activeTenants = await prisma.tenant.findMany({

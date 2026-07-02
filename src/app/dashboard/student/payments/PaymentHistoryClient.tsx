@@ -55,6 +55,14 @@ function findCurrentBooking(data: BookingEntry[]): string | null {
     return data[0].booking.id;
 }
 
+// ─── Month label formatter ───────────────────────────────────────────────────
+function formatMonthLabel(m: string): string {
+    if (!m) return '';
+    const [y, mo] = m.split('-');
+    if (!y || !mo) return m;
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 // ─── Label for dropdown entry ─────────────────────────────────────────────────
 function bookingLabel(d: BookingEntry) {
     const yr = new Date(d.booking.createdAt).getFullYear();
@@ -344,7 +352,7 @@ function RentReceiptModal({ booking, invoice, onClose }: {
                         <div className="border border-[#E2E8F0] border-t-0 rounded-b-xl overflow-hidden text-sm divide-y divide-[#F1F5F9]">
                             <div className="flex justify-between items-center px-4 py-3">
                                 <span className="text-[#64748B]">Period / Month</span>
-                                <span className="font-bold text-[#0F172A]">{invoice?.month || '—'}</span>
+                                <span className="font-bold text-[#0F172A]">{invoice?.month ? formatMonthLabel(invoice.month) : '—'}</span>
                             </div>
                             <div className="flex justify-between items-center px-4 py-3">
                                 <span className="text-[#64748B]">Invoice No.</span>
@@ -636,7 +644,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                 date: inv.paidAt
                     ? new Date(inv.paidAt)
                     : inv.dueDate ? new Date(inv.dueDate) : new Date(),
-                label: inv.month ? `Rent — ${inv.month}` : `Rent Invoice ${inv.displayId}`,
+                label: inv.month ? `Rent — ${formatMonthLabel(inv.month)}` : `Rent Invoice ${inv.displayId}`,
                 amount: inv.amount,
                 status: inv.status,
                 type: 'INVOICE',

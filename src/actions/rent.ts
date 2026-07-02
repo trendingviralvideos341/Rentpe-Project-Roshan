@@ -40,8 +40,7 @@ export async function getPendingRentInvoice() {
             const now = new Date();
             // YYYY-MM format required by internalGenerateInvoice
             const billingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-            // Human readable "July 2026" — used by RentRecord
-            const monthLabel = now.toLocaleString("en-IN", { month: "long", year: "numeric" });
+            // billingMonth (YYYY-MM) is reused for RentRecord as well
 
             const existingInvoice = await (prisma as any).rentInvoice.findFirst({
                 where: { tenantId: tenant.id, billingMonth }
@@ -58,7 +57,7 @@ export async function getPendingRentInvoice() {
             }
 
             const existingRecord = await prisma.rentRecord.findFirst({
-                where: { tenantId: tenant.id, month: monthLabel }
+                where: { tenantId: tenant.id, month: billingMonth }
             });
 
             if (!existingRecord) {
@@ -66,12 +65,12 @@ export async function getPendingRentInvoice() {
                     await prisma.rentRecord.create({
                         data: {
                             tenantId: tenant.id,
-                            month: monthLabel,
+                            month: billingMonth,
                             amount: tenant.rent,
                             paid: false,
                         }
                     });
-                    console.log(`[getPendingRentInvoice] Auto-generated RentRecord for tenant ${tenant.id} for ${monthLabel}`);
+                    console.log(`[getPendingRentInvoice] Auto-generated RentRecord for tenant ${tenant.id} for ${billingMonth}`);
                 } catch (e) {
                     console.error("[getPendingRentInvoice] Error generating RentRecord on-the-fly:", e);
                 }

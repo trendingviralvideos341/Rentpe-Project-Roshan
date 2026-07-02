@@ -23,6 +23,13 @@ function inr(n: number) {
     return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function formatMonthLabel(m: string): string {
+    if (!m) return '';
+    const [y, mo] = m.split('-');
+    if (!y || !mo) return m;
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () => void }) {
     const [data, setData] = useState<InvoiceData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -130,7 +137,7 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
                                 <table className="w-full text-sm">
                                     <tbody>
                                         {[
-                                            { label: 'Period / Month',  value: data.month,           bold: false },
+                                            { label: 'Period / Month',  value: formatMonthLabel(data.month), bold: false },
                                             { label: 'Invoice No.',     value: data.displayId,        bold: false, mono: true },
                                             { label: 'Tenant ID',       value: data.tenantDisplayId,  bold: false, mono: true },
                                             { label: 'Rent Amount',     value: inr(data.rentAmount),  bold: false },
@@ -283,7 +290,7 @@ function CashConfirmModal({ inv, onClose, onConfirm }: { inv: any; onClose: () =
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-1">
                     <p className="text-sm font-black text-green-800">₹{inv.amount.toLocaleString('en-IN')} cash received from</p>
                     <p className="text-lg font-black text-slate-900">{inv.tenantName}</p>
-                    <p className="text-xs text-slate-400">Room {inv.roomNumber} · {inv.month}</p>
+                    <p className="text-xs text-slate-400">Room {inv.roomNumber} · {formatMonthLabel(inv.month)}</p>
                 </div>
                 <div>
                     <label className="text-xs font-bold text-slate-600 block mb-1">Note (mandatory)</label>
@@ -372,7 +379,7 @@ function HistoryModal({
                                         <div className="flex items-start justify-between">
                                             <div>
                                                 <span className="text-xs font-black text-slate-900 tracking-tight">
-                                                    {record.month}
+                                                    {formatMonthLabel(record.month)}
                                                 </span>
                                                 <p className="text-lg font-black text-slate-900 mt-1">
                                                     ₹{record.amount?.toLocaleString('en-IN')}
@@ -505,7 +512,7 @@ function CommissionModal({
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-black text-slate-900 tracking-tight">
-                                                        {record.month}
+                                                        {formatMonthLabel(record.month)}
                                                     </span>
                                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-amber-200/60 text-amber-800 text-[8px] font-black rounded uppercase tracking-wider">
                                                         Original for Recipient
@@ -864,7 +871,7 @@ export function RentCollectionContainer() {
                                                 <td className="px-4 py-3">
                                                     <span className="font-black text-slate-900 whitespace-nowrap">₹{inv.amount.toLocaleString('en-IN')}</span>
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{inv.month}</td>
+                                                <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{formatMonthLabel(inv.month)}</td>
                                                 <td className="px-4 py-3"><StatusBadge inv={inv} /></td>
                                                 <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
                                                     {inv.paidAt ? format(new Date(inv.paidAt), 'd MMM yyyy') : '—'}
@@ -955,7 +962,7 @@ export function RentCollectionContainer() {
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <p className="font-black text-slate-900">₹{inv.amount.toLocaleString('en-IN')}</p>
-                                                <p className="text-xs text-slate-400">{inv.month}</p>
+                                                <p className="text-xs text-slate-400">{formatMonthLabel(inv.month)}</p>
                                             </div>
                                             <button
                                                 onClick={() => setHistoryModal({ tenantName: inv.tenantName, tenantDisplayId: inv.tenantDisplayId || '—', history: inv.history })}
