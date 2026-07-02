@@ -3,12 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAdminFinancialLedger, getAdminTaxLiability, getAdminPropertyUnitEconomics } from '@/actions/platform';
 import { toast } from 'sonner';
-import {
-    Download, FileText, Loader2, IndianRupee, TrendingUp, Shield,
-    Building2, RefreshCcw, Search, Filter, Receipt,
-    BadgeCheck, BarChart3, Users, Info
-} from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { Download, FileText, Loader2, IndianRupee, TrendingUp, Shield, Building2, RefreshCcw, Search, Filter, Receipt, BadgeCheck, BarChart3, Users, Info } from 'lucide-react';
 
 // ── Tooltip Component ────────────────────────────────────────────────────────
 function Tip({ text }: { text: string }) {
@@ -102,6 +97,7 @@ function TaxBadge({ label, value, color }: { label: string; value: string; color
 }
 
 export default function AdminFinancialLedgerPage() {
+    const [mounted, setMounted] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
     const [fyOptions] = useState(buildFYOptions);
     const [selectedFY, setSelectedFY] = useState(fyOptions[fyOptions.length - 1]);
@@ -136,6 +132,7 @@ export default function AdminFinancialLedgerPage() {
     }, []);
 
     useEffect(() => {
+        setMounted(true);
         setSearch('');
         setSelectedProperty('ALL');
         setSelectedOwner('ALL');
@@ -512,44 +509,20 @@ export default function AdminFinancialLedgerPage() {
                                     <h3 className="font-black text-slate-900 text-lg">Payment Mode Split</h3>
                                     <p className="text-xs text-slate-400 font-bold mt-0.5">Distribution of collected gross revenue</p>
                                 </div>
-                                <div className="relative h-[200px] w-full">
-                                    {(cashCollected === 0 && onlineCollected === 0) ? (
+                                <div className="relative h-[200px] w-full flex items-center justify-center">
+                                    {!mounted ? (
+                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                                    ) : (cashCollected === 0 && onlineCollected === 0) ? (
                                         <p className="text-xs text-slate-400 font-bold">No collections recorded in this period</p>
                                     ) : (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={[
-                                                        { name: 'Online Payments', value: onlineCollected, fill: '#4f46e5' },
-                                                        { name: 'Cash Payments', value: cashCollected, fill: '#f59e0b' },
-                                                    ].filter(d => d.value > 0)}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={55}
-                                                    outerRadius={75}
-                                                    paddingAngle={3}
-                                                    dataKey="value"
-                                                    startAngle={90}
-                                                    endAngle={-270}
-                                                    isAnimationActive={false}
-                                                >
-                                                    {([
-                                                        { name: 'Online Payments', value: onlineCollected, fill: '#4f46e5' },
-                                                        { name: 'Cash Payments', value: cashCollected, fill: '#f59e0b' },
-                                                    ].filter(d => d.value > 0)).map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={0} />
-                                                    ))}
-                                                </Pie>
-                                                <RechartsTooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    )}
-                                    {(onlineCollected > 0 || cashCollected > 0) && (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 10 }}>
-                                            <span className="text-base font-black text-indigo-600">
-                                                {Math.round((onlineCollected / (onlineCollected + cashCollected)) * 100)}%
-                                            </span>
-                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Online</span>
+                                        <div className="relative w-36 h-36 flex items-center justify-center rounded-full" 
+                                             style={{ background: `conic-gradient(#4f46e5 ${(onlineCollected + cashCollected) > 0 ? (onlineCollected / (onlineCollected + cashCollected)) * 100 : 0}%, #f59e0b ${(onlineCollected + cashCollected) > 0 ? (onlineCollected / (onlineCollected + cashCollected)) * 100 : 0}% 100%)` }}>
+                                            <div className="w-28 h-28 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+                                                <span className="text-xl font-black text-indigo-600">
+                                                    {(onlineCollected + cashCollected) > 0 ? Math.round((onlineCollected / (onlineCollected + cashCollected)) * 100) : 0}%
+                                                </span>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Online</span>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
