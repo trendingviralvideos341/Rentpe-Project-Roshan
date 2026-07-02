@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getOwnerAnalytics } from '@/actions/ownerRentCollection';
 import { getPropertyPerformanceAnalytics } from '@/actions/ownerDashboard';
 import { BarChart3, Loader2, TrendingUp, TrendingDown, Building, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DateRange = '7d' | '30d' | '90d' | 'fy' | 'custom';
 
@@ -62,6 +62,9 @@ export default function AnalyticsPage() {
 
     const totalCollected = data?.perProperty?.reduce((s: number, p: any) => s + p.totalCollected, 0) || 0;
     const totalExpected = data?.perProperty?.reduce((s: number, p: any) => s + p.totalExpected, 0) || 0;
+    const onlineCollected = data?.paymentMethodSplit?.online || 0;
+    const cashCollected = data?.paymentMethodSplit?.cash || 0;
+    const totalSplit = onlineCollected + cashCollected;
 
     const RANGES: { key: DateRange; label: string }[] = [
         { key: '7d', label: 'Last 7 days' },
@@ -177,44 +180,18 @@ export default function AnalyticsPage() {
                                 <h3 className="font-black text-slate-900">Payment Mode Split</h3>
                                 <p className="text-xs text-slate-400 font-bold mt-0.5">Distribution of collected rent</p>
                             </div>
-                            <div className="relative h-[160px] w-full">
-                                {((data?.paymentMethodSplit?.online || 0) === 0 && (data?.paymentMethodSplit?.cash || 0) === 0) ? (
+                            <div className="relative h-[160px] w-full flex items-center justify-center">
+                                {totalSplit === 0 ? (
                                     <p className="text-xs text-slate-400 font-bold">No collections recorded in this period</p>
                                 ) : (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={[
-                                                    { name: 'Online Payments', value: data?.paymentMethodSplit?.online || 0, fill: '#4f46e5' },
-                                                    { name: 'Cash Payments', value: data?.paymentMethodSplit?.cash || 0, fill: '#f59e0b' },
-                                                ].filter(d => d.value > 0)}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={45}
-                                                outerRadius={65}
-                                                paddingAngle={3}
-                                                dataKey="value"
-                                                startAngle={90}
-                                                endAngle={-270}
-                                                isAnimationActive={false}
-                                            >
-                                                {([
-                                                    { name: 'Online Payments', value: data?.paymentMethodSplit?.online || 0, fill: '#4f46e5' },
-                                                    { name: 'Cash Payments', value: data?.paymentMethodSplit?.cash || 0, fill: '#f59e0b' },
-                                                ].filter(d => d.value > 0)).map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={0} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                )}
-                                {((data?.paymentMethodSplit?.online || 0) > 0 || (data?.paymentMethodSplit?.cash || 0) > 0) && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 10 }}>
-                                        <span className="text-sm font-black text-indigo-600">
-                                            {Math.round(((data?.paymentMethodSplit?.online || 0) / ((data?.paymentMethodSplit?.online || 0) + (data?.paymentMethodSplit?.cash || 0))) * 100)}%
-                                        </span>
-                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Online</span>
+                                    <div className="relative w-32 h-32 flex items-center justify-center rounded-full" 
+                                         style={{ background: `conic-gradient(#4f46e5 ${totalSplit > 0 ? (onlineCollected / totalSplit) * 100 : 0}%, #f59e0b ${totalSplit > 0 ? (onlineCollected / totalSplit) * 100 : 0}% 100%)` }}>
+                                        <div className="w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+                                            <span className="text-sm font-black text-indigo-600">
+                                                {totalSplit > 0 ? Math.round((onlineCollected / totalSplit) * 100) : 0}%
+                                            </span>
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Online</span>
+                                        </div>
                                     </div>
                                 )}
                             </div>
