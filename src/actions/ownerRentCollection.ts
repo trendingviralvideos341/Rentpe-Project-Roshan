@@ -51,9 +51,6 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
             }
         });
 
-        const [yr, mo] = targetMonth.split('-').map(Number);
-        const monthLabel = new Date(yr, mo - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-
         for (const tenant of activeTenants) {
             if (!tenant.billingProfile) continue;
 
@@ -72,7 +69,7 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
             }
 
             const existingRecord = await prisma.rentRecord.findFirst({
-                where: { tenantId: tenant.id, month: monthLabel }
+                where: { tenantId: tenant.id, month: targetMonth }
             });
 
             if (!existingRecord) {
@@ -80,7 +77,7 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
                     await prisma.rentRecord.create({
                         data: {
                             tenantId: tenant.id,
-                            month: monthLabel,
+                            month: targetMonth,
                             amount: tenant.rent,
                             paid: false,
                         }
@@ -829,7 +826,7 @@ export async function generateBulkInvoices(month: string, tenantIds: string[]) {
                     tenantId,
                     propertyId: profile.propertyId,
                     bookingId: booking?.id || undefined,
-                    month: new Date(`${month}-01`).toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+                    month: billingMonth,
                     billingMonth,
                     rentAmount: profile.monthlyRent,
                     foodAmount: 0,

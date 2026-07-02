@@ -11,6 +11,13 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { SettlementModal } from "@/components/dashboard/SettlementModal";
 
+function formatMonthLabel(m: string): string {
+    if (!m) return '';
+    const [y, mo] = m.split('-');
+    if (!y || !mo) return m;
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 export function TenantsContainer() {
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,7 +41,7 @@ export function TenantsContainer() {
     const [moveOutDate, setMoveOutDate] = useState("");
     const [initiatingNoticeBusy, setInitiatingNoticeBusy] = useState(false);
 
-    const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+    const currentMonth = new Date().toISOString().slice(0, 7);
 
     const fetchTenants = async () => {
         setLoading(true);
@@ -342,7 +349,7 @@ export function TenantsContainer() {
                                     <th className="p-4 text-left font-medium">Room</th>
                                     <th className="p-4 text-left font-medium">Start Date</th>
                                     <th className="p-4 text-left font-medium">Monthly Rent</th>
-                                    <th className="p-4 text-left font-medium">{currentMonth} Status</th>
+                                    <th className="p-4 text-left font-medium">{formatMonthLabel(currentMonth)} Status</th>
                                     <th className="p-4 text-left font-medium">Status & History</th>
                                     <th className="p-4 text-left font-medium">Actions</th>
                                 </tr>
@@ -531,7 +538,7 @@ export function TenantsContainer() {
                                                         <div className="grid grid-cols-4 gap-2">
                                                             {t.rentRecords.map((r: any) => (
                                                                 <div key={r.id} className={`p-2 rounded border text-xs ${r.paid ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-                                                                    <div className="font-bold">{r.month}</div>
+                                                                    <div className="font-bold">{formatMonthLabel(r.month)}</div>
                                                                     <div>{r.paid ? `✅ Paid on ${r.paidOn}` : "❌ Unpaid"}</div>
                                                                 </div>
                                                             ))}
@@ -642,7 +649,7 @@ export function TenantsContainer() {
                                                 r.paid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                                             }`}>
                                                 <div>
-                                                    <p className="font-bold text-slate-900">{r.month}</p>
+                                                    <p className="font-bold text-slate-900">{formatMonthLabel(r.month)}</p>
                                                     <p className="text-[10px] text-slate-500">₹{r.amount?.toLocaleString('en-IN')}</p>
                                                 </div>
                                                 <div className="text-right">

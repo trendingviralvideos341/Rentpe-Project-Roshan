@@ -727,7 +727,7 @@ export default function TenantsPage() {
                                 <CheckCircle className="w-5 h-5 text-green-600" /> Mark Rent Invoice as Paid
                             </DialogTitle>
                             <DialogDescription className="text-xs text-slate-400 font-bold uppercase mt-1">
-                                Month: {markingPaidRecord.month} · Rent Amount: ₹{markingPaidRecord.amount}
+                                Month: {formatMonthLabel(markingPaidRecord.month)} · Rent Amount: ₹{markingPaidRecord.amount}
                             </DialogDescription>
                         </DialogHeader>
                         
@@ -856,7 +856,7 @@ export default function TenantsPage() {
                                 <div className="border border-[#E2E8F0] border-t-0 rounded-b-xl overflow-hidden text-xs divide-y divide-[#F1F5F9] bg-[#F8FAFC]">
                                     <div className="flex justify-between items-center px-4 py-3 bg-white">
                                         <span className="text-[#64748B]">Period / Month</span>
-                                        <span className="font-bold text-[#0F172A]">{viewingReceiptInvoice.month}</span>
+                                        <span className="font-bold text-[#0F172A]">{formatMonthLabel(viewingReceiptInvoice.month)}</span>
                                     </div>
                                     <div className="flex justify-between items-center px-4 py-3 bg-white">
                                         <span className="text-[#64748B]">Invoice ID</span>

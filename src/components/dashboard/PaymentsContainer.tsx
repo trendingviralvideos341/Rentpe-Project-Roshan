@@ -8,6 +8,13 @@ import { CheckCircle, XCircle, IndianRupee, RefreshCcw, ChevronDown, ChevronUp, 
 import { getTenants, markRentAsPaid, markRentAsUnpaid } from "@/actions/tenants";
 import { toast } from "sonner";
 
+function formatMonthLabel(m: string): string {
+    if (!m) return '';
+    const [y, mo] = m.split('-');
+    if (!y || !mo) return m;
+    return new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 export function PaymentsContainer() {
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -16,7 +23,7 @@ export function PaymentsContainer() {
     const [filterStatus, setFilterStatus] = useState<"ALL" | "PAID" | "UNPAID">("ALL");
     const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
 
-    const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+    const currentMonth = new Date().toISOString().slice(0, 7);
 
     const fetchData = async () => {
         setLoading(true);
@@ -106,7 +113,7 @@ export function PaymentsContainer() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold">Payments</h1>
-                    <p className="text-muted-foreground">Track monthly rent collection for {currentMonth}.</p>
+                    <p className="text-muted-foreground">Track monthly rent collection for {formatMonthLabel(currentMonth)}.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} className="rounded-xl">
                     <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
@@ -207,7 +214,7 @@ export function PaymentsContainer() {
                                         <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">Tenant</th>
                                         <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">Room</th>
                                         <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">Rent</th>
-                                        <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">{currentMonth} Status</th>
+                                        <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">{formatMonthLabel(currentMonth)} Status</th>
                                         <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">Paid On</th>
                                         <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">Action</th>
                                         <th className="p-4 text-left font-bold text-slate-600 uppercase text-[10px] tracking-wider">Full History</th>
@@ -288,7 +295,7 @@ export function PaymentsContainer() {
                                                                             <div key={r.id} className={`text-[10px] p-2 rounded-xl border-2 ${
                                                                                 r.paid ? "bg-green-50/50 border-green-100 text-green-700" : "bg-red-50/50 border-red-100 text-red-700"}`}>
                                                                                 <div className="flex justify-between items-center">
-                                                                                    <span className="font-black">{r.month}</span>
+                                                                                    <span className="font-black">{formatMonthLabel(r.month)}</span>
                                                                                     <span className="text-[8px] font-black uppercase">{r.paid ? "PAID" : "UNPAID"}</span>
                                                                                 </div>
                                                                                 {r.paidOn && <div className="text-[9px] font-medium opacity-60 mt-0.5">Paid on: {r.paidOn}</div>}

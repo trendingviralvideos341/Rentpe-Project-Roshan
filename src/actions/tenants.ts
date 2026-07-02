@@ -743,7 +743,7 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
 
         // 1. Prorated last-month rent â€” update/create the final month record
         const monthlyRent = typeof tenant.rent === 'number' ? tenant.rent : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, ''));
-        const lastMonthLabel = moveOutDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        const lastMonthLabel = `${moveOutDate.getFullYear()}-${String(moveOutDate.getMonth() + 1).padStart(2, '0')}`;
         const prorated = lastMonthRent(monthlyRent, moveOutDate);
 
         const existingRecord = await tx.rentRecord.findFirst({ where: { tenantId, month: lastMonthLabel } });
