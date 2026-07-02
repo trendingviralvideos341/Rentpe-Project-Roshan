@@ -68,6 +68,7 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'indigo' }: any) {
 }
 
 export default function TaxSummaryPage() {
+    const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
     const [report, setReport] = useState<any>(null);
@@ -155,7 +156,10 @@ export default function TaxSummaryPage() {
         });
     };
 
-    useEffect(() => { reload(selectedFY); }, [selectedFY]);
+    useEffect(() => {
+        setMounted(true);
+        reload(selectedFY);
+    }, [selectedFY]);
 
     const handleExportPDF = async (month?: string) => {
         if (!report) return;
@@ -399,18 +403,22 @@ export default function TaxSummaryPage() {
                             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
                                 <h3 className="font-black text-slate-900 text-lg">Earnings vs. Commission Charges</h3>
                                 <p className="text-xs text-slate-500 mb-6">Compare gross rent processed against total platform fees paid (excl. TDS)</p>
-                                <div className="h-64 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                            <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                            <ChartTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`]} />
-                                            <Legend />
-                                            <Bar dataKey="Rent" name="Gross Rent processed" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="Commission" name="Platform Commission + GST" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                <div className="h-64 w-full flex items-center justify-center">
+                                    {!mounted ? (
+                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                                <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                                <ChartTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`]} />
+                                                <Legend />
+                                                <Bar dataKey="Rent" name="Gross Rent processed" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="Commission" name="Platform Commission + GST" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    )}
                                 </div>
                             </div>
                         )}
