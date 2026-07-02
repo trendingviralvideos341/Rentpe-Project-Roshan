@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { getCurrentUser } from "@/actions/auth";
+import { PageExplainer } from "@/components/dashboard/PageExplainer";
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ export default async function AdminLayout({
                 />
             </Suspense>
             <main className="flex-1 p-4 md:p-8 min-h-screen overflow-y-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
+                <PageExplainer role="admin" />
                 {children}
             </main>
         </div>
