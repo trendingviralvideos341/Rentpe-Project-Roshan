@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { getCurrentUser } from "@/actions/auth";
 import prisma from "@/lib/prisma";
+import { PageExplainer } from "@/components/dashboard/PageExplainer";
 
 export const dynamic = 'force-dynamic';
 
@@ -79,6 +80,8 @@ export default async function OwnerLayout({
                             </div>
                         </div>
                     )}
+                    
+                    <PageExplainer role="owner" />
 
                     {children}
                 </div>
