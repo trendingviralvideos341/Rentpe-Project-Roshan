@@ -347,7 +347,7 @@ export async function getTenantForSettlement(bookingId: string) {
     };
 }
 
-// â”€â”€â”€ getSettlementForNotice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 export async function getSettlementForNotice(bookingId: string) {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
@@ -392,7 +392,7 @@ export async function getSettlementForNotice(bookingId: string) {
 
     const sr = (tenant as any).settlementRecord;
 
-    // â”€â”€ Pro-rata computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Pro-rata computation ─────────────────────────────────────────────────
     const moveOutDate = tenant.actualMoveOutDate
         ? new Date(tenant.actualMoveOutDate)
         : vacatingNotice?.plannedMoveOut
@@ -404,13 +404,48 @@ export async function getSettlementForNotice(bookingId: string) {
     const dailyRate   = Math.round(monthlyRent / daysInMonth);
     const proRataAmt  = dailyRate * moveOutDay;
 
-    // â”€â”€ Unpaid rent records (itemized) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Check if the final month's rent was prepaid
+    const finalMonthLabel = `${moveOutDate.getFullYear()}-${String(moveOutDate.getMonth() + 1).padStart(2, '0')}`;
+    const finalMonthRecord = tenant.rentRecords.find((r: any) => r.month === finalMonthLabel);
+    
+    let prepaidRentCredit = 0;
+    let isPrepaid = false;
+    let originalPaidAmount = 0;
+    
+    if (finalMonthRecord?.paid) {
+        isPrepaid = true;
+        const invoice = await prisma.rentInvoice.findFirst({
+            where: {
+                tenantId: tenant.id,
+                billingMonth: finalMonthLabel,
+                status: 'PAID'
+            }
+        });
+        originalPaidAmount = invoice 
+            ? Number(invoice.paidRentAmount || invoice.rentAmount || monthlyRent)
+            : Number(finalMonthRecord.amount || monthlyRent);
+            
+        if (originalPaidAmount > proRataAmt) {
+            prepaidRentCredit = originalPaidAmount - proRataAmt;
+        }
+    }
+
+    // ── Unpaid rent records (itemized) ────────────────────────────────────────
     const unpaidRecords = ((tenant as any).rentRecords || [])
         .filter((r: any) => !r.paid)
-        .map((r: any) => ({ month: r.month, amount: Number(r.amount), note: r.note || null }));
+        .map((r: any) => {
+            const isMoveOutMonth = r.month === finalMonthLabel;
+            const displayAmount = isMoveOutMonth ? proRataAmt : Number(r.amount);
+            return { 
+                month: r.month, 
+                amount: displayAmount, 
+                note: isMoveOutMonth ? `Prorated Rent (Move-out month)` : (r.note || null) 
+            };
+        });
 
-    // â”€â”€ Parse deduction items from notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // confirmMoveOut saves notes in format: "Deductions: Broken AC â‚¹500, Wall damage â‚¹500 | Owner note"
+    const unpaidRent = unpaidRecords.reduce((sum: number, r: any) => sum + r.amount, 0);
+
+    // ── Parse deduction items from notes ─────────────────────────────────────
     let deductionItems: { description: string; amount: number }[] = [];
     const noteText = sr?.notes || '';
     const dedMatch = noteText.match(/Deductions:\s*(.+?)(?:\s*\||\s*$)/i);
@@ -425,14 +460,17 @@ export async function getSettlementForNotice(bookingId: string) {
             }
         }
     }
-    // If no items parsed but total deductions exist, show as single line
+    
     const totalDeductions = sr ? Number(sr.damageDeductions) : 0;
     if (deductionItems.length === 0 && totalDeductions > 0) {
         deductionItems = [{ description: 'Damage / Maintenance', amount: totalDeductions }];
     }
 
-    const netRefund = securityDeposit - (sr ? Number(sr.finalRentPending) : 0) - totalDeductions;
-
+    // Calculate final rent pending and net refund
+    const finalRentPending = sr ? Number(sr.finalRentPending) : unpaidRent;
+    const netRefund = sr 
+        ? Number(sr.depositRefunded) 
+        : (securityDeposit - finalRentPending - totalDeductions + prepaidRentCredit);
     return {
         // IDs
         tenantId:          tenant.id,
@@ -459,10 +497,13 @@ export async function getSettlementForNotice(bookingId: string) {
         daysInMonth,
         dailyRate,
         proRataAmt,
+        prepaidRentCredit,
+        isPrepaid,
+        originalPaidAmount,
         // Financial summary
         securityDeposit,
         unpaidRecords,
-        totalRentDue:    sr ? Number(sr.finalRentPending) : 0,
+        totalRentDue:    finalRentPending,
         deductionItems,
         totalDeductions,
         netRefund,

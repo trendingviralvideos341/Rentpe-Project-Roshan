@@ -29,7 +29,8 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
     const moveOutDay = today.getDate();
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
     const monthlyRent = parseRent(tenant.rentAmount ?? tenant.rent);
-    const currentMonthLabel = today.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+    // Standardize month label to match DB format (YYYY-MM)
+    const currentMonthLabel = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     const currentMonthRecord = tenant.rentRecords?.find((r: any) => r.month === currentMonthLabel);
     const isCurrentMonthPaid = currentMonthRecord?.paid ?? false;
     const proRataRent = calcProRata(monthlyRent, moveOutDay);
@@ -41,7 +42,8 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
     const totalDeductionAmt = deductions.reduce((acc, d) => acc + (parseFloat(d.amount) || 0), 0);
     const thisMonthOwed = isCurrentMonthPaid ? 0 : proRataRent;
     const totalTenantOwes = prevUnpaidRent + thisMonthOwed;
-    const netRefund = securityDeposit - totalTenantOwes - totalDeductionAmt;
+    const prepaidRentCredit = isCurrentMonthPaid ? (monthlyRent - proRataRent) : 0;
+    const netRefund = securityDeposit - totalTenantOwes - totalDeductionAmt + prepaidRentCredit;
     const ownerPaysRefund = netRefund > 0;
     const tenantOwesMore = netRefund < 0;
 
@@ -60,7 +62,9 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
         const combinedNote = [notes, deductions.length > 0 ? `Deductions: ${deductions.map(d => `${d.description} ₹${d.amount}`).join(', ')}` : ''].filter(Boolean).join(' | ');
         startTransition(async () => {
             try {
-                await initiateMoveOut(tenant.id, totalDeductionAmt + totalTenantOwes, combinedNote);
+                // BUG FIX: Pass ONLY totalDeductionAmt (damages) to initiateMoveOut.
+                // The backend confirmMoveOut recalculates and subtracts unpaid rent internally.
+                await initiateMoveOut(tenant.id, totalDeductionAmt, combinedNote);
                 toast.success('Vacating completed successfully!');
                 setStep(4);
                 onSuccess();

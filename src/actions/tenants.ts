@@ -741,20 +741,59 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         const moveInDate = tenant.booking?.agreementSignedAt ? new Date(tenant.booking.agreementSignedAt) : new Date(tenant.startDate);
         const duration = Math.ceil((moveOutDate.getTime() - moveInDate.getTime()) / (1000 * 60 * 60 * 24));
 
-        // 1. Prorated last-month rent â€” update/create the final month record
+        // 1. Prorated last-month rent — update/create the final month record
         const monthlyRent = typeof tenant.rent === 'number' ? tenant.rent : parseFloat(String(tenant.rent).replace(/[^0-9.]/g, ''));
         const lastMonthLabel = `${moveOutDate.getFullYear()}-${String(moveOutDate.getMonth() + 1).padStart(2, '0')}`;
         const prorated = lastMonthRent(monthlyRent, moveOutDate);
 
+        let prepaidRentCredit = 0;
+        let originalPaidAmount = 0;
         const existingRecord = await tx.rentRecord.findFirst({ where: { tenantId, month: lastMonthLabel } });
+        
         if (existingRecord) {
-            await tx.rentRecord.update({
-                where: { id: existingRecord.id },
-                data: { amount: prorated, note: `Prorated â€” move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
-            });
+            if (existingRecord.paid) {
+                // If paid, the student prepaid rent for this month.
+                // Look up the invoice to get the exact paid rent amount.
+                const invoice = await tx.rentInvoice.findFirst({
+                    where: {
+                        tenantId,
+                        billingMonth: lastMonthLabel,
+                        status: 'PAID'
+                    }
+                });
+                originalPaidAmount = invoice 
+                    ? Number(invoice.paidRentAmount || invoice.rentAmount || monthlyRent)
+                    : Number(existingRecord.amount || monthlyRent);
+                
+                if (originalPaidAmount > prorated) {
+                    prepaidRentCredit = originalPaidAmount - prorated;
+                }
+                
+                await tx.rentRecord.update({
+                    where: { id: existingRecord.id },
+                    data: { 
+                        amount: prorated, 
+                        note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}. Paid Full: ₹${originalPaidAmount}. Unused Rent Credit: ₹${prepaidRentCredit}` 
+                    }
+                });
+            } else {
+                await tx.rentRecord.update({
+                    where: { id: existingRecord.id },
+                    data: { 
+                        amount: prorated, 
+                        note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}` 
+                    }
+                });
+            }
         } else {
             await tx.rentRecord.create({
-                data: { tenantId, month: lastMonthLabel, amount: prorated, paid: false, note: `Prorated â€” move-out ${moveOutDate.getDate()} ${lastMonthLabel}` }
+                data: { 
+                    tenantId, 
+                    month: lastMonthLabel, 
+                    amount: prorated, 
+                    paid: false, 
+                    note: `Prorated — move-out ${moveOutDate.getDate()} ${lastMonthLabel}` 
+                }
             });
         }
 
@@ -763,15 +802,16 @@ export async function confirmMoveOut(tenantId: string, deductions: number, note:
         const unpaidRent = allRecords.filter(r => !r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
         const totalPaidRent = allRecords.filter(r => r.paid).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
         const depositAmount = monthlyRent;
-        const finalRefund = depositAmount - unpaidRent - deductions;
+        const finalRefund = depositAmount - unpaidRent - deductions + prepaidRentCredit;
 
         const settlementSummary = `
 Settlement Summary:
-- Security Deposit: â‚¹${depositAmount.toLocaleString('en-IN')}
-- Unpaid Rent: â‚¹${unpaidRent.toLocaleString('en-IN')} (incl. prorated move-out month)
-- Deductions: â‚¹${deductions.toLocaleString('en-IN')}
+- Security Deposit: ₹${depositAmount.toLocaleString('en-IN')}
+- Unpaid Rent: ₹${unpaidRent.toLocaleString('en-IN')} (incl. prorated move-out month)
+- Prepaid Rent Refund Credit: ₹${prepaidRentCredit.toLocaleString('en-IN')}
+- Deductions: ₹${deductions.toLocaleString('en-IN')}
 -------------------
-Final Refund: â‚¹${finalRefund.toLocaleString('en-IN')}
+Final Refund: ₹${finalRefund.toLocaleString('en-IN')}
 -------------------
 Note: ${note}
 `.trim();
@@ -784,7 +824,7 @@ Note: ${note}
                 finalRentPending: unpaidRent,
                 damageDeductions: deductions,
                 depositRefunded: finalRefund > 0 ? finalRefund : 0,
-                notes: note,
+                notes: `Deductions: ${note}${prepaidRentCredit > 0 ? ` | Rent Overpayment Refund Credit: ₹${prepaidRentCredit}` : ''}`,
                 settlementDate: moveOutDate
             }
         });

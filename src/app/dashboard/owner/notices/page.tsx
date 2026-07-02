@@ -125,6 +125,7 @@ export default function OwnerNoticesPage() {
         <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
         <tbody>
             <tr><td><strong>Security Deposit (Credit)</strong></td><td class="credit">+ ${inr(d.securityDeposit)}</td></tr>
+            ${d.prepaidRentCredit > 0 ? `<tr><td><strong style="color:#059669">Rent Overpayment Refund (Credit)</strong></td><td class="credit">+ ${inr(d.prepaidRentCredit)}</td></tr>` : ''}
             ${d.totalRentDue > 0 ? `<tr><td><strong style="color:#dc2626">Rent Dues (Outstanding)</strong></td><td class="debit">- ${inr(d.totalRentDue)}</td></tr>${unpaidRows}` : ''}
             ${d.totalDeductions > 0 ? `<tr><td><strong style="color:#d97706">Damage &amp; Maintenance Deductions</strong></td><td class="sub">- ${inr(d.totalDeductions)}</td></tr>${deductionRows}` : ''}
             <tr class="total-row">

@@ -272,6 +272,23 @@ export async function getTransactions() {
             take: 100
         });
 
+        // Fetch Settlement Records
+        const settlements = await prisma.settlementRecord.findMany({
+            orderBy: { settlementDate: 'desc' },
+            include: {
+                tenant: {
+                    include: {
+                        booking: {
+                            include: {
+                                user: { select: { id: true, name: true, email: true, displayId: true } }
+                            }
+                        }
+                    }
+                }
+            },
+            take: 100
+        });
+
         // Normalise token payments into same shape as Payment records
         const tokenRows = tokenBookings.map((b: any) => ({
             id: `TOKEN-${b.id}`,
@@ -343,8 +360,45 @@ export async function getTransactions() {
             };
         }));
 
+        // Normalise settlements into same shape as Payment records
+        const settlementRows = settlements.map((s: any) => {
+            const booking = s.tenant?.booking;
+            const rent = Number(s.tenant?.rent || 0);
+            const netRefund = Number(s.depositRefunded);
+            
+            // Calculate if tenant owed more than deposit
+            const netOwedByTenant = s.finalRentPending + s.damageDeductions - rent;
+            
+            const isRefund = netRefund > 0;
+            const amount = isRefund ? -netRefund : (netOwedByTenant > 0 ? netOwedByTenant : 0);
+            
+            if (amount === 0) return null; // Ignore cleared with zero net transaction
+            
+            return {
+                id: `SETTLE-${s.id}`,
+                bookingId: booking?.id || null,
+                invoiceId: null,
+                depositId: null,
+                amount: amount,
+                method: 'CASH/UPI (OFFLINE)',
+                status: 'SUCCESS',
+                razorpayOrderId: null,
+                razorpayId: null,
+                verifiedBy: 'OWNER_SETTLEMENT',
+                date: s.settlementDate || s.createdAt,
+                txnType: isRefund ? 'REFUND' : 'PAYMENT',
+                txnLabel: isRefund ? '🔄 Move-out Refund' : '📥 Damage Recovery',
+                booking: booking ? {
+                    id: booking.id,
+                    displayId: booking.displayId,
+                    propertyName: s.tenant.propertyName || booking.propertyName,
+                    user: booking.user,
+                } : null,
+            };
+        }).filter(Boolean);
+
         // Merge and sort by date descending
-        const allTxns = [...regularRows, ...tokenRows, ...refundRows].sort(
+        const allTxns = [...regularRows, ...tokenRows, ...refundRows, ...settlementRows].sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
