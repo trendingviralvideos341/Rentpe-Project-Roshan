@@ -219,7 +219,9 @@ export async function confirmMoveIn(tenantId: string) {
         // â”€â”€ Prorated first-month rent invoice â”€â”€
         // Days charged = move-in day â†’ last day of that month (inclusive)
         const { firstMonthRent, proratedNote } = await import('@/utils/billingUtils');
-        const firstMonthLabel = moveInDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+        const year = moveInDate.getFullYear();
+        const monthNum = String(moveInDate.getMonth() + 1).padStart(2, '0');
+        const firstMonthLabel = `${year}-${monthNum}`;
         const firstInvoiceAmount = firstMonthRent(rentAmount, moveInDate);
         const note = proratedNote(moveInDate); // e.g. "Prorated â€” 28 May to 31 May (4 days)"
 
@@ -339,13 +341,28 @@ export async function markRentAsPaid(recordId: string, paymentMethod: 'CASH' | '
     return record;
 }
 
-export async function markRentAsUnpaid(recordId: string, note?: string) {
+export async function markRentAsUnpaid(
+    recordId: string, 
+    reversalReason: 'TRANSACTION_FAILURE' | 'OTHER' | string = 'OTHER', 
+    note?: string
+) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
+    let actualReason = 'OTHER';
+    let actualNote = '';
+
+    if (reversalReason === 'TRANSACTION_FAILURE' || reversalReason === 'OTHER') {
+        actualReason = reversalReason;
+        actualNote = note || '';
+    } else {
+        actualReason = 'OTHER';
+        actualNote = reversalReason || '';
+    }
+
     const record = await prisma.rentRecord.update({
         where: { id: recordId },
-        data: { paid: false, paidOn: null, note: note || null }
+        data: { paid: false, paidOn: null, note: `Reason: ${actualReason} | Note: ${actualNote}` }
     });
 
     // Find and update the corresponding RentInvoice
@@ -384,17 +401,15 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
         }
     }
 
-    if (note?.trim()) {
-        await prisma.actionNote.create({
-            data: {
-                targetId: record.tenantId,
-                targetType: 'TENANT',
-                action: 'PAYMENT_MARKED_UNPAID',
-                reason: note.trim(),
-                performedBy: session.userId
-            }
-        });
-    }
+    await prisma.actionNote.create({
+        data: {
+            targetId: record.tenantId,
+            targetType: 'TENANT',
+            action: 'PAYMENT_MARKED_UNPAID',
+            reason: `Reason: ${actualReason} | Note: ${actualNote}`,
+            performedBy: session.userId
+        }
+    });
 
     logAuditEvent({
         actorId: session.userId,
@@ -403,7 +418,7 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
         actionType: 'UPDATE',
         entityType: 'TENANT',
         entityId: record.tenantId,
-        description: `Rent for ${record.month} reversed to Unpaid${note ? `. Note: ${note}` : ''}`,
+        description: `Rent for ${record.month} reversed to Unpaid. Reason: ${actualReason}. Note: ${actualNote}`,
     });
 
     revalidatePath('/dashboard/owner/tenants');

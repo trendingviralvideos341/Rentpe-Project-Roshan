@@ -21,6 +21,24 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 
+function formatMonthLabel(monthStr: string): string {
+    if (!monthStr) return "";
+    if (monthStr.includes(" ")) return monthStr;
+    const parts = monthStr.split("-");
+    if (parts.length === 2) {
+        const year = parts[0];
+        const monthNum = parseInt(parts[1], 10);
+        const monthNames = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+        if (monthNum >= 1 && monthNum <= 12) {
+            return `${monthNames[monthNum - 1]} ${year}`;
+        }
+    }
+    return monthStr;
+}
+
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -47,6 +65,11 @@ export default function TenantsPage() {
     // Dialog state for Viewing Receipt
     const [viewingReceiptInvoice, setViewingReceiptInvoice] = useState<any>(null);
     const [receiptLoading, setReceiptLoading] = useState(false);
+
+    // Dialog state for Marking Unpaid
+    const [markingUnpaidRecord, setMarkingUnpaidRecord] = useState<any>(null);
+    const [reversalReason, setReversalReason] = useState<'TRANSACTION_FAILURE' | 'OTHER'>('TRANSACTION_FAILURE');
+    const [reversalNote, setReversalNote] = useState('');
 
     // Notice override form state
     const [plannedMoveOut, setPlannedMoveOut] = useState("");
@@ -107,17 +130,18 @@ export default function TenantsPage() {
         }
     };
 
-    const handleMarkUnpaid = async (recordId: string, tenantId: string) => {
-        const note = ledgerNote[recordId]?.trim();
-        if (!note) {
-            toast.error("Please enter a note before reversing payment.");
+    const handleConfirmMarkUnpaid = async () => {
+        if (!markingUnpaidRecord) return;
+        if (!reversalNote.trim()) {
+            toast.error("Please enter a mandatory reversal note.");
             return;
         }
         setActionLoading(true);
         try {
-            await markRentAsUnpaid(recordId, note);
-            toast.success("Payment reversed to unpaid.");
-            setLedgerNote(prev => ({ ...prev, [recordId]: "" }));
+            await markRentAsUnpaid(markingUnpaidRecord.id, reversalReason, reversalNote.trim());
+            toast.success("Rent marked as unpaid successfully.");
+            setMarkingUnpaidRecord(null);
+            setReversalNote("");
             await fetchTenants();
         } catch (e: any) {
             toast.error("Error: " + e.message);
@@ -505,7 +529,7 @@ export default function TenantsPage() {
                                                     <div key={r.id} className="p-3.5 bg-slate-50 flex flex-col gap-2 text-xs">
                                                         <div className="flex items-center justify-between flex-wrap gap-2">
                                                             <div>
-                                                                <p className="font-bold text-slate-900 text-sm">{r.month}</p>
+                                                                <p className="font-bold text-slate-900 text-sm">{formatMonthLabel(r.month)}</p>
                                                                 <p className="text-slate-500 font-semibold mt-0.5">Rent Due: ₹{r.amount}</p>
                                                             </div>
                                                             <div className="flex items-center gap-2">
@@ -540,22 +564,18 @@ export default function TenantsPage() {
                                                                         Mark Paid
                                                                     </Button>
                                                                 ) : (
-                                                                    <div className="flex items-center gap-1">
-                                                                        <Input
-                                                                            className="h-7 text-xs w-28 bg-white"
-                                                                            placeholder="Reversal note..."
-                                                                            value={ledgerNote[r.id] || ""}
-                                                                            onChange={e => setLedgerNote(prev => ({ ...prev, [r.id]: e.target.value }))}
-                                                                        />
-                                                                        <Button
-                                                                            size="sm"
-                                                                            disabled={actionLoading}
-                                                                            className="h-7 text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold"
-                                                                            onClick={() => handleMarkUnpaid(r.id, selectedTenant.id)}
-                                                                        >
-                                                                            Force Unpaid
-                                                                        </Button>
-                                                                    </div>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        disabled={actionLoading}
+                                                                        className="h-7 text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold"
+                                                                        onClick={() => {
+                                                                            setMarkingUnpaidRecord(r);
+                                                                            setReversalReason('TRANSACTION_FAILURE');
+                                                                            setReversalNote('');
+                                                                        }}
+                                                                    >
+                                                                        Mark Unpaid
+                                                                    </Button>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -911,6 +931,65 @@ export default function TenantsPage() {
                                     <span className="font-black text-[#0F172A] text-base">₹{(viewingReceiptInvoice.amount + viewingReceiptInvoice.studentFee).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
                             </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Mark Unpaid Reversal Dialog */}
+            {markingUnpaidRecord && (
+                <Dialog open={!!markingUnpaidRecord} onOpenChange={() => setMarkingUnpaidRecord(null)}>
+                    <DialogContent className="max-w-md bg-white border rounded-2xl p-6 shadow-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                <XCircle className="w-5 h-5 text-red-600" /> Mark Rent Invoice as Unpaid
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-slate-400 font-bold uppercase mt-1">
+                                Month: {formatMonthLabel(markingUnpaidRecord.month)} · Rent Amount: ₹{markingUnpaidRecord.amount}
+                            </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Reversal / Failure Reason</label>
+                                <select
+                                    className="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+                                    value={reversalReason}
+                                    onChange={e => setReversalReason(e.target.value as any)}
+                                >
+                                    <option value="TRANSACTION_FAILURE">❌ Transaction Failure</option>
+                                    <option value="OTHER">⚠️ Others (Manual reversal/incorrect record)</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Mandatory Reversal Notes (Required)</label>
+                                <Input
+                                    placeholder="Enter detailed reason for payment reversal..."
+                                    value={reversalNote}
+                                    onChange={e => setReversalNote(e.target.value)}
+                                    className="bg-slate-50 border-slate-200 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setMarkingUnpaidRecord(null)}
+                                className="font-bold border-slate-200 rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size="sm"
+                                disabled={actionLoading || !reversalNote.trim()}
+                                onClick={handleConfirmMarkUnpaid}
+                                className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl"
+                            >
+                                {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null} Confirm Reversal
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>

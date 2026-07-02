@@ -73,7 +73,7 @@ export function TenantsContainer() {
                 label: "Confirm",
                 onClick: async () => {
                     try {
-                        await markRentAsUnpaid(recordId, note);
+                        await markRentAsUnpaid(recordId, 'OTHER', note);
                         setPayNotes(p => ({ ...p, [tenantId]: "" }));
                         setShowPayNote(p => ({ ...p, [tenantId]: false }));
                         toast.success("Rent reversed to Unpaid.");
