@@ -62,6 +62,7 @@ export default function AdminTransactionsPage() {
                     { key: 'TOKEN_PAYMENT', label: '🔐 Token Payments', color: 'bg-teal-100 text-teal-700' },
                     { key: 'RENT', label: '📄 Rent Payments', color: 'bg-indigo-100 text-indigo-700' },
                     { key: 'DEPOSIT', label: '🔒 Deposits', color: 'bg-amber-100 text-amber-700' },
+                    { key: 'REFUND', label: '🔄 Refunds', color: 'bg-rose-100 text-rose-700' },
                     { key: 'PAYMENT', label: '💳 Other', color: 'bg-slate-100 text-slate-600' },
                 ].map(f => (
                     <button key={f.key}
@@ -114,6 +115,7 @@ export default function AdminTransactionsPage() {
                                                     txn.txnType === 'TOKEN_PAYMENT' ? 'bg-teal-100 text-teal-700' :
                                                     txn.txnType === 'RENT' ? 'bg-indigo-100 text-indigo-700' :
                                                     txn.txnType === 'DEPOSIT' ? 'bg-amber-100 text-amber-700' :
+                                                    txn.txnType === 'REFUND' ? 'bg-rose-100 text-rose-700' :
                                                     'bg-slate-100 text-slate-600'
                                                 }`}>
                                                     {txn.txnLabel || txn.txnType || 'Payment'}
@@ -149,14 +151,21 @@ export default function AdminTransactionsPage() {
                                                 <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded font-mono uppercase">{txn.method || '—'}</span>
                                             </td>
                                             {/* Amount */}
-                                            <td className="p-4 font-bold text-sm">
-                                                ₹{Number(txn.amount).toLocaleString('en-IN')}
+                                            <td className={`p-4 font-bold text-sm ${Number(txn.amount) < 0 ? 'text-rose-600' : ''}`}>
+                                                {Number(txn.amount) < 0 
+                                                    ? `- ₹${Math.abs(Number(txn.amount)).toLocaleString('en-IN')}` 
+                                                    : `₹${Number(txn.amount).toLocaleString('en-IN')}`
+                                                }
                                             </td>
                                             {/* Status */}
                                             <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${txn.status === 'SUCCESS' || txn.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
-                                                    txn.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                                                    }`}>
+                                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                                                    txn.status === 'SUCCESS' || txn.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                                                    txn.status === 'REFUNDED' ? 'bg-rose-100 text-rose-800' :
+                                                    txn.status === 'DUPLICATE' ? 'bg-amber-100 text-amber-800' :
+                                                    txn.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+                                                    'bg-red-100 text-red-800'
+                                                }`}>
                                                     {txn.status}
                                                 </span>
                                             </td>

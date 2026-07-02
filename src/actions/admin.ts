@@ -265,6 +265,13 @@ export async function getTransactions() {
             }
         });
 
+        // Fetch processed Refund Records (processed refunds represent negative outflows)
+        const processedRefunds = await prisma.refundRecord.findMany({
+            where: { status: 'PROCESSED' },
+            orderBy: { processedAt: 'desc' },
+            take: 100
+        });
+
         // Normalise token payments into same shape as Payment records
         const tokenRows = tokenBookings.map((b: any) => ({
             id: `TOKEN-${b.id}`,
@@ -290,14 +297,54 @@ export async function getTransactions() {
         }));
 
         // Tag regular payments
-        const regularRows = payments.map((p: any) => ({
-            ...p,
-            txnType: p.invoiceId ? 'RENT' : p.depositId ? 'DEPOSIT' : 'PAYMENT',
-            txnLabel: p.invoiceId ? '📄 Rent Payment' : p.depositId ? '🔒 Security Deposit' : '💳 Payment',
+        const regularRows = payments.map((p: any) => {
+            let label = '💳 Payment';
+            if (p.invoiceId) label = '📄 Rent Payment';
+            else if (p.depositId) label = '🔒 Security Deposit';
+            else if (p.status === 'DUPLICATE') label = '⚠️ Duplicate Capture';
+            else if (p.status === 'REFUNDED') label = '🔄 Refunded Capture';
+
+            return {
+                ...p,
+                txnType: p.invoiceId ? 'RENT' : p.depositId ? 'DEPOSIT' : 'PAYMENT',
+                txnLabel: label,
+            };
+        });
+
+        // Normalise processed refunds into same shape as Payment records
+        const refundRows = await Promise.all(processedRefunds.map(async (r: any) => {
+            const booking = r.bookingId
+                ? await prisma.booking.findUnique({
+                    where: { id: r.bookingId },
+                    include: { user: { select: { id: true, name: true, email: true, displayId: true } } }
+                })
+                : null;
+
+            return {
+                id: `REFUND-${r.id}`,
+                bookingId: r.bookingId,
+                invoiceId: null,
+                depositId: null,
+                amount: -Number(r.amount), // negative amount
+                method: 'RAZORPAY',
+                status: 'REFUNDED',
+                razorpayOrderId: null,
+                razorpayId: r.txnReference || null,
+                verifiedBy: null,
+                date: r.processedAt || r.createdAt,
+                txnType: 'REFUND',
+                txnLabel: '🔄 Processed Refund',
+                booking: booking ? {
+                    id: booking.id,
+                    displayId: booking.displayId,
+                    propertyName: booking.propertyName,
+                    user: booking.user,
+                } : null,
+            };
         }));
 
         // Merge and sort by date descending
-        const allTxns = [...regularRows, ...tokenRows].sort(
+        const allTxns = [...regularRows, ...tokenRows, ...refundRows].sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 

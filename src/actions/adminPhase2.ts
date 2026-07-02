@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { getSLAStatus } from "@/lib/sla";
 import { KycRejectedTemplate } from "@/lib/email-templates";
 import { generateSignedDocUrl } from "@/lib/upload";
+import { razorpay } from "@/lib/razorpay";
 
 // ─────────────────────────────────────────────────────────
 // KYC VERIFICATION QUEUE
@@ -237,15 +238,100 @@ export async function approveRefund(refundId: string, note?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    const refund = await prisma.refundRecord.update({
+    // Fetch the refund request
+    const refund = await prisma.refundRecord.findUnique({
+        where: { id: refundId }
+    });
+
+    if (!refund) throw new Error("Refund request not found");
+    if (refund.status !== 'PENDING') throw new Error("Refund is already processed or rejected");
+
+    let finalTxnRef = refund.txnReference;
+    let paymentId = refund.txnReference;
+
+    // If there is no transaction reference on the RefundRecord, try to find a verified/duplicate payment
+    if (!paymentId) {
+        const payment = await (prisma as any).payment.findFirst({
+            where: {
+                bookingId: refund.bookingId,
+                status: { in: ['VERIFIED', 'DUPLICATE'] }
+            },
+            orderBy: { date: 'desc' }
+        });
+        if (payment && payment.razorpayId) {
+            paymentId = payment.razorpayId;
+        }
+    }
+
+    if (!paymentId) {
+        throw new Error("Cannot process refund: No valid Razorpay payment ID found for this booking.");
+    }
+
+    console.log(`[Admin] Initiating refund for RefundRecord: ${refundId}, Payment ID: ${paymentId}, Amount: ₹${refund.amount}`);
+
+    // Check if we are in mock mode
+    const isMockKey = !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID.startsWith('rzp_test_placeholder');
+    const isMockPayment = paymentId.startsWith('pay_mock_') || paymentId.startsWith('rfnd_');
+
+    if (isMockKey || isMockPayment) {
+        console.log(`[Admin] Mock mode detected. Simulating successful refund for payment: ${paymentId}`);
+        finalTxnRef = `rfnd_mock_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+    } else {
+        try {
+            // Live Razorpay API Refund Call
+            const rzpRefund = await razorpay.payments.refund(paymentId, {
+                amount: Math.round(refund.amount * 100), // Convert to paise
+                notes: {
+                    refundRecordId: refund.id,
+                    bookingId: refund.bookingId,
+                    reason: refund.reason,
+                    approvedBy: (session as any).userId
+                }
+            });
+            finalTxnRef = rzpRefund.id;
+            console.log(`[Admin] Live Razorpay refund successful. Refund ID: ${finalTxnRef}`);
+        } catch (apiError: any) {
+            console.error('[Admin] Razorpay refund API failed:', apiError);
+            
+            // Check if it's a test environment fallback case
+            if (process.env.NODE_ENV !== 'production' || apiError?.message?.includes('placeholder')) {
+                console.log('[Admin] API failed in non-prod. Falling back to mock simulation.');
+                finalTxnRef = `rfnd_fallback_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+            } else {
+                throw new Error(`Razorpay Refund failed: ${apiError?.message || 'Unknown API Error'}`);
+            }
+        }
+    }
+
+    // Update RefundRecord state
+    const updatedRefund = await prisma.refundRecord.update({
         where: { id: refundId },
         data: {
             status: 'PROCESSED',
             processedBy: (session as any).userId,
             processedAt: new Date(),
-            notes: note
+            txnReference: finalTxnRef,
+            notes: [note, refund.notes].filter(Boolean).join(' | ')
         }
     });
+
+    // Update associated Payment records' status to REFUNDED to sync ledger
+    try {
+        await (prisma as any).payment.updateMany({
+            where: {
+                OR: [
+                    { razorpayId: paymentId },
+                    { razorpayOrderId: paymentId }
+                ]
+            },
+            data: {
+                status: 'REFUNDED'
+            }
+        });
+        console.log(`[Admin] Synced associated payments to REFUNDED for Payment ID: ${paymentId}`);
+    } catch (dbErr: any) {
+        console.warn('[Admin] Non-critical: Failed to update payment status to REFUNDED:', dbErr.message);
+    }
 
     // Notify user
     const booking = refund.bookingId
@@ -259,7 +345,7 @@ export async function approveRefund(refundId: string, note?: string) {
         await createNotification(
             booking.user.id,
             'PAYMENT',
-            `✅ Your refund of ₹${refund.amount} has been approved and will be processed within 5-7 business days.`
+            `✅ Your refund of ₹${refund.amount} has been approved and processed. Transaction Reference: ${finalTxnRef}`
         );
     }
 
@@ -270,10 +356,11 @@ export async function approveRefund(refundId: string, note?: string) {
         actionType: 'APPROVE',
         entityType: 'REFUND',
         entityId: refundId,
-        description: `Refund of ₹${refund.amount} approved. Note: ${note || 'N/A'}`,
+        description: `Refund of ₹${refund.amount} approved and processed via Razorpay. Note: ${note || 'N/A'}. Refund Ref: ${finalTxnRef}`,
     });
 
     revalidatePath('/dashboard/admin/refunds');
+    revalidatePath('/dashboard/admin/transactions');
     return { success: true };
 }
 
