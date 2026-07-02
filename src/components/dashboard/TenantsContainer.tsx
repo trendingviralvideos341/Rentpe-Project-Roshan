@@ -167,6 +167,8 @@ export function TenantsContainer() {
         // Dedicated filter modes
         if (filterPayment === ("BLOCKED" as any)) return matchSearch && matchType && matchProperty && t.status === "Blocked";
         if (filterPayment === ("VACATED_FILTER" as any)) return matchSearch && matchType && matchProperty && t.status === "Checked Out";
+        if (filterPayment === ("DEBT_FILTER" as any)) return matchSearch && matchType && matchProperty && t.status === "Checked Out" && (t.settlementRecord?.tenantDebt || 0) > 0;
+
         
         const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
         // Default ALL: show only active (not blocked, not checked out)
@@ -247,6 +249,7 @@ export function TenantsContainer() {
                             <option value="UNPAID">Rent Unpaid (This Month)</option>
                             <option value="BLOCKED">Blocked Tenants</option>
                             <option value="VACATED_FILTER">✓ Vacated Tenants</option>
+                            <option value="DEBT_FILTER">⚠️ Tenants with Dues</option>
                         </select>
                     </div>
                 </CardContent>
@@ -272,9 +275,10 @@ export function TenantsContainer() {
                                 </div>
                                 <span className={`px-2 py-1 rounded-full text-[10px] font-black ${
                                     isBlocked ? "bg-red-100 text-red-700" :
+                                    (isCheckedOut && t.settlementRecord?.tenantDebt > 0) ? "bg-red-100 text-red-700" :
                                     isCheckedOut ? "bg-slate-100 text-slate-600" :
                                     isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                    {isBlocked ? "🚫 Blocked" : isCheckedOut ? "🏠 Out" : isPaid ? "✅ Paid" : "❌ Unpaid"}
+                                    {isBlocked ? "🚫 Blocked" : (isCheckedOut && t.settlementRecord?.tenantDebt > 0) ? `⚠️ Owed: ₹${t.settlementRecord.tenantDebt}` : isCheckedOut ? "🏠 Out" : isPaid ? "✅ Paid" : "❌ Unpaid"}
                                 </span>
                             </div>
                             <div className="text-xs text-slate-600 space-y-1">
@@ -392,7 +396,11 @@ export function TenantsContainer() {
                                                 <td className="p-4">
                                                     {isCheckedOut ? (
                                                         <div className="space-y-1">
-                                                            <span className="text-xs text-teal-700 font-black uppercase tracking-wider bg-teal-50 border border-teal-200 px-2 py-1 rounded-full">✓ Vacated</span>
+                                                            {t.settlementRecord?.tenantDebt > 0 ? (
+                                                                <span className="text-xs text-red-700 font-black uppercase tracking-wider bg-red-50 border border-red-200 px-2 py-1 rounded-full whitespace-nowrap">⚠️ Owed: ₹{t.settlementRecord.tenantDebt.toLocaleString('en-IN')}</span>
+                                                            ) : (
+                                                                <span className="text-xs text-teal-700 font-black uppercase tracking-wider bg-teal-50 border border-teal-200 px-2 py-1 rounded-full">✓ Vacated</span>
+                                                            )}
                                                             {t.vacateNote && (
                                                                 <details className="mt-1">
                                                                     <summary className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600 font-bold">View Settlement ▾</summary>

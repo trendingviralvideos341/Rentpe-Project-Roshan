@@ -490,6 +490,7 @@ model SettlementRecord {
   utilityCharges   Float    @default(0)
   damageDeductions Float    @default(0)
   depositRefunded  Float
+  tenantDebt       Float    @default(0)
   settlementDate   DateTime @default(now())
   notes            String?
   createdAt        DateTime @default(now())

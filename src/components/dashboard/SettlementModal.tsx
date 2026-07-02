@@ -292,7 +292,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                                     ['Tenant', tenant.name], ['Phone', tenant.phone],
                                     ['Room', tenant.roomNumber], ['Bed', bedNo],
                                     ['Security Deposit', `₹${securityDeposit.toLocaleString('en-IN')}`],
-                                    ['Final', `${ownerPaysRefund ? 'Refund' : tenantOwesMore ? 'Tenant Paid' : 'Cleared'} ₹${Math.abs(netRefund).toLocaleString('en-IN')}`],
+                                    ['Final', `${ownerPaysRefund ? 'Refund' : tenantOwesMore ? 'Outstanding Debt Due from Tenant' : 'Cleared'} ₹${Math.abs(netRefund).toLocaleString('en-IN')}`],
                                 ].map(([k, v]) => (
                                     <div key={k} className="flex justify-between text-sm">
                                         <span className="text-slate-500">{k}</span>
@@ -413,7 +413,7 @@ export function SettlementModal({ tenant, onClose, onSuccess }: Props) {
                                         ${deductions.length > 0 ? `<div class="row"><span class="label"><strong>Total Deductions</strong></span><span class="value deduction"><strong>- ₹${totalDeductionAmt.toLocaleString('en-IN')}</strong></span></div>` : ''}
                                     </div>
                                     <div class="final ${ownerPaysRefund ? 'refund' : 'owes'}">
-                                        <span>${ownerPaysRefund ? '🏦 Refund to Tenant' : tenantOwesMore ? '💰 Tenant Paid Owner' : '✅ Settlement Cleared'}</span>
+                                        <span>${ownerPaysRefund ? '🏦 Refund to Tenant' : tenantOwesMore ? '⚠️ Outstanding Debt Due from Tenant' : '✅ Settlement Cleared'}</span>
                                         <span class="amount">₹${Math.abs(netRefund).toLocaleString('en-IN')}</span>
                                     </div>
                                     <div class="footer">

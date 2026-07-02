@@ -58,7 +58,8 @@ export async function getTenants() {
                     status: true,
                     moveInChecklist: true,
                 }
-            }
+            },
+            settlementRecord: true
         },
         orderBy: { createdAt: 'desc' }
     });
@@ -477,6 +478,7 @@ Block Reason: ${note}
                 finalRentPending: unpaidRent,
                 damageDeductions: 0,
                 depositRefunded: finalRefund > 0 ? finalRefund : 0,
+                tenantDebt: finalRefund < 0 ? Math.abs(finalRefund) : 0,
                 notes: `EVICTION: ${note}`,
                 settlementDate: moveOutDate
             }
@@ -824,6 +826,7 @@ Note: ${note}
                 finalRentPending: unpaidRent,
                 damageDeductions: deductions,
                 depositRefunded: finalRefund > 0 ? finalRefund : 0,
+                tenantDebt: finalRefund < 0 ? Math.abs(finalRefund) : 0,
                 notes: `Deductions: ${note}${prepaidRentCredit > 0 ? ` | Rent Overpayment Refund Credit: ₹${prepaidRentCredit}` : ''}`,
                 settlementDate: moveOutDate
             }
