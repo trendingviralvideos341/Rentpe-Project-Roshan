@@ -317,7 +317,9 @@ export function PageExplainer({ role }: ExplainerProps) {
     const guides = role === "admin" ? adminGuides : ownerGuides;
     
     // Normalize path (handle subpages by checking start of path)
-    const matchedPath = Object.keys(guides).find(
+    // Sort keys by length descending to match the most specific path first
+    const sortedKeys = Object.keys(guides).sort((a, b) => b.length - a.length);
+    const matchedPath = sortedKeys.find(
         (key) => pathname === key || pathname.startsWith(key + "/")
     );
     const guide = matchedPath ? guides[matchedPath] : null;
