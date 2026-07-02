@@ -512,7 +512,7 @@ export default function AdminFinancialLedgerPage() {
                                     <h3 className="font-black text-slate-900 text-lg">Payment Mode Split</h3>
                                     <p className="text-xs text-slate-400 font-bold mt-0.5">Distribution of collected gross revenue</p>
                                 </div>
-                                <div className="relative h-[200px] w-full flex items-center justify-center">
+                                <div className="relative h-[200px] w-full">
                                     {(cashCollected === 0 && onlineCollected === 0) ? (
                                         <p className="text-xs text-slate-400 font-bold">No collections recorded in this period</p>
                                     ) : (

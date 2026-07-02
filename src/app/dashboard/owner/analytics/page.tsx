@@ -177,7 +177,7 @@ export default function AnalyticsPage() {
                                 <h3 className="font-black text-slate-900">Payment Mode Split</h3>
                                 <p className="text-xs text-slate-400 font-bold mt-0.5">Distribution of collected rent</p>
                             </div>
-                            <div className="relative h-[160px] w-full flex items-center justify-center">
+                            <div className="relative h-[160px] w-full">
                                 {((data?.paymentMethodSplit?.online || 0) === 0 && (data?.paymentMethodSplit?.cash || 0) === 0) ? (
                                     <p className="text-xs text-slate-400 font-bold">No collections recorded in this period</p>
                                 ) : (
