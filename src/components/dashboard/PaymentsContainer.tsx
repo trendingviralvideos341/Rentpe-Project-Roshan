@@ -59,7 +59,7 @@ export function PaymentsContainer() {
         const note = payNotes[tenantId]?.trim();
         if (!note) { toast.error("A note is mandatory before marking as Paid."); return; }
         try {
-            await markRentAsPaid(recordId, note);
+            await markRentAsPaid(recordId, 'CASH', note);
             setPayNotes(p => ({ ...p, [tenantId]: "" }));
             setShowNote(p => ({ ...p, [tenantId]: false }));
             toast.success("Rent marked as paid");

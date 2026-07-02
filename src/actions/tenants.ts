@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
@@ -40,6 +40,17 @@ export async function getTenants() {
         include: {
             property: { select: { name: true, displayId: true } },
             rentRecords: { orderBy: { createdAt: 'desc' } },
+            billingProfile: {
+                include: {
+                    invoices: {
+                        include: {
+                            payments: {
+                                where: { status: 'VERIFIED' }
+                            }
+                        }
+                    }
+                }
+            },
             booking: {
                 select: {
                     id: true,
@@ -247,41 +258,84 @@ export async function confirmMoveIn(tenantId: string) {
     });
 }
 
-export async function markRentAsPaid(recordId: string, note?: string) {
+export async function markRentAsPaid(recordId: string, paymentMethod: 'CASH' | 'ONLINE', reason: string) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
 
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    
+    // 1. Update the RentRecord
     const record = await prisma.rentRecord.update({
         where: { id: recordId },
-        data: { paid: true, paidOn: today }
+        data: { paid: true, paidOn: today, note: `Method: ${paymentMethod} | Note: ${reason}` }
     });
 
-    // Write action note if provided
-    if (note?.trim()) {
-        await prisma.actionNote.create({
-            data: {
-                targetId: record.tenantId,
-                targetType: 'TENANT',
-                action: 'PAYMENT_MARKED_PAID',
-                reason: note.trim(),
-                performedBy: session.userId
-            }
-        });
+    // 2. Find and update the corresponding RentInvoice
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: record.tenantId },
+        include: { billingProfile: { include: { invoices: true } } }
+    });
+
+    if (tenant && tenant.billingProfile) {
+        const matchingInvoice = tenant.billingProfile.invoices.find(
+            (inv: any) => inv.month === record.month && inv.status !== 'PAID'
+        );
+
+        if (matchingInvoice) {
+            // Update the RentInvoice status to PAID
+            await prisma.rentInvoice.update({
+                where: { id: matchingInvoice.id },
+                data: {
+                    status: 'PAID',
+                    paidAmount: matchingInvoice.amount,
+                    paidAt: new Date(),
+                    paymentMethod: paymentMethod,
+                    confirmedBy: session.userId,
+                    confirmedByName: `${session.name || 'Admin'} (Override)`,
+                }
+            });
+
+            // Create a Payment record so it is documented in the payment history/ledgers
+            await (prisma as any).payment.create({
+                data: {
+                    bookingId: tenant.bookingId!,
+                    invoiceId: matchingInvoice.id,
+                    amount: matchingInvoice.amount,
+                    method: paymentMethod,
+                    status: 'VERIFIED',
+                    razorpayId: paymentMethod === 'ONLINE' ? `admin_online_${Date.now()}` : `admin_cash_${Date.now()}`,
+                    verifiedBy: 'ADMIN_OVERRIDE',
+                    transferStatus: 'RELEASED',
+                    date: new Date()
+                }
+            });
+        }
     }
+
+    // Write action note
+    await prisma.actionNote.create({
+        data: {
+            targetId: record.tenantId,
+            targetType: 'TENANT',
+            action: 'PAYMENT_MARKED_PAID',
+            reason: `Mode: ${paymentMethod} | Reason: ${reason}`,
+            performedBy: session.userId
+        }
+    });
 
     logAuditEvent({
         actorId: session.userId,
-        actorRole: session.role || 'OWNER',
-        actorName: session.name || 'Owner',
+        actorRole: session.role || 'ADMIN',
+        actorName: session.name || 'Admin',
         actionType: 'UPDATE',
         entityType: 'TENANT',
         entityId: record.tenantId,
-        description: `Rent for ${record.month} marked as paid${note ? `. Note: ${note}` : ''}`,
+        description: `Rent for ${record.month} marked as paid via Admin Override. Mode: ${paymentMethod}. Reason: ${reason}`,
     });
 
     revalidatePath('/dashboard/owner/tenants');
     revalidatePath('/dashboard/owner/payments');
+    revalidatePath('/dashboard/admin/tenants');
     return record;
 }
 
@@ -291,8 +345,44 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
 
     const record = await prisma.rentRecord.update({
         where: { id: recordId },
-        data: { paid: false, paidOn: null }
+        data: { paid: false, paidOn: null, note: note || null }
     });
+
+    // Find and update the corresponding RentInvoice
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: record.tenantId },
+        include: { billingProfile: { include: { invoices: true } } }
+    });
+
+    if (tenant && tenant.billingProfile) {
+        const matchingInvoice = tenant.billingProfile.invoices.find(
+            (inv: any) => inv.month === record.month && inv.status === 'PAID'
+        );
+
+        if (matchingInvoice) {
+            await prisma.rentInvoice.update({
+                where: { id: matchingInvoice.id },
+                data: {
+                    status: 'PENDING',
+                    paidAmount: 0,
+                    paidRentAmount: 0,
+                    paidFoodAmount: 0,
+                    paidAt: null,
+                    paymentMethod: null,
+                    confirmedBy: null,
+                    confirmedByName: null
+                }
+            });
+
+            // Delete the mock override Payment record if it exists
+            await (prisma as any).payment.deleteMany({
+                where: {
+                    invoiceId: matchingInvoice.id,
+                    verifiedBy: 'ADMIN_OVERRIDE'
+                }
+            });
+        }
+    }
 
     if (note?.trim()) {
         await prisma.actionNote.create({
@@ -318,6 +408,7 @@ export async function markRentAsUnpaid(recordId: string, note?: string) {
 
     revalidatePath('/dashboard/owner/tenants');
     revalidatePath('/dashboard/owner/payments');
+    revalidatePath('/dashboard/admin/tenants');
     return record;
 }
 

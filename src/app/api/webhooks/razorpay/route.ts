@@ -231,7 +231,7 @@ async function handlePaymentCaptured(entity: RazorpayPaymentEntity) {
     if (payment.invoiceId) {
         const invoice = await prisma.rentInvoice.findUnique({
             where: { id: payment.invoiceId },
-            select: { amount: true, status: true }
+            select: { amount: true, status: true, month: true, tenantId: true }
         });
         if (invoice && invoice.status !== 'PAID') {
             await prisma.rentInvoice.update({
@@ -243,6 +243,13 @@ async function handlePaymentCaptured(entity: RazorpayPaymentEntity) {
                 }
             });
             console.log(`[Webhook] Invoice ${payment.invoiceId} marked PAID`);
+
+            // Sync to RentRecord
+            const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+            await prisma.rentRecord.updateMany({
+                where: { tenantId: invoice.tenantId, month: invoice.month },
+                data: { paid: true, paidOn: today }
+            });
         }
     }
 

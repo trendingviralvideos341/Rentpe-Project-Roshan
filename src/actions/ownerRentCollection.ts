@@ -275,6 +275,15 @@ export async function markInvoiceAsCashPaid(invoiceId: string, note?: string) {
         }
     });
 
+    // Sync to RentRecord
+    if (tenant) {
+        const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+        await prisma.rentRecord.updateMany({
+            where: { tenantId: tenant.id, month: invoice.month },
+            data: { paid: true, paidOn: today }
+        });
+    }
+
     // Notify tenant
     try {
         if (invoice.booking?.userId) {

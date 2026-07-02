@@ -163,12 +163,19 @@ export async function verifyPayment(data: {
         if (payment.invoiceId) {
             // ✅ LEGAL: paidAmount = base rent only (NOT student convenience fee).
             // student convenience fee is RentPe's service charge, not part of rent receipt.
-            const inv = await tx.rentInvoice.findUnique({ where: { id: payment.invoiceId }, select: { amount: true } });
+            const inv = await tx.rentInvoice.findUnique({ where: { id: payment.invoiceId }, select: { amount: true, month: true, tenantId: true } });
             const baseRentAmount = inv ? Number(inv.amount) : payment.amount;
             await tx.rentInvoice.update({
                 where: { id: payment.invoiceId },
                 data: { status: 'PAID', paidAt: new Date(), paidAmount: baseRentAmount }
             });
+            if (inv) {
+                const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+                await tx.rentRecord.updateMany({
+                    where: { tenantId: inv.tenantId, month: inv.month },
+                    data: { paid: true, paidOn: today }
+                });
+            }
         }
         
         if (payment.depositId) {
