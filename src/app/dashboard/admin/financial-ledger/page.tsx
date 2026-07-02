@@ -520,9 +520,9 @@ export default function AdminFinancialLedgerPage() {
                                             <PieChart>
                                                 <Pie
                                                     data={[
-                                                        { name: 'Online Payments', value: onlineCollected },
-                                                        { name: 'Cash Payments', value: cashCollected },
-                                                    ]}
+                                                        { name: 'Online Payments', value: onlineCollected, fill: '#4f46e5' },
+                                                        { name: 'Cash Payments', value: cashCollected, fill: '#f59e0b' },
+                                                    ].filter(d => d.value > 0)}
                                                     cx="50%"
                                                     cy="50%"
                                                     innerRadius={55}
@@ -531,9 +531,14 @@ export default function AdminFinancialLedgerPage() {
                                                     dataKey="value"
                                                     startAngle={90}
                                                     endAngle={-270}
+                                                    isAnimationActive={false}
                                                 >
-                                                    <Cell key="cell-online" fill="#4f46e5" strokeWidth={0} />
-                                                    <Cell key="cell-cash" fill="#f59e0b" strokeWidth={0} />
+                                                    {([
+                                                        { name: 'Online Payments', value: onlineCollected, fill: '#4f46e5' },
+                                                        { name: 'Cash Payments', value: cashCollected, fill: '#f59e0b' },
+                                                    ].filter(d => d.value > 0)).map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={0} />
+                                                    ))}
                                                 </Pie>
                                                 <RechartsTooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
                                             </PieChart>

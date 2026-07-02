@@ -185,9 +185,9 @@ export default function AnalyticsPage() {
                                         <PieChart>
                                             <Pie
                                                 data={[
-                                                    { name: 'Online Payments', value: data?.paymentMethodSplit?.online || 0 },
-                                                    { name: 'Cash Payments', value: data?.paymentMethodSplit?.cash || 0 },
-                                                ]}
+                                                    { name: 'Online Payments', value: data?.paymentMethodSplit?.online || 0, fill: '#4f46e5' },
+                                                    { name: 'Cash Payments', value: data?.paymentMethodSplit?.cash || 0, fill: '#f59e0b' },
+                                                ].filter(d => d.value > 0)}
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={45}
@@ -196,9 +196,14 @@ export default function AnalyticsPage() {
                                                 dataKey="value"
                                                 startAngle={90}
                                                 endAngle={-270}
+                                                isAnimationActive={false}
                                             >
-                                                <Cell key="cell-online" fill="#4f46e5" strokeWidth={0} />
-                                                <Cell key="cell-cash" fill="#f59e0b" strokeWidth={0} />
+                                                {([
+                                                    { name: 'Online Payments', value: data?.paymentMethodSplit?.online || 0, fill: '#4f46e5' },
+                                                    { name: 'Cash Payments', value: data?.paymentMethodSplit?.cash || 0, fill: '#f59e0b' },
+                                                ].filter(d => d.value > 0)).map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} strokeWidth={0} />
+                                                ))}
                                             </Pie>
                                             <Tooltip formatter={(v: any) => `₹${Number(v).toLocaleString('en-IN')}`} />
                                         </PieChart>
