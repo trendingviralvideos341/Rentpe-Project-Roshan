@@ -27,7 +27,6 @@ export async function getStudentProfile() {
                 status: true,
                 occupationType: true,
                 occupationDetail: true,
-                loyaltyPoints: true,
             } as any,
         });
 
@@ -81,7 +80,7 @@ export async function getStudentProfile() {
             realAuthenticityHash,
             documents: docs,
             lastBookingId: lastBooking?.id || null,
-            loyaltyPoints: (user as any)?.loyaltyPoints ?? 0,
+
         };
     } catch (e) {
         console.error("getStudentProfile Error:", e);

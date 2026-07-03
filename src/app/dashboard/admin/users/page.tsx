@@ -5,54 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Ban, CheckCircle, Search, RefreshCcw, Building, ChevronDown, ChevronUp, AlertTriangle, Eye, Star, X, Ghost, ArrowRight } from "lucide-react";
-import { getUsers, updateUserStatus, updateUserPoints } from "@/actions/admin";
+import { getUsers, updateUserStatus } from "@/actions/admin";
 import { impersonateUser } from "@/actions/admin-auth";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// ── Points Modal ──────────────────────────────────────
-function PointsModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (points: number, reason: string) => void; onCancel: () => void }) {
-    const [points, setPoints] = useState(user.loyaltyPoints || 0);
-    const [reason, setReason] = useState("");
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-indigo-100">
-                        <Star className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-lg">Manage Loyalty Points</h3>
-                        <p className="text-sm text-muted-foreground">{user.name} · Currently: {user.loyaltyPoints || 0} Points</p>
-                    </div>
-                </div>
-                <div className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground uppercase text-[10px] font-black">New Points Balance</label>
-                        <Input type="number" value={points} onChange={e => setPoints(parseInt(e.target.value) || 0)} className="font-black text-xl h-14 border-2 border-indigo-100 focus:border-indigo-500 rounded-xl" />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground uppercase text-[10px] font-black">Reason for Adjustment *</label>
-                        <textarea value={reason} onChange={e => setReason(e.target.value)}
-                            placeholder="e.g., Reward for on-time payment, manual correction, etc."
-                            className="w-full border-2 border-slate-100 rounded-xl p-3 text-sm resize-none h-24 focus:outline-none focus:border-indigo-500 transition-all" />
-                    </div>
-                </div>
-                <div className="flex gap-3 justify-end pt-4">
-                    <button onClick={onCancel} className="px-8 py-2.5 text-xs font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-all active:scale-95 shadow-sm uppercase tracking-widest">
-                        CANCEL
-                    </button>
-                    <button disabled={!reason.trim()} onClick={() => onConfirm(points, reason)}
-                        className="px-8 py-2.5 text-xs rounded-full text-white font-black bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4" /> Save Adjustments
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
+
 
 // ── Block/Unblock Modal ──────────────────────────────────
 function BlockModal({ user, onConfirm, onCancel }: { user: any; onConfirm: (reason: string) => void; onCancel: () => void }) {
@@ -167,7 +127,7 @@ export default function AdminUsersPage() {
     const [filterStatus, setFilterStatus] = useState(routerStatus || "ALL");
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [blockTarget, setBlockTarget] = useState<any | null>(null);
-    const [pointsTarget, setPointsTarget] = useState<any | null>(null);
+
     const [impersonateTarget, setImpersonateTarget] = useState<any | null>(null);
     const [processing, setProcessing] = useState(false);
 
@@ -211,20 +171,7 @@ export default function AdminUsersPage() {
         }
     }
 
-    async function handlePointsConfirm(points: number, reason: string) {
-        if (!pointsTarget) return;
-        setProcessing(true);
-        try {
-            await updateUserPoints(pointsTarget.id, points, reason);
-            toast.success("Loyalty points updated successfully.");
-            fetchUsers();
-        } catch {
-            toast.error("Failed to update points.");
-        } finally {
-            setProcessing(false);
-            setPointsTarget(null);
-        }
-    }
+
 
     async function handleImpersonateConfirm(reason: string) {
         if (!impersonateTarget) return;
@@ -271,7 +218,7 @@ export default function AdminUsersPage() {
     return (
         <div className="space-y-6">
             {blockTarget && <BlockModal user={blockTarget} onConfirm={handleBlockConfirm} onCancel={() => setBlockTarget(null)} />}
-            {pointsTarget && <PointsModal user={pointsTarget} onConfirm={handlePointsConfirm} onCancel={() => setPointsTarget(null)} />}
+
             {impersonateTarget && <ImpersonateModal user={impersonateTarget} onConfirm={handleImpersonateConfirm} onCancel={() => setImpersonateTarget(null)} />}
             <div className="flex justify-between items-start">
                 <div>
@@ -407,9 +354,6 @@ export default function AdminUsersPage() {
                                                                 <Eye className="h-4 w-4" />
                                                             </Button>
                                                         </Link>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-orange-600 hover:bg-orange-50" onClick={() => setPointsTarget(user)} title="Manage Loyalty Points">
-                                                            <Star className="h-4 w-4" />
-                                                        </Button>
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => handleImpersonate(user)} title="God Mode: Impersonate User">
                                                             <Ghost className="h-4 w-4" />
                                                         </Button>

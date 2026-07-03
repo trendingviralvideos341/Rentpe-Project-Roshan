@@ -1127,13 +1127,7 @@ export default function StudentDashboardPage() {
                                             </Badge>
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center justify-between">
-                                        <div>
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Loyalty Points</p>
-                                            <p className="text-lg font-black text-indigo-700">{profile?.loyaltyPoints || 0} Points</p>
-                                        </div>
-                                        <CreditCard className="h-8 w-8 text-indigo-200" />
-                                    </div>
+
                                 </div>
                             </div>
                         </CardContent>

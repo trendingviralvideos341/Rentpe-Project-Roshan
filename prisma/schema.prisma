@@ -28,7 +28,7 @@ model User {
   phoneVerified          Boolean              @default(false)
   city                   String?
   status                 String               @default("PENDING_VERIFICATION")
-  loyaltyPoints          Int                  @default(0)
+
   lastLoginAt            DateTime?            @default(now())
   lastLoginIp            String?
   bannedReason           String?

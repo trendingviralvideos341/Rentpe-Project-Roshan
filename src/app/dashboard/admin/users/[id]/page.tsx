@@ -209,11 +209,7 @@ export default function UserDetailPage() {
                                     </Badge>
                                 )}
                             </div>
-                            <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
-                                <div>
-                                    <div className="text-[9px] font-black text-slate-400 uppercase">Loyalty Points</div>
-                                    <div className="text-xl font-black text-indigo-600">{user.loyaltyPoints || 0}</div>
-                                </div>
+                            <div className="pt-4 border-t border-slate-100">
                                 <div>
                                     <div className="text-[9px] font-black text-slate-400 uppercase">Joined On</div>
                                     <div className="text-sm font-bold text-slate-700">{format(new Date(user.createdAt), "dd MMM yyyy")}</div>

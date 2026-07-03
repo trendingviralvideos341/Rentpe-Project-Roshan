@@ -144,8 +144,7 @@ export async function getOwnerDashboardStats() {
                 role: true,
                 phone: true,
                 createdAt: true,
-                displayId: true,
-                loyaltyPoints: true
+                displayId: true
             }
         });
 
@@ -168,7 +167,6 @@ export async function getOwnerDashboardStats() {
                 phone: ownerUser?.phone || null,
                 createdAt: ownerUser?.createdAt || new Date(),
                 displayId: ownerUser?.displayId || null,
-                loyaltyPoints: ownerUser?.loyaltyPoints ?? 0,
             }
         };
     } catch (e: any) {
