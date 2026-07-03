@@ -10,6 +10,7 @@ import { getSLAStatus } from "@/lib/sla";
 import { KycRejectedTemplate } from "@/lib/email-templates";
 import { generateSignedDocUrl } from "@/lib/upload";
 import { razorpay } from "@/lib/razorpay";
+import { generateSequentialId } from "@/lib/ids";
 
 // ─────────────────────────────────────────────────────────
 // KYC VERIFICATION QUEUE
@@ -234,6 +235,85 @@ export async function getRefundRequests(status?: string) {
     };
 }
 
+// ─── CREATE REFUND FROM SUPPORT TICKET (Manual Admin Trigger) ───────────────
+// Admins press the "Create Refund Request" button inside a Support Ticket detail
+// view. This creates a PENDING RefundRecord linked to both the ticket and the
+// underlying booking. The actual Razorpay refund is only triggered later, when
+// the admin presses "Approve" in the Refund Management tab.
+export async function createRefundFromTicket(input: {
+    ticketId:          string;   // Support Ticket DB id (e.g. uuid)
+    bookingId:         string;   // Booking the refund is against
+    amount:            number;   // Refund amount in ₹ (e.g. 5000)
+    reason:            string;   // Admin-entered reason / description
+    refundType?:       string;   // "PARTIAL" | "FULL" (default: "PARTIAL")
+    refundPlatformFee?:boolean;  // Toggle: also refund convenience fee?
+    platformFeeAmount?:number;   // Convenience fee to refund in ₹
+    gstAmount?:        number;   // GST (CGST+SGST) to reverse in ₹
+    ownerPenalty?:     number;   // 2% Razorpay MDR loss to debit owner (₹)
+    ownerPenaltyOwnerId?: string;// Owner who caused the dispute (for MDR debit)
+}) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    // Validate the ticket exists
+    const ticket = await (prisma as any).ticket.findUnique({
+        where: { id: input.ticketId },
+        select: { id: true, displayId: true, status: true }
+    });
+    if (!ticket) throw new Error(`Support ticket not found: ${input.ticketId}`);
+
+    // Validate the booking exists and belongs to the same context
+    const booking = await prisma.booking.findUnique({
+        where: { id: input.bookingId },
+        select: { id: true, userId: true, displayId: true }
+    });
+    if (!booking) throw new Error(`Booking not found: ${input.bookingId}`);
+
+    // Generate the RP-RFND-26-27-XXXXXX display ID (FY-sequential, GST-compliant)
+    const displayId = await generateSequentialId('REFUND');
+
+    const refund = await prisma.refundRecord.create({
+        data: {
+            displayId,
+            bookingId:           input.bookingId,
+            amount:              input.amount,
+            reason:              input.reason,
+            refundType:          input.refundType ?? 'PARTIAL',
+            status:              'PENDING',
+            initiatedBy:         (session as any).userId,
+            ticketId:            input.ticketId,
+            refundPlatformFee:   input.refundPlatformFee ?? false,
+            platformFeeRefunded: input.platformFeeAmount  ?? 0,
+            gstRefunded:         input.gstAmount          ?? 0,
+            ownerPenaltyApplied: input.ownerPenalty       ?? 0,
+            ownerPenaltyOwnerId: input.ownerPenaltyOwnerId ?? null,
+        }
+    });
+
+    // Notify the student that their refund is being reviewed
+    await createNotification(
+        booking.userId,
+        'PAYMENT',
+        `🔄 A refund request of ₹${input.amount} has been raised by RentPe support (Ref: ${displayId}). You will be notified once it is processed.`
+    );
+
+    await logAuditEvent({
+        actorId:     (session as any).userId,
+        actorRole:   'ADMIN',
+        actorName:   (session as any).name || 'Admin',
+        actionType:  'CREATE',
+        entityType:  'REFUND',
+        entityId:    refund.id,
+        description: `Refund request ${displayId} created from Support Ticket ${ticket.displayId}. Amount: ₹${input.amount}. Platform fee refund: ${input.refundPlatformFee ? 'YES' : 'NO'}. Owner penalty: ₹${input.ownerPenalty ?? 0}.`,
+        newValue:    { displayId, ticketId: input.ticketId, bookingId: input.bookingId } as any,
+    });
+
+    revalidatePath('/dashboard/admin/refunds');
+    revalidatePath('/dashboard/admin/tickets');
+    return { success: true, refund };
+}
+
+
 export async function approveRefund(refundId: string, note?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -303,17 +383,106 @@ export async function approveRefund(refundId: string, note?: string) {
         }
     }
 
-    // Update RefundRecord state
+    // Update RefundRecord state — including platform fee, GST, MDR penalty amounts
     const updatedRefund = await prisma.refundRecord.update({
         where: { id: refundId },
         data: {
-            status: 'PROCESSED',
+            status:      'PROCESSED',
             processedBy: (session as any).userId,
             processedAt: new Date(),
             txnReference: finalTxnRef,
             notes: [note, refund.notes].filter(Boolean).join(' | ')
         }
     });
+
+    // ── Platform Fee Refund: Deduct from RentPe's platform wallet ───────────
+    if ((refund as any).refundPlatformFee && (refund as any).platformFeeRefunded > 0) {
+        try {
+            await (prisma as any).platformSettings.update({
+                where: { id: 1 },
+                data: {
+                    platformWalletBalance: { decrement: (refund as any).platformFeeRefunded }
+                }
+            });
+            console.log(`[Admin] Platform wallet debited ₹${(refund as any).platformFeeRefunded} for refund ${refundId}`);
+        } catch (walletErr: any) {
+            console.warn('[Admin] Non-critical: Failed to update platform wallet balance:', walletErr.message);
+        }
+
+        // ── Issue GST Credit Note (CN/26-27/XXXX) for CGST/SGST reversal ──
+        if ((refund as any).gstRefunded > 0) {
+            try {
+                const cnDisplayId = await generateSequentialId('CREDIT_NOTE');
+                const cgst = parseFloat(((refund as any).gstRefunded / 2).toFixed(2));
+                const sgst = cgst;
+
+                await (prisma as any).creditNote.create({
+                    data: {
+                        displayId:    cnDisplayId,   // CN/26-27/0001
+                        bookingId:    refund.bookingId,
+                        amount:       (refund as any).gstRefunded,
+                        reason:       `GST reversal for convenience fee refund — Refund ID: ${ (refund as any).displayId }`,
+                        type:         'GST_REVERSAL',
+                        createdById:  (session as any).userId,
+                    }
+                });
+
+                // Link the credit note back to the refund record for audit trail
+                await prisma.refundRecord.update({
+                    where: { id: refundId },
+                    data:  { creditNoteId: cnDisplayId }
+                });
+
+                console.log(`[Admin] GST Credit Note ${cnDisplayId} issued. CGST: ₹${cgst}, SGST: ₹${sgst}`);
+
+                await logAuditEvent({
+                    actorId:     (session as any).userId,
+                    actorRole:   'ADMIN',
+                    actorName:   (session as any).name || 'Admin',
+                    actionType:  'CREATE',
+                    entityType:  'CREDIT_NOTE',
+                    entityId:    cnDisplayId,
+                    description: `GST Credit Note ${cnDisplayId} issued for ₹${(refund as any).gstRefunded} (CGST ₹${cgst} + SGST ₹${sgst}) — linked to Refund ${ (refund as any).displayId }`,
+                });
+            } catch (cnErr: any) {
+                console.warn('[Admin] Non-critical: GST Credit Note creation failed:', cnErr.message);
+            }
+        }
+    }
+
+    // ── Owner 2% Razorpay MDR Penalty: Debit from owner's next payout ───────
+    if ((refund as any).ownerPenaltyApplied > 0 && (refund as any).ownerPenaltyOwnerId) {
+        try {
+            // Record the MDR loss as a negative payout adjustment against the owner
+            await (prisma as any).ownerPayout.create({
+                data: {
+                    ownerId:          (refund as any).ownerPenaltyOwnerId,
+                    period:           new Date().toISOString().slice(0, 7), // "2026-07"
+                    grossAmount:      0,
+                    commissionAmount: 0,
+                    gstOnCommission:  0,
+                    tds:              0,
+                    netAmount:        -Math.abs((refund as any).ownerPenaltyApplied), // Negative = deduction
+                    status:           'PENDING',
+                    notes:            `2% Razorpay MDR gateway fee penalty — Owner caused dispute. Refund ID: ${ (refund as any).displayId }`,
+                }
+            });
+            console.log(`[Admin] Owner MDR penalty of ₹${(refund as any).ownerPenaltyApplied} recorded against owner ${(refund as any).ownerPenaltyOwnerId}`);
+
+            await logAuditEvent({
+                actorId:     (session as any).userId,
+                actorRole:   'ADMIN',
+                actorName:   (session as any).name || 'Admin',
+                actionType:  'UPDATE',
+                entityType:  'PAYOUT',
+                entityId:    (refund as any).ownerPenaltyOwnerId,
+                description: `Owner MDR penalty of ₹${(refund as any).ownerPenaltyApplied} debited (2% Razorpay gateway fee loss) — Refund ${ (refund as any).displayId }`,
+            });
+        } catch (mdrErr: any) {
+            console.warn('[Admin] Non-critical: Owner MDR penalty recording failed:', mdrErr.message);
+        }
+    }
+
 
     // Update associated Payment records' status to REFUNDED to sync ledger
     try {

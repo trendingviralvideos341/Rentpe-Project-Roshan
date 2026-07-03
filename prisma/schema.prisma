@@ -1102,21 +1102,37 @@ model UserSession {
 }
 
 model RefundRecord {
-  id           String    @id @default(uuid())
-  bookingId    String
-  amount       Float
-  reason       String
-  refundType   String    @default("PARTIAL")
-  status       String    @default("PENDING")
-  initiatedBy  String
-  initiatedAt  DateTime  @default(now())
-  processedAt  DateTime?
-  processedBy  String?
-  txnReference String?
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  displayId            String    @unique  // RP-RFND-26-27-000001 (FY-sequential, GST-compliant)
+  bookingId            String
+  amount               Float
+  reason               String
+  refundType           String    @default("PARTIAL")   // PARTIAL | FULL
+  status               String    @default("PENDING")   // PENDING | PROCESSED | REJECTED
+  initiatedBy          String    // userId of admin who created the request
+  initiatedAt          DateTime  @default(now())
+  processedAt          DateTime?
+  processedBy          String?   // userId of admin who approved/rejected
+  txnReference         String?   // Razorpay rfnd_XXXX reference after gateway execution
+  notes                String?
+
+  // ── Support Ticket Link ──────────────────────────────────────────────────
+  ticketId             String?   // Links back to Ticket.id (TKT-XXXXXXXX) for audit trail
+
+  // ── Platform Fee Refund Controls (Admin Toggle) ──────────────────────────
+  refundPlatformFee    Boolean   @default(false) // Toggle: include convenience fee in refund?
+  platformFeeRefunded  Float     @default(0)     // Actual platform convenience fee refunded (₹)
+  gstRefunded          Float     @default(0)     // GST amount reversed (CGST + SGST) (₹)
+  creditNoteId         String?   // CN/26-27/XXXX — linked GST credit note display ID
+
+  // ── Owner MDR Penalty (2% Razorpay gateway loss recovery) ───────────────
+  ownerPenaltyApplied  Float     @default(0)     // 2% MDR deducted from owner's next payout (₹)
+  ownerPenaltyOwnerId  String?   // Owner ID against whom the MDR penalty is debited
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
+
 
 model OwnerStaffMember {
   id                String                    @id @default(uuid())

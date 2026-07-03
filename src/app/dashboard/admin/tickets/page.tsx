@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { getAllTickets, replyToTicket, updateTicketStatus, resolveTicket, adminRouteTicket } from "@/actions/ops";
+import { createRefundFromTicket } from "@/actions/adminPhase2";
 import {
     CheckCircle2, Clock, AlertCircle, Send, Filter, Users, Building,
     ShieldCheck, Loader2, ChevronDown, ChevronRight, ArrowUpRight,
-    MessageCircle, Activity
+    MessageCircle, Activity, ReceiptText, X
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -48,6 +49,25 @@ export default function AdminTicketsPage() {
     const [noteText, setNoteText] = useState<Record<string, string>>({});
     const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
 
+    // Refund modal state
+    const [refundModal, setRefundModal] = useState<{ open: boolean; ticket: any | null }>({
+        open: false, ticket: null
+    });
+    const [refundForm, setRefundForm] = useState({
+        bookingId:         "",
+        amount:            "",
+        reason:            "",
+        refundType:        "PARTIAL" as "PARTIAL" | "FULL",
+        refundPlatformFee: false,
+        platformFeeAmount: "",
+        gstAmount:         "",
+        applyOwnerPenalty: false,
+        ownerPenalty:      "",
+    });
+    const [refundSubmitting, setRefundSubmitting] = useState(false);
+    const [refundSuccess, setRefundSuccess] = useState<string | null>(null);
+    const [refundError, setRefundError]   = useState<string | null>(null);
+
     const fetchAll = async () => {
         setLoading(true);
         try { setTickets(await getAllTickets()); } catch { }
@@ -64,6 +84,45 @@ export default function AdminTicketsPage() {
         catch { alert("Failed to send reply."); }
         finally { setSendingReply(p => ({ ...p, [id]: false })); }
     };
+
+    const openRefundModal = (ticket: any) => {
+        setRefundModal({ open: true, ticket });
+        setRefundForm({ bookingId: "", amount: "", reason: "", refundType: "PARTIAL",
+            refundPlatformFee: false, platformFeeAmount: "", gstAmount: "",
+            applyOwnerPenalty: false, ownerPenalty: "" });
+        setRefundSuccess(null);
+        setRefundError(null);
+    };
+
+    const submitRefund = async () => {
+        if (!refundModal.ticket) return;
+        if (!refundForm.bookingId.trim()) { setRefundError("Booking ID is required."); return; }
+        if (!refundForm.amount || Number(refundForm.amount) <= 0) { setRefundError("Enter a valid refund amount."); return; }
+        if (!refundForm.reason.trim()) { setRefundError("Please provide a reason."); return; }
+
+        setRefundSubmitting(true);
+        setRefundError(null);
+        try {
+            const result = await createRefundFromTicket({
+                ticketId:           refundModal.ticket.id,
+                bookingId:          refundForm.bookingId.trim(),
+                amount:             Number(refundForm.amount),
+                reason:             refundForm.reason.trim(),
+                refundType:         refundForm.refundType,
+                refundPlatformFee:  refundForm.refundPlatformFee,
+                platformFeeAmount:  refundForm.refundPlatformFee ? Number(refundForm.platformFeeAmount) : 0,
+                gstAmount:          refundForm.refundPlatformFee ? Number(refundForm.gstAmount) : 0,
+                ownerPenalty:       refundForm.applyOwnerPenalty ? Number(refundForm.ownerPenalty) : 0,
+                ownerPenaltyOwnerId: refundForm.applyOwnerPenalty ? (refundModal.ticket.ownerId || undefined) : undefined,
+            });
+            setRefundSuccess(`✅ Refund request ${(result.refund as any).displayId} created successfully! It will appear in the Refund Management tab.`);
+        } catch (err: any) {
+            setRefundError(err.message || "Failed to create refund request.");
+        } finally {
+            setRefundSubmitting(false);
+        }
+    };
+
 
     const handleStatus = async (id: string, status: any) => {
         try { await updateTicketStatus(id, status, noteText[id]); setNoteText(p => ({ ...p, [id]: "" })); fetchAll(); }
@@ -85,11 +144,173 @@ export default function AdminTicketsPage() {
 
     return (
         <div className="space-y-6">
+
+            {/* ── REFUND MODAL ──────────────────────────────────────────────── */}
+            {refundModal.open && refundModal.ticket && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-background border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b">
+                            <div>
+                                <h2 className="font-black text-base">🧾 Create Refund Request</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Linked to ticket: <span className="font-mono font-bold text-indigo-600">{refundModal.ticket.displayId}</span>
+                                </p>
+                            </div>
+                            <button onClick={() => setRefundModal({ open: false, ticket: null })}
+                                className="p-1.5 hover:bg-muted rounded-lg transition-colors">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-5 space-y-4">
+                            {refundSuccess ? (
+                                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-semibold text-emerald-800">
+                                    {refundSuccess}
+                                    <div className="mt-3">
+                                        <button onClick={() => setRefundModal({ open: false, ticket: null })}
+                                            className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Booking ID */}
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase">Booking ID *</label>
+                                        <input type="text"
+                                            placeholder="Paste or type booking ID here (RP-B-XXXXX)"
+                                            value={refundForm.bookingId}
+                                            onChange={e => setRefundForm(p => ({ ...p, bookingId: e.target.value }))}
+                                            className="w-full border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400 font-mono"
+                                        />
+                                    </div>
+
+                                    {/* Refund Amount */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase">Refund Amount (₹) *</label>
+                                            <input type="number" min="1" placeholder="e.g. 5000"
+                                                value={refundForm.amount}
+                                                onChange={e => setRefundForm(p => ({ ...p, amount: e.target.value }))}
+                                                className="w-full border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase">Refund Type</label>
+                                            <select value={refundForm.refundType}
+                                                onChange={e => setRefundForm(p => ({ ...p, refundType: e.target.value as any }))}
+                                                className="w-full border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                                                <option value="PARTIAL">Partial</option>
+                                                <option value="FULL">Full</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Reason */}
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase">Reason / Description *</label>
+                                        <textarea rows={3} placeholder="Briefly explain the reason for this refund..."
+                                            value={refundForm.reason}
+                                            onChange={e => setRefundForm(p => ({ ...p, reason: e.target.value }))}
+                                            className="w-full border rounded-xl px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                                        />
+                                    </div>
+
+                                    {/* Platform Fee Toggle */}
+                                    <div className="p-3 rounded-xl border bg-blue-50/60 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-black text-blue-800">Refund Convenience Fee &amp; GST?</p>
+                                                <p className="text-[10px] text-blue-600 mt-0.5">Toggles reversal of RentPe platform fee + CGST/SGST. Will deduct from platform wallet &amp; issue a GST Credit Note (CN/26-27/XXXX).</p>
+                                            </div>
+                                            <button type="button"
+                                                onClick={() => setRefundForm(p => ({ ...p, refundPlatformFee: !p.refundPlatformFee }))}
+                                                className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ml-3 ${refundForm.refundPlatformFee ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${refundForm.refundPlatformFee ? 'translate-x-5' : 'translate-x-0'}`} />
+                                            </button>
+                                        </div>
+                                        {refundForm.refundPlatformFee && (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-blue-700 uppercase">Platform Fee (₹)</label>
+                                                    <input type="number" min="0" placeholder="e.g. 499"
+                                                        value={refundForm.platformFeeAmount}
+                                                        onChange={e => setRefundForm(p => ({ ...p, platformFeeAmount: e.target.value }))}
+                                                        className="w-full border border-blue-200 rounded-lg px-2.5 py-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-blue-700 uppercase">GST Amount (₹) (CGST+SGST)</label>
+                                                    <input type="number" min="0" placeholder="e.g. 89.82"
+                                                        value={refundForm.gstAmount}
+                                                        onChange={e => setRefundForm(p => ({ ...p, gstAmount: e.target.value }))}
+                                                        className="w-full border border-blue-200 rounded-lg px-2.5 py-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Owner MDR Penalty Toggle */}
+                                    <div className="p-3 rounded-xl border bg-orange-50/60 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-black text-orange-800">Apply 2% MDR Penalty to Owner?</p>
+                                                <p className="text-[10px] text-orange-600 mt-0.5">Debits 2% Razorpay gateway fee loss from the owner's next payout. Use when the dispute is owner-caused.</p>
+                                            </div>
+                                            <button type="button"
+                                                onClick={() => setRefundForm(p => ({ ...p, applyOwnerPenalty: !p.applyOwnerPenalty }))}
+                                                className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ml-3 ${refundForm.applyOwnerPenalty ? 'bg-orange-600' : 'bg-slate-300'}`}>
+                                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${refundForm.applyOwnerPenalty ? 'translate-x-5' : 'translate-x-0'}`} />
+                                            </button>
+                                        </div>
+                                        {refundForm.applyOwnerPenalty && (
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-orange-700 uppercase">MDR Penalty Amount (₹) (2% of original payment)</label>
+                                                <input type="number" min="0" placeholder="e.g. 118 (2% of ₹5900)"
+                                                    value={refundForm.ownerPenalty}
+                                                    onChange={e => setRefundForm(p => ({ ...p, ownerPenalty: e.target.value }))}
+                                                    className="w-full border border-orange-200 rounded-lg px-2.5 py-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Error */}
+                                    {refundError && (
+                                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700">
+                                            ⚠️ {refundError}
+                                        </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="flex gap-2 justify-end pt-1">
+                                        <button onClick={() => setRefundModal({ open: false, ticket: null })}
+                                            className="px-4 py-2 text-xs font-bold border rounded-xl hover:bg-muted transition-colors">
+                                            Cancel
+                                        </button>
+                                        <button onClick={submitRefund} disabled={refundSubmitting}
+                                            className="px-5 py-2 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 transition-colors flex items-center gap-1.5">
+                                            {refundSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ReceiptText className="h-3.5 w-3.5" />}
+                                            {refundSubmitting ? "Creating..." : "Create Refund Request"}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header + Stats */}
             <div>
                 <h1 className="text-3xl font-bold">Support Tickets</h1>
                 <p className="text-muted-foreground text-sm mt-0.5">Full platform visibility — all tickets from students and owners.</p>
             </div>
+
 
             {/* Stat Row */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
@@ -276,7 +497,7 @@ export default function AdminTicketsPage() {
                                                     onChange={e => setNoteText(p => ({ ...p, [ticket.id]: e.target.value }))}
                                                     className="w-full border rounded-xl px-3 py-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                                 />
-                                                <div className="pt-2 border-t mt-2 flex items-center gap-2">
+                                                <div className="pt-2 border-t mt-2 flex items-center gap-2 flex-wrap">
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Route Team:</span>
                                                     <button onClick={async () => {
                                                         const target = ticket.targetTeam === "ADMIN" ? "OWNER" : "ADMIN";
@@ -286,6 +507,12 @@ export default function AdminTicketsPage() {
                                                         }
                                                     }} className="px-2 py-1 bg-white hover:bg-slate-100 border text-[10px] font-bold rounded-lg transition-all text-slate-700 flex items-center gap-1 shadow-sm">
                                                         🔁 Change routing to {ticket.targetTeam === "ADMIN" ? "OWNER" : "ADMIN"}
+                                                    </button>
+                                                    {/* ── CREATE REFUND REQUEST BUTTON ── */}
+                                                    <button onClick={() => openRefundModal(ticket)}
+                                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg border border-emerald-700 transition-all flex items-center gap-1.5 shadow-sm ml-auto">
+                                                        <ReceiptText className="h-3 w-3" />
+                                                        Create Refund Request
                                                     </button>
                                                 </div>
                                             </div>

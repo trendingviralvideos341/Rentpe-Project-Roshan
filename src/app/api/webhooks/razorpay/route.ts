@@ -38,6 +38,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/prisma';
+import { generateSequentialId } from '@/lib/ids';
 
 // ── Type for Razorpay payment entity from webhook payload ──
 interface RazorpayPaymentEntity {
@@ -454,8 +455,12 @@ async function handleDuplicatePayment({
     // Reason is clearly structured so admin knows exactly what happened.
     let refundRecord: any = null;
     try {
+        // Generate the FY-sequential display ID (RP-RFND-26-27-XXXXXX) for GSTR compliance
+        const refundDisplayId = await generateSequentialId('REFUND');
+
         refundRecord = await prisma.refundRecord.create({
             data: {
+                displayId:  refundDisplayId,
                 bookingId,
                 amount: amountInRupees,
                 reason: `Duplicate Payment — UPI Late Authorization. Invoice for ${invoiceMonth} was already paid. Razorpay Payment ID: ${razorpayPaymentId}. Please verify in Razorpay dashboard and approve this refund.`,
@@ -466,7 +471,7 @@ async function handleDuplicatePayment({
                 notes: `Auto-detected by Razorpay Webhook on ${new Date().toLocaleString('en-IN')}. Property: ${propertyName}. Amount: ₹${amountInRupees.toLocaleString('en-IN')}`,
             }
         });
-        console.log(`[Webhook] RefundRecord created for admin action: ${refundRecord.id}`);
+        console.log(`[Webhook] RefundRecord created for admin action: ${refundRecord.id} (${refundDisplayId})`);
     } catch (err) {
         console.error('[Webhook] Failed to create RefundRecord:', err);
     }

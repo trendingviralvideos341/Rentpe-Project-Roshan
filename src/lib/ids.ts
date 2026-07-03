@@ -46,6 +46,7 @@ const ID_CONFIG: Record<string, {
     randomLen?: number;  // OPAQUE only
     pad?:       number;  // SEQUENTIAL only
     resetPerFY: boolean; // SEQUENTIAL only — reset counter per Financial Year?
+    separator?: string;  // SEQUENTIAL only — override the separator char (default '-'). e.g. '/' for CN/26-27/0001
     auditLog:   boolean;
 }> = {
     // ── OPAQUE — Random IDs (People & Physical Assets) ──────────────────
@@ -65,8 +66,12 @@ const ID_CONFIG: Record<string, {
     // BOOKING does NOT reset per FY (a booking ID is permanent for its lifetime)
     'BOOKING':  { prefix: 'RP-B',   track: 'SEQUENTIAL', pad: 5, resetPerFY: false, auditLog: true  },
     // INVOICE & PAYMENT reset per FY (GST mandates fresh sequence each financial year)
-    'INVOICE':  { prefix: 'RP-INV', track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
-    'PAYMENT':  { prefix: 'RP-PAY', track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
+    'INVOICE':  { prefix: 'RP-INV',  track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
+    'PAYMENT':  { prefix: 'RP-PAY',  track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
+    // REFUND resets per FY — RP-RFND-26-27-000001 (unambiguous vs generic "REF" = Reference)
+    'REFUND':   { prefix: 'RP-RFND', track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
+    // CREDIT_NOTE uses forward-slash separator for GSTR compliance — CN/26-27/0001
+    'CREDIT_NOTE': { prefix: 'CN',   track: 'SEQUENTIAL', pad: 4, resetPerFY: true,  separator: '/', auditLog: true  },
 };
 
 // ─── Financial Year (Indian: April → March) ───────────────────────────────────
@@ -222,9 +227,13 @@ export async function generateSequentialId(type: string): Promise<string> {
     }
 
     const padded    = counter.sequence.toString().padStart(config.pad ?? 5, '0');
+    // Format the FY as "26-27" (hyphenated, CA/GST-compliant) instead of "2627".
+    // The DB counter key stays as "FY2627" for index stability — only the display string changes.
+    const sep = config.separator ?? '-'; // default separator is hyphen; CN uses '/'
+    const fyDisplay = `${fy.slice(0, 2)}-${fy.slice(2)}`; // "2627" → "26-27"
     const displayId = config.resetPerFY
-        ? `${config.prefix}-${fy}-${padded}` // e.g. RP-INV-2627-000001
-        : `${config.prefix}-${padded}`;       // e.g. RP-B-00001
+        ? `${config.prefix}${sep}${fyDisplay}${sep}${padded}` // e.g. RP-INV-26-27-000001 or CN/26-27/0001
+        : `${config.prefix}-${padded}`;                       // e.g. RP-B-00001
 
     // Mandatory audit log for all financial IDs (GST & Income Tax compliance)
     if (config.auditLog) {

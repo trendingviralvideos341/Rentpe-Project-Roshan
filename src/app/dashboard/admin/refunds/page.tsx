@@ -85,7 +85,9 @@ export default function AdminRefundsPage() {
                     r.booking?.user?.name?.toLowerCase().includes(q) ||
                     r.booking?.user?.email?.toLowerCase().includes(q) ||
                     r.reason?.toLowerCase().includes(q) ||
-                    r.id?.toLowerCase().includes(q)
+                    r.id?.toLowerCase().includes(q) ||
+                    r.displayId?.toLowerCase().includes(q) ||
+                    r.ticketId?.toLowerCase().includes(q)
                 );
             }
             return true;
@@ -201,8 +203,14 @@ export default function AdminRefundsPage() {
                                 <CardContent className="p-4 space-y-2">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-mono text-xs text-slate-400">{r.id?.slice(-10).toUpperCase()}</p>
-                                            <p className="font-black text-xl text-slate-900">{fmt(r.amount)}</p>
+                                            {/* Display RP-RFND-26-27-XXXXXX ID */}
+                                            <p className="font-mono text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded inline-block">{r.displayId || r.id?.slice(-10).toUpperCase()}</p>
+                                            {r.ticketId && (
+                                                <p className="font-mono text-[10px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded inline-block ml-1">
+                                                    🎫 Ticket Linked
+                                                </p>
+                                            )}
+                                            <p className="font-black text-xl text-slate-900 mt-1">{fmt(r.amount)}</p>
                                         </div>
                                         <Badge className={`border-0 text-xs ${STATUS_COLORS[r.status] || ""}`}>{r.status}</Badge>
                                     </div>
@@ -242,7 +250,16 @@ export default function AdminRefundsPage() {
                             <tbody className="divide-y">
                                 {filteredRefunds.map((r: any) => (
                                     <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-4 py-3 font-mono text-xs text-slate-400">{r.id?.slice(-10).toUpperCase()}</td>
+                                        <td className="px-4 py-3">
+                                            <p className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded inline-block">
+                                                {r.displayId || r.id?.slice(-10).toUpperCase()}
+                                            </p>
+                                            {r.ticketId && (
+                                                <p className="font-mono text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                                                    🎫 TKT Linked
+                                                </p>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <p className="font-semibold text-slate-900">{r.booking?.user?.name || "—"}</p>
                                             <p className="text-xs text-muted-foreground">{r.booking?.user?.email}</p>
@@ -290,10 +307,53 @@ export default function AdminRefundsPage() {
                                 : <><XCircle className="h-5 w-5 text-red-500" />Reject Refund</>
                             }
                         </h3>
-                        <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1 border">
+                        <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-2 border">
                             <p className="font-black text-xl text-slate-900">{fmt(modal.refund.amount)}</p>
                             <p className="text-slate-600"><strong>User:</strong> {modal.refund.booking?.user?.name || "—"}</p>
+                            {modal.refund.displayId && (
+                                <p className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block font-bold">{modal.refund.displayId}</p>
+                            )}
+                            {modal.refund.ticketId && (
+                                <p className="text-xs text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded inline-block ml-1">🎫 Support Ticket Linked</p>
+                            )}
                             <p className="text-muted-foreground text-xs mt-1">{modal.refund.reason}</p>
+
+                            {/* Financial Breakdown */}
+                            {modal.type === "approve" && (
+                                <div className="mt-3 pt-3 border-t space-y-1.5">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase">Refund Breakdown</p>
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-slate-600">Base Refund (Rent/Deposit)</span>
+                                        <span className="font-bold text-slate-900">{fmt(modal.refund.amount)}</span>
+                                    </div>
+                                    {modal.refund.refundPlatformFee && (
+                                        <>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-blue-600">+ Platform Convenience Fee</span>
+                                                <span className="font-bold text-blue-700">{fmt(modal.refund.platformFeeRefunded)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-blue-500">+ GST Reversed (CGST+SGST)</span>
+                                                <span className="font-bold text-blue-700">{fmt(modal.refund.gstRefunded)}</span>
+                                            </div>
+                                            <div className="text-[10px] text-blue-500 italic">→ GST Credit Note will be issued: CN/26-27/XXXX</div>
+                                        </>
+                                    )}
+                                    {modal.refund.ownerPenaltyApplied > 0 && (
+                                        <div className="flex justify-between text-xs pt-1 border-t mt-1">
+                                            <span className="text-orange-600">⚡ 2% MDR Penalty (deducted from Owner)</span>
+                                            <span className="font-bold text-orange-700">-{fmt(modal.refund.ownerPenaltyApplied)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-xs font-black pt-1 border-t">
+                                        <span>Total Student Refund</span>
+                                        <span className="text-green-700">{fmt(
+                                            Number(modal.refund.amount) +
+                                            (modal.refund.refundPlatformFee ? Number(modal.refund.platformFeeRefunded || 0) + Number(modal.refund.gstRefunded || 0) : 0)
+                                        )}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="text-xs font-black text-slate-500 uppercase mb-1 block">
