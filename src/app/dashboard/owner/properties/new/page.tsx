@@ -652,6 +652,7 @@ export default function AddPropertyPage() {
     const validateStep = (step: number): boolean => {
         const errs: Record<string, string> = {};
         if (step === 1) {
+            if (!gender) errs.gender = "Gender type is required";
             if (!name.trim()) errs.name = "Property name is required";
             const ownerErr = validateName(ownerName);
             if (ownerErr) errs.ownerName = ownerErr;
@@ -683,7 +684,6 @@ export default function AddPropertyPage() {
             if (!state.trim()) errs.state = "State is required (enter valid PIN)";
         }
         if (step === 3) {
-            if (!gender) errs.gender = "Gender type is required";
             if (!description.trim()) errs.description = "Description is required";
             if (amenities.length === 0) errs.amenities = "Select at least one amenity";
         }
@@ -1075,6 +1075,24 @@ export default function AddPropertyPage() {
                             )}
                         </div>
 
+                        <div className="space-y-2 border-t border-purple-100 pt-6">
+                            <label className="text-sm font-bold flex items-center gap-1.5 text-slate-800">Stay Gender Type <span className="text-red-500">*</span></label>
+                            <div className="flex gap-3">
+                                {["CoLiving(Boys/Girls) both", "Boys", "Girls"].map(g => (
+                                    <button key={g} type="button" onClick={() => setGender(g as any)}
+                                        suppressHydrationWarning
+                                        className={`px-5 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+                                            gender === g 
+                                            ? "bg-purple-600 border-purple-600 text-white shadow-md active:scale-95" 
+                                            : "bg-white border-slate-200 text-slate-500 hover:border-purple-300 active:scale-95"
+                                        } ${errors.gender ? "border-red-400" : ""}`}>
+                                        {g}
+                                    </button>
+                                ))}
+                            </div>
+                            {errors.gender && <p className="text-xs text-red-500 font-semibold">{errors.gender}</p>}
+                        </div>
+
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-4 shadow-sm">
                              <div className="p-2 bg-red-100 rounded-lg">
                                 <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -1175,23 +1193,7 @@ export default function AddPropertyPage() {
                         <CardDescription>Gender type, description, and amenities.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4 bg-orange-50/10">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Gender Type <span className="text-red-500">*</span></label>
-                            <div className="flex gap-3">
-                                {["Boys", "Girls", "Co-ed"].map(g => (
-                                    <button key={g} type="button" onClick={() => setGender(g as any)}
-                                        suppressHydrationWarning
-                                        className={`px-5 py-2 rounded-full text-sm font-semibold border-2 transition-all ${
-                                            gender === g 
-                                            ? "bg-purple-600 border-purple-600 text-white shadow-md active:scale-95" 
-                                            : "bg-white border-slate-200 text-slate-500 hover:border-purple-300 active:scale-95"
-                                        } ${errors.gender ? "border-red-400" : ""}`}>
-                                        {g === "Boys" ? "🧑 Boys" : g === "Girls" ? "👩 Girls" : "👥 Co-ed"}
-                                    </button>
-                                ))}
-                            </div>
-                            {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
-                        </div>
+
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Description <span className="text-red-500">*</span></label>
                             <textarea

@@ -43,6 +43,7 @@ export default function PropertyDetailPage() {
         message: "",
         occupationType: "",
         occupationDetail: "",
+        stayGender: "",
     });
     const [foodSelected, setFoodSelected] = useState<boolean | null>(null); // null = not yet chosen (only for OPTIONAL)
     const [selectedOccupancy, setSelectedOccupancy] = useState(""); // bound to select dropdown — replaces unsafe document.querySelector
@@ -123,6 +124,18 @@ export default function PropertyDetailPage() {
         if (!formData.moveInDate) errs.moveInDate = "Move-in date is required";
         if (!formData.occupationType) errs.occupationType = "Occupation type is required";
         if (!formData.occupationDetail.trim()) errs.occupationDetail = "Occupation detail is required";
+        if (!formData.stayGender) errs.stayGender = "Stay Gender Type is required";
+        
+        if (formData.stayGender && property?.genderType) {
+            const guest = formData.stayGender;
+            const propGender = property.genderType;
+            if (propGender !== "CoLiving(Boys/Girls) both" && propGender !== "Co-ed" && propGender !== "COED") {
+                if (guest !== propGender) {
+                    errs.stayGender = `This property only has stays for ${propGender}`;
+                }
+            }
+        }
+
         if (!legalAgreed) {
             setLegalError(true);
             return;
@@ -517,27 +530,48 @@ export default function PropertyDetailPage() {
                                 </div>
                             )}
 
-                            {/* Occupation */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Occupation <span className="text-red-500">*</span></label>
-                                <div className="flex gap-2 flex-wrap">
-                                    {OCCUPATION_TYPES.map(type => (
-                                        <button
-                                            key={type}
-                                            type="button"
-                                            onClick={() => {
-                                                setFormData(p => ({ ...p, occupationType: type, occupationDetail: "" }));
-                                                if (fieldErrors.occupationType) setFieldErrors(p => { const n = { ...p }; delete n.occupationType; return n; });
-                                            }}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${formData.occupationType === type
-                                                ? "bg-blue-600 text-white border-blue-600"
-                                                : fieldErrors.occupationType ? "border-red-300 text-red-600 hover:border-red-400" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}
-                                        >
-                                            {type === "Student" ? "🎓 Student" : type === "Working Professional" ? "💼 Working Pro" : "👤 Other"}
-                                        </button>
-                                    ))}
+                            {/* Occupation & Gender Row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Occupation <span className="text-red-500">*</span></label>
+                                    <select
+                                        value={formData.occupationType}
+                                        onChange={(e) => {
+                                            setFormData(p => ({ ...p, occupationType: e.target.value, occupationDetail: "" }));
+                                            if (fieldErrors.occupationType) setFieldErrors(p => { const n = { ...p }; delete n.occupationType; return n; });
+                                        }}
+                                        className={`w-full h-10 px-3 rounded-md border-2 bg-white text-sm ${
+                                            fieldErrors.occupationType ? "border-red-400 focus:border-red-500 outline-none" : "border-slate-200 focus:border-blue-500 outline-none"
+                                        }`}
+                                    >
+                                        <option value="" disabled>Select Occupation</option>
+                                        {OCCUPATION_TYPES.map(type => (
+                                            <option key={type} value={type}>{type === "Student" ? "🎓 Student" : type === "Working Professional" ? "💼 Working Pro" : "👤 Other"}</option>
+                                        ))}
+                                    </select>
+                                    {fieldErrors.occupationType && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationType}</p>}
                                 </div>
-                                {fieldErrors.occupationType && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.occupationType}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Stay Gender Type <span className="text-red-500">*</span></label>
+                                    <select
+                                        value={formData.stayGender}
+                                        onChange={(e) => {
+                                            setFormData(p => ({ ...p, stayGender: e.target.value }));
+                                            if (fieldErrors.stayGender) setFieldErrors(p => { const n = { ...p }; delete n.stayGender; return n; });
+                                        }}
+                                        className={`w-full h-10 px-3 rounded-md border-2 bg-white text-sm ${
+                                            fieldErrors.stayGender ? "border-red-400 focus:border-red-500 outline-none ring-1 ring-red-200" : "border-slate-200 focus:border-blue-500 outline-none"
+                                        }`}
+                                    >
+                                        <option value="" disabled>Select Gender Type</option>
+                                        <option value="CoLiving(Boys/Girls) both">CoLiving(Boys/Girls) both</option>
+                                        <option value="Boys">Boys</option>
+                                        <option value="Girls">Girls</option>
+                                    </select>
+                                    {fieldErrors.stayGender && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.stayGender}</p>}
+                                </div>
+                            </div>
+                            <div className="space-y-1.5 mt-2">
                                 {formData.occupationType && (
                                     <Input
                                         placeholder={
