@@ -953,6 +953,8 @@ export default function StudentDashboardPage() {
 
     return (
         <div className="container mx-auto py-6 px-4 max-w-4xl space-y-8 pb-24 md:pb-12">
+            {activeTab === 'active-stay' && (
+                <div className="space-y-8">
             {/* Header / Greeting */}
             <div className="flex justify-between items-center bg-gradient-to-r from-slate-900 to-indigo-950 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-slate-800">
                 <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl" />
@@ -1100,6 +1102,9 @@ export default function StudentDashboardPage() {
                     })}
                 </div>
             </div>
+
+                </div>
+            )}
 
             {/* Main Tabs Segment */}
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
