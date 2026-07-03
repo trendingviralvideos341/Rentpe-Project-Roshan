@@ -1335,37 +1335,6 @@ export default function StudentDashboardPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Notice Board Widget (Community Hub) */}
-            <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b pb-3">
-                    <div className="flex items-center gap-2">
-                        <Bell className="h-5 w-5 text-indigo-600" />
-                        <h4 className="font-black text-slate-800 text-base">Property Notice Board</h4>
-                    </div>
-                    <Badge variant="outline" className="border-indigo-200 text-indigo-700 font-bold bg-indigo-50/50 text-[10px] rounded-full">
-                        Live Notices
-                    </Badge>
-                </div>
-                <div className="space-y-3">
-                    {[
-                        { title: "📶 High-Speed Wi-Fi Upgrade", desc: "Our tech team is performing high-speed fiber line upgrades in the East wing this Saturday between 2 AM to 5 AM.", date: "Today" },
-                        { title: "🍕 Friday Pizza Social", desc: "Join us in the common recreation area this Friday at 7 PM for a meet & greet event. Free entry and food!", date: "2 days ago" },
-                        { title: "🧹 Weekly Deep Cleaning Schedule", desc: "Deep cleaning schedules have been updated. Ensure your personal items are organized on Sunday morning.", date: "4 days ago" }
-                    ].map((notice, idx) => (
-                        <div key={idx} className="flex gap-4 p-3 hover:bg-slate-50/50 rounded-2xl transition-all border border-transparent hover:border-slate-100">
-                            <span className="text-xl">📌</span>
-                            <div className="space-y-0.5">
-                                <div className="flex justify-between items-center gap-2">
-                                    <p className="font-bold text-slate-800 text-xs md:text-sm">{notice.title}</p>
-                                    <span className="text-[9px] font-bold text-slate-400 shrink-0">{notice.date}</span>
-                                </div>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{notice.desc}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
             {/* Modals */}
             {reviewBooking && <SubmitReviewModal booking={reviewBooking} isOpen={!!reviewBooking} onClose={() => setReviewBooking(null)} />}
             {selectedBooking && <RentReceipt booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
