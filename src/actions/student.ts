@@ -27,6 +27,11 @@ export async function getStudentProfile() {
                 status: true,
                 occupationType: true,
                 occupationDetail: true,
+                dateOfBirth: true,
+                gender: true,
+                nationality: true,
+                emergencyContact: true,
+                currentAddress: true,
             } as any,
         });
 
@@ -37,6 +42,12 @@ export async function getStudentProfile() {
             include: {
                 documents: true
             }
+        });
+
+        // Get active Tenant record for check-in/out dates
+        const activeTenant = await prisma.tenant.findFirst({
+            where: { studentId: userId },
+            orderBy: { createdAt: 'desc' }
         });
 
         // Calculate Real Verification Logic
@@ -80,7 +91,8 @@ export async function getStudentProfile() {
             realAuthenticityHash,
             documents: docs,
             lastBookingId: lastBooking?.id || null,
-
+            lastBooking,
+            activeTenant,
         };
     } catch (e) {
         console.error("getStudentProfile Error:", e);
@@ -91,7 +103,14 @@ export async function getStudentProfile() {
 /**
  * Updates student profile details. Used for 'User Data Auto-fill' consistency.
  */
-export async function updateStudentProfile(data: { occupationType?: string; occupationDetail?: string }) {
+export async function updateStudentProfile(data: { 
+    occupationType?: string; 
+    occupationDetail?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    nationality?: string;
+    emergencyContact?: string;
+}) {
     try {
         const session = await getSession();
         if (!session) throw new Error("Unauthorized");
@@ -103,6 +122,10 @@ export async function updateStudentProfile(data: { occupationType?: string; occu
             data: {
                 occupationType: data.occupationType,
                 occupationDetail: data.occupationDetail,
+                dateOfBirth: data.dateOfBirth,
+                gender: data.gender,
+                nationality: data.nationality,
+                emergencyContact: data.emergencyContact,
             }
         });
 

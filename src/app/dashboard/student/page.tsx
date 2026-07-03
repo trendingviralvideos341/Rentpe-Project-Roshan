@@ -853,6 +853,11 @@ export default function StudentDashboardPage() {
     const [pendingRent, setPendingRent] = useState<any | null>(null);
     const [rentBannerDismissed, setRentBannerDismissed] = useState(false);
 
+    // Profile Edit State
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [profileForm, setProfileForm] = useState<any>({});
+    const [savingProfile, setSavingProfile] = useState(false);
+
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
 
@@ -890,6 +895,18 @@ export default function StudentDashboardPage() {
             setBookings(bData);
             setPaymentHistory(pData);
             setProfile(profData);
+            if (profData) {
+                setProfileForm({
+                    dateOfBirth: profData.dateOfBirth || '',
+                    gender: profData.gender || '',
+                    nationality: profData.nationality || 'Indian',
+                    nationalityOther: profData.nationality && profData.nationality !== 'Indian' ? profData.nationality : '',
+                    emergencyContact: profData.emergencyContact || '',
+                    occupationType: profData.occupationType === 'Student' || profData.occupationType === 'Working Professional' ? profData.occupationType : (profData.occupationType ? 'Others' : ''),
+                    occupationOther: profData.occupationType !== 'Student' && profData.occupationType !== 'Working Professional' ? profData.occupationType : '',
+                    occupationDetail: profData.occupationDetail || ''
+                });
+            }
             setRoomAllocNotifs((notifData as any[]).filter((n: any) => n.category === 'ROOM_ALLOCATED'));
             setPendingRent(rentData);
             // Reset banner dismiss on every full refresh so it re-appears if still unpaid
@@ -903,6 +920,31 @@ export default function StudentDashboardPage() {
     }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    const handleSaveProfile = async () => {
+        setSavingProfile(true);
+        const toastId = toast.loading("Saving profile details...");
+        try {
+            const finalNationality = profileForm.nationality === 'Others' ? profileForm.nationalityOther : profileForm.nationality;
+            const finalOccupation = profileForm.occupationType === 'Others' ? profileForm.occupationOther : profileForm.occupationType;
+            
+            await updateStudentProfile({
+                dateOfBirth: profileForm.dateOfBirth,
+                gender: profileForm.gender,
+                nationality: finalNationality,
+                emergencyContact: profileForm.emergencyContact,
+                occupationType: finalOccupation,
+                occupationDetail: profileForm.occupationDetail
+            });
+            toast.success("Profile updated successfully!", { id: toastId });
+            setIsEditingProfile(false);
+            await fetchData();
+        } catch (e) {
+            toast.error("Failed to update profile", { id: toastId });
+        } finally {
+            setSavingProfile(false);
+        }
+    };
 
     const handleCancel = (bookingId: string, propertyName: string) => {
         setCancelReason("");
@@ -1093,7 +1135,15 @@ export default function StudentDashboardPage() {
                 {/* ── Profile Tab Content ── */}
                 <TabsContent value="profile" className="space-y-6 pt-4">
                     <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
-                        <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8">
+                        <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8 relative">
+                            {!isEditingProfile && (
+                                <Button 
+                                    onClick={() => setIsEditingProfile(true)}
+                                    className="absolute top-8 right-8 bg-white/10 hover:bg-white/20 text-white font-bold border-0"
+                                >
+                                    Edit Profile
+                                </Button>
+                            )}
                             <div className="flex items-center gap-6">
                                 <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center border-2 border-white/20 text-white">
                                     <User className="h-10 w-10" />
@@ -1101,36 +1151,152 @@ export default function StudentDashboardPage() {
                                 <div>
                                     <CardTitle className="text-2xl font-black">{profile?.name || "Verified Resident"}</CardTitle>
                                     <CardDescription className="text-slate-300 font-bold mt-1 uppercase tracking-widest text-[10px]">
-                                        ID: {profile?.displayId || '—'} • Verified Resident
+                                        User ID: {profile?.displayId || '—'} • {profile?.phone || 'No Phone'}
                                     </CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-6 md:p-8 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Full Legal Name</label>
-                                        <div className="text-sm font-bold text-slate-800">{profile?.name || '—'}</div>
+
+                        {/* EDIT MODE */}
+                        {isEditingProfile ? (
+                            <CardContent className="p-6 md:p-8 space-y-6 bg-slate-50">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs font-black text-slate-600 block mb-1">Date of Birth</label>
+                                            <input type="date" value={profileForm.dateOfBirth || ''} onChange={e => setProfileForm({...profileForm, dateOfBirth: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-black text-slate-600 block mb-1">Gender</label>
+                                            <select value={profileForm.gender || ''} onChange={e => setProfileForm({...profileForm, gender: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                                <option value="">Select Gender</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-black text-slate-600 block mb-1">Emergency Contact Number</label>
+                                            <input type="tel" value={profileForm.emergencyContact || ''} onChange={e => setProfileForm({...profileForm, emergencyContact: e.target.value})} placeholder="e.g. 9876543210" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Official Email</label>
-                                        <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs font-black text-slate-600 block mb-1">Nationality</label>
+                                            <select value={profileForm.nationality || ''} onChange={e => setProfileForm({...profileForm, nationality: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                                <option value="Indian">Indian</option>
+                                                <option value="Others">Others</option>
+                                            </select>
+                                        </div>
+                                        {profileForm.nationality === 'Others' && (
+                                            <div>
+                                                <label className="text-xs font-black text-slate-600 block mb-1">Specify Nationality</label>
+                                                <input type="text" value={profileForm.nationalityOther || ''} onChange={e => setProfileForm({...profileForm, nationalityOther: e.target.value})} placeholder="e.g. American" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="text-xs font-black text-slate-600 block mb-1">Occupation Status</label>
+                                            <select value={profileForm.occupationType || ''} onChange={e => setProfileForm({...profileForm, occupationType: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                                <option value="">Select</option>
+                                                <option value="Student">Student</option>
+                                                <option value="Working Professional">Working Professional</option>
+                                                <option value="Others">Others</option>
+                                            </select>
+                                        </div>
+                                        {profileForm.occupationType === 'Others' && (
+                                            <div>
+                                                <label className="text-xs font-black text-slate-600 block mb-1">Specify Occupation</label>
+                                                <input type="text" value={profileForm.occupationOther || ''} onChange={e => setProfileForm({...profileForm, occupationOther: e.target.value})} placeholder="e.g. Freelancer" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="text-xs font-black text-slate-600 block mb-1">Institution / Company Name</label>
+                                            <input type="text" value={profileForm.occupationDetail || ''} onChange={e => setProfileForm({...profileForm, occupationDetail: e.target.value})} placeholder="e.g. Delhi University" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Status</label>
-                                        <div>
-                                            <Badge className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1 font-black text-[9px] uppercase rounded-full">
-                                                ACTIVE RESIDENT
-                                            </Badge>
+                                <div className="flex gap-4 pt-4 border-t border-slate-200">
+                                    <Button onClick={() => setIsEditingProfile(false)} variant="outline" className="font-bold border-2 rounded-xl">Cancel</Button>
+                                    <Button onClick={handleSaveProfile} disabled={savingProfile} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl px-8 shadow-md">
+                                        {savingProfile ? "Saving..." : "Save Profile"}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        ) : (
+                            <CardContent className="p-0">
+                                {/* READ ONLY MODE */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                                    
+                                    {/* Column 1: Demographics */}
+                                    <div className="p-6 md:p-8 space-y-6">
+                                        <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><User className="w-4 h-4 text-indigo-500"/> Demographics & Contact</h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Birth</label>
+                                                <div className="text-sm font-bold text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : '—'}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Gender</label>
+                                                <div className="text-sm font-bold text-slate-800">{profile?.gender || '—'}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nationality</label>
+                                                <div className="text-sm font-bold text-slate-800">{profile?.nationality || '—'}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Emergency Contact</label>
+                                                <div className="text-sm font-bold text-slate-800">{profile?.emergencyContact || '—'}</div>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Official Email</label>
+                                                <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Occupation Status</label>
+                                            <div className="text-sm font-bold text-indigo-700">{profile?.occupationType || '—'}</div>
+                                            <div className="text-xs font-bold text-slate-500 mt-1">{profile?.occupationDetail || 'Institution/Company not specified'}</div>
                                         </div>
                                     </div>
 
+                                    {/* Column 2: Stay & IDs */}
+                                    <div className="p-6 md:p-8 space-y-6 bg-slate-50/50 h-full">
+                                        <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><MapPin className="w-4 h-4 text-emerald-500"/> Current Stay & IDs</h3>
+                                        
+                                        {profile?.activeTenant ? (
+                                            <div className="space-y-4">
+                                                <div className="flex gap-4">
+                                                    <div className="flex-1 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Check-in Date</label>
+                                                        <div className="text-sm font-black text-slate-800">{new Date(profile.activeTenant.startDate).toLocaleDateString('en-GB')}</div>
+                                                    </div>
+                                                    <div className="flex-1 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Check-out Date</label>
+                                                        <div className="text-sm font-black text-slate-800">{profile.activeTenant.actualMoveOutDate ? new Date(profile.activeTenant.actualMoveOutDate).toLocaleDateString('en-GB') : <span className="text-emerald-600">Active Stay</span>}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3 pt-2">
+                                                    <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                                        <span className="text-xs font-bold text-slate-500">Tenant ID</span>
+                                                        <Badge variant="outline" className="font-black text-[10px] text-slate-700 border-slate-300">{profile.activeTenant.displayId}</Badge>
+                                                    </div>
+                                                    <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                                        <span className="text-xs font-bold text-slate-500">Booking ID</span>
+                                                        <Badge variant="outline" className="font-black text-[10px] text-slate-700 border-slate-300">{profile.activeTenant.booking?.displayId || profile.lastBooking?.displayId || '—'}</Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
+                                                <p className="text-xs font-bold text-slate-500">No active stay found.</p>
+                                            </div>
+                                        )}
+                                        
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
+                            </CardContent>
+                        )}
                     </Card>
                 </TabsContent>
             </Tabs>
