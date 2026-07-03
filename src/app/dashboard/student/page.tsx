@@ -922,6 +922,20 @@ export default function StudentDashboardPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleSaveProfile = async () => {
+        // Strict Validation
+        if (!profileForm.dateOfBirth || !profileForm.gender || !profileForm.emergencyContact || !profileForm.occupationType || !profileForm.occupationDetail) {
+            toast.error("Please fill in all mandatory fields before saving.");
+            return;
+        }
+        if (profileForm.nationality === 'Others' && !profileForm.nationalityOther) {
+            toast.error("Please specify your nationality.");
+            return;
+        }
+        if (profileForm.occupationType === 'Others' && !profileForm.occupationOther) {
+            toast.error("Please specify your occupation.");
+            return;
+        }
+
         setSavingProfile(true);
         const toastId = toast.loading("Saving profile details...");
         try {
@@ -1134,28 +1148,31 @@ export default function StudentDashboardPage() {
 
                 {/* ── Profile Tab Content ── */}
                 <TabsContent value="profile" className="space-y-6 pt-4">
-                    <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
-                        <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8 relative">
-                            {!isEditingProfile && (
-                                <Button 
-                                    onClick={() => setIsEditingProfile(true)}
-                                    className="absolute top-8 right-8 bg-white/10 hover:bg-white/20 text-white font-bold border-0"
-                                >
-                                    Edit Profile
-                                </Button>
-                            )}
-                            <div className="flex items-center gap-6">
-                                <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center border-2 border-white/20 text-white">
-                                    <User className="h-10 w-10" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-2xl font-black">{profile?.name || "Verified Resident"}</CardTitle>
-                                    <CardDescription className="text-slate-300 font-bold mt-1 uppercase tracking-widest text-[10px]">
-                                        User ID: {profile?.displayId || '—'} • {profile?.phone || 'No Phone'}
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
+                    {(() => {
+                        const isProfileLocked = !!profile?.dateOfBirth;
+                        return (
+                            <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
+                                <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8 relative">
+                                    {!isEditingProfile && !isProfileLocked && (
+                                        <Button 
+                                            onClick={() => setIsEditingProfile(true)}
+                                            className="absolute top-8 right-8 bg-white/10 hover:bg-white/20 text-white font-bold border-0"
+                                        >
+                                            Edit Profile
+                                        </Button>
+                                    )}
+                                    <div className="flex items-center gap-6">
+                                        <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center border-2 border-white/20 text-white">
+                                            <User className="h-10 w-10" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-2xl font-black">{profile?.name || "Verified Resident"}</CardTitle>
+                                            <CardDescription className="text-slate-300 font-bold mt-1 uppercase tracking-widest text-[10px]">
+                                                User ID: {profile?.displayId || '—'} • {profile?.phone || 'No Phone'}
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
 
                         {/* EDIT MODE */}
                         {isEditingProfile ? (
@@ -1293,11 +1310,28 @@ export default function StudentDashboardPage() {
                                             </div>
                                         )}
                                         
+                                        {/* Lock Warning Notice */}
+                                        {isProfileLocked && (
+                                            <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl flex gap-3 text-amber-900 mt-4">
+                                                <span className="text-xl">🔒</span>
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-black uppercase tracking-wider text-amber-700">Details Verified & Locked</p>
+                                                    <p className="text-[11px] font-bold leading-normal">
+                                                        For security, demographics, occupation and contact info are locked. To request updates, please{" "}
+                                                        <Link href="/dashboard/student/tickets" className="text-indigo-600 underline font-black">
+                                                            Raise a Support Ticket
+                                                        </Link>.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
                         )}
-                    </Card>
+                            </Card>
+                        );
+                    })()}
                 </TabsContent>
             </Tabs>
 

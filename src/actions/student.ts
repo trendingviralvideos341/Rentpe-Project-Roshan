@@ -117,6 +117,16 @@ export async function updateStudentProfile(data: {
 
         const userId = (session as any).userId as string;
 
+        // Fetch current profile to check if it's already locked
+        const existing = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { dateOfBirth: true }
+        });
+
+        if (existing?.dateOfBirth) {
+            return { success: false, error: "Profile details are locked. Please raise a support ticket to request changes." };
+        }
+
         const updated = await prisma.user.update({
             where: { id: userId },
             data: {
