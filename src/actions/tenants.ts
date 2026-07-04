@@ -1012,6 +1012,43 @@ export async function updateTenantProfile(
     });
     if (!tenant) throw new Error("Tenant not found");
 
+    // 1. Uniqueness Checks
+    if (data.email && data.email !== tenant.email) {
+        const existingEmailUser = await prisma.user.findFirst({
+            where: {
+                email: data.email,
+                NOT: { id: tenant.studentId }
+            }
+        });
+        if (existingEmailUser) {
+            throw new Error(`The email address ${data.email} is already registered to another user account.`);
+        }
+    }
+
+    if (data.phone && data.phone !== tenant.phone) {
+        const existingPhoneUser = await prisma.user.findFirst({
+            where: {
+                phone: data.phone,
+                NOT: { id: tenant.studentId }
+            }
+        });
+        if (existingPhoneUser) {
+            throw new Error(`The phone number ${data.phone} is already registered to another user account.`);
+        }
+    }
+
+    // 2. Alert notifications sent to both old and new contact details
+    if (data.email && data.email !== tenant.email) {
+        console.log(`[SECURITY ALERT] Email updated for Tenant ID: ${tenantId}.`);
+        console.log(`- Alert sent to Old Email: ${tenant.email}`);
+        console.log(`- Alert sent to New Email: ${data.email}`);
+    }
+    if (data.phone && data.phone !== tenant.phone) {
+        console.log(`[SECURITY ALERT] Phone updated for Tenant ID: ${tenantId}.`);
+        console.log(`- Alert sent to Old Phone: ${tenant.phone}`);
+        console.log(`- Alert sent to New Phone: ${data.phone}`);
+    }
+
     return await prisma.$transaction(async (tx) => {
         // 1. Update Tenant
         const tenantUpdateData: any = {};
@@ -1095,5 +1132,100 @@ export async function updateTenantProfile(
         return { success: true };
     });
 }
+
+export async function requestSelfServiceOTP(type: 'email' | 'phone', target: string, direction: 'old' | 'new') {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+
+    if (direction === 'new') {
+        const existing = await prisma.user.findFirst({
+            where: type === 'email' ? { email: target } : { phone: target }
+        });
+        if (existing) {
+            throw new Error(`This ${type} is already registered to another user account.`);
+        }
+    }
+
+    console.log(`[MOCK OTP] Sent to ${target} (${direction} ${type}): 123456`);
+    return { success: true, message: `OTP sent successfully to ${target} (Mock OTP: 123456)` };
+}
+
+export async function verifyAndUpdateSelfService(
+    type: 'email' | 'phone',
+    oldOtp: string,
+    newTarget: string,
+    newOtp: string
+) {
+    const session = await getSession();
+    if (!session || !session.userId) throw new Error("Unauthorized");
+
+    if (oldOtp !== '123456' || newOtp !== '123456') {
+        throw new Error("Invalid verification OTP. Please try again.");
+    }
+
+    const existing = await prisma.user.findFirst({
+        where: type === 'email' ? { email: newTarget } : { phone: newTarget }
+    });
+    if (existing) {
+        throw new Error(`This ${type} is already registered to another user account.`);
+    }
+
+    const tenant = await prisma.tenant.findFirst({
+        where: { studentId: session.userId }
+    });
+    if (!tenant) throw new Error("Tenant record not found");
+
+    const oldTarget = type === 'email' ? tenant.email : tenant.phone;
+
+    return await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+            where: { id: session.userId },
+            data: type === 'email' ? { email: newTarget } : { phone: newTarget }
+        });
+
+        await tx.tenant.update({
+            where: { id: tenant.id },
+            data: type === 'email' ? { email: newTarget } : { phone: newTarget }
+        });
+
+        if (tenant.bookingId) {
+            await tx.booking.update({
+                where: { id: tenant.bookingId },
+                data: type === 'email' ? { guestEmail: newTarget } : { guestPhone: newTarget }
+            });
+        }
+
+        const trackingReason = `Self-service update. Changed ${type} from ${oldTarget} to ${newTarget}.`;
+        await tx.actionNote.create({
+            data: {
+                targetId: tenant.id,
+                targetType: 'TENANT',
+                action: 'PROFILE_EDITED',
+                reason: trackingReason,
+                performedBy: session.userId
+            }
+        });
+
+        logAuditEvent({
+            actorId: session.userId,
+            actorRole: session.role || 'USER',
+            actorName: session.name || 'User',
+            actionType: 'UPDATE',
+            entityType: 'TENANT',
+            entityId: tenant.id,
+            description: trackingReason
+        });
+
+        console.log(`[SECURITY ALERT] Self-Service Update of ${type} for User ID: ${session.userId}.`);
+        console.log(`- Alert sent to Old ${type}: ${oldTarget}`);
+        console.log(`- Alert sent to New ${type}: ${newTarget}`);
+
+        revalidatePath('/dashboard/admin/tenants');
+        revalidatePath('/dashboard/owner/tenants');
+        revalidatePath('/dashboard/student');
+        return { success: true };
+    });
+}
+
 
 

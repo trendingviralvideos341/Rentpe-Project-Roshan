@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
 import { MyDepositSection } from "@/components/deposit/MyDepositSection";
+import { requestSelfServiceOTP, verifyAndUpdateSelfService } from "@/actions/tenants";
+import { Edit2 } from "lucide-react";
 
 const TYPE_LABELS: Record<string, any> = {
     ID_PROOF: "ID Proof",
@@ -861,6 +863,19 @@ export default function StudentDashboardPage() {
     const [cancelModal, setCancelModal] = useState<{ id: string; name: string } | null>(null);
     const [cancelReason, setCancelReason] = useState("");
 
+    // Self-Service Email/Phone Edit State
+    const [selfServiceModal, setSelfServiceModal] = useState<{
+        open: boolean;
+        type: 'email' | 'phone';
+        step: 'send_old_otp' | 'verify_old_otp' | 'enter_new_target' | 'verify_new_otp';
+        oldTarget: string;
+        newTarget: string;
+        oldOtpInput: string;
+        newOtpInput: string;
+        loading: boolean;
+        errorMessage: string;
+    } | null>(null);
+
     const searchParams = useSearchParams();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('bookings');
@@ -986,6 +1001,103 @@ export default function StudentDashboardPage() {
             toast.error("Failed to update profile", { id: toastId });
         } finally {
             setSavingProfile(false);
+        }
+    };
+
+    const handleStartSelfServiceChange = (type: 'email' | 'phone') => {
+        if (!profile) return;
+        const currentTarget = type === 'email' ? profile.email : profile.phone;
+        setSelfServiceModal({
+            open: true,
+            type,
+            step: 'send_old_otp',
+            oldTarget: currentTarget || '',
+            newTarget: '',
+            oldOtpInput: '',
+            newOtpInput: '',
+            loading: false,
+            errorMessage: ''
+        });
+    };
+
+    const handleSendOldOTP = async () => {
+        if (!selfServiceModal) return;
+        setSelfServiceModal(prev => prev ? { ...prev, loading: true, errorMessage: '' } : null);
+        try {
+            await requestSelfServiceOTP(selfServiceModal.type, selfServiceModal.oldTarget, 'old');
+            toast.success(`Mock OTP sent to old ${selfServiceModal.type}`);
+            setSelfServiceModal(prev => prev ? { ...prev, step: 'verify_old_otp' } : null);
+        } catch (e: any) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: e.message } : null);
+        } finally {
+            setSelfServiceModal(prev => prev ? { ...prev, loading: false } : null);
+        }
+    };
+
+    const handleVerifyOldOTP = () => {
+        if (!selfServiceModal) return;
+        if (selfServiceModal.oldOtpInput !== '123456') {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: "Invalid mock OTP. Enter '123456'." } : null);
+            return;
+        }
+        setSelfServiceModal(prev => prev ? { ...prev, step: 'enter_new_target', errorMessage: '' } : null);
+    };
+
+    const handleSendNewOTP = async () => {
+        if (!selfServiceModal) return;
+        if (!selfServiceModal.newTarget.trim()) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: `Please enter new ${selfServiceModal.type}` } : null);
+            return;
+        }
+        if (selfServiceModal.type === 'email' && !selfServiceModal.newTarget.includes('@')) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: 'Invalid email address syntax' } : null);
+            return;
+        }
+        if (selfServiceModal.type === 'phone' && !selfServiceModal.newTarget.startsWith('+91')) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: 'Phone number must start with +91 (e.g. +919876543210)' } : null);
+            return;
+        }
+
+        setSelfServiceModal(prev => prev ? { ...prev, loading: true, errorMessage: '' } : null);
+        try {
+            await requestSelfServiceOTP(selfServiceModal.type, selfServiceModal.newTarget, 'new');
+            toast.success(`Mock OTP sent to new ${selfServiceModal.type}`);
+            setSelfServiceModal(prev => prev ? { ...prev, step: 'verify_new_otp' } : null);
+        } catch (e: any) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: e.message } : null);
+        } finally {
+            setSelfServiceModal(prev => prev ? { ...prev, loading: false } : null);
+        }
+    };
+
+    const handleVerifyAndSaveNewOTP = async () => {
+        if (!selfServiceModal) return;
+        if (selfServiceModal.newOtpInput !== '123456') {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: "Invalid mock OTP. Enter '123456'." } : null);
+            return;
+        }
+        setSelfServiceModal(prev => prev ? { ...prev, loading: true, errorMessage: '' } : null);
+        try {
+            await verifyAndUpdateSelfService(
+                selfServiceModal.type,
+                selfServiceModal.oldOtpInput,
+                selfServiceModal.newTarget,
+                selfServiceModal.newOtpInput
+            );
+            toast.success(`${selfServiceModal.type === 'email' ? 'Email' : 'Phone'} updated successfully!`);
+            const savedType = selfServiceModal.type;
+            setSelfServiceModal(null);
+            await fetchData();
+            if (savedType === 'email') {
+                toast("Login Credentials Updated", {
+                    description: "Your login email has changed. Please use your new email next time you log in.",
+                    duration: 10000
+                });
+            }
+        } catch (e: any) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: e.message } : null);
+        } finally {
+            setSelfServiceModal(prev => prev ? { ...prev, loading: false } : null);
         }
     };
 
@@ -1384,11 +1496,29 @@ export default function StudentDashboardPage() {
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Official Email</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStartSelfServiceChange('email')}
+                                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                                                            >
+                                                                <Edit2 className="w-3 h-3" /> Change
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Registered Phone</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStartSelfServiceChange('phone')}
+                                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                                                            >
+                                                                <Edit2 className="w-3 h-3" /> Change
+                                                            </button>
+                                                        </div>
                                                     </div>
 
                                                     <div className="col-span-2 border-t border-slate-100 pt-4 mt-2">
@@ -1529,6 +1659,130 @@ export default function StudentDashboardPage() {
                         <div className="flex items-center gap-3"><XCircle className="h-6 w-6 text-red-600" /><h3 className="font-black text-xl">Cancel Booking</h3></div>
                         <textarea className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-28" placeholder="Reason..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
                         <div className="flex gap-4"><Button variant="outline" className="flex-1" onClick={() => setCancelModal(null)}>BACK</Button><Button variant="destructive" className="flex-1" onClick={confirmCancelStudent} disabled={!cancelReason.trim() || cancellingId === cancelModal.id}>CONFIRM</Button></div>
+                    </div>
+                </div>
+            )}
+
+            {/* Self-Service Credentials Edit Modal */}
+            {selfServiceModal && selfServiceModal.open && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-8 space-y-6 shadow-2xl relative overflow-hidden scale-in duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-black text-xl text-slate-900">
+                                Change Registered {selfServiceModal.type === 'email' ? 'Email' : 'Phone'}
+                            </h3>
+                            <button 
+                                onClick={() => setSelfServiceModal(null)} 
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Error Alert */}
+                        {selfServiceModal.errorMessage && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2 text-red-800 text-xs font-bold">
+                                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>{selfServiceModal.errorMessage}</span>
+                            </div>
+                        )}
+
+                        {/* Step 1: Send Old OTP */}
+                        {selfServiceModal.step === 'send_old_otp' && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-slate-500 leading-relaxed font-bold">
+                                    To update your registered {selfServiceModal.type}, we must first verify your current identity. We will send a mock verification OTP to your current {selfServiceModal.type}: <strong>{selfServiceModal.oldTarget}</strong>.
+                                </p>
+                                <Button 
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl shadow-md shadow-indigo-100" 
+                                    onClick={handleSendOldOTP}
+                                    disabled={selfServiceModal.loading}
+                                >
+                                    {selfServiceModal.loading ? 'Sending...' : 'Send Verification OTP'}
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Step 2: Verify Old OTP */}
+                        {selfServiceModal.step === 'verify_old_otp' && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-slate-500 leading-relaxed font-bold">
+                                    Please enter the verification OTP sent to <strong>{selfServiceModal.oldTarget}</strong>. Use the mock OTP code: <span className="font-black text-indigo-600">123456</span>.
+                                </p>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Verification OTP</label>
+                                    <input 
+                                        type="text" 
+                                        maxLength={6} 
+                                        value={selfServiceModal.oldOtpInput} 
+                                        onChange={e => setSelfServiceModal({ ...selfServiceModal, oldOtpInput: e.target.value })} 
+                                        placeholder="Enter 6-digit OTP" 
+                                        className="flex h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-mono text-center text-lg font-black tracking-widest"
+                                    />
+                                </div>
+                                <Button 
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl shadow-md shadow-indigo-100" 
+                                    onClick={handleVerifyOldOTP}
+                                    disabled={selfServiceModal.oldOtpInput.length !== 6}
+                                >
+                                    Verify & Next
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Step 3: Enter New Target */}
+                        {selfServiceModal.step === 'enter_new_target' && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-slate-500 leading-relaxed font-bold">
+                                    Current credential verified successfully! Now, enter your new registered {selfServiceModal.type}.
+                                </p>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">New {selfServiceModal.type === 'email' ? 'Email Address' : 'Phone Number'}</label>
+                                    <input 
+                                        type={selfServiceModal.type === 'email' ? 'email' : 'text'} 
+                                        value={selfServiceModal.newTarget} 
+                                        onChange={e => setSelfServiceModal({ ...selfServiceModal, newTarget: e.target.value })} 
+                                        placeholder={selfServiceModal.type === 'email' ? 'e.g. newemail@domain.com' : 'e.g. +919876543210'} 
+                                        className="flex h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-slate-800"
+                                    />
+                                </div>
+                                <Button 
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl shadow-md shadow-indigo-100" 
+                                    onClick={handleSendNewOTP}
+                                    disabled={selfServiceModal.loading || !selfServiceModal.newTarget.trim()}
+                                >
+                                    {selfServiceModal.loading ? 'Validating...' : 'Send Verification OTP'}
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Step 4: Verify New OTP */}
+                        {selfServiceModal.step === 'verify_new_otp' && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-slate-500 leading-relaxed font-bold">
+                                    Please enter the verification OTP sent to your new destination: <strong>{selfServiceModal.newTarget}</strong>. Use the mock OTP code: <span className="font-black text-indigo-600">123456</span>.
+                                </p>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Verification OTP</label>
+                                    <input 
+                                        type="text" 
+                                        maxLength={6} 
+                                        value={selfServiceModal.newOtpInput} 
+                                        onChange={e => setSelfServiceModal({ ...selfServiceModal, newOtpInput: e.target.value })} 
+                                        placeholder="Enter 6-digit OTP" 
+                                        className="flex h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-mono text-center text-lg font-black tracking-widest"
+                                    />
+                                </div>
+                                <Button 
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black h-12 rounded-2xl shadow-md shadow-indigo-100" 
+                                    onClick={handleVerifyAndSaveNewOTP}
+                                    disabled={selfServiceModal.loading || selfServiceModal.newOtpInput.length !== 6}
+                                >
+                                    {selfServiceModal.loading ? 'Updating Credentials...' : 'Verify & Save Changes'}
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

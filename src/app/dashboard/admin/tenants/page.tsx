@@ -99,6 +99,7 @@ export default function TenantsPage() {
     const [auditReason, setAuditReason] = useState("");
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+    const todayStr = new Date().toISOString().split("T")[0];
 
     const fetchTenants = useCallback(async () => {
         setLoading(true);
@@ -703,9 +704,10 @@ export default function TenantsPage() {
                                                 <div className="space-y-1.5">
                                                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Date of Birth</label>
                                                     <Input
+                                                        type="date"
                                                         value={editDOB}
                                                         onChange={e => setEditDOB(e.target.value)}
-                                                        placeholder="e.g. 1998-05-15"
+                                                        max={todayStr}
                                                         className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
                                                     />
                                                 </div>
