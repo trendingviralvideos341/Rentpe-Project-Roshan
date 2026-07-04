@@ -652,7 +652,7 @@ export default function TenantsPage() {
                                 <div>
                                     <DialogTitle className="text-xl font-black text-slate-900">{selectedTenant.name}</DialogTitle>
                                     <DialogDescription className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                                        ID: {selectedTenant.displayId} · Property: {selectedTenant.property?.name || "Unknown PG"}
+                                        Property: {selectedTenant.property?.name || "Unknown PG"}
                                     </DialogDescription>
                                 </div>
                             </div>
@@ -726,6 +726,10 @@ export default function TenantsPage() {
                                                     <p className="font-bold text-slate-900">{selectedTenant.name}</p>
                                                 </div>
                                                 <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">User Permanent ID</p>
+                                                    <p className="font-mono text-xs font-bold text-slate-900">{selectedTenant.booking?.user?.displayId || "—"}</p>
+                                                </div>
+                                                <div className="space-y-1">
                                                     <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Date of Birth</p>
                                                     <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.dateOfBirth || "—"}</p>
                                                 </div>
@@ -745,10 +749,7 @@ export default function TenantsPage() {
                                                         "bg-red-100 text-red-700"
                                                     }`}>{selectedTenant.status}</span>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</p>
-                                                    <p className="font-bold text-slate-900">{selectedTenant.startDate || selectedTenant.moveInDate || "—"}</p>
-                                                </div>
+
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
@@ -838,14 +839,7 @@ export default function TenantsPage() {
                                                         className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
                                                     />
                                                 </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</label>
-                                                    <Input
-                                                        value={editStartDate}
-                                                        onChange={e => setEditStartDate(e.target.value)}
-                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
-                                                    />
-                                                </div>
+
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1.5">
@@ -1030,8 +1024,12 @@ export default function TenantsPage() {
                                             <p className="font-bold text-slate-900">{selectedTenant.roomNumber} ({selectedTenant.roomType})</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Booking Reference</p>
-                                            <p className="font-mono text-xs font-bold text-slate-600">{selectedTenant.booking?.displayId || "N/A"}</p>
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Booking Reference & Tenant ID</p>
+                                            <div className="flex gap-4 items-center">
+                                                <p className="font-mono text-xs font-bold text-slate-600">Ref: {selectedTenant.booking?.displayId || "N/A"}</p>
+                                                <span className="text-slate-300">|</span>
+                                                <p className="font-mono text-xs font-bold text-slate-600">ID: {selectedTenant.displayId}</p>
+                                            </div>
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Property Management Contact</p>
