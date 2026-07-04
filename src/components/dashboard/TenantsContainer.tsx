@@ -160,6 +160,27 @@ export function TenantsContainer() {
 
     // Move-out is now handled entirely by SettlementModal
 
+    const getFoodDetails = (tenant: any) => {
+        const foodType = tenant.property?.foodType;
+        const foodPrice = tenant.booking?.foodPriceApplied || tenant.property?.foodPricePerMonth || 0;
+        const foodSelected = tenant.booking?.foodSelected;
+
+        if (foodType === 'INCLUDED') {
+            return "Yes (Included in Rent)";
+        }
+        if (foodType === 'NOT_AVAILABLE') {
+            return "No (Not Available)";
+        }
+        if (foodType === 'OPTIONAL') {
+            if (foodSelected) {
+                return `Yes (₹${foodPrice}/month, Charged Separately by Owner)`;
+            } else {
+                return `No (Optional, ₹${foodPrice}/month)`;
+            }
+        }
+        return "—";
+    };
+
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
 
     const filteredTenants = tenants.filter(t => {
@@ -695,24 +716,24 @@ export function TenantsContainer() {
                                                 <p className="font-mono text-indigo-800 font-bold">{viewingDetails.property?.displayId || '—'}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Assigned Room</p>
-                                                <p className="text-slate-800 font-bold">
-                                                    {viewingDetails.roomNumber} ({viewingDetails.roomType})
-                                                </p>
+                                                <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Owner / Manager</p>
+                                                <p className="font-bold text-indigo-900">{viewingDetails.property?.owner?.name || viewingDetails.property?.ownerName || '—'}</p>
+                                                <p className="text-xs text-indigo-700 font-mono mt-0.5">{viewingDetails.property?.owner?.phone || '—'}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Management & Stay Dates / Financials */}
+                                    {/* Tenant Stay Details */}
                                     <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50/50 space-y-4 shadow-sm">
                                         <h3 className="text-base font-bold text-slate-800 border-b pb-2">
-                                            📞 Property Management Contact
+                                            📋 Tenant Stay Details
                                         </h3>
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div className="col-span-2">
-                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Owner / Manager</p>
-                                                <p className="font-bold text-slate-900">{viewingDetails.property?.owner?.name || viewingDetails.property?.ownerName || '—'}</p>
-                                                <p className="text-xs text-slate-600 font-mono mt-0.5">{viewingDetails.property?.owner?.phone || '—'}</p>
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Assigned Room</p>
+                                                <p className="font-bold text-slate-900">
+                                                    {viewingDetails.roomNumber} ({viewingDetails.roomType})
+                                                </p>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</p>
@@ -733,9 +754,9 @@ export function TenantsContainer() {
                                                 <p className="font-bold text-slate-900">₹{viewingDetails.billingProfile?.securityDeposit || viewingDetails.booking?.depositAmount || '—'}</p>
                                             </div>
                                             <div className="col-span-2">
-                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Food Service</p>
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Food Opted</p>
                                                 <p className="font-bold text-slate-900">
-                                                    {viewingDetails.property?.foodType && viewingDetails.property.foodType !== 'NOT_AVAILABLE' ? 'Available' : 'Not Available'}
+                                                    {getFoodDetails(viewingDetails)}
                                                 </p>
                                             </div>
                                         </div>
