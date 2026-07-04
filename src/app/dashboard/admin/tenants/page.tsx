@@ -1024,12 +1024,16 @@ export default function TenantsPage() {
                                             <p className="font-bold text-slate-900">{selectedTenant.roomNumber} ({selectedTenant.roomType})</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Booking Reference & Tenant ID</p>
-                                            <div className="flex gap-4 items-center">
-                                                <p className="font-mono text-xs font-bold text-slate-600">Ref: {selectedTenant.booking?.displayId || "N/A"}</p>
-                                                <span className="text-slate-300">|</span>
-                                                <p className="font-mono text-xs font-bold text-slate-600">ID: {selectedTenant.displayId}</p>
-                                            </div>
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Booking Reference</p>
+                                            <span className="inline-block bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-blue-100 mt-1">
+                                                {selectedTenant.booking?.displayId || "N/A"}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Tenant ID</p>
+                                            <span className="inline-block bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-purple-100 mt-1">
+                                                {selectedTenant.displayId}
+                                            </span>
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Property Management Contact</p>

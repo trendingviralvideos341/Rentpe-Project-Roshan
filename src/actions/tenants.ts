@@ -72,6 +72,7 @@ export async function getTenants() {
                     foodPriceApplied: true,
                     user: {
                         select: {
+                            displayId: true,
                             dateOfBirth: true,
                             gender: true,
                             nationality: true,
