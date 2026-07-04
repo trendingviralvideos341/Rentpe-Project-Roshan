@@ -277,8 +277,16 @@ export default function TenantsPage() {
         setIsEditingProfile(true);
     };
 
+    const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const isValidPhone = (phone: string) => /^(?:\+91|91)?[6-9]\d{9}$/.test(phone);
+
     const handleValidateEmail = async () => {
         if (!selectedTenant || !editEmail) return;
+        if (!isValidEmail(editEmail)) {
+            setEmailValidationStatus('error');
+            setEmailValidationMessage("Please enter a valid email address.");
+            return;
+        }
         setEmailValidationStatus('loading');
         try {
             const res = await validateAdminCredentialOverride(selectedTenant.id, 'email', editEmail);
@@ -297,6 +305,11 @@ export default function TenantsPage() {
 
     const handleValidatePhone = async () => {
         if (!selectedTenant || !editPhone) return;
+        if (!isValidPhone(editPhone)) {
+            setPhoneValidationStatus('error');
+            setPhoneValidationMessage("Please enter a valid 10-digit phone number.");
+            return;
+        }
         setPhoneValidationStatus('loading');
         try {
             const res = await validateAdminCredentialOverride(selectedTenant.id, 'phone', editPhone);
@@ -311,6 +324,36 @@ export default function TenantsPage() {
             setPhoneValidationStatus('error');
             setPhoneValidationMessage("Failed to validate.");
         }
+    };
+
+    const handlePreSaveClick = () => {
+        if (!selectedTenant) return;
+        
+        const originalEmail = selectedTenant.booking?.user?.email || selectedTenant.email || "";
+        if (editEmail !== originalEmail) {
+            if (!isValidEmail(editEmail)) {
+                toast.error("Please enter a valid email address.");
+                return;
+            }
+            if (emailValidationStatus !== 'success') {
+                toast.error("Please validate the new email before saving.");
+                return;
+            }
+        }
+        
+        const originalPhone = selectedTenant.booking?.user?.phone || selectedTenant.phone || "";
+        if (editPhone !== originalPhone) {
+            if (!isValidPhone(editPhone)) {
+                toast.error("Please enter a valid 10-digit phone number.");
+                return;
+            }
+            if (phoneValidationStatus !== 'success') {
+                toast.error("Please validate the new phone before saving.");
+                return;
+            }
+        }
+        
+        setShowSaveEditDialog(true);
     };
 
     const handleSaveProfile = async () => {
@@ -665,7 +708,7 @@ export default function TenantsPage() {
                                                     Cancel
                                                 </Button>
                                                 <Button
-                                                    onClick={() => setShowSaveEditDialog(true)}
+                                                    onClick={handlePreSaveClick}
                                                     size="sm"
                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-8 flex items-center gap-1.5"
                                                 >

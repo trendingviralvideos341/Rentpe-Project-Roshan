@@ -1050,12 +1050,12 @@ export default function StudentDashboardPage() {
             setSelfServiceModal(prev => prev ? { ...prev, errorMessage: `Please enter new ${selfServiceModal.type}` } : null);
             return;
         }
-        if (selfServiceModal.type === 'email' && !selfServiceModal.newTarget.includes('@')) {
+        if (selfServiceModal.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selfServiceModal.newTarget)) {
             setSelfServiceModal(prev => prev ? { ...prev, errorMessage: 'Invalid email address syntax' } : null);
             return;
         }
-        if (selfServiceModal.type === 'phone' && !selfServiceModal.newTarget.startsWith('+91')) {
-            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: 'Phone number must start with +91 (e.g. +919876543210)' } : null);
+        if (selfServiceModal.type === 'phone' && !/^\+91[6-9]\d{9}$/.test(selfServiceModal.newTarget)) {
+            setSelfServiceModal(prev => prev ? { ...prev, errorMessage: 'Phone number must start with +91 followed by a valid 10-digit number (e.g. +919876543210)' } : null);
             return;
         }
 
