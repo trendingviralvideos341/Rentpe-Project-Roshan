@@ -307,7 +307,7 @@ export default function TenantsPage() {
                 reason: auditReason
             });
 
-            if (res?.error) {
+            if (res && 'error' in res) {
                 throw new Error(res.error);
             }
 
