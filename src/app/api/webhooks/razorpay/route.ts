@@ -89,32 +89,32 @@ export async function POST(req: NextRequest) {
     // STEP 2: Verify Razorpay signature
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     if (!webhookSecret) {
-        // If secret is not configured, log a critical warning but don't block
-        // (allows local dev without webhook secret set)
-        console.error('[Webhook] CRITICAL: RAZORPAY_WEBHOOK_SECRET is not set. Skipping signature verification.');
-        // In production, uncomment this hard block:
-        // return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
-    } else {
-        const signature = req.headers.get('x-razorpay-signature');
-        if (!signature) {
-            console.warn('[Webhook] Missing x-razorpay-signature header — rejected');
-            return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
-        }
+        // SECURITY FIX [C-5]: Never process webhooks without a configured secret.
+        // An attacker could forge payment.captured payloads to mark bookings as PAID for free.
+        // Previously this only logged a warning — now it hard-rejects ALL requests.
+        console.error('[Webhook] CRITICAL: RAZORPAY_WEBHOOK_SECRET is not set. Rejecting ALL webhook requests to prevent payment fraud.');
+        return NextResponse.json({ error: 'Webhook not configured — contact RentPe engineering' }, { status: 500 });
+    }
 
-        const expectedSignature = crypto
-            .createHmac('sha256', webhookSecret)
-            .update(rawBody)
-            .digest('hex');
+    const signature = req.headers.get('x-razorpay-signature');
+    if (!signature) {
+        console.warn('[Webhook] Missing x-razorpay-signature header — rejected');
+        return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+    }
 
-        // Constant-time comparison to prevent timing attacks
-        const sigBuffer = Buffer.from(signature, 'utf8');
-        const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+    const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex');
 
-        if (sigBuffer.length !== expectedBuffer.length ||
-            !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
-            console.warn('[Webhook] Invalid signature — potential spoofed request rejected');
-            return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-        }
+    // Constant-time comparison to prevent timing attacks
+    const sigBuffer = Buffer.from(signature, 'utf8');
+    const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+
+    if (sigBuffer.length !== expectedBuffer.length ||
+        !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+        console.warn('[Webhook] Invalid signature — potential spoofed request rejected');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
     // STEP 3: Parse event

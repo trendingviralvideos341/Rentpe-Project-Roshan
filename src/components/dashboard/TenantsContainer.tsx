@@ -633,18 +633,60 @@ export function TenantsContainer() {
 
             {/* View Student Details Dialog */}
             <Dialog open={!!viewingDetails} onOpenChange={(open) => !open && setViewingDetails(null)}>
-                <DialogContent className="max-w-4xl md:max-w-5xl max-h-[85vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            👤 Student Profile &amp; Ledger
-                        </DialogTitle>
-                        <DialogDescription>
-                            Detailed overview of active tenant record and historical payments.
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className="max-w-4xl md:max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+                    {/* Premium glassmorphism header */}
+                    {viewingDetails && (() => {
+                        const isActive = viewingDetails.status === 'Active';
+                        const isBlocked = viewingDetails.status === 'Blocked';
+                        const isCheckedOut = viewingDetails.status === 'Checked Out';
+                        const isUpcoming = viewingDetails.status === 'Upcoming';
+                        const latestRentRecord = viewingDetails.rentRecords?.find((r: any) => r.month === currentMonth);
+                        const isOverdue = !latestRentRecord?.paid && isActive;
+                        const initials = viewingDetails.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2).toUpperCase() || 'T';
+                        const statusBadge = isBlocked
+                            ? { label: '🚫 Blocked', cls: 'bg-red-100 text-red-700 border-red-200' }
+                            : isCheckedOut
+                            ? { label: '🏠 Checked Out', cls: 'bg-slate-100 text-slate-600 border-slate-200' }
+                            : isUpcoming
+                            ? { label: '⏳ Upcoming', cls: 'bg-amber-100 text-amber-700 border-amber-200' }
+                            : isOverdue
+                            ? { label: '🔴 Overdue', cls: 'bg-red-100 text-red-700 border-red-200' }
+                            : { label: '✅ Active', cls: 'bg-green-100 text-green-700 border-green-200' };
+                        return (
+                            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-6 pt-6 pb-4 rounded-t-xl">
+                                <DialogHeader>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-blue-600 flex items-center justify-center text-white text-xl font-black shadow-lg ring-2 ring-white/20 flex-shrink-0">
+                                            {initials}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <DialogTitle className="text-xl font-black text-white truncate">{viewingDetails.name}</DialogTitle>
+                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border ${statusBadge.cls}`}>
+                                                    {statusBadge.label}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 bg-purple-900/60 border border-purple-500/30 text-purple-300 text-[9px] font-black px-2.5 py-0.5 rounded-full font-mono">
+                                                    🟣 {viewingDetails.displayId || '—'}
+                                                </span>
+                                                {viewingDetails.booking?.displayId && (
+                                                    <span className="inline-flex items-center gap-1 bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 text-[9px] font-black px-2.5 py-0.5 rounded-full font-mono">
+                                                        🔵 {viewingDetails.booking.displayId}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <DialogDescription className="text-indigo-300 text-xs mt-2">
+                                        {viewingDetails.property?.name || 'Unknown Property'} · Room {viewingDetails.roomNumber} · ₹{viewingDetails.rentAmount || viewingDetails.rent}/month
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+                        );
+                    })()}
 
                     {viewingDetails && (
-                        <Tabs defaultValue="tenant-info" className="w-full pt-4">
+                        <div className="px-6 pt-4 pb-2">
+                        <Tabs defaultValue="tenant-info" className="w-full">
                             <TabsList className="grid w-full grid-cols-3 mb-6 bg-slate-100 p-1 rounded-xl">
                                 <TabsTrigger value="tenant-info" className="rounded-lg">Tenant Information</TabsTrigger>
                                 <TabsTrigger value="booking-stay" className="rounded-lg">Booking &amp; Stay</TabsTrigger>
@@ -663,8 +705,12 @@ export function TenantsContainer() {
                                             <p className="font-black text-slate-900 text-base">{viewingDetails.name}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tenant ID</p>
-                                            <p className="font-mono text-purple-700 font-bold text-base">{viewingDetails.displayId}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">User Permanent ID</p>
+                                            <p className="font-mono text-purple-700 font-bold text-base">{viewingDetails.user?.displayId || '—'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">DOB (Date of Birth)</p>
+                                            <p className="font-bold text-slate-900 text-base">{viewingDetails.user?.dob ? new Date(viewingDetails.user.dob).toLocaleDateString() : '—'}</p>
                                         </div>
                                         <div className="space-y-1 md:col-span-2">
                                             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phone Number</p>
@@ -720,9 +766,16 @@ export function TenantsContainer() {
                                                     {viewingDetails.roomNumber} ({viewingDetails.roomType})
                                                 </p>
                                             </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</p>
-                                                <p className="font-semibold text-slate-900">{viewingDetails.startDate || viewingDetails.moveInDate || '—'}</p>
+                                            <div className="col-span-2">
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1.5">Booking &amp; Tenant References</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black px-3 py-1.5 rounded-full font-mono shadow-sm">
+                                                        🔵 Booking ID: {viewingDetails.booking?.displayId || viewingDetails.bookingId || '—'}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1.5 bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-black px-3 py-1.5 rounded-full font-mono shadow-sm">
+                                                        🟣 Tenant ID: {viewingDetails.displayId || '—'}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-out Date</p>
@@ -752,6 +805,13 @@ export function TenantsContainer() {
                             {/* Tab 3: Tenant Paid History */}
                             <TabsContent value="paid-history" className="space-y-4">
                                 <div className="border rounded-2xl p-6 bg-slate-50 space-y-4 shadow-sm">
+                                    {/* GST Disclaimer */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                                        <span className="text-amber-500 text-base leading-none mt-0.5 flex-shrink-0">ℹ️</span>
+                                        <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
+                                            <strong>GST Note:</strong> GST @ 18% applicable on platform service fees only. Rent payments are GST-exempt under residential letting provisions (Notification No. 12/2017-Central Tax).
+                                        </p>
+                                    </div>
                                     <div className="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
                                         <h3 className="text-base font-bold text-slate-800">
                                             💰 Payment History Ledger
@@ -857,10 +917,38 @@ export function TenantsContainer() {
                                 </div>
                             </TabsContent>
                         </Tabs>
+                        </div>
                     )}
 
-                    <DialogFooter>
-                        <Button onClick={() => setViewingDetails(null)} className="w-full bg-slate-950 text-white hover:bg-slate-900">Close Profile</Button>
+                    {/* ── Color Legend ── */}
+                    <div className="mx-6 mb-4 border border-slate-100 rounded-2xl bg-gradient-to-r from-slate-50 to-white px-5 py-4">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Color System Legend</p>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-2">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
+                                <span className="text-[9px] text-slate-600 font-bold">Green = Active / Paid</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0" />
+                                <span className="text-[9px] text-slate-600 font-bold">Amber = Pending</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                                <span className="text-[9px] text-slate-600 font-bold">Red = Overdue / Blocked</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 flex-shrink-0" />
+                                <span className="text-[9px] text-slate-600 font-bold">Purple = Tenant / User IDs</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0" />
+                                <span className="text-[9px] text-slate-600 font-bold">Indigo = Booking / Property</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="px-6 pb-6">
+                        <Button onClick={() => setViewingDetails(null)} className="w-full bg-gradient-to-r from-slate-900 to-indigo-950 text-white hover:from-slate-800 hover:to-indigo-900 font-black tracking-wide">Close Profile</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

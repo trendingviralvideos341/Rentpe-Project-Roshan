@@ -22,6 +22,16 @@ import { sendEmail } from "@/lib/email";
 // Default: MOCK MODE enabled (safe for testing, 123456 always works)
 const IS_MOCK_MODE = process.env.EMAIL_OTP_ENABLED !== "true";
 
+// SECURITY FIX [H-4]: In production, fail loudly if mock mode is accidentally active.
+// A missing EMAIL_OTP_ENABLED env var would silently allow "123456" as a universal OTP,
+// bypassing all email verification — giving any attacker free account creation.
+if (process.env.NODE_ENV === 'production' && IS_MOCK_MODE) {
+    throw new Error(
+        'CRITICAL SECURITY ERROR: OTP mock mode is active in production! ' +
+        'Set EMAIL_OTP_ENABLED=true in your environment variables immediately.'
+    );
+}
+
 // OTP expiry: 10 minutes
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 

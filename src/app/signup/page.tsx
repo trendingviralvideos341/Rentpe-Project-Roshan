@@ -68,6 +68,8 @@ export default function SignupPage() {
     const [otpStep, setOtpStep] = useState(false);
     const [otp, setOtp] = useState("");
     const [otpError, setOtpError] = useState<string | null>(null);
+    const [phoneOtp, setPhoneOtp] = useState("");
+    const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [resendCooldown, setResendCooldown] = useState(0); // seconds remaining;
 
@@ -106,7 +108,7 @@ export default function SignupPage() {
                 const res = await fetch('/api/auth/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, name: fullName }),
+                    body: JSON.stringify({ email, phone: `+91${phone}`, name: fullName }),
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) {
@@ -135,6 +137,7 @@ export default function SignupPage() {
             formData.set("phone", `+91${phone}`);
             formData.set("role", role);
             formData.set("otp", otp);
+            formData.set("phoneOtp", phoneOtp);
             formData.set("agreed", agreed ? "true" : "false");
             
             // Honeypot field
@@ -145,8 +148,10 @@ export default function SignupPage() {
             const result = await signup(formData);
             
             if (result?.error) {
-                // If it's an OTP error, show it near the OTP field
-                if (result.error.toLowerCase().includes("otp")) {
+                // If it's an OTP error, show it near the respective OTP field
+                if (result.error.toLowerCase().includes("phone otp") || result.error.toLowerCase().includes("mobile otp") || result.error.toLowerCase().includes("phone verification")) {
+                    setPhoneOtpError(result.error);
+                } else if (result.error.toLowerCase().includes("otp")) {
                     setOtpError(result.error);
                 } else {
                     setError(result.error);
@@ -250,7 +255,7 @@ export default function SignupPage() {
                                                 const res = await fetch('/api/auth/send-otp', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ email, name: fullName }),
+                                                    body: JSON.stringify({ email, phone: `+91${phone}`, name: fullName }),
                                                 });
                                                 const data = await res.json();
                                                 if (data.error) { setOtpError(data.error); return; }
@@ -266,6 +271,36 @@ export default function SignupPage() {
                                         >Resend OTP</button>
                                     )}
                                 </p>
+                            </div>
+                        )}
+
+                        {otpStep && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-3 animate-in fade-in zoom-in duration-300">
+                                <h3 className="text-sm font-bold text-blue-900 border-b border-blue-100 pb-2 flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-[10px]">OTP</span>
+                                    Verify your mobile number
+                                </h3>
+                                <p className="text-xs text-blue-700">A 6-digit verification code has been sent to <strong>+91 {phone}</strong></p>
+
+                                {/* 🚧 Dev/Testing hint — remove when going live */}
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 font-medium">
+                                    🚧 Currently using Mock SMS OTP: <span className="font-black tracking-widest">123456</span>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Input
+                                        placeholder="Enter 6-digit Mobile OTP"
+                                        className={`text-center text-lg tracking-[0.5em] font-black ${phoneOtpError ? "border-red-400" : "border-blue-300 focus:ring-blue-400"}`}
+                                        value={phoneOtp}
+                                        maxLength={6}
+                                        onChange={e => {
+                                            const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                            setPhoneOtp(v);
+                                            setPhoneOtpError(null);
+                                        }}
+                                    />
+                                    {phoneOtpError && <p className="text-[10px] text-red-500 text-center font-semibold">{phoneOtpError}</p>}
+                                </div>
                             </div>
                         )}
 

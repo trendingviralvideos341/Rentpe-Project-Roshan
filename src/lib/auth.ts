@@ -3,13 +3,15 @@ import { hash, compare } from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { Session } from '@/types/auth';
 
-if (!process.env.JWT_SECRET) {
-    throw new Error("CRITICAL: JWT_SECRET environment variable is not set! This is required to secure user sessions.");
+// SECURITY FIX [C-4]: Guard against undefined AND empty string.
+// The previous `|| 'unsafe-...'` fallback would silently use a hardcoded key if the env var
+// was set to an empty string — making all JWTs forgeable with a known secret.
+// Now we crash loudly rather than fail silently.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === '') {
+    throw new Error("CRITICAL: JWT_SECRET environment variable is not set or is empty. Generate a strong secret: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
 }
 
-const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'unsafe-development-secret-key-1234567890'
-);
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function encryptPassword(password: string) {
     return hash(password, 10);

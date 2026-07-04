@@ -13,8 +13,10 @@ export async function GET(request: Request) {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
 
-    // Security: Only allow trigger if CRON_SECRET matches or if in development
-    if (process.env.NODE_ENV === 'production' && (!cronSecret || authHeader !== `Bearer ${cronSecret}`)) {
+    // SECURITY FIX [M-4]: Always require CRON_SECRET — don't bypass auth in development.
+    // Unauthenticated cron execution can generate fake invoices, spam tenants with emails,
+    // and corrupt financial records even in non-production environments.
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

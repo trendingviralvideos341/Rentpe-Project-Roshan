@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { rateLimits } from '@/lib/ratelimit';
 
-if (!process.env.JWT_SECRET) {
-    throw new Error("CRITICAL: JWT_SECRET environment variable is not set! This is required to secure user sessions.");
+// SECURITY FIX [C-4]: Guard against empty string JWT_SECRET. Crash loudly rather than use an unsafe default.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === '') {
+    throw new Error("CRITICAL: JWT_SECRET is not set or is empty. Cannot verify session tokens.");
 }
 
-const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'unsafe-development-secret-key-1234567890'
-);
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 // Define protected and public routes
 const protectedRoutes = ['/dashboard'];
@@ -160,7 +159,11 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
 }
 
-// Routes Middleware should not run on
+// Middleware runs on all routes except static files and Next.js internals.
+// This ensures rate limiting applies to API routes too.
+// RBAC redirect logic only fires for /dashboard/* routes.
 export const config = {
-    matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|css|js)$).*)',
+    ],
 };

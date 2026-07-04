@@ -643,27 +643,64 @@ export default function TenantsPage() {
             {/* Support Command Center View Details Drawer Dialog */}
             {selectedTenant && (
                 <Dialog open={!!selectedTenant} onOpenChange={() => { setSelectedTenant(null); setIsEditingProfile(false); }}>
-                    <DialogContent className="max-w-[90vw] md:max-w-7xl bg-white border rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-                        <DialogHeader className="border-b border-slate-100 pb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
-                                    <Users className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <DialogTitle className="text-xl font-black text-slate-900">{selectedTenant.name}</DialogTitle>
-                                    <DialogDescription className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                                        Property: {selectedTenant.property?.name || "Unknown PG"}
+                    <DialogContent className="max-w-[90vw] md:max-w-7xl bg-white border rounded-2xl p-0 shadow-2xl overflow-y-auto max-h-[90vh]">
+                        {/* Premium dark gradient header */}
+                        {(() => {
+                            const st = selectedTenant;
+                            const isBlocked = st.status === 'Blocked';
+                            const isCheckedOut = st.status === 'Checked Out';
+                            const isUpcoming = st.status === 'Upcoming';
+                            const isActive = st.status === 'Active';
+                            const initials = st.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2).toUpperCase() || 'T';
+                            const statusBadge = isBlocked
+                                ? { label: '🚫 Blocked', cls: 'bg-red-100 text-red-700 border-red-200' }
+                                : isCheckedOut
+                                ? { label: '🏠 Checked Out', cls: 'bg-slate-100 text-slate-600 border-slate-200' }
+                                : isUpcoming
+                                ? { label: '⏳ Upcoming', cls: 'bg-amber-100 text-amber-700 border-amber-200' }
+                                : { label: '✅ Active', cls: 'bg-green-100 text-green-700 border-green-200' };
+                            return (
+                                <DialogHeader className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-6 pt-6 pb-5 rounded-t-2xl border-b-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-black shadow-lg ring-2 ring-white/20 flex-shrink-0">
+                                            {initials}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <DialogTitle className="text-xl font-black text-white truncate">{st.name}</DialogTitle>
+                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border ${statusBadge.cls}`}>
+                                                    {statusBadge.label}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 bg-purple-900/60 border border-purple-500/30 text-purple-300 text-[9px] font-black px-2.5 py-0.5 rounded-full font-mono">
+                                                    🟣 Tenant: {st.displayId || '—'}
+                                                </span>
+                                                {st.booking?.displayId && (
+                                                    <span className="inline-flex items-center gap-1 bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 text-[9px] font-black px-2.5 py-0.5 rounded-full font-mono">
+                                                        🔵 Booking: {st.booking.displayId}
+                                                    </span>
+                                                )}
+                                                {/* Admin-only: User UID */}
+                                                {st.booking?.user?.displayId && (
+                                                    <span className="inline-flex items-center gap-1 bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 text-[9px] font-black px-2.5 py-0.5 rounded-full font-mono">
+                                                        🆔 UID: {st.booking.user.displayId}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <DialogDescription className="text-indigo-300 text-xs mt-2">
+                                        {st.property?.name || 'Unknown PG'} · Room {st.roomNumber || st.booking?.room?.number || '—'} · ₹{st.rentAmount || st.booking?.rentAmount || '—'}/month
                                     </DialogDescription>
-                                </div>
-                            </div>
-                        </DialogHeader>
+                                </DialogHeader>
+                            );
+                        })()}
 
                         {/* Navigation Tabs */}
-                        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mt-4">
+                        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mt-4 mx-6">
                             {[
                                 { id: "profile", label: "Tenant Profile", icon: Users },
                                 { id: "booking", label: "Booking & Stay", icon: Building },
-                                { id: "ledger", label: "Tenant Payment History", icon: Info },
+                                { id: "ledger", label: "Payment History", icon: Info },
                                 { id: "support", label: "Admin Overrides", icon: ShieldAlert },
                             ].map(t => {
                                 const Icon = t.icon;
@@ -673,7 +710,7 @@ export default function TenantsPage() {
                                         onClick={() => setActiveTab(t.id as any)}
                                         className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
                                             activeTab === t.id
-                                                ? "bg-blue-600 text-white shadow-md"
+                                                ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
                                                 : "text-slate-600 hover:bg-slate-200"
                                         }`}
                                     >
@@ -684,7 +721,7 @@ export default function TenantsPage() {
                             })}
                         </div>
 
-                        <div className="py-4 space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                        <div className="py-4 px-6 space-y-4 max-h-[400px] overflow-y-auto pr-1">
                             {activeTab === "profile" && (
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
@@ -1092,7 +1129,15 @@ export default function TenantsPage() {
 
                             {/* TAB 3: Tenant Payment History (formerly Ledger) */}
                             {activeTab === "ledger" && (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
+                                    {/* GST Disclaimer */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                                        <span className="text-amber-500 text-base leading-none mt-0.5 flex-shrink-0">ℹ️</span>
+                                        <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
+                                            <strong>GST Note:</strong> GST @ 18% applicable on platform service fees only. Rent payments are GST-exempt under residential letting provisions (Notification No. 12/2017-Central Tax).
+                                        </p>
+                                    </div>
+
                                     {/* Header Cards */}
                                     {(() => {
                                         const currentYear = new Date().getFullYear();
@@ -1430,6 +1475,33 @@ export default function TenantsPage() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* ── Color System Legend ── */}
+                        <div className="mx-6 mb-6 mt-2 border border-slate-100 rounded-2xl bg-gradient-to-r from-slate-50 to-white px-5 py-4">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Color System Legend</p>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-2">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
+                                    <span className="text-[9px] text-slate-600 font-bold">Green = Active / Paid</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0" />
+                                    <span className="text-[9px] text-slate-600 font-bold">Amber = Pending</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                                    <span className="text-[9px] text-slate-600 font-bold">Red = Overdue / Blocked</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 flex-shrink-0" />
+                                    <span className="text-[9px] text-slate-600 font-bold">Purple = Tenant IDs</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0" />
+                                    <span className="text-[9px] text-slate-600 font-bold">Indigo = Booking / Property</span>
+                                </div>
+                            </div>
                         </div>
                     </DialogContent>
                 </Dialog>

@@ -24,7 +24,10 @@ model User {
   isOnboarder            Boolean              @default(false)
   isVerifier             Boolean              @default(false)
   name                   String?
-  phone                  String?
+  // SECURITY FIX [H-2]: Added @unique to prevent multiple accounts with the same phone number.
+  // Duplicate phones enable identity fraud, defeat phone-based KYC, and violate RBI KYC norms.
+  // Run: npx prisma migrate dev --name add_phone_unique
+  phone                  String?              @unique
   phoneVerified          Boolean              @default(false)
   city                   String?
   status                 String               @default("PENDING_VERIFICATION")
@@ -96,6 +99,7 @@ model User {
   fingerprints           UserFingerprint[]
 
   @@index([status])
+  @@index([phone])  // SECURITY FIX [H-2]: Efficient lookup when checking phone uniqueness
 }
 
 model RoleUpgradeRequest {

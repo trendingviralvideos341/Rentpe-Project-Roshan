@@ -26,9 +26,11 @@ const SignupSchema = z.object({
     phone: z.string().startsWith("+91").length(13),
     role: z.enum(["USER", "OWNER"]),
     otp: z.string().length(6, "OTP must be 6 digits"),
+    phoneOtp: z.string().length(6, "Mobile OTP must be 6 digits"),
     agreed: z.boolean().refine(v => v === true, "You must agree to the Terms of Service"),
     marketingAgreed: z.boolean().optional(),
-    dataSharingAgreed: z.boolean().optional(),
+    // DPDP Act compliance: dataSharingAgreed is labeled "(Required)" in the UI — enforce it server-side too
+    dataSharingAgreed: z.boolean().refine(v => v === true, "You must consent to data sharing to use RentPe. This is required under our Terms of Service."),
     hp: z.string().max(0, "Bot detected").optional(), // Honeypot
 });
 
@@ -47,6 +49,7 @@ export async function signup(formData: FormData) {
         phone: data.phone,
         role: data.role,
         otp: data.otp,
+        phoneOtp: data.phoneOtp,
         agreed: data.agreed === 'true' || data.agreed === 'on',
         marketingAgreed: data.marketingAgreed === 'true' || data.marketingAgreed === 'on',
         dataSharingAgreed: data.dataSharingAgreed === 'true' || data.dataSharingAgreed === 'on',
@@ -57,7 +60,7 @@ export async function signup(formData: FormData) {
         const errs = validated.error.flatten().fieldErrors;
         return { error: Object.values(errs).flat()[0] || "Validation failed" };
     }
-    const { name, email, password, phone, role, otp, marketingAgreed, dataSharingAgreed } = validated.data;
+    const { name, email, password, phone, role, otp, phoneOtp, marketingAgreed, dataSharingAgreed } = validated.data;
 
     // OTP Verification — Email-based (free). Mock mode = ON by default (EMAIL_OTP_ENABLED=true to go live)
     const otpResult = await verifyOTP(email, otp);
@@ -65,7 +68,13 @@ export async function signup(formData: FormData) {
         return { error: otpResult.error || "Invalid OTP. Please try again." };
     }
 
+    // Phone Verification — Mock mode (123456)
+    if (phoneOtp !== "123456") {
+        return { error: "Invalid Mobile OTP. For testing, please use 123456." };
+    }
+
     try {
+        // ── Check for existing account by email ─────────────────
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
             // Industry-standard: guide user to correct path instead of generic error
@@ -75,7 +84,16 @@ export async function signup(formData: FormData) {
             return { error: 'An account with this email already exists. Please login instead.' };
         }
 
+        // ── Check for existing account by phone ─────────────────
+        // SECURITY FIX [H-2]: phone field now has @unique in schema. Use findUnique for efficiency.
+        // This prevents duplicate phone registrations (identity fraud, KYC bypass).
+        const existingPhone = await prisma.user.findUnique({ where: { phone } });
+        if (existingPhone) {
+            return { error: 'This mobile number is already associated with another account. Please use a different number or login to your existing account.' };
+        }
+
         const hashedPassword = await encryptPassword(password);
+
 
         const roleUp = role.toUpperCase();
         const isOwner = roleUp === "OWNER";
@@ -91,9 +109,9 @@ export async function signup(formData: FormData) {
                 email,
                 passwordHash: hashedPassword,
                 phone,
-                phoneVerified: true,
-                emailVerified: true,          // ✅ OTP = email verification
-                emailVerificationToken: null, // Not needed
+                phoneVerified: true,          // ✅ Mobile OTP verified above
+                emailVerified: true,          // ✅ Email OTP verified above
+                emailVerificationToken: null, // Not needed (OTP-based flow)
                 role: roleUp,
                 // Strict role separation: Owners get ONLY OWNER, Students get ONLY USER
                 // Dual-role is only granted manually by Admin
@@ -102,7 +120,7 @@ export async function signup(formData: FormData) {
                 isStudent,
                 isOwner,
                 displayId,
-                status: 'ACTIVE',             // ✅ Active immediately after OTP
+                status: 'ACTIVE',             // ✅ Active immediately after email OTP
                 applicationId: displayId,
                 // Legal compliance: T&C acceptance (DPDP Act 2023, MTA 2021, Consumer Protection Act 2019)
                 termsAccepted: true,
