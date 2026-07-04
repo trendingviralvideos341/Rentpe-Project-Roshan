@@ -12,6 +12,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SettlementModal } from "@/components/dashboard/SettlementModal";
 
+function formatToDDMMYYYY(dateStr: string | null | undefined): string {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}${mm}${yyyy}`;
+    }
+    const parts = dateStr.trim().split(/\s+/);
+    if (parts.length === 3) {
+        const dd = parts[0].padStart(2, '0');
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthIdx = monthNames.indexOf(parts[1]);
+        if (monthIdx !== -1) {
+            const mm = String(monthIdx + 1).padStart(2, '0');
+            const yyyy = parts[2];
+            return `${dd}${mm}${yyyy}`;
+        }
+    }
+    return dateStr;
+}
+
 function formatMonthLabel(m: string): string {
     if (!m) return '';
     const [y, mo] = m.split('-');
@@ -382,7 +405,7 @@ export function TenantsContainer() {
                                     <th className="p-4 text-left font-medium">Booking ID</th>
                                     <th className="p-4 text-left font-medium">Name & PG</th>
                                     <th className="p-4 text-left font-medium">Room</th>
-                                    <th className="p-4 text-left font-medium">Start Date</th>
+                                    <th className="p-4 text-left font-medium">Checked In Date</th>
                                     <th className="p-4 text-left font-medium">Monthly Rent</th>
                                     <th className="p-4 text-left font-medium">{formatMonthLabel(currentMonth)} Status</th>
                                     <th className="p-4 text-left font-medium">Status & History</th>
@@ -420,8 +443,10 @@ export function TenantsContainer() {
                                                     <div className="text-xs text-muted-foreground">{t.phone}</div>
                                                 </td>
                                                 <td className="p-4 text-sm">{t.roomNumber} <span className="text-xs text-muted-foreground">({t.roomType})</span></td>
-                                                <td className="p-4 text-sm">{t.moveInDate}</td>
-                                                <td className="p-4 font-bold">₹{t.rentAmount}</td>
+                                                <td className="p-4 text-sm">{formatToDDMMYYYY(t.startDate || t.moveInDate)}</td>
+                                                <td className="p-4 font-bold">
+                                                    ₹{latestRent ? (latestRent.paid ? 0 : latestRent.amount) : (t.rent || 0)}
+                                                </td>
 
                                                 {/* Payment Status */}
                                                 <td className="p-4">
@@ -530,22 +555,6 @@ export function TenantsContainer() {
                                                                     onClick={() => handleBlock(t.id)}>
                                                                     🚫 Block Tenant
                                                                 </Button>
-                                                                {showGenerateRent[t.id] ? (
-                                                                    <div className="space-y-1 w-full pt-1 border-t mt-1">
-                                                                        <Input type="month" className="h-7 text-xs"
-                                                                            value={generateMonth[t.id] || ""}
-                                                                            onChange={e => setGenerateMonth(p => ({ ...p, [t.id]: e.target.value }))} />
-                                                                        <div className="flex gap-1">
-                                                                            <Button size="sm" className="h-6 text-[10px] flex-1" onClick={() => handleGenerateRent(t.id)}>Generate</Button>
-                                                                            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: false }))}>✕</Button>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] w-full bg-blue-50 border-blue-200"
-                                                                        onClick={() => setShowGenerateRent(p => ({ ...p, [t.id]: true }))}>
-                                                                        <PlusCircle className="mr-1 h-3 w-3" /> Rent
-                                                                    </Button>
-                                                                )}
                                                             </>
                                                         ) : (
                                                             <>
