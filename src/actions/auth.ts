@@ -561,7 +561,7 @@ export async function checkSessionIntegrity() {
             select: { role: true, roles: true, email: true }
         });
 
-        if (!user) return { status: 'unauthenticated' };
+        if (!user || user.email !== session.email) return { status: 'unauthenticated' };
 
         const sessionRole = session.role as string;
 

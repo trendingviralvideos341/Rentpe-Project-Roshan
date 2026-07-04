@@ -1294,7 +1294,7 @@ export default function StudentDashboardPage() {
                         return (
                             <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
                                 <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8 relative">
-                                    {!isEditingProfile && !isProfileLocked && (
+                                    {!isEditingProfile && (
                                         <Button 
                                             onClick={() => setIsEditingProfile(true)}
                                             className="absolute top-8 right-8 bg-white/10 hover:bg-white/20 text-white font-bold border-0"
@@ -1324,11 +1324,11 @@ export default function StudentDashboardPage() {
                                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Demographics & Occupation</h4>
                                         <div>
                                             <label className="text-xs font-black text-slate-600 block mb-1">Date of Birth</label>
-                                            <input type="date" value={profileForm.dateOfBirth || ''} onChange={e => setProfileForm({...profileForm, dateOfBirth: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                            <input type="date" disabled={isProfileLocked} value={profileForm.dateOfBirth || ''} onChange={e => setProfileForm({...profileForm, dateOfBirth: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
                                         </div>
                                         <div>
                                             <label className="text-xs font-black text-slate-600 block mb-1">Gender</label>
-                                            <select value={profileForm.gender || ''} onChange={e => setProfileForm({...profileForm, gender: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                            <select disabled={isProfileLocked} value={profileForm.gender || ''} onChange={e => setProfileForm({...profileForm, gender: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
                                                 <option value="">Select Gender</option>
                                                 <option value="Male">Male</option>
                                                 <option value="Female">Female</option>
@@ -1337,7 +1337,7 @@ export default function StudentDashboardPage() {
                                         </div>
                                         <div>
                                             <label className="text-xs font-black text-slate-600 block mb-1">Nationality</label>
-                                            <select value={profileForm.nationality || ''} onChange={e => setProfileForm({...profileForm, nationality: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                            <select disabled={isProfileLocked} value={profileForm.nationality || ''} onChange={e => setProfileForm({...profileForm, nationality: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
                                                 <option value="Indian">Indian</option>
                                                 <option value="Others">Others</option>
                                             </select>
@@ -1345,12 +1345,12 @@ export default function StudentDashboardPage() {
                                         {profileForm.nationality === 'Others' && (
                                             <div>
                                                 <label className="text-xs font-black text-slate-600 block mb-1">Specify Nationality</label>
-                                                <input type="text" value={profileForm.nationalityOther || ''} onChange={e => setProfileForm({...profileForm, nationalityOther: e.target.value})} placeholder="e.g. American" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                                <input type="text" disabled={isProfileLocked} value={profileForm.nationalityOther || ''} onChange={e => setProfileForm({...profileForm, nationalityOther: e.target.value})} placeholder="e.g. American" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
                                             </div>
                                         )}
                                         <div>
                                             <label className="text-xs font-black text-slate-600 block mb-1">Occupation Status</label>
-                                            <select value={profileForm.occupationType || ''} onChange={e => setProfileForm({...profileForm, occupationType: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                            <select disabled={isProfileLocked} value={profileForm.occupationType || ''} onChange={e => setProfileForm({...profileForm, occupationType: e.target.value})} className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
                                                 <option value="">Select</option>
                                                 <option value="Student">Student</option>
                                                 <option value="Working Professional">Working Professional</option>
@@ -1360,12 +1360,43 @@ export default function StudentDashboardPage() {
                                         {profileForm.occupationType === 'Others' && (
                                             <div>
                                                 <label className="text-xs font-black text-slate-600 block mb-1">Specify Occupation</label>
-                                                <input type="text" value={profileForm.occupationOther || ''} onChange={e => setProfileForm({...profileForm, occupationOther: e.target.value})} placeholder="e.g. Freelancer" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                                <input type="text" disabled={isProfileLocked} value={profileForm.occupationOther || ''} onChange={e => setProfileForm({...profileForm, occupationOther: e.target.value})} placeholder="e.g. Freelancer" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
                                             </div>
                                         )}
                                         <div>
                                             <label className="text-xs font-black text-slate-600 block mb-1">Institution / Company Name</label>
-                                            <input type="text" value={profileForm.occupationDetail || ''} onChange={e => setProfileForm({...profileForm, occupationDetail: e.target.value})} placeholder="e.g. Delhi University" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                                            <input type="text" disabled={isProfileLocked} value={profileForm.occupationDetail || ''} onChange={e => setProfileForm({...profileForm, occupationDetail: e.target.value})} placeholder="e.g. Delhi University" className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" />
+                                        </div>
+
+                                        {/* Credentials Change Section inside Edit Profile Mode */}
+                                        <div className="border-t border-slate-200 pt-4 mt-2 space-y-4">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Login & Contact Credentials</h4>
+                                            <div>
+                                                <label className="text-xs font-black text-slate-600 block mb-1">Official Email</label>
+                                                <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                                    <span className="text-sm font-bold text-slate-800">{profile?.email || '—'}</span>
+                                                    <Button 
+                                                        type="button" 
+                                                        onClick={() => handleStartSelfServiceChange('email')}
+                                                        className="h-8 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 font-bold px-3 py-1 rounded-lg text-xs"
+                                                    >
+                                                        Change Email
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-black text-slate-600 block mb-1">Registered Phone</label>
+                                                <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                                    <span className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</span>
+                                                    <Button 
+                                                        type="button" 
+                                                        onClick={() => handleStartSelfServiceChange('phone')}
+                                                        className="h-8 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 font-bold px-3 py-1 rounded-lg text-xs"
+                                                    >
+                                                        Change Phone
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1496,29 +1527,11 @@ export default function StudentDashboardPage() {
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Official Email</label>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleStartSelfServiceChange('email')}
-                                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
-                                                            >
-                                                                <Edit2 className="w-3 h-3" /> Change
-                                                            </button>
-                                                        </div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.email || '—'}</div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Registered Phone</label>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleStartSelfServiceChange('phone')}
-                                                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
-                                                            >
-                                                                <Edit2 className="w-3 h-3" /> Change
-                                                            </button>
-                                                        </div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</div>
                                                     </div>
 
                                                     <div className="col-span-2 border-t border-slate-100 pt-4 mt-2">

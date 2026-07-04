@@ -8,6 +8,7 @@ import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
 import { firstMonthRent, lastMonthRent } from "@/utils/billingUtils";
 import { generateSequentialId } from "@/lib/ids";
+import { cookies } from "next/headers";
 
 export async function getTenants() {
     const session = await getSession();
@@ -1021,7 +1022,7 @@ export async function updateTenantProfile(
             }
         });
         if (existingEmailUser) {
-            throw new Error(`The email address ${data.email} is already registered to another user account.`);
+            throw new Error(`This email is already registered to user: ${existingEmailUser.name || 'Unknown'} (Permanent ID: ${existingEmailUser.displayId || '—'}, Phone: ${existingEmailUser.phone || '—'}).`);
         }
     }
 
@@ -1033,7 +1034,7 @@ export async function updateTenantProfile(
             }
         });
         if (existingPhoneUser) {
-            throw new Error(`The phone number ${data.phone} is already registered to another user account.`);
+            throw new Error(`This phone is already registered to user: ${existingPhoneUser.name || 'Unknown'} (Permanent ID: ${existingPhoneUser.displayId || '—'}, Email: ${existingPhoneUser.email || '—'}).`);
         }
     }
 
@@ -1067,8 +1068,14 @@ export async function updateTenantProfile(
         // 2. Update User (Student)
         const userUpdateData: any = {};
         if (data.name !== undefined) userUpdateData.name = data.name;
-        if (data.phone !== undefined) userUpdateData.phone = data.phone;
-        if (data.email !== undefined) userUpdateData.email = data.email;
+        if (data.phone !== undefined) {
+            userUpdateData.phone = data.phone;
+            userUpdateData.phoneVerified = true;
+        }
+        if (data.email !== undefined) {
+            userUpdateData.email = data.email;
+            userUpdateData.emailVerified = true;
+        }
         if (data.dateOfBirth !== undefined) userUpdateData.dateOfBirth = data.dateOfBirth;
         if (data.gender !== undefined) userUpdateData.gender = data.gender;
         if (data.nationality !== undefined) userUpdateData.nationality = data.nationality;
@@ -1142,7 +1149,7 @@ export async function requestSelfServiceOTP(type: 'email' | 'phone', target: str
             where: type === 'email' ? { email: target } : { phone: target }
         });
         if (existing) {
-            throw new Error(`This ${type} is already registered to another user account.`);
+            throw new Error(type === 'email' ? 'Email is already registered' : 'Phone is already registered');
         }
     }
 
@@ -1167,7 +1174,7 @@ export async function verifyAndUpdateSelfService(
         where: type === 'email' ? { email: newTarget } : { phone: newTarget }
     });
     if (existing) {
-        throw new Error(`This ${type} is already registered to another user account.`);
+        throw new Error(type === 'email' ? 'Email is already registered' : 'Phone is already registered');
     }
 
     const tenant = await prisma.tenant.findFirst({
@@ -1180,7 +1187,9 @@ export async function verifyAndUpdateSelfService(
     return await prisma.$transaction(async (tx) => {
         await tx.user.update({
             where: { id: session.userId },
-            data: type === 'email' ? { email: newTarget } : { phone: newTarget }
+            data: type === 'email' 
+                ? { email: newTarget, emailVerified: true } 
+                : { phone: newTarget, phoneVerified: true }
         });
 
         await tx.tenant.update({
@@ -1219,6 +1228,12 @@ export async function verifyAndUpdateSelfService(
         console.log(`[SECURITY ALERT] Self-Service Update of ${type} for User ID: ${session.userId}.`);
         console.log(`- Alert sent to Old ${type}: ${oldTarget}`);
         console.log(`- Alert sent to New ${type}: ${newTarget}`);
+
+        // Invalidate active session if email changes
+        if (type === 'email') {
+            const cookieStore = await cookies();
+            cookieStore.delete('rentpe_session');
+        }
 
         revalidatePath('/dashboard/admin/tenants');
         revalidatePath('/dashboard/owner/tenants');
