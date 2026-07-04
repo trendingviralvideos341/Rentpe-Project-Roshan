@@ -38,7 +38,17 @@ export async function getTenants() {
     const tenants = await prisma.tenant.findMany({
         where: whereClause,
         include: {
-            property: { select: { name: true, displayId: true } },
+            property: { 
+                select: { 
+                    name: true, 
+                    displayId: true,
+                    address: true,
+                    city: true,
+                    foodType: true,
+                    foodPricePerMonth: true,
+                    owner: { select: { name: true, phone: true } }
+                } 
+            },
             rentRecords: { orderBy: { createdAt: 'desc' } },
             billingProfile: {
                 include: {
@@ -57,6 +67,22 @@ export async function getTenants() {
                     displayId: true,    // Booking ID e.g. REN-BOOK-2026-0001
                     status: true,
                     moveInChecklist: true,
+                    foodSelected: true,
+                    foodPriceApplied: true,
+                    user: {
+                        select: {
+                            dateOfBirth: true,
+                            gender: true,
+                            nationality: true,
+                            emergencyContact: true,
+                            occupationType: true,
+                            occupationDetail: true,
+                            businessName: true,
+                            college: true,
+                            email: true,
+                            phone: true
+                        }
+                    }
                 }
             },
             settlementRecord: true

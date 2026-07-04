@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
     CheckCircle, XCircle, Users, Loader2, Search,
     Eye, Building, ShieldAlert, Phone, Mail, Calendar, Info, AlertTriangle,
-    X, Download, FileText, CheckCircle2
+    X, Download, FileText, CheckCircle2, TrendingUp, Shield, Building2, IndianRupee, Home
 } from "lucide-react";
 import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant } from "@/actions/tenants";
 import { getInvoiceForReceipt } from "@/actions/payments";
@@ -49,7 +49,7 @@ export default function TenantsPage() {
     
     // Modal drawer state
     const [selectedTenant, setSelectedTenant] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<"profile" | "ledger" | "support">("profile");
+    const [activeTab, setActiveTab] = useState<"profile" | "booking" | "ledger" | "support">("profile");
 
     // Action notes state
     const [blockNote, setBlockNote] = useState("");
@@ -61,6 +61,10 @@ export default function TenantsPage() {
     const [markingPaidRecord, setMarkingPaidRecord] = useState<any>(null);
     const [overrideMethod, setOverrideMethod] = useState<'CASH' | 'ONLINE'>('CASH');
     const [overrideReason, setOverrideReason] = useState('');
+
+    // Ledger filters
+    const [ledgerYear, setLedgerYear] = useState<string>("ALL");
+    const [ledgerMonth, setLedgerMonth] = useState<string>("ALL");
 
     // Dialog state for Viewing Receipt
     const [viewingReceiptInvoice, setViewingReceiptInvoice] = useState<any>(null);
@@ -428,7 +432,7 @@ export default function TenantsPage() {
             {/* Support Command Center View Details Drawer Dialog */}
             {selectedTenant && (
                 <Dialog open={!!selectedTenant} onOpenChange={() => setSelectedTenant(null)}>
-                    <DialogContent className="max-w-2xl bg-white border rounded-2xl p-6 shadow-2xl">
+                    <DialogContent className="max-w-5xl bg-white border rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                         <DialogHeader className="border-b border-slate-100 pb-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
@@ -447,6 +451,7 @@ export default function TenantsPage() {
                         <div className="flex border-b border-slate-100 gap-2 mt-4">
                             {[
                                 { id: "profile", label: "Tenant Profile", icon: Users },
+                                { id: "booking", label: "Booking & Stay", icon: Building },
                                 { id: "ledger", label: "Tenant Payment History", icon: Info },
                                 { id: "support", label: "Admin Overrides", icon: ShieldAlert },
                             ].map(t => {
@@ -471,135 +476,381 @@ export default function TenantsPage() {
                         <div className="py-4 space-y-4 max-h-[400px] overflow-y-auto pr-1">
                             {/* TAB 1: Profile */}
                             {activeTab === "profile" && (
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Full Name</p>
-                                        <p className="font-bold text-slate-900">{selectedTenant.name}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Full Name</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.name}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Date of Birth</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.dateOfBirth || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Gender</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.gender || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Nationality</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.nationality || "Indian"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Status</p>
+                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                                selectedTenant.status === "Active" ? "bg-green-100 text-green-700" :
+                                                selectedTenant.status === "Upcoming" ? "bg-blue-100 text-blue-700" :
+                                                "bg-red-100 text-red-700"
+                                            }`}>{selectedTenant.status}</span>
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Status</p>
-                                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                            selectedTenant.status === "Active" ? "bg-green-100 text-green-700" :
-                                            selectedTenant.status === "Upcoming" ? "bg-blue-100 text-blue-700" :
-                                            "bg-red-100 text-red-700"
-                                        }`}>{selectedTenant.status}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Phone</p>
-                                        <p className="font-bold text-slate-900">{selectedTenant.phone}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Mail className="w-3 h-3" /> Email</p>
-                                        <p className="font-bold text-slate-900">{selectedTenant.email}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Assigned Room</p>
-                                        <p className="font-bold text-slate-900">{selectedTenant.roomNumber} ({selectedTenant.roomType})</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Monthly Rent</p>
-                                        <p className="font-bold text-slate-900">₹{selectedTenant.rentAmount || selectedTenant.rent}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Contract Start Date</p>
-                                        <p className="font-bold text-slate-900">{selectedTenant.startDate || selectedTenant.moveInDate}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Booking Reference</p>
-                                        <p className="font-mono text-xs font-bold text-slate-600">{selectedTenant.booking?.displayId || "N/A"}</p>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Registered Phone</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.phone || selectedTenant.phone}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Mail className="w-3 h-3" /> Registered Email</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.email || selectedTenant.email}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Occupation Status</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.occupationType || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Institution / Company Name</p>
+                                            <p className="font-bold text-slate-900">
+                                                {selectedTenant.booking?.user?.occupationType === 'Student' 
+                                                    ? selectedTenant.booking?.user?.college 
+                                                    : selectedTenant.booking?.user?.businessName || selectedTenant.booking?.user?.occupationDetail || "—"}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Emergency Contacts</p>
+                                            {(() => {
+                                                const ecRaw = selectedTenant.booking?.user?.emergencyContact;
+                                                if (!ecRaw) return <p className="font-bold text-slate-900">—</p>;
+                                                try {
+                                                    const parsed = JSON.parse(ecRaw);
+                                                    if (Array.isArray(parsed)) {
+                                                        return (
+                                                            <div className="space-y-1.5">
+                                                                {parsed.map((contact, idx) => (
+                                                                    <div key={idx} className="bg-slate-50 p-2 rounded border border-slate-100 text-xs">
+                                                                        <p className="font-bold text-slate-800">{contact.name} <span className="text-slate-400 font-normal">({contact.relation})</span></p>
+                                                                        <p className="text-slate-600 font-mono mt-0.5">{contact.phone}</p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }
+                                                } catch (e) {}
+                                                return <p className="font-bold text-slate-900">{ecRaw}</p>;
+                                            })()}
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* TAB 2: Tenant Payment History (formerly Ledger) */}
-                            {activeTab === "ledger" && (
-                                <div className="space-y-3">
-                                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Rent Invoices & Payments</h4>
-                                    {selectedTenant.rentRecords?.length === 0 ? (
-                                        <p className="text-xs text-slate-400 text-center py-4">No rent records generated for this tenant.</p>
-                                    ) : (
-                                        <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
-                                            {selectedTenant.rentRecords.map((r: any) => {
-                                                const matchingInvoice = selectedTenant.billingProfile?.invoices?.find(
-                                                    (inv: any) => inv.month === r.month
-                                                );
-                                                const payment = matchingInvoice?.payments?.[0];
-                                                
-                                                return (
-                                                    <div key={r.id} className="p-3.5 bg-slate-50 flex flex-col gap-2 text-xs">
-                                                        <div className="flex items-center justify-between flex-wrap gap-2">
-                                                            <div>
-                                                                <p className="font-bold text-slate-900 text-sm">{formatMonthLabel(r.month)}</p>
-                                                                <p className="text-slate-500 font-semibold mt-0.5">Rent Due: ₹{r.amount}</p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[9px] ${
-                                                                    r.paid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                                                }`}>
-                                                                    {r.paid ? `Paid (${r.paidOn})` : "Unpaid"}
-                                                                </span>
-
-                                                                {r.paid && matchingInvoice && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-7 text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200"
-                                                                        onClick={() => handleViewReceipt(matchingInvoice.id)}
-                                                                        disabled={receiptLoading}
-                                                                    >
-                                                                        <Eye className="w-3 h-3 mr-1" /> View Receipt
-                                                                    </Button>
-                                                                )}
-
-                                                                {!r.paid ? (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        disabled={actionLoading}
-                                                                        className="h-7 text-[10px] bg-green-600 hover:bg-green-700 text-white font-bold"
-                                                                        onClick={() => {
-                                                                            setMarkingPaidRecord(r);
-                                                                            setOverrideMethod('CASH');
-                                                                            setOverrideReason('');
-                                                                        }}
-                                                                    >
-                                                                        Mark Paid
-                                                                    </Button>
-                                                                ) : (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        disabled={actionLoading}
-                                                                        className="h-7 text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold"
-                                                                        onClick={() => {
-                                                                            setMarkingUnpaidRecord(r);
-                                                                            setReversalReason('TRANSACTION_FAILURE');
-                                                                            setReversalNote('');
-                                                                        }}
-                                                                    >
-                                                                        Mark Unpaid
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Step 4 requirement: display audit notes for cash/online payments */}
-                                                        {r.paid && (
-                                                            <div className="bg-white border border-slate-100 rounded-lg p-2 mt-1 text-[10px] text-slate-500 font-mono">
-                                                                {matchingInvoice?.paymentMethod === 'ONLINE' || payment ? (
-                                                                    <p className="text-indigo-600 font-bold flex items-center gap-1">
-                                                                        ⚡ ONLINE: Paid on {matchingInvoice?.paidAt ? new Date(matchingInvoice.paidAt).toLocaleString('en-IN') : r.paidOn} via Razorpay (Tx ID: {payment?.razorpayId || matchingInvoice?.paymentRef || 'Verified'})
-                                                                    </p>
-                                                                ) : (
-                                                                    <p className="text-amber-600 font-bold">
-                                                                        💵 CASH: Direct settlement (Confirmed by {matchingInvoice?.confirmedByName || 'Owner/Admin'})
-                                                                        {r.note && <span className="block text-slate-500 font-normal mt-0.5 font-sans">Audit details: {r.note}</span>}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                            {/* TAB 2: Booking & Stay */}
+                            {activeTab === "booking" && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Property Details</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.property?.name || "—"}</p>
+                                            <p className="text-xs text-slate-500">{selectedTenant.property?.address}, {selectedTenant.property?.city}</p>
                                         </div>
-                                    )}
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Property Code / ID</p>
+                                            <p className="font-mono text-xs font-bold text-slate-600">{selectedTenant.property?.displayId || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Assigned Room</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.roomNumber} ({selectedTenant.roomType})</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Booking Reference</p>
+                                            <p className="font-mono text-xs font-bold text-slate-600">{selectedTenant.booking?.displayId || "N/A"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Property Management Contact</p>
+                                            {selectedTenant.property?.owner ? (
+                                                <div className="bg-slate-50 p-2 rounded border border-slate-100 text-xs">
+                                                    <p className="font-bold text-slate-800 flex items-center gap-1.5"><ShieldAlert className="w-3 h-3 text-indigo-500" /> Owner / Manager</p>
+                                                    <p className="text-slate-700 mt-1">{selectedTenant.property.owner.name}</p>
+                                                    <p className="text-slate-600 font-mono flex items-center gap-1 mt-0.5"><Phone className="w-2.5 h-2.5" /> {selectedTenant.property.owner.phone}</p>
+                                                </div>
+                                            ) : <p className="font-bold text-slate-900">—</p>}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</p>
+                                            <p className="font-bold text-slate-900">{selectedTenant.startDate || selectedTenant.moveInDate}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-out Date</p>
+                                            <p className="font-bold text-slate-900">
+                                                {selectedTenant.actualMoveOutDate 
+                                                    ? new Date(selectedTenant.actualMoveOutDate).toLocaleDateString('en-IN')
+                                                    : selectedTenant.expectedMoveOutDate 
+                                                        ? `${new Date(selectedTenant.expectedMoveOutDate).toLocaleDateString('en-IN')} (Expected)`
+                                                        : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Active Stay</span>
+                                                }
+                                            </p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Monthly Rent</p>
+                                            <p className="font-bold text-slate-900">₹{selectedTenant.rentAmount || selectedTenant.rent}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Deposit Amount</p>
+                                            <p className="font-bold text-slate-900">₹{selectedTenant.billingProfile?.securityDeposit || "—"}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Food Service</p>
+                                            {(() => {
+                                                const foodType = selectedTenant.property?.foodType;
+                                                const hasOpted = selectedTenant.booking?.foodSelected;
+                                                if (foodType === "INCLUDED_IN_RENT") {
+                                                    return <span className="inline-flex px-2 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider">Included in Rent</span>;
+                                                } else if (foodType === "OPTIONAL") {
+                                                    return hasOpted 
+                                                        ? <span className="inline-flex px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">Opted (₹{selectedTenant.booking?.foodPriceApplied}/mo)</span>
+                                                        : <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">Not Opted</span>;
+                                                } else {
+                                                    return <span className="inline-flex px-2 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px] font-bold uppercase tracking-wider">Not Available</span>;
+                                                }
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* TAB 3: Tenant Payment History (formerly Ledger) */}
+                            {activeTab === "ledger" && (
+                                <div className="space-y-6">
+                                    {/* Header Cards */}
+                                    {(() => {
+                                        const currentYear = new Date().getFullYear();
+                                        const fyStart = new Date(currentYear, 3, 1);
+                                        const fyEnd = new Date(currentYear + 1, 2, 31);
+                                        const invoices = selectedTenant.billingProfile?.invoices || [];
+                                        const invoicePaidFY = invoices
+                                            .filter((i: any) => i.status === 'PAID' && i.paidAt && new Date(i.paidAt) >= fyStart && new Date(i.paidAt) <= fyEnd)
+                                            .reduce((sum: number, i: any) => sum + i.amount, 0);
+                                        const tokenAmount = selectedTenant.booking?.tokenAmount || 0;
+                                        const tokenPaidAt = selectedTenant.booking?.tokenPaidAt;
+                                        const tokenPaidFY = (tokenPaidAt && new Date(tokenPaidAt) >= fyStart && new Date(tokenPaidAt) <= fyEnd) ? tokenAmount : 0;
+                                        const totalPaidFY = invoicePaidFY + tokenPaidFY;
+
+                                        const now = new Date();
+                                        const currentInvoice = invoices.find((i: any) => i.dueDate && new Date(i.dueDate).getMonth() === now.getMonth() && new Date(i.dueDate).getFullYear() === now.getFullYear());
+                                        const thisMonthStatus = currentInvoice ? currentInvoice.status : "—";
+
+                                        return (
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <Card className="border-none shadow-sm bg-indigo-50/50">
+                                                    <CardContent className="p-5 space-y-1">
+                                                        <TrendingUp className="w-4 h-4 text-indigo-500 mb-2" />
+                                                        <p className="text-[10px] font-black uppercase text-indigo-400 tracking-wider">TOTAL PAID (FY)</p>
+                                                        <p className="text-xl font-black text-slate-900">₹{totalPaidFY.toLocaleString('en-IN')}</p>
+                                                    </CardContent>
+                                                </Card>
+                                                <Card className="border-none shadow-sm bg-emerald-50/50">
+                                                    <CardContent className="p-5 space-y-1">
+                                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 mb-2" />
+                                                        <p className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">THIS MONTH</p>
+                                                        <p className="text-xl font-black text-slate-900">
+                                                            {thisMonthStatus === 'PAID' ? 'PAID' : thisMonthStatus === 'PENDING' ? 'PENDING' : '—'}
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
+                                                <Card className="border-none shadow-sm bg-teal-50/50">
+                                                    <CardContent className="p-5 space-y-1">
+                                                        <Shield className="w-4 h-4 text-teal-500 mb-2" />
+                                                        <p className="text-[10px] font-black uppercase text-teal-400 tracking-wider">SECURITY DEPOSIT</p>
+                                                        <p className="text-xl font-black text-slate-900 flex items-center gap-1">
+                                                            ₹{(selectedTenant.billingProfile?.securityDeposit || 0).toLocaleString('en-IN')}
+                                                            <CheckCircle className="w-4 h-4 text-teal-500" />
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Tenant Details Bar */}
+                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-wrap gap-4 items-center justify-between text-xs font-bold text-slate-600">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center">
+                                                <Building2 className="w-3.5 h-3.5" />
+                                            </div>
+                                            <span className="text-slate-900">{selectedTenant.name}</span>
+                                        </div>
+                                        <div>Booking ID: <span className="text-slate-900">{selectedTenant.booking?.displayId || "—"}</span></div>
+                                        <div>Room: <span className="text-slate-900">{selectedTenant.roomNumber} — {selectedTenant.roomType}</span></div>
+                                        <div className="text-green-600 uppercase tracking-wider">{selectedTenant.status}</div>
+                                        <div>Move-in: <span className="text-slate-900">{selectedTenant.startDate || selectedTenant.moveInDate}</span></div>
+                                    </div>
+
+                                    {/* Filters & Ledger Table */}
+                                    <Card className="border border-slate-100 shadow-sm overflow-hidden">
+                                        <CardContent className="p-0">
+                                            <div className="flex flex-wrap items-center justify-between p-4 border-b border-slate-100 bg-white gap-2">
+                                                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                                    <IndianRupee className="w-4 h-4 text-indigo-600" /> Complete Payment Ledger
+                                                </h4>
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        className="border border-slate-200 rounded-lg p-1.5 bg-slate-50 text-xs font-bold text-slate-700"
+                                                        value={ledgerYear}
+                                                        onChange={e => setLedgerYear(e.target.value)}
+                                                    >
+                                                        <option value="ALL">All Years</option>
+                                                        <option value="2027">2027</option>
+                                                        <option value="2026">2026</option>
+                                                        <option value="2025">2025</option>
+                                                    </select>
+                                                    <select
+                                                        className="border border-slate-200 rounded-lg p-1.5 bg-slate-50 text-xs font-bold text-slate-700"
+                                                        value={ledgerMonth}
+                                                        onChange={e => setLedgerMonth(e.target.value)}
+                                                    >
+                                                        <option value="ALL">All Months</option>
+                                                        <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option>
+                                                        <option value="04">Apr</option><option value="05">May</option><option value="06">Jun</option>
+                                                        <option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option>
+                                                        <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                                                        <tr>
+                                                            <th className="p-4">Date</th>
+                                                            <th className="p-4">Description</th>
+                                                            <th className="p-4">Type</th>
+                                                            <th className="p-4">Amount</th>
+                                                            <th className="p-4 text-center">Status</th>
+                                                            <th className="p-4 text-right">Action / Receipt</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 text-xs">
+                                                        {(() => {
+                                                            const filteredRecords = (selectedTenant.rentRecords || []).filter((r: any) => {
+                                                                if (ledgerYear !== "ALL" && !r.month.startsWith(ledgerYear)) return false;
+                                                                if (ledgerMonth !== "ALL" && !r.month.endsWith(`-${ledgerMonth}`)) return false;
+                                                                return true;
+                                                            });
+
+                                                            if (filteredRecords.length === 0) {
+                                                                return (
+                                                                    <tr>
+                                                                        <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">
+                                                                            No rent records found.
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+
+                                                            return filteredRecords.map((r: any) => {
+                                                                const matchingInvoice = selectedTenant.billingProfile?.invoices?.find((inv: any) => inv.month === r.month);
+                                                                const payment = matchingInvoice?.payments?.[0];
+                                                                
+                                                                const isPaid = r.paid;
+                                                                const dateStr = isPaid ? (matchingInvoice?.paidAt ? new Date(matchingInvoice.paidAt).toLocaleDateString('en-IN') : r.paidOn || "—") : "—";
+                                                                const desc = `Rent — ${formatMonthLabel(r.month)}`;
+                                                                const amount = r.amount;
+                                                                
+                                                                return (
+                                                                    <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                                                                        <td className="p-4 font-bold text-slate-600 whitespace-nowrap">{dateStr}</td>
+                                                                        <td className="p-4">
+                                                                            <p className="font-bold text-slate-900">{desc}</p>
+                                                                            {/* Admin Audit Notes */}
+                                                                            {isPaid && (
+                                                                                <div className="mt-1 text-[10px] font-mono whitespace-nowrap">
+                                                                                    {matchingInvoice?.paymentMethod === 'ONLINE' || payment ? (
+                                                                                        <p className="text-indigo-600 font-bold flex items-center gap-1">
+                                                                                            ⚡ ONLINE: Paid on {matchingInvoice?.paidAt ? new Date(matchingInvoice.paidAt).toLocaleString('en-IN') : r.paidOn} via Razorpay (Tx ID: {payment?.razorpayId || matchingInvoice?.paymentRef || 'Verified'})
+                                                                                        </p>
+                                                                                    ) : (
+                                                                                        <p className="text-amber-600 font-bold">
+                                                                                            💵 CASH: Direct settlement (Confirmed by {matchingInvoice?.confirmedByName || 'Owner/Admin'})
+                                                                                            {r.note && <span className="block text-slate-500 font-normal mt-0.5 font-sans whitespace-normal">Audit details: {r.note}</span>}
+                                                                                        </p>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="p-4">
+                                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-100">
+                                                                                <Home className="w-3 h-3" /> Rent
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="p-4 font-black text-slate-900 whitespace-nowrap">₹{amount.toLocaleString('en-IN')}</td>
+                                                                        <td className="p-4 text-center">
+                                                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                                                                isPaid ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-700 border-red-200"
+                                                                            }`}>
+                                                                                {isPaid ? "PAID" : "UNPAID"}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="p-4 text-right">
+                                                                            <div className="flex justify-end gap-2">
+                                                                                {isPaid ? (
+                                                                                    <>
+                                                                                        <Button
+                                                                                            size="sm"
+                                                                                            disabled={actionLoading}
+                                                                                            className="h-7 text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold border-0 shadow-none"
+                                                                                            onClick={() => {
+                                                                                                setMarkingUnpaidRecord(r);
+                                                                                                setReversalReason('TRANSACTION_FAILURE');
+                                                                                                setReversalNote('');
+                                                                                            }}
+                                                                                        >
+                                                                                            Unpaid
+                                                                                        </Button>
+                                                                                        {matchingInvoice && (
+                                                                                            <Button
+                                                                                                size="sm"
+                                                                                                className="h-7 text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 shadow-none"
+                                                                                                onClick={() => handleViewReceipt(matchingInvoice.id)}
+                                                                                                disabled={receiptLoading}
+                                                                                            >
+                                                                                                <FileText className="w-3 h-3 mr-1" /> Receipt
+                                                                                            </Button>
+                                                                                        )}
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        disabled={actionLoading}
+                                                                                        className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                                                                                        onClick={() => {
+                                                                                            setMarkingPaidRecord(r);
+                                                                                            setOverrideMethod('CASH');
+                                                                                            setOverrideReason('');
+                                                                                        }}
+                                                                                    >
+                                                                                        Mark Paid
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            });
+                                                        })()}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 </div>
                             )}
 
