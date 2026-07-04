@@ -19,7 +19,7 @@ function formatToDDMMYYYY(dateStr: string | null | undefined): string {
         const dd = String(d.getDate()).padStart(2, '0');
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const yyyy = d.getFullYear();
-        return `${dd}${mm}${yyyy}`;
+        return `${dd}-${mm}-${yyyy}`;
     }
     const parts = dateStr.trim().split(/\s+/);
     if (parts.length === 3) {
@@ -29,7 +29,7 @@ function formatToDDMMYYYY(dateStr: string | null | undefined): string {
         if (monthIdx !== -1) {
             const mm = String(monthIdx + 1).padStart(2, '0');
             const yyyy = parts[2];
-            return `${dd}${mm}${yyyy}`;
+            return `${dd}-${mm}-${yyyy}`;
         }
     }
     return dateStr;
@@ -425,14 +425,10 @@ export function TenantsContainer() {
                                         <tr className={`border-b hover:bg-muted/5 ${isCheckedOut ? "bg-slate-50 opacity-80" : isBlocked ? "bg-red-50" : ""}`}>
                                             <td className="p-4">
                                                 <div className="font-mono text-xs text-purple-700 font-black">{t.displayId}</div>
-                                                <div className="text-[9px] text-slate-400 font-mono mt-0.5">Tenant ID</div>
                                             </td>
                                             <td className="p-4">
                                                 {t.booking?.displayId ? (
-                                                    <div>
-                                                        <div className="font-mono text-xs text-indigo-700 font-black">{t.booking.displayId}</div>
-                                                        <div className="text-[9px] text-slate-400 font-mono mt-0.5">Booking ID</div>
-                                                    </div>
+                                                    <div className="font-mono text-xs text-indigo-700 font-black">{t.booking.displayId}</div>
                                                 ) : (
                                                     <span className="text-[10px] text-slate-400">—</span>
                                                 )}
@@ -445,7 +441,7 @@ export function TenantsContainer() {
                                                 <td className="p-4 text-sm">{t.roomNumber} <span className="text-xs text-muted-foreground">({t.roomType})</span></td>
                                                 <td className="p-4 text-sm">{formatToDDMMYYYY(t.startDate || t.moveInDate)}</td>
                                                 <td className="p-4 font-bold">
-                                                    ₹{latestRent ? (latestRent.paid ? 0 : latestRent.amount) : (t.rent || 0)}
+                                                    ₹{t.rentAmount || t.rent || 0}
                                                 </td>
 
                                                 {/* Payment Status */}
@@ -482,16 +478,14 @@ export function TenantsContainer() {
                                                                                 {!isPaid && (
                                                                                     <Button size="sm" className="h-6 text-[10px] bg-green-600 hover:bg-green-700" onClick={() => handleMarkPaid(latestRent.id, t.id)}>✓ Mark Paid</Button>
                                                                                 )}
-                                                                                {isPaid && (
-                                                                                    <Button size="sm" variant="outline" className="h-6 text-[10px] border-red-300 text-red-600" onClick={() => handleMarkUnpaid(latestRent.id, t.id)}>↩ Unpaid</Button>
-                                                                                )}
+                                                                                
                                                                                 <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowPayNote(p => ({ ...p, [t.id]: false }))}>✕</Button>
                                                                             </div>
                                                                         </div>
                                                                     )}
-                                                                    {!showPayNote[t.id] && (
+                                                                    {!showPayNote[t.id] && !isPaid && (
                                                                         <Button size="sm" variant="outline" className="h-6 text-[10px] mt-1" onClick={() => setShowPayNote(p => ({ ...p, [t.id]: true }))}>
-                                                                            {isPaid ? "↩ Mark Unpaid" : "✓ Mark Paid"}
+                                                                            ✓ Mark Paid
                                                                         </Button>
                                                                     )}
                                                                 </div>
@@ -535,38 +529,20 @@ export function TenantsContainer() {
                                                 {/* Actions column */}
                                                 <td className="p-4 text-center">
                                                     <div className="flex flex-col gap-1 items-center">
-                                                        {!isBlocked ? (
-                                                            <>
+                                                        <>
+                                                            <Button size="sm" variant="outline"
+                                                                className="h-7 text-[10px] w-full border-indigo-400 text-indigo-700 hover:bg-indigo-50"
+                                                                onClick={() => setViewingDetails(t)}>
+                                                                👁 View Details
+                                                            </Button>
+                                                            {!isBlocked && (
                                                                 <Button size="sm" variant="outline"
-                                                                    className="h-7 text-[10px] w-full border-indigo-400 text-indigo-700 hover:bg-indigo-50"
-                                                                    onClick={() => setViewingDetails(t)}>
-                                                                    👁 View Details
-                                                                </Button>
-                                                                <Button size="sm" variant="outline"
-                                                                    className="h-7 text-[10px] w-full border-rose-400 text-rose-700 hover:bg-rose-50"
+                                                                    className="h-7 text-[10px] w-full mt-1 border-rose-400 text-rose-700 hover:bg-rose-50"
                                                                     onClick={() => { setInitiatingMoveOut(t); setMoveOutDate(new Date().toISOString().split('T')[0]); }}>
                                                                     🚶 Initiate Move-Out
                                                                 </Button>
-                                                                <Input className="h-7 text-xs w-full" placeholder="Block reason..."
-                                                                    value={blockNotes[t.id] || ""}
-                                                                    onChange={e => setBlockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
-                                                                <Button size="sm" variant="destructive" className="h-7 text-[10px] w-full"
-                                                                    disabled={!blockNotes[t.id]?.trim()}
-                                                                    onClick={() => handleBlock(t.id)}>
-                                                                    🚫 Block Tenant
-                                                                </Button>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Input className="h-7 text-xs w-full" placeholder="Unblock reason..."
-                                                                    value={unblockNotes[t.id] || ""}
-                                                                    onChange={e => setUnblockNotes(p => ({ ...p, [t.id]: e.target.value }))} />
-                                                                <Button size="sm" variant="outline" className="h-7 text-[10px] w-full border-green-300 text-green-700 hover:bg-green-50"
-                                                                    onClick={() => handleUnblock(t.id)}>
-                                                                    ✅ Unblock
-                                                                </Button>
-                                                            </>
-                                                        )}
+                                                            )}
+                                                        </>
                                                         {t.booking?.moveInChecklist && (
                                                             <Button size="sm" variant="outline"
                                                                 className="h-7 text-[10px] w-full mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
