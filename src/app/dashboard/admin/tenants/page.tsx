@@ -659,7 +659,7 @@ export default function TenantsPage() {
                         </DialogHeader>
 
                         {/* Navigation Tabs */}
-                        <div className="flex border-b border-slate-100 gap-2 mt-4">
+                        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 mt-4">
                             {[
                                 { id: "profile", label: "Tenant Profile", icon: Users },
                                 { id: "booking", label: "Booking & Stay", icon: Building },
@@ -671,10 +671,10 @@ export default function TenantsPage() {
                                     <button
                                         key={t.id}
                                         onClick={() => setActiveTab(t.id as any)}
-                                        className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold border-b-2 transition-all ${
+                                        className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
                                             activeTab === t.id
-                                                ? "border-indigo-600 text-indigo-600"
-                                                : "border-transparent text-slate-400 hover:text-slate-600"
+                                                ? "bg-blue-600 text-white shadow-md"
+                                                : "text-slate-600 hover:bg-slate-200"
                                         }`}
                                     >
                                         <Icon className="w-4 h-4" />
@@ -740,8 +740,8 @@ export default function TenantsPage() {
                                                 <div className="space-y-1">
                                                     <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Status</p>
                                                     <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                                        selectedTenant.status === "Active" ? "bg-green-100 text-green-700" :
-                                                        selectedTenant.status === "Upcoming" ? "bg-blue-100 text-blue-700" :
+                                                        selectedTenant.status?.toLowerCase() === "active" ? "bg-green-100 text-green-700" :
+                                                        selectedTenant.status?.toLowerCase() === "upcoming" ? "bg-blue-100 text-blue-700" :
                                                         "bg-red-100 text-red-700"
                                                     }`}>{selectedTenant.status}</span>
                                                 </div>
