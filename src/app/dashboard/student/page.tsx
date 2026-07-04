@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ function formatOccupancy(occupancy: string): string {
     return occupancy;
 }
 
-// â”€â”€ Alert Banner â”€â”€
+// ── Alert Banner ──
 function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' | 'warning' | 'info' | 'brand'; message: string; actionLabel?: string; onAction?: () => void }) {
     const bgColor = type === 'error' ? 'bg-rose-50 border-rose-200'
         : type === 'warning' ? 'bg-amber-50 border-amber-200'
@@ -91,7 +91,7 @@ function AlertBanner({ type, message, actionLabel, onAction }: { type: 'error' |
     );
 }
 
-// â”€â”€ Token Payment Countdown Banner (Note 4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Token Payment Countdown Banner (Note 4) ──────────────────────────────────
 // Live ticking countdown. Turns red in last 6 hours. Auto-hides when paid.
 function TokenCountdownBanner({
     deadline,
@@ -132,7 +132,7 @@ function TokenCountdownBanner({
     if (timeLeft.expired) {
         return (
             <div className="w-full bg-red-100 border-2 border-red-500 rounded-2xl p-4 text-center">
-                <p className="text-sm font-black text-red-700">â›” Payment window expired. Your booking is being cancelled automatically.</p>
+                <p className="text-sm font-black text-red-700">⛔ Payment window expired. Your booking is being cancelled automatically.</p>
             </div>
         );
     }
@@ -152,12 +152,12 @@ function TokenCountdownBanner({
                 <div className="flex items-center gap-2">
                     <Lock className={`h-4 w-4 ${isCritical ? 'text-red-600' : 'text-orange-700'}`} />
                     <span className={`text-sm font-black ${isCritical ? 'text-red-800' : 'text-orange-800'}`}>
-                        ðŸ”’ Pay Token to Reserve Bed â€” {isCritical ? 'âš ï¸ URGENT' : 'Time Limited'}
+                        🔒 Pay Token to Reserve Bed — {isCritical ? '⚠️ URGENT' : 'Time Limited'}
                     </span>
                 </div>
                 {isCritical && (
                     <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse">
-                        ðŸš¨ CRITICAL
+                        🚨 CRITICAL
                     </span>
                 )}
             </div>
@@ -204,15 +204,15 @@ function TokenCountdownBanner({
                 </div>
                 <div className="text-right">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Token Amount</span>
-                    <p className="text-sm font-black text-slate-900">â‚¹{tokenAmount.toLocaleString()}</p>
+                    <p className="text-sm font-black text-slate-900">₹{tokenAmount.toLocaleString()}</p>
                 </div>
             </div>
 
             {/* Warning text */}
             <p className={`text-[11px] font-bold text-center ${ isCritical ? 'text-red-700' : 'text-orange-700'}`}>
                 {isCritical
-                    ? 'âš ï¸ Less than 6 hours left! If not paid in time, your booking will be auto-cancelled and the bed released.'
-                    : 'â° Your bed is temporarily held. Pay the token before the countdown ends to confirm your reservation.'}
+                    ? '⚠️ Less than 6 hours left! If not paid in time, your booking will be auto-cancelled and the bed released.'
+                    : '⏰ Your bed is temporarily held. Pay the token before the countdown ends to confirm your reservation.'}
             </p>
 
             {/* CTA */}
@@ -224,14 +224,14 @@ function TokenCountdownBanner({
                             : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'
                     }`}
                 >
-                    ðŸ’³ Pay â‚¹{tokenAmount.toLocaleString()} Token Now
+                    💳 Pay ₹{tokenAmount.toLocaleString()} Token Now
                 </Button>
             </a>
         </div>
     );
 }
 
-// â”€â”€ Section 6A & 7A â€” Food Management (Student) â”€â”€
+// ── Section 6A & 7A — Food Management (Student) ──
 function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: () => void }) {
     const [foodEnabled, setFoodEnabled] = useState<boolean>(booking.foodSelected ?? false);
     const [changing, setChanging] = useState(false);
@@ -240,7 +240,7 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
     const handleToggle = async () => {
         const newVal = !foodEnabled;
         const label = newVal ? 'enable' : 'disable';
-        toast(`${label === 'enable' ? 'ðŸ´ Enable' : 'ðŸš« Disable'} food service?`, {
+        toast(`${label === 'enable' ? '🍴 Enable' : '🚫 Disable'} food service?`, {
             description: 'Change takes effect from the 1st of next month.',
             action: {
                 label: 'Confirm',
@@ -265,14 +265,14 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
         <div className="mt-3 p-3 rounded-xl border-2 bg-orange-50 border-orange-200 space-y-2">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-xs font-black text-orange-700">ðŸ´ Food Service (Optional)</p>
+                    <p className="text-xs font-black text-orange-700">🍴 Food Service (Optional)</p>
                     <p className="text-[10px] text-orange-600">
-                        â‚¹{booking.property?.foodPricePerMonth?.toLocaleString()}/month
+                        ₹{booking.property?.foodPricePerMonth?.toLocaleString()}/month
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${foodEnabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {foodEnabled ? 'âœ… Active' : 'ðŸš« Inactive'}
+                        {foodEnabled ? '✅ Active' : '🚫 Inactive'}
                     </span>
                     <button
                         type="button"
@@ -286,7 +286,7 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
             </div>
             {lastChanged && (
                 <p className="text-[10px] text-orange-600 italic font-bold animate-in fade-in duration-300">
-                    âœ… Change saved! Effective from: {lastChanged}
+                    ✅ Change saved! Effective from: {lastChanged}
                 </p>
             )}
             <p className="text-[10px] text-slate-400">Changes apply from the 1st of next month.</p>
@@ -294,7 +294,7 @@ function FoodToggleSection({ booking, onRefresh }: { booking: any; onRefresh: ()
     );
 }
 
-// â”€â”€ Booking Card Component â”€â”€
+// ── Booking Card Component ──
 function BookingCard({ 
     booking, 
     router, 
@@ -343,7 +343,7 @@ function BookingCard({
                             Ref: {booking.displayId} &bull; {new Date(booking.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                             {booking.occupancy && (
                                 <span className="ml-2 inline-flex items-center gap-1 bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-black px-2 py-0.5 rounded-full">
-                                    ðŸ›ï¸ {formatOccupancy(booking.occupancy)}
+                                    🛏️ {formatOccupancy(booking.occupancy)}
                                 </span>
                             )}
                         </CardDescription>
@@ -355,7 +355,7 @@ function BookingCard({
                         {isCompleted && (
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-bold text-slate-500">
-                                    ðŸ  Vacated{booking.updatedAt ? ` â€¢ ${new Date(booking.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                    🏠 Vacated{booking.updatedAt ? ` • ${new Date(booking.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                                 </span>
                                 <button
                                     onClick={() => setShowVacatedModal(true)}
@@ -369,7 +369,7 @@ function BookingCard({
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* â”€â”€ Status Badge â”€â”€ */}
+                {/* ── Status Badge ── */}
                 {!isCompleted && (
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">Stage:</span>
@@ -386,23 +386,23 @@ function BookingCard({
                     {isCheckedIn && <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">Checked-in & Active</span>}
                 </div>
                 )}
-                {/* â”€â”€ Permanent ID Badges (show after physical KYC and beyond) â”€â”€ */}
+                {/* ── Permanent ID Badges (show after physical KYC and beyond) ── */}
                 {(isPhysicalVerified || isAgreementPending || isFinalPaymentPending || isPaid || isCheckedIn || isActive || isCompleted) && (tenantDisplayId || booking.displayId) && (
                     <div className="flex flex-wrap gap-2">
                         {booking.displayId && (
                             <span className="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full font-mono">
-                                ðŸ”– Booking: {booking.displayId}
+                                🔖 Booking: {booking.displayId}
                             </span>
                         )}
                         {tenantDisplayId && (
                             <span className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-full font-mono">
-                                ðŸªª Tenant ID: {tenantDisplayId}
+                                🪪 Tenant ID: {tenantDisplayId}
                             </span>
                         )}
                     </div>
                 )}
 
-                {/* â”€â”€ Payment Cards â”€â”€ */}
+                {/* ── Payment Cards ── */}
                 {isTokenPending && booking.roomAssigned && (
                     <TokenCountdownBanner
                         deadline={booking.tokenDeadline || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()}
@@ -416,8 +416,8 @@ function BookingCard({
                     <div className="space-y-3">
                         <div className="w-full bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-black text-green-800">âœ… Token Payment Confirmed</p>
-                                <p className="text-xs text-green-700 mt-0.5">â‚¹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
+                                <p className="text-sm font-black text-green-800">✅ Token Payment Confirmed</p>
+                                <p className="text-xs text-green-700 mt-0.5">₹1,000 paid on {booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'N/A'}</p>
                             </div>
                             <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-100 font-black text-xs" onClick={() => {
                                 setViewingDoc({ type: 'token', data: {
@@ -425,9 +425,9 @@ function BookingCard({
                                     tenantName: booking.guestName,
                                     tenantEmail: booking.guestEmail || undefined,
                                     propertyName: booking.propertyName,
-                                    roomAssigned: booking.roomAssigned || 'â€”',
+                                    roomAssigned: booking.roomAssigned || '—',
                                     tokenAmount: 1000,
-                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                     paymentMethod: booking.paymentMethod || 'Online',
                                     paymentId: booking.paymentId || undefined,
                                 }});
@@ -435,16 +435,16 @@ function BookingCard({
                                 <FileText className="h-3 w-3 mr-1" /> View Receipt
                             </Button>
                         </div>
-                        {/* ROOM_RESERVED â†’ Physical Check-In Pending (agreement locked until owner confirms physical checkin) */}
+                        {/* ROOM_RESERVED → Physical Check-In Pending (agreement locked until owner confirms physical checkin) */}
                         {!booking.tenantId && isTokenPaid && (
                             <div className="w-full bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-2xl p-5 space-y-3">
                                 <div className="flex items-center gap-2 text-sm font-black text-amber-800">
                                     <Lock className="h-4 w-4" />
-                                    ðŸ  Physical Check-In Pending
+                                    🏠 Physical Check-In Pending
                                 </div>
                                 <p className="text-xs text-amber-700 font-medium">Your token is paid and bed is reserved. To proceed, you must <strong>physically visit {booking.propertyName}</strong> and complete your in-person check-in.</p>
                                 <div className="bg-amber-100/60 rounded-xl p-3 text-[11px] text-amber-900 font-bold border border-amber-300 space-y-1">
-                                    <p>ðŸ“Œ Physically visit <strong>{booking.propertyName}</strong> to check in.</p>
+                                    <p>📌 Physically visit <strong>{booking.propertyName}</strong> to check in.</p>
                                     <p className="font-medium text-amber-700">Once the owner or their team confirms your physical check-in, your rental agreement will be automatically unlocked for signing.</p>
                                 </div>
                                 <div className="flex items-center gap-2 bg-white/80 border-2 border-amber-300 rounded-xl p-3">
@@ -453,12 +453,12 @@ function BookingCard({
                                 </div>
                             </div>
                         )}
-                        {/* PHYSICAL_VERIFIED â€” Tenant ID assigned, agreement unlocked, prompt to sign */}
+                        {/* PHYSICAL_VERIFIED — Tenant ID assigned, agreement unlocked, prompt to sign */}
                         {isPhysicalVerified && !booking.agreementSigned && (
                             <div className="w-full bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-500 rounded-2xl p-5 space-y-3 animate-pulse">
                                 <div className="flex items-center gap-2 text-sm font-black text-emerald-800">
                                     <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping mr-1"></span>
-                                    âœ… Physical Check-In Confirmed â€” Sign Your Agreement
+                                    ✅ Physical Check-In Confirmed — Sign Your Agreement
                                 </div>
                                 <p className="text-xs text-emerald-700 font-medium">Your physical check-in at <strong>{booking.propertyName}</strong> has been confirmed by the owner! Your Tenant ID is now assigned. Sign the rental agreement to complete onboarding.</p>
                                 {tenantDisplayId && (
@@ -468,7 +468,7 @@ function BookingCard({
                                     </div>
                                 )}
                                 <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black h-12 rounded-2xl" onClick={() => setSigningBooking(booking)}>
-                                    âœï¸ Sign Agreement Now
+                                    ✍️ Sign Agreement Now
                                 </Button>
                             </div>
                         )}
@@ -476,7 +476,7 @@ function BookingCard({
                             <div className="w-full bg-purple-50 border-2 border-purple-300 rounded-2xl p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-black text-purple-800">âœï¸ Agreement Signed</p>
+                                        <p className="text-sm font-black text-purple-800">✍️ Agreement Signed</p>
                                         <p className="text-xs text-purple-600 mt-0.5">Waiting for owner countersignature.</p>
                                     </div>
                                     <Button size="sm" variant="outline" className="border-purple-400 text-purple-700 hover:bg-purple-100 font-black text-xs shrink-0" onClick={() => {
@@ -488,13 +488,13 @@ function BookingCard({
                                             propertyName: booking.propertyName,
                                             propertyAddress: booking.propertyAddress || '',
                                             propertyCity: booking.propertyCity || '',
-                                            roomAssigned: booking.roomAssigned || 'â€”',
+                                            roomAssigned: booking.roomAssigned || '—',
                                             occupancy: booking.occupancy || '',
                                             monthlyRent: Number(booking.amount || 0),
                                             depositAmount: Number(booking.depositAmount || 0),
                                             depositMonths: Number(booking.depositMonths || 1),
-                                            moveInDate: booking.onboardingDate || booking.moveInDate || 'â€”',
-                                            signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'â€”',
+                                            moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                            signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
                                             signedIp: booking.agreementSignedIp || undefined,
                                             signedDevice: booking.agreementSignedDevice || undefined,
                                             agreementVersion: booking.agreementVersion || 'v1.0-2026',
@@ -515,20 +515,20 @@ function BookingCard({
                     <div className="w-full bg-gradient-to-br from-indigo-50/60 via-violet-50/40 to-white border-2 border-indigo-200 rounded-3xl p-6 space-y-4 shadow-md shadow-indigo-50/30 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-100/40">
                         <div className="flex items-center gap-2">
                             <span className="inline-block w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping shrink-0" />
-                            <p className="text-sm font-black text-indigo-900 uppercase tracking-wider">âš¡ Final Payment Due â€” Action Required</p>
+                            <p className="text-sm font-black text-indigo-900 uppercase tracking-wider">⚡ Final Payment Due — Action Required</p>
                         </div>
                         <p className="text-xs text-slate-600 font-medium">Agreement confirmed! Pay the joining balance to activate your stay at <strong>{booking.propertyName}</strong>.</p>
                         {/* Physical presence notice */}
                         <div className="bg-white border border-indigo-100 rounded-2xl p-4 space-y-1.5 shadow-sm">
                             <p className="text-[11px] font-black text-indigo-900 uppercase tracking-widest flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Important â€” Physical Presence Required
+                                <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Important — Physical Presence Required
                             </p>
                             <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
                                 To complete your joining, you must be <strong>physically present at the PG address</strong> when making this payment. Our staff will verify your identity on-site.
                                 This step prevents fraud and ensures your booking is secure.
                             </p>
                             {booking.propertyAddress && (
-                                <p className="text-[11px] font-bold text-slate-700 mt-1.5 pt-1.5 border-t border-slate-50">ðŸ“Œ Address: {booking.propertyAddress}{booking.propertyCity ? `, ${booking.propertyCity}` : ''}</p>
+                                <p className="text-[11px] font-bold text-slate-700 mt-1.5 pt-1.5 border-t border-slate-50">📌 Address: {booking.propertyAddress}{booking.propertyCity ? `, ${booking.propertyCity}` : ''}</p>
                             )}
                         </div>
                         {(() => {
@@ -561,35 +561,35 @@ function BookingCard({
                                 <div className="space-y-2 text-sm bg-white/80 rounded-2xl p-5 border border-indigo-100">
                                     <div className="flex justify-between items-start text-slate-600">
                                         <div>
-                                            <span className="font-semibold">ðŸ  Rent â€” {isFirstOfMonth ? monthName : `${moveInLabel} to ${lastDayLabel}`}</span>
+                                            <span className="font-semibold">🏠 Rent — {isFirstOfMonth ? monthName : `${moveInLabel} to ${lastDayLabel}`}</span>
                                             {!isFirstOfMonth && (
                                                 <p className="text-[10px] text-slate-400 mt-0.5">
-                                                    {daysRemaining} days Ã— â‚¹{dailyRate.toFixed(0)}/day (â‚¹{rentAmount.toLocaleString('en-IN')}/mo)
+                                                    {daysRemaining} days × ₹{dailyRate.toFixed(0)}/day (₹{rentAmount.toLocaleString('en-IN')}/mo)
                                                 </p>
                                             )}
                                         </div>
-                                        <span className="font-black text-slate-800">â‚¹{effectiveRent.toLocaleString('en-IN')}</span>
+                                        <span className="font-black text-slate-800">₹{effectiveRent.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between text-slate-600">
-                                        <span className="font-semibold text-emerald-700">ðŸ›¡ï¸ Security Deposit ({(booking as any).depositMonths || 2}m)</span>
-                                        <span className="font-black text-emerald-700">â‚¹{depositAmount.toLocaleString('en-IN')}</span>
+                                        <span className="font-semibold text-emerald-700">🛡️ Security Deposit ({(booking as any).depositMonths || 2}m)</span>
+                                        <span className="font-black text-emerald-700">₹{depositAmount.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between pt-2 border-t border-dashed border-slate-200 font-bold text-slate-500">
                                         <span>Subtotal</span>
-                                        <span className="font-bold text-slate-700">â‚¹{subtotal.toLocaleString('en-IN')}</span>
+                                        <span className="font-bold text-slate-700">₹{subtotal.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between text-indigo-600 font-bold">
-                                        <span>ðŸŽŸï¸ Token Paid Already</span>
-                                        <span>- â‚¹1,000</span>
+                                        <span>🎟️ Token Paid Already</span>
+                                        <span>- ₹1,000</span>
                                     </div>
                                     <div className="flex justify-between pt-2 border-t border-indigo-200 font-black text-indigo-900 text-base">
-                                        <span>ðŸ’° Balance Due</span>
-                                        <span className="text-lg text-indigo-700">â‚¹{balance.toLocaleString('en-IN')}</span>
+                                        <span>💰 Balance Due</span>
+                                        <span className="text-lg text-indigo-700">₹{balance.toLocaleString('en-IN')}</span>
                                     </div>
                                     <Button className="w-full mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black h-12 rounded-2xl text-base shadow-lg shadow-indigo-200/50 transition-all active:scale-[0.99]" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>
-                                        ðŸ’³ Pay â‚¹{balance.toLocaleString('en-IN')} Now
+                                        💳 Pay ₹{balance.toLocaleString('en-IN')} Now
                                     </Button>
-                                    <p className="text-[10px] text-center text-slate-400 pt-1.5">âš ï¸ Visit {booking.propertyName} in person to complete check-in</p>
+                                    <p className="text-[10px] text-center text-slate-400 pt-1.5">⚠️ Visit {booking.propertyName} in person to complete check-in</p>
                                 </div>
                             );
                         })()}
@@ -598,19 +598,19 @@ function BookingCard({
 
                 {isPaymentPending && !isTokenPending && !isFinalPaymentPending && booking.roomAssigned && (
                     <div className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 space-y-4">
-                        <p className="text-sm font-black text-slate-800">ðŸ’³ Payment Due</p>
-                        <div className="flex justify-between font-bold"><span>Total Amount</span><span>â‚¹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span></div>
-                        <Button className="w-full bg-slate-900 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>ðŸ’³ Pay Now</Button>
+                        <p className="text-sm font-black text-slate-800">💳 Payment Due</p>
+                        <div className="flex justify-between font-bold"><span>Total Amount</span><span>₹{(Number(booking.amount || 0) + Number(booking.depositAmount || 0)).toLocaleString('en-IN')}</span></div>
+                        <Button className="w-full bg-slate-900 text-white font-black h-12 rounded-2xl" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>💳 Pay Now</Button>
                     </div>
                 )}
 
                 {(isPaymentPending || isPaid || isApproved) && booking.roomAssigned && (
                     <div className="rounded-2xl border-2 p-4 bg-indigo-50 border-indigo-300 space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-black text-indigo-800"><BedDouble className="h-4 w-4" /> ðŸ  Allocated Room</div>
+                        <div className="flex items-center gap-2 text-sm font-black text-indigo-800"><BedDouble className="h-4 w-4" /> 🏠 Allocated Room</div>
                         <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Room No.</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.split(' â€” ')[0].trim()}</p></div>
+                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Room No.</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.split(' — ')[0].trim()}</p></div>
                             <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Type</p><p className="text-sm font-black text-indigo-900">{booking.occupancy}</p></div>
-                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Bed</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.includes(' â€” ') ? booking.roomAssigned.split(' â€” ')[1]?.replace('Bed ', '').trim() : 'â€”'}</p></div>
+                            <div className="bg-white p-3 rounded-xl text-center"><p className="text-[10px] font-black text-slate-500 uppercase">Bed</p><p className="text-sm font-black text-indigo-900">{booking.roomAssigned.includes(' — ') ? booking.roomAssigned.split(' — ')[1]?.replace('Bed ', '').trim() : '—'}</p></div>
                         </div>
                     </div>
                 )}
@@ -633,9 +633,9 @@ function BookingCard({
                                 tenantName: booking.guestName,
                                 tenantEmail: booking.guestEmail || undefined,
                                 propertyName: booking.propertyName,
-                                roomAssigned: booking.roomAssigned || 'â€”',
+                                roomAssigned: booking.roomAssigned || '—',
                                 tokenAmount: booking.tokenAmount || 1000,
-                                paidAt: booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                paidAt: booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                 paymentMethod: booking.paymentMethod || 'Online',
                                 paymentId: booking.tokenPaymentId || undefined,
                             }});
@@ -651,13 +651,13 @@ function BookingCard({
                                 propertyName: booking.propertyName,
                                 propertyAddress: booking.propertyAddress || '',
                                 propertyCity: booking.propertyCity || '',
-                                roomAssigned: booking.roomAssigned || 'â€”',
+                                roomAssigned: booking.roomAssigned || '—',
                                 occupancy: booking.occupancy || '',
                                 monthlyRent: Number(booking.amount || 0),
                                 depositAmount: Number(booking.depositAmount || 0),
                                 depositMonths: Number(booking.depositMonths || 1),
-                                moveInDate: booking.onboardingDate || booking.moveInDate || 'â€”',
-                                signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'â€”',
+                                moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
                                 signedIp: booking.agreementSignedIp || undefined,
                                 signedDevice: booking.agreementSignedDevice || undefined,
                                 agreementVersion: booking.agreementVersion || 'v1.0-2026',
@@ -674,39 +674,39 @@ function BookingCard({
                                 tenantName: booking.guestName,
                                 tenantEmail: booking.guestEmail || undefined,
                                 propertyName: booking.propertyName,
-                                roomAssigned: booking.roomAssigned || 'â€”',
+                                roomAssigned: booking.roomAssigned || '—',
                                 monthlyRent: Number(booking.amount || 0),
                                 depositAmount: Number(booking.depositAmount || 0),
                                 depositMonths: Number(booking.depositMonths || 1),
                                 tokenAlreadyPaid: 1000,
                                 finalAmountPaid: Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000),
-                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                 paymentMethod: booking.paymentMethod || 'Online',
                                 paymentId: booking.paymentId || undefined,
                             }});
                         }}><FileText className="h-3.5 w-3.5 mr-1" /> Payment Receipt</Button>
                     )}
                     {!booking.agreementSigned && (isAgreementPending || (isPaid && !booking.agreementSigned)) && (
-                        <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>âœï¸ Sign Agreement</Button>
+                        <Button size="sm" className="h-8 px-3 text-xs bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-full" onClick={() => setSigningBooking(booking)}>✍️ Sign Agreement</Button>
                     )}
 
                     {!isActive && !isVacating && !isCompleted && !isCancelled && booking.status !== 'REJECTED' && (
-                        <button onClick={() => handleCancel(booking.id, booking.propertyName)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : 'âœ– Cancel'}</button>
+                        <button onClick={() => handleCancel(booking.id, booking.propertyName)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : '✖ Cancel'}</button>
                     )}
                 </div>
 
                 {expandedDocs === booking.id && (
                     <div className="mt-4 p-4 bg-amber-50 rounded-2xl border-2 border-dashed border-amber-300 space-y-3 animate-in fade-in duration-300">
                         <div className="flex items-center gap-2">
-                            <span className="text-2xl">ðŸ“‹</span>
+                            <span className="text-2xl">📋</span>
                             <div>
                                 <p className="text-sm font-black text-amber-900">No Online Upload Required</p>
                                 <p className="text-xs text-amber-700">KYC is verified in-person when you visit the property.</p>
                             </div>
                         </div>
                         <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-1.5">
-                            <p className="text-[11px] font-black text-slate-600 uppercase tracking-wider">ðŸ“Œ Bring These at Check-In:</p>
-                            {['ðŸªª Government Photo ID (Aadhaar / Passport / Voter ID)', 'ðŸ  Address Proof (Aadhaar / Utility Bill)', 'ðŸŽ“ College ID / Offer Letter / Employee ID', 'ðŸ“¸ 2 Passport-size Photographs'].map((item) => (
+                            <p className="text-[11px] font-black text-slate-600 uppercase tracking-wider">📌 Bring These at Check-In:</p>
+                            {['🪪 Government Photo ID (Aadhaar / Passport / Voter ID)', '🏠 Address Proof (Aadhaar / Utility Bill)', '🎓 College ID / Offer Letter / Employee ID', '📸 2 Passport-size Photographs'].map((item) => (
                                 <p key={item} className="text-xs text-slate-600 flex items-start gap-1.5">
                                     <CheckCircle className="h-3 w-3 text-green-500 shrink-0 mt-0.5" />
                                     {item}
@@ -717,7 +717,7 @@ function BookingCard({
                     </div>
                 )}
 
-                {/* â”€â”€ Vacated / Completed: View Details Modal â”€â”€ */}
+                {/* ── Vacated / Completed: View Details Modal ── */}
                 {showVacatedModal && isCompleted && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                         <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
@@ -725,7 +725,7 @@ function BookingCard({
                             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                                 <div>
                                     <h2 className="font-black text-slate-900 text-lg">Past Booking Details</h2>
-                                    <p className="text-xs text-slate-500 mt-0.5">{booking.propertyName} â€¢ {booking.displayId}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">{booking.propertyName} • {booking.displayId}</p>
                                 </div>
                                 <button onClick={() => setShowVacatedModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                                     <X className="h-5 w-5 text-slate-500" />
@@ -736,7 +736,7 @@ function BookingCard({
                                 {/* Vacated status chip */}
                                 <div className="flex items-center gap-2">
                                     <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-300 text-xs font-black px-3 py-1.5 rounded-full">
-                                        ðŸ  Vacated{booking.updatedAt ? ` â€¢ ${new Date(booking.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                        🏠 Vacated{booking.updatedAt ? ` • ${new Date(booking.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                                     </span>
                                 </div>
 
@@ -763,9 +763,9 @@ function BookingCard({
                                                     tenantName: booking.guestName,
                                                     tenantEmail: booking.guestEmail || undefined,
                                                     propertyName: booking.propertyName,
-                                                    roomAssigned: booking.roomAssigned || 'â€”',
+                                                    roomAssigned: booking.roomAssigned || '—',
                                                     tokenAmount: booking.tokenAmount || 1000,
-                                                    paidAt: booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                                    paidAt: booking.tokenPaidAt ? new Date(booking.tokenPaidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                                     paymentMethod: booking.paymentMethod || 'Online',
                                                     paymentId: booking.tokenPaymentId || undefined,
                                                 }});
@@ -782,13 +782,13 @@ function BookingCard({
                                                     propertyName: booking.propertyName,
                                                     propertyAddress: booking.propertyAddress || '',
                                                     propertyCity: booking.propertyCity || '',
-                                                    roomAssigned: booking.roomAssigned || 'â€”',
+                                                    roomAssigned: booking.roomAssigned || '—',
                                                     occupancy: booking.occupancy || '',
                                                     monthlyRent: Number(booking.amount || 0),
                                                     depositAmount: Number(booking.depositAmount || 0),
                                                     depositMonths: Number(booking.depositMonths || 1),
-                                                    moveInDate: booking.onboardingDate || booking.moveInDate || 'â€”',
-                                                    signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'â€”',
+                                                    moveInDate: booking.onboardingDate || booking.moveInDate || '—',
+                                                    signedAt: booking.agreementSignedAt ? new Date(booking.agreementSignedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—',
                                                     signedIp: booking.agreementSignedIp || undefined,
                                                     signedDevice: booking.agreementSignedDevice || undefined,
                                                     agreementVersion: booking.agreementVersion || 'v1.0-2026',
@@ -806,13 +806,13 @@ function BookingCard({
                                                     tenantName: booking.guestName,
                                                     tenantEmail: booking.guestEmail || undefined,
                                                     propertyName: booking.propertyName,
-                                                    roomAssigned: booking.roomAssigned || 'â€”',
+                                                    roomAssigned: booking.roomAssigned || '—',
                                                     monthlyRent: Number(booking.amount || 0),
                                                     depositAmount: Number(booking.depositAmount || 0),
                                                     depositMonths: Number(booking.depositMonths || 1),
                                                     tokenAlreadyPaid: 1000,
                                                     finalAmountPaid: Math.max(0, Number(booking.amount || 0) + Number(booking.depositAmount || 0) - 1000),
-                                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : 'â€”',
+                                                    paidAt: booking.paidAt ? new Date(booking.paidAt).toLocaleDateString('en-IN', { dateStyle: 'long' }) : '—',
                                                     paymentMethod: booking.paymentMethod || 'Online',
                                                     paymentId: booking.paymentId || undefined,
                                                 }});
@@ -1169,14 +1169,14 @@ export default function StudentDashboardPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                {/* â”€â”€ Active Stay Tab Content â”€â”€ */}
+                {/* ── Active Stay Tab Content ── */}
                 <TabsContent value="active-stay" className="space-y-6 pt-4">
                     {(() => {
                         const activeStay = bookings.find((b: any) => ['ACTIVE', 'CHECKED_IN', 'CHECKIN_CONFIRMED'].includes(b.status));
                         if (!activeStay) {
                             return (
                                 <Card className="border-2 border-dashed p-12 text-center space-y-4">
-                                    <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">ðŸ </div>
+                                    <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">🏠</div>
                                     <div>
                                         <p className="font-bold text-slate-800">No active stay details found</p>
                                         <p className="text-xs text-muted-foreground">Complete your onboarding bookings to activate your stay details.</p>
@@ -1207,7 +1207,7 @@ export default function StudentDashboardPage() {
                     })()}
                 </TabsContent>
 
-                {/* â”€â”€ Bookings & Onboarding Tab Content â”€â”€ */}
+                {/* ── Bookings & Onboarding Tab Content ── */}
                 <TabsContent value="bookings" className="space-y-6 pt-4">
                     {(() => {
                         const otherBookings = bookings
@@ -1221,7 +1221,7 @@ export default function StudentDashboardPage() {
                                     bookings.filter((b: any) => b.originalOccupancy && b.originalOccupancy !== b.occupancy && dismissedSharingAlert !== b.id).map((b: any) => (
                                     <div key={`sharing-alert-${b.id}`} className="bg-red-50 border-2 border-red-400 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
                                         <div className="flex items-start gap-3">
-                                            <span className="text-2xl mt-0.5">âš ï¸</span>
+                                            <span className="text-2xl mt-0.5">⚠️</span>
                                             <div>
                                                 <p className="font-black text-red-800 text-sm">Your Sharing Type Was Changed</p>
                                                 <p className="text-red-700 text-xs mt-1">You applied for <strong>{b.originalOccupancy}</strong> but management assigned <strong>{b.occupancy}</strong> at <strong>{b.propertyName}</strong>.</p>
@@ -1237,7 +1237,7 @@ export default function StudentDashboardPage() {
                                 {roomAllocNotifs.map((n: any) => (
                                     <div key={`room-alloc-${n.id}`} className="bg-red-50 border-2 border-red-500 rounded-2xl p-4 flex items-start justify-between gap-3 animate-in slide-in-from-top-2 duration-300">
                                         <div className="flex items-start gap-3">
-                                            <span className="text-2xl mt-0.5">ðŸ </span>
+                                            <span className="text-2xl mt-0.5">🏠</span>
                                             <div>
                                                 <p className="font-black text-red-800 text-sm">Room / Bed Update</p>
                                                 <p className="text-red-700 text-xs mt-1">{n.message}</p>
@@ -1274,7 +1274,7 @@ export default function StudentDashboardPage() {
                                 ) : (
                                     <Card className="border-2 border-dashed">
                                         <CardContent className="p-12 text-center space-y-4">
-                                            <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">ðŸ”Ž</div>
+                                            <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl">🔎</div>
                                             <div className="space-y-1">
                                                 <p className="font-bold text-slate-800">No pending bookings</p>
                                                 <p className="text-xs text-muted-foreground">Discover verified student housing across India with RentPe.</p>
@@ -1290,7 +1290,7 @@ export default function StudentDashboardPage() {
                     })()}
                 </TabsContent>
 
-                {/* â”€â”€ Profile Tab Content â”€â”€ */}
+                {/* ── Profile Tab Content ── */}
                 <TabsContent value="profile" className="space-y-6 pt-4">
                     {(() => {
                         const isProfileLocked = !!profile?.dateOfBirth;
@@ -1312,7 +1312,7 @@ export default function StudentDashboardPage() {
                                         <div>
                                             <CardTitle className="text-2xl font-black">{profile?.name || "Verified Resident"}</CardTitle>
                                             <CardDescription className="text-slate-300 font-bold mt-1 uppercase tracking-widest text-[10px]">
-                                                User ID: {profile?.displayId || 'â€”'} â€¢ {profile?.phone || 'No Phone'}
+                                                User ID: {profile?.displayId || '—'}
                                             </CardDescription>
                                         </div>
                                     </div>
@@ -1377,7 +1377,7 @@ export default function StudentDashboardPage() {
                                             <div>
                                                 <label className="text-xs font-black text-slate-600 block mb-1">Official Email</label>
                                                 <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                    <span className="text-sm font-bold text-slate-800">{profile?.email || 'â€”'}</span>
+                                                    <span className="text-sm font-bold text-slate-800">{profile?.email || '—'}</span>
                                                     <Button 
                                                         type="button" 
                                                         onClick={() => handleStartSelfServiceChange('email')}
@@ -1390,7 +1390,7 @@ export default function StudentDashboardPage() {
                                             <div>
                                                 <label className="text-xs font-black text-slate-600 block mb-1">Registered Phone</label>
                                                 <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                    <span className="text-sm font-bold text-slate-800">{profile?.phone || 'â€”'}</span>
+                                                    <span className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</span>
                                                     <Button 
                                                         type="button" 
                                                         onClick={() => handleStartSelfServiceChange('phone')}
@@ -1490,10 +1490,17 @@ export default function StudentDashboardPage() {
                                     
                                     {/* Column 1: Demographics & Contact */}
                                     <div className="p-6 md:p-8 space-y-6">
-                                        <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-xl border border-indigo-100 mb-2">
-                                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Permanent User ID</span>
-                                            <span className="font-mono font-black text-indigo-700 text-sm">{profile?.displayId || '-'}</span>
+                                        {/* Permanent User ID Premium Card */}
+                                        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-4 rounded-2xl border border-indigo-100 shadow-sm flex items-center justify-between mb-4">
+                                            <div>
+                                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Permanent User ID</p>
+                                                <p className="text-[11px] text-indigo-600/70 font-bold mt-0.5">Official RentPe Resident Identifier</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="font-mono font-black text-indigo-900 text-base tracking-wider bg-white px-3.5 py-1.5 rounded-xl border border-indigo-100 shadow-sm inline-block">{profile?.displayId || '—'}</span>
+                                            </div>
                                         </div>
+                                        
                                         <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><User className="w-4 h-4 text-indigo-500"/> Demographics & Contact</h3>
                                         {(() => {
                                             let contacts: any[] = [];
@@ -1514,31 +1521,49 @@ export default function StudentDashboardPage() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Birth</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : 'â€”'}</div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : '—'}</div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Gender</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.gender || 'â€”'}</div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.gender || '—'}</div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nationality</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.nationality || 'â€”'}</div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.nationality || '—'}</div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Occupation Status</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.occupationType || 'â€”'}</div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.occupationType || '—'}</div>
                                                     </div>
                                                     <div className="col-span-2">
                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Institution / Company Name</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.occupationDetail || 'â€”'}</div>
+                                                        <div className="text-sm font-bold text-slate-800">{profile?.occupationDetail || '—'}</div>
                                                     </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Official Email</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.email || 'â€”'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Registered Phone</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.phone || 'â€”'}</div>
+                                                    {/* Contact Details stacked beautifully */}
+                                                    <div className="col-span-2 border-t border-slate-100 pt-6 mt-4">
+                                                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                            <Mail className="w-3.5 h-3.5 text-slate-400" /> Contact Channels
+                                                        </h4>
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center gap-3">
+                                                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                                    <Mail className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Official Email</span>
+                                                                    <span className="text-sm font-bold text-slate-800 break-all">{profile?.email || '—'}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center gap-3">
+                                                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                                                                    <Phone className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Registered Phone</span>
+                                                                    <span className="text-sm font-bold text-slate-800">{profile?.phone || '—'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
 
                                                     <div className="col-span-2 border-t border-slate-100 pt-4 mt-2">
@@ -1559,7 +1584,7 @@ export default function StudentDashboardPage() {
                                                                 ))}
                                                             </div>
                                                         ) : (
-                                                            <div className="text-sm font-bold text-slate-400">â€”</div>
+                                                            <div className="text-sm font-bold text-slate-400">—</div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1573,10 +1598,16 @@ export default function StudentDashboardPage() {
                                         
                                         {profile?.activeTenant ? (
                                             <div className="space-y-4">
-                                                <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl shadow-sm">
-                                                    <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-1">PG Name & Address</label>
-                                                    <div className="text-sm font-black text-indigo-900">{profile?.activeTenant?.property?.name || profile?.activeTenant?.booking?.propertyName || 'Property Name Unavailable'}</div>
-                                                    <div className="text-xs font-bold text-indigo-700/70 mt-0.5 leading-snug">{profile?.activeTenant?.property?.address || profile?.activeTenant?.booking?.propertyAddress || 'Address Unavailable'}</div>
+                                                {/* Premium Current Stay Card */}
+                                                <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-4 rounded-2xl border border-emerald-100 shadow-sm flex items-start gap-3">
+                                                    <div className="p-2 bg-white rounded-xl shadow-sm border border-emerald-100 text-emerald-600 shrink-0">
+                                                        <Building2 className="w-5 h-5" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Current Stay PG</label>
+                                                        <div className="text-sm font-black text-emerald-900 leading-snug">{profile?.activeTenant?.property?.name || profile?.activeTenant?.booking?.propertyName || 'Property Name Unavailable'}</div>
+                                                        <div className="text-xs font-bold text-emerald-700/70 mt-1 leading-snug">{profile?.activeTenant?.property?.address || profile?.activeTenant?.booking?.propertyAddress || 'Address Unavailable'}</div>
+                                                    </div>
                                                 </div>
 
                                                 <div className="flex gap-4">
@@ -1597,7 +1628,7 @@ export default function StudentDashboardPage() {
                                                     </div>
                                                     <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
                                                         <span className="text-xs font-bold text-slate-500">Booking ID</span>
-                                                        <Badge variant="outline" className="font-black text-[10px] text-slate-700 border-slate-300">{profile.activeTenant.booking?.displayId || profile.lastBooking?.displayId || 'â€”'}</Badge>
+                                                        <Badge variant="outline" className="font-black text-[10px] text-slate-700 border-slate-300">{profile.activeTenant.booking?.displayId || profile.lastBooking?.displayId || '—'}</Badge>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1610,7 +1641,7 @@ export default function StudentDashboardPage() {
                                         {/* Lock Warning Notice */}
                                         {isProfileLocked && (
                                             <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl flex gap-3 text-amber-900 mt-4">
-                                                <span className="text-xl">ðŸ”’</span>
+                                                <span className="text-xl">🔒</span>
                                                 <div className="space-y-1">
                                                     <p className="text-xs font-black uppercase tracking-wider text-amber-700">Details Verified & Locked</p>
                                                     <p className="text-[11px] font-bold leading-normal">
@@ -1648,7 +1679,7 @@ export default function StudentDashboardPage() {
                             signedDevice: deviceInfo.userAgent,
                             moveInDate: (deviceInfo as any).moveInDate
                         });
-                        toast.success("Agreement signed! ðŸŽ‰ Owner will now countersign.", { id: toastId });
+                        toast.success("Agreement signed! 🎉 Owner will now countersign.", { id: toastId });
                         await fetchData();
                         setSigningBooking(null);
                     } catch (e: any) { toast.error(e.message, { id: toastId }); }
@@ -1815,4 +1846,3 @@ export default function StudentDashboardPage() {
         </div>
     );
 }
-

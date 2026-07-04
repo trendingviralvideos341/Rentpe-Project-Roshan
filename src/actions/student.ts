@@ -47,7 +47,11 @@ export async function getStudentProfile() {
         // Get active Tenant record for check-in/out dates
         const activeTenant = await prisma.tenant.findFirst({
             where: { studentId: userId },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            include: {
+                property: true,
+                booking: true
+            }
         });
 
         // Calculate Real Verification Logic
