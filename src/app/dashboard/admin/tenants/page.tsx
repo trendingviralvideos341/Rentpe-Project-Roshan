@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import {
     CheckCircle, XCircle, Users, Loader2, Search,
     Eye, Building, ShieldAlert, Phone, Mail, Calendar, Info, AlertTriangle,
-    X, Download, FileText, CheckCircle2, TrendingUp, Shield, Building2, IndianRupee, Home
+    X, Download, FileText, CheckCircle2, TrendingUp, Shield, Building2, IndianRupee, Home,
+    Edit2, Save, Plus, Trash2
 } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant } from "@/actions/tenants";
+import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, updateTenantProfile } from "@/actions/tenants";
 import { getInvoiceForReceipt } from "@/actions/payments";
 import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
@@ -78,6 +79,24 @@ export default function TenantsPage() {
     // Notice override form state
     const [plannedMoveOut, setPlannedMoveOut] = useState("");
     const [moveOutReason, setMoveOutReason] = useState("");
+
+    // Profile Edit State
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editName, setEditName] = useState("");
+    const [editDOB, setEditDOB] = useState("");
+    const [editGender, setEditGender] = useState("");
+    const [editNationality, setEditNationality] = useState("");
+    const [editPhone, setEditPhone] = useState("");
+    const [editEmail, setEditEmail] = useState("");
+    const [editOccupationType, setEditOccupationType] = useState("");
+    const [editOccupationDetail, setEditOccupationDetail] = useState("");
+    const [editStartDate, setEditStartDate] = useState("");
+    const [editEmergencyContacts, setEditEmergencyContacts] = useState<any[]>([]);
+
+    // Support ticket and reason validation state for saving edits
+    const [showSaveEditDialog, setShowSaveEditDialog] = useState(false);
+    const [auditTicketId, setAuditTicketId] = useState("");
+    const [auditReason, setAuditReason] = useState("");
 
     const currentMonth = new Date().toLocaleString('en-IN', { month: 'short', year: 'numeric' });
 
@@ -213,6 +232,91 @@ export default function TenantsPage() {
             await fetchTenants();
         } catch (e: any) {
             toast.error("Error initiating notice: " + e.message);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const startEditingProfile = () => {
+        if (!selectedTenant) return;
+        setEditName(selectedTenant.name || "");
+        setEditDOB(selectedTenant.booking?.user?.dateOfBirth || "");
+        setEditGender(selectedTenant.booking?.user?.gender || "");
+        setEditNationality(selectedTenant.booking?.user?.nationality || "Indian");
+        setEditPhone(selectedTenant.booking?.user?.phone || selectedTenant.phone || "");
+        setEditEmail(selectedTenant.booking?.user?.email || selectedTenant.email || "");
+        setEditOccupationType(selectedTenant.booking?.user?.occupationType || "");
+
+        const occDetail = selectedTenant.booking?.user?.occupationType === 'Student'
+            ? selectedTenant.booking?.user?.college
+            : selectedTenant.booking?.user?.businessName || selectedTenant.booking?.user?.occupationDetail || "";
+        setEditOccupationDetail(occDetail);
+        setEditStartDate(selectedTenant.startDate || selectedTenant.moveInDate || "");
+
+        const ecRaw = selectedTenant.booking?.user?.emergencyContact;
+        let parsedEc = [];
+        if (ecRaw) {
+            try {
+                const parsed = JSON.parse(ecRaw);
+                if (Array.isArray(parsed)) {
+                    parsedEc = parsed;
+                }
+            } catch (e) {}
+        }
+        setEditEmergencyContacts(parsedEc);
+        setIsEditingProfile(true);
+    };
+
+    const handleSaveProfile = async () => {
+        if (!auditTicketId.trim() || !auditReason.trim()) {
+            toast.error("Support Ticket ID and Reason for Update are required.");
+            return;
+        }
+
+        // Validate emergency contacts
+        if (editEmergencyContacts.length === 0) {
+            toast.error("At least one emergency contact is mandatory.");
+            return;
+        }
+
+        for (const ec of editEmergencyContacts) {
+            if (!ec.name.trim() || !ec.phone.trim() || !ec.relation) {
+                toast.error("All emergency contact fields (Name, Relation, Phone) are required.");
+                return;
+            }
+        }
+
+        setActionLoading(true);
+        try {
+            const data = {
+                name: editName,
+                phone: editPhone,
+                email: editEmail,
+                dateOfBirth: editDOB,
+                gender: editGender,
+                nationality: editNationality,
+                occupationType: editOccupationType,
+                occupationDetail: editOccupationDetail,
+                emergencyContact: JSON.stringify(editEmergencyContacts),
+                startDate: editStartDate
+            };
+
+            const res = await updateTenantProfile(selectedTenant.id, data, {
+                ticketId: auditTicketId,
+                reason: auditReason
+            });
+
+            if (res?.success) {
+                toast.success("Tenant profile updated successfully.");
+                setIsEditingProfile(false);
+                setShowSaveEditDialog(false);
+                setAuditTicketId("");
+                setAuditReason("");
+                // Refresh tenants & selectedTenant details
+                await fetchTenants();
+            }
+        } catch (e: any) {
+            toast.error("Failed to update profile: " + e.message);
         } finally {
             setActionLoading(false);
         }
@@ -431,8 +535,8 @@ export default function TenantsPage() {
 
             {/* Support Command Center View Details Drawer Dialog */}
             {selectedTenant && (
-                <Dialog open={!!selectedTenant} onOpenChange={() => setSelectedTenant(null)}>
-                    <DialogContent className="max-w-5xl bg-white border rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+                <Dialog open={!!selectedTenant} onOpenChange={() => { setSelectedTenant(null); setIsEditingProfile(false); }}>
+                    <DialogContent className="max-w-[90vw] md:max-w-7xl bg-white border rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                         <DialogHeader className="border-b border-slate-100 pb-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
@@ -474,80 +578,279 @@ export default function TenantsPage() {
                         </div>
 
                         <div className="py-4 space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                            {/* TAB 1: Profile */}
                             {activeTab === "profile" && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                                    <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Full Name</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.name}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Date of Birth</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.dateOfBirth || "—"}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Gender</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.gender || "—"}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Nationality</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.nationality || "Indian"}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Status</p>
-                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                                selectedTenant.status === "Active" ? "bg-green-100 text-green-700" :
-                                                selectedTenant.status === "Upcoming" ? "bg-blue-100 text-blue-700" :
-                                                "bg-red-100 text-red-700"
-                                            }`}>{selectedTenant.status}</span>
-                                        </div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                        <h4 className="font-black text-slate-900 text-sm">Tenant Demographic Profile</h4>
+                                        {!isEditingProfile ? (
+                                            <Button
+                                                onClick={startEditingProfile}
+                                                size="sm"
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl h-8 flex items-center gap-1.5"
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5" /> Edit Profile
+                                            </Button>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    onClick={() => setIsEditingProfile(false)}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="font-bold rounded-xl h-8 text-slate-600 border-slate-200"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    onClick={() => setShowSaveEditDialog(true)}
+                                                    size="sm"
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-8 flex items-center gap-1.5"
+                                                >
+                                                    <Save className="w-3.5 h-3.5" /> Save Changes
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Registered Phone</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.phone || selectedTenant.phone}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Mail className="w-3 h-3" /> Registered Email</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.email || selectedTenant.email}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Occupation Status</p>
-                                            <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.occupationType || "—"}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Institution / Company Name</p>
-                                            <p className="font-bold text-slate-900">
-                                                {selectedTenant.booking?.user?.occupationType === 'Student' 
-                                                    ? selectedTenant.booking?.user?.college 
-                                                    : selectedTenant.booking?.user?.businessName || selectedTenant.booking?.user?.occupationDetail || "—"}
-                                            </p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Emergency Contacts</p>
-                                            {(() => {
-                                                const ecRaw = selectedTenant.booking?.user?.emergencyContact;
-                                                if (!ecRaw) return <p className="font-bold text-slate-900">—</p>;
-                                                try {
-                                                    const parsed = JSON.parse(ecRaw);
-                                                    if (Array.isArray(parsed)) {
-                                                        return (
-                                                            <div className="space-y-1.5">
-                                                                {parsed.map((contact, idx) => (
-                                                                    <div key={idx} className="bg-slate-50 p-2 rounded border border-slate-100 text-xs">
-                                                                        <p className="font-bold text-slate-800">{contact.name} <span className="text-slate-400 font-normal">({contact.relation})</span></p>
-                                                                        <p className="text-slate-600 font-mono mt-0.5">{contact.phone}</p>
+
+                                    {!isEditingProfile ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                            <div className="space-y-4">
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Full Name</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.name}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Date of Birth</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.dateOfBirth || "—"}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Gender</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.gender || "—"}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Nationality</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.nationality || "Indian"}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Status</p>
+                                                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                                        selectedTenant.status === "Active" ? "bg-green-100 text-green-700" :
+                                                        selectedTenant.status === "Upcoming" ? "bg-blue-100 text-blue-700" :
+                                                        "bg-red-100 text-red-700"
+                                                    }`}>{selectedTenant.status}</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.startDate || selectedTenant.moveInDate || "—"}</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Registered Phone</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.phone || selectedTenant.phone}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Mail className="w-3 h-3" /> Registered Email</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.email || selectedTenant.email}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Occupation Status</p>
+                                                    <p className="font-bold text-slate-900">{selectedTenant.booking?.user?.occupationType || "—"}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Institution / Company Name</p>
+                                                    <p className="font-bold text-slate-900">
+                                                        {selectedTenant.booking?.user?.occupationType === 'Student' 
+                                                            ? selectedTenant.booking?.user?.college 
+                                                            : selectedTenant.booking?.user?.businessName || selectedTenant.booking?.user?.occupationDetail || "—"}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Emergency Contacts</p>
+                                                    {(() => {
+                                                        const ecRaw = selectedTenant.booking?.user?.emergencyContact;
+                                                        if (!ecRaw) return <p className="font-bold text-slate-900">—</p>;
+                                                        try {
+                                                            const parsed = JSON.parse(ecRaw);
+                                                            if (Array.isArray(parsed)) {
+                                                                return (
+                                                                    <div className="space-y-1.5">
+                                                                        {parsed.map((contact, idx) => (
+                                                                            <div key={idx} className="bg-slate-50 p-2 rounded border border-slate-100 text-xs">
+                                                                                <p className="font-bold text-slate-800">{contact.name} <span className="text-slate-400 font-normal">({contact.relation})</span></p>
+                                                                                <p className="text-slate-600 font-mono mt-0.5">{contact.phone}</p>
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
-                                                                ))}
-                                                            </div>
-                                                        );
-                                                    }
-                                                } catch (e) {}
-                                                return <p className="font-bold text-slate-900">{ecRaw}</p>;
-                                            })()}
+                                                                );
+                                                            }
+                                                        } catch (e) {}
+                                                        return <p className="font-bold text-slate-900">{ecRaw}</p>;
+                                                    })()}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                            <div className="space-y-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Full Name</label>
+                                                    <Input
+                                                        value={editName}
+                                                        onChange={e => setEditName(e.target.value)}
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Date of Birth</label>
+                                                    <Input
+                                                        value={editDOB}
+                                                        onChange={e => setEditDOB(e.target.value)}
+                                                        placeholder="e.g. 1998-05-15"
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Gender</label>
+                                                    <select
+                                                        value={editGender}
+                                                        onChange={e => setEditGender(e.target.value)}
+                                                        className="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    >
+                                                        <option value="">Select Gender</option>
+                                                        <option value="Male">Male</option>
+                                                        <option value="Female">Female</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Nationality</label>
+                                                    <Input
+                                                        value={editNationality}
+                                                        onChange={e => setEditNationality(e.target.value)}
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</label>
+                                                    <Input
+                                                        value={editStartDate}
+                                                        onChange={e => setEditStartDate(e.target.value)}
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Registered Phone</label>
+                                                    <Input
+                                                        value={editPhone}
+                                                        onChange={e => setEditPhone(e.target.value)}
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Mail className="w-3 h-3" /> Registered Email</label>
+                                                    <Input
+                                                        value={editEmail}
+                                                        onChange={e => setEditEmail(e.target.value)}
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Occupation Status</label>
+                                                    <select
+                                                        value={editOccupationType}
+                                                        onChange={e => setEditOccupationType(e.target.value)}
+                                                        className="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    >
+                                                        <option value="">Select Occupation</option>
+                                                        <option value="Student">Student</option>
+                                                        <option value="Working Professional">Working Professional</option>
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Institution / Company Name</label>
+                                                    <Input
+                                                        value={editOccupationDetail}
+                                                        onChange={e => setEditOccupationDetail(e.target.value)}
+                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Emergency Contacts</label>
+                                                    <div className="space-y-3">
+                                                        {editEmergencyContacts.map((contact, idx) => (
+                                                            <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2 relative">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setEditEmergencyContacts(editEmergencyContacts.filter((_, i) => i !== idx))}
+                                                                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <div className="grid grid-cols-3 gap-2">
+                                                                    <div>
+                                                                        <label className="text-[8px] font-black text-slate-400 uppercase">Name</label>
+                                                                        <Input
+                                                                            value={contact.name}
+                                                                            onChange={e => {
+                                                                                const updated = [...editEmergencyContacts];
+                                                                                updated[idx].name = e.target.value;
+                                                                                setEditEmergencyContacts(updated);
+                                                                            }}
+                                                                            className="bg-white border-slate-200 text-[10px] h-8 font-bold"
+                                                                            placeholder="Name"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[8px] font-black text-slate-400 uppercase">Relation</label>
+                                                                        <select
+                                                                            value={contact.relation}
+                                                                            onChange={e => {
+                                                                                const updated = [...editEmergencyContacts];
+                                                                                updated[idx].relation = e.target.value;
+                                                                                setEditEmergencyContacts(updated);
+                                                                            }}
+                                                                            className="w-full border border-slate-200 rounded-lg p-1.5 bg-white text-[10px] h-8 font-bold text-slate-800"
+                                                                        >
+                                                                            <option value="">Relation</option>
+                                                                            <option value="Family">Family</option>
+                                                                            <option value="Relatives">Relatives</option>
+                                                                            <option value="Friends">Friends</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[8px] font-black text-slate-400 uppercase">Phone</label>
+                                                                        <Input
+                                                                            value={contact.phone}
+                                                                            onChange={e => {
+                                                                                const updated = [...editEmergencyContacts];
+                                                                                updated[idx].phone = e.target.value;
+                                                                                setEditEmergencyContacts(updated);
+                                                                            }}
+                                                                            className="bg-white border-slate-200 text-[10px] h-8 font-bold"
+                                                                            placeholder="Phone"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {editEmergencyContacts.length < 2 && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setEditEmergencyContacts([...editEmergencyContacts, { name: "", relation: "", phone: "" }])}
+                                                                className="text-[10px] font-bold w-full rounded-xl border-dashed border-2 flex items-center justify-center gap-1 text-slate-500 border-slate-300 hover:bg-slate-50 h-8"
+                                                            >
+                                                                <Plus className="w-3 h-3" /> Add Emergency Contact ({editEmergencyContacts.length}/2)
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -735,7 +1038,8 @@ export default function TenantsPage() {
                                                             <th className="p-4">Type</th>
                                                             <th className="p-4">Amount</th>
                                                             <th className="p-4 text-center">Status</th>
-                                                            <th className="p-4 text-right">Action / Receipt</th>
+                                                            <th className="p-4 text-center">Receipt</th>
+                                                            <th className="p-4 text-right">Action</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100 text-xs">
@@ -749,7 +1053,7 @@ export default function TenantsPage() {
                                                             if (filteredRecords.length === 0) {
                                                                 return (
                                                                     <tr>
-                                                                        <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">
+                                                                        <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">
                                                                             No rent records found.
                                                                         </td>
                                                                     </tr>
@@ -799,33 +1103,35 @@ export default function TenantsPage() {
                                                                                 {isPaid ? "PAID" : "UNPAID"}
                                                                             </span>
                                                                         </td>
+                                                                        <td className="p-4 text-center">
+                                                                            {isPaid && matchingInvoice ? (
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    className="h-7 text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 shadow-none"
+                                                                                    onClick={() => handleViewReceipt(matchingInvoice.id)}
+                                                                                    disabled={receiptLoading}
+                                                                                >
+                                                                                    <FileText className="w-3 h-3 mr-1" /> Receipt
+                                                                                </Button>
+                                                                            ) : (
+                                                                                <span className="text-slate-400 font-bold">—</span>
+                                                                            )}
+                                                                        </td>
                                                                         <td className="p-4 text-right">
                                                                             <div className="flex justify-end gap-2">
                                                                                 {isPaid ? (
-                                                                                    <>
-                                                                                        <Button
-                                                                                            size="sm"
-                                                                                            disabled={actionLoading}
-                                                                                            className="h-7 text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold border-0 shadow-none"
-                                                                                            onClick={() => {
-                                                                                                setMarkingUnpaidRecord(r);
-                                                                                                setReversalReason('TRANSACTION_FAILURE');
-                                                                                                setReversalNote('');
-                                                                                            }}
-                                                                                        >
-                                                                                            Unpaid
-                                                                                        </Button>
-                                                                                        {matchingInvoice && (
-                                                                                            <Button
-                                                                                                size="sm"
-                                                                                                className="h-7 text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 shadow-none"
-                                                                                                onClick={() => handleViewReceipt(matchingInvoice.id)}
-                                                                                                disabled={receiptLoading}
-                                                                                            >
-                                                                                                <FileText className="w-3 h-3 mr-1" /> Receipt
-                                                                                            </Button>
-                                                                                        )}
-                                                                                    </>
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        disabled={actionLoading}
+                                                                                        className="h-7 text-[10px] bg-red-100 hover:bg-red-200 text-red-700 font-bold border-0 shadow-none"
+                                                                                        onClick={() => {
+                                                                                            setMarkingUnpaidRecord(r);
+                                                                                            setReversalReason('TRANSACTION_FAILURE');
+                                                                                            setReversalNote('');
+                                                                                        }}
+                                                                                    >
+                                                                                        Unpaid
+                                                                                    </Button>
                                                                                 ) : (
                                                                                     <Button
                                                                                         size="sm"
@@ -964,6 +1270,64 @@ export default function TenantsPage() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Save Profile Edit Dialog (Mandatory Tracking Notes) */}
+            {showSaveEditDialog && (
+                <Dialog open={showSaveEditDialog} onOpenChange={() => setShowSaveEditDialog(false)}>
+                    <DialogContent className="max-w-md bg-white border rounded-2xl p-6 shadow-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                <ShieldAlert className="w-5 h-5 text-indigo-600" /> Save Profile Updates
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-slate-400 font-bold uppercase mt-1">
+                                MANDATORY TRACKING NOTE & SUPPORT TICKET ID
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Support Ticket ID (Required)</label>
+                                <Input
+                                    placeholder="e.g. ticket_10293 or REN-TKT-XXXX"
+                                    value={auditTicketId}
+                                    onChange={e => setAuditTicketId(e.target.value)}
+                                    className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Reason for Update / Edit Remarks (Required)</label>
+                                <textarea
+                                    placeholder="Provide a detailed explanation of what is changing and why support initiated this edit..."
+                                    value={auditReason}
+                                    onChange={e => setAuditReason(e.target.value)}
+                                    rows={3}
+                                    className="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowSaveEditDialog(false)}
+                                className="font-bold border-slate-200 rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size="sm"
+                                disabled={actionLoading || !auditTicketId.trim() || !auditReason.trim()}
+                                onClick={handleSaveProfile}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
+                            >
+                                {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null} Commit Changes
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>

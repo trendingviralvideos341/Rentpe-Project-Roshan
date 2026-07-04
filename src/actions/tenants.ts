@@ -983,3 +983,117 @@ export async function getMoveInChecklist(bookingId: string) {
     });
 }
 
+export async function updateTenantProfile(
+    tenantId: string,
+    data: {
+        name?: string;
+        phone?: string;
+        email?: string;
+        dateOfBirth?: string;
+        gender?: string;
+        nationality?: string;
+        occupationType?: string;
+        occupationDetail?: string;
+        emergencyContact?: string;
+        startDate?: string;
+    },
+    audit: {
+        ticketId: string;
+        reason: string;
+    }
+) {
+    const session = await getSession();
+    if (!session || !['ADMIN', 'STAFF'].includes(session.role)) {
+        throw new Error("Unauthorized");
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId }
+    });
+    if (!tenant) throw new Error("Tenant not found");
+
+    return await prisma.$transaction(async (tx) => {
+        // 1. Update Tenant
+        const tenantUpdateData: any = {};
+        if (data.name !== undefined) tenantUpdateData.name = data.name;
+        if (data.phone !== undefined) tenantUpdateData.phone = data.phone;
+        if (data.email !== undefined) tenantUpdateData.email = data.email;
+        if (data.occupationType !== undefined) tenantUpdateData.occupationType = data.occupationType;
+        if (data.occupationDetail !== undefined) tenantUpdateData.occupationDetail = data.occupationDetail;
+        if (data.startDate !== undefined) tenantUpdateData.startDate = data.startDate;
+
+        await tx.tenant.update({
+            where: { id: tenantId },
+            data: tenantUpdateData
+        });
+
+        // 2. Update User (Student)
+        const userUpdateData: any = {};
+        if (data.name !== undefined) userUpdateData.name = data.name;
+        if (data.phone !== undefined) userUpdateData.phone = data.phone;
+        if (data.email !== undefined) userUpdateData.email = data.email;
+        if (data.dateOfBirth !== undefined) userUpdateData.dateOfBirth = data.dateOfBirth;
+        if (data.gender !== undefined) userUpdateData.gender = data.gender;
+        if (data.nationality !== undefined) userUpdateData.nationality = data.nationality;
+        if (data.occupationType !== undefined) userUpdateData.occupationType = data.occupationType;
+        
+        if (data.occupationType === 'Student') {
+            if (data.occupationDetail !== undefined) userUpdateData.college = data.occupationDetail;
+        } else if (data.occupationType === 'Working Professional') {
+            if (data.occupationDetail !== undefined) {
+                userUpdateData.businessName = data.occupationDetail;
+                userUpdateData.occupationDetail = data.occupationDetail;
+            }
+        }
+        if (data.emergencyContact !== undefined) userUpdateData.emergencyContact = data.emergencyContact;
+
+        await tx.user.update({
+            where: { id: tenant.studentId },
+            data: userUpdateData
+        });
+
+        // 3. Update Booking
+        if (tenant.bookingId) {
+            const bookingUpdateData: any = {};
+            if (data.name !== undefined) bookingUpdateData.guestName = data.name;
+            if (data.phone !== undefined) bookingUpdateData.guestPhone = data.phone;
+            if (data.email !== undefined) bookingUpdateData.guestEmail = data.email;
+            if (data.startDate !== undefined) bookingUpdateData.moveInDate = data.startDate;
+            if (data.occupationType !== undefined) bookingUpdateData.occupationType = data.occupationType;
+            if (data.occupationDetail !== undefined) bookingUpdateData.occupationDetail = data.occupationDetail;
+
+            await tx.booking.update({
+                where: { id: tenant.bookingId },
+                data: bookingUpdateData
+            });
+        }
+
+        // 4. Create Audit Log / Action Note
+        const trackingReason = `Support Ticket ID: ${audit.ticketId || 'N/A'} | Reason: ${audit.reason} | Updated by: ${session.name || 'Admin'}`;
+        await tx.actionNote.create({
+            data: {
+                targetId: tenantId,
+                targetType: 'TENANT',
+                action: 'PROFILE_EDITED',
+                reason: trackingReason,
+                performedBy: session.userId
+            }
+        });
+
+        logAuditEvent({
+            actorId: session.userId,
+            actorRole: session.role || 'ADMIN',
+            actorName: session.name || 'Admin',
+            actionType: 'UPDATE',
+            entityType: 'TENANT',
+            entityId: tenantId,
+            description: `Profile edited. Ticket: ${audit.ticketId || 'N/A'}. Reason: ${audit.reason}`,
+        });
+
+        revalidatePath('/dashboard/admin/tenants');
+        revalidatePath('/dashboard/owner/tenants');
+        return { success: true };
+    });
+}
+
+
