@@ -1005,13 +1005,13 @@ export async function updateTenantProfile(
 ) {
     const session = await getSession();
     if (!session || !['ADMIN', 'STAFF'].includes(session.role)) {
-        throw new Error("Unauthorized");
+        return { error: "Unauthorized" };
     }
 
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId }
     });
-    if (!tenant) throw new Error("Tenant not found");
+    if (!tenant) return { error: "Tenant not found" };
 
     // 1. Uniqueness Checks
     if (data.email && data.email !== tenant.email) {
@@ -1022,7 +1022,7 @@ export async function updateTenantProfile(
             }
         });
         if (existingEmailUser) {
-            throw new Error(`This email is already registered to user: ${existingEmailUser.name || 'Unknown'} (Permanent ID: ${existingEmailUser.displayId || '—'}, Phone: ${existingEmailUser.phone || '—'}).`);
+            return { error: `This email is already registered to user: ${existingEmailUser.name || 'Unknown'} (Permanent ID: ${existingEmailUser.displayId || '—'}, Phone: ${existingEmailUser.phone || '—'}).` };
         }
     }
 
@@ -1034,7 +1034,7 @@ export async function updateTenantProfile(
             }
         });
         if (existingPhoneUser) {
-            throw new Error(`This phone is already registered to user: ${existingPhoneUser.name || 'Unknown'} (Permanent ID: ${existingPhoneUser.displayId || '—'}, Email: ${existingPhoneUser.email || '—'}).`);
+            return { error: `This phone is already registered to user: ${existingPhoneUser.name || 'Unknown'} (Permanent ID: ${existingPhoneUser.displayId || '—'}, Email: ${existingPhoneUser.email || '—'}).` };
         }
     }
 
@@ -1142,14 +1142,14 @@ export async function updateTenantProfile(
 
 export async function requestSelfServiceOTP(type: 'email' | 'phone', target: string, direction: 'old' | 'new') {
     const session = await getSession();
-    if (!session || !session.userId) throw new Error("Unauthorized");
+    if (!session || !session.userId) return { error: "Unauthorized" };
 
     if (direction === 'new') {
         const existing = await prisma.user.findFirst({
             where: type === 'email' ? { email: target } : { phone: target }
         });
         if (existing) {
-            throw new Error(type === 'email' ? 'Email is already registered' : 'Phone is already registered');
+            return { error: type === 'email' ? 'Email is already registered' : 'Phone is already registered' };
         }
     }
 
@@ -1164,23 +1164,23 @@ export async function verifyAndUpdateSelfService(
     newOtp: string
 ) {
     const session = await getSession();
-    if (!session || !session.userId) throw new Error("Unauthorized");
+    if (!session || !session.userId) return { error: "Unauthorized" };
 
     if (oldOtp !== '123456' || newOtp !== '123456') {
-        throw new Error("Invalid verification OTP. Please try again.");
+        return { error: "Invalid verification OTP. Please try again." };
     }
 
     const existing = await prisma.user.findFirst({
         where: type === 'email' ? { email: newTarget } : { phone: newTarget }
     });
     if (existing) {
-        throw new Error(type === 'email' ? 'Email is already registered' : 'Phone is already registered');
+        return { error: type === 'email' ? 'Email is already registered' : 'Phone is already registered' };
     }
 
     const tenant = await prisma.tenant.findFirst({
         where: { studentId: session.userId }
     });
-    if (!tenant) throw new Error("Tenant record not found");
+    if (!tenant) return { error: "Tenant record not found" };
 
     const oldTarget = type === 'email' ? tenant.email : tenant.phone;
 

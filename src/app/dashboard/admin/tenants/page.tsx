@@ -307,6 +307,10 @@ export default function TenantsPage() {
                 reason: auditReason
             });
 
+            if (res?.error) {
+                throw new Error(res.error);
+            }
+
             if (res?.success) {
                 toast.success("Tenant profile updated successfully.");
                 setIsEditingProfile(false);

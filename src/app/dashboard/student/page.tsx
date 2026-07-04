@@ -1024,7 +1024,8 @@ export default function StudentDashboardPage() {
         if (!selfServiceModal) return;
         setSelfServiceModal(prev => prev ? { ...prev, loading: true, errorMessage: '' } : null);
         try {
-            await requestSelfServiceOTP(selfServiceModal.type, selfServiceModal.oldTarget, 'old');
+            const res = await requestSelfServiceOTP(selfServiceModal.type, selfServiceModal.oldTarget, 'old');
+            if (res?.error) throw new Error(res.error);
             toast.success(`Mock OTP sent to old ${selfServiceModal.type}`);
             setSelfServiceModal(prev => prev ? { ...prev, step: 'verify_old_otp' } : null);
         } catch (e: any) {
@@ -1060,7 +1061,8 @@ export default function StudentDashboardPage() {
 
         setSelfServiceModal(prev => prev ? { ...prev, loading: true, errorMessage: '' } : null);
         try {
-            await requestSelfServiceOTP(selfServiceModal.type, selfServiceModal.newTarget, 'new');
+            const res = await requestSelfServiceOTP(selfServiceModal.type, selfServiceModal.newTarget, 'new');
+            if (res?.error) throw new Error(res.error);
             toast.success(`Mock OTP sent to new ${selfServiceModal.type}`);
             setSelfServiceModal(prev => prev ? { ...prev, step: 'verify_new_otp' } : null);
         } catch (e: any) {
@@ -1078,12 +1080,13 @@ export default function StudentDashboardPage() {
         }
         setSelfServiceModal(prev => prev ? { ...prev, loading: true, errorMessage: '' } : null);
         try {
-            await verifyAndUpdateSelfService(
+            const res = await verifyAndUpdateSelfService(
                 selfServiceModal.type,
                 selfServiceModal.oldOtpInput,
                 selfServiceModal.newTarget,
                 selfServiceModal.newOtpInput
             );
+            if (res?.error) throw new Error(res.error);
             toast.success(`${selfServiceModal.type === 'email' ? 'Email' : 'Phone'} updated successfully!`);
             const savedType = selfServiceModal.type;
             setSelfServiceModal(null);
