@@ -984,6 +984,40 @@ export async function getMoveInChecklist(bookingId: string) {
     });
 }
 
+export async function validateAdminCredentialOverride(
+    tenantId: string,
+    type: 'email' | 'phone',
+    target: string
+) {
+    const session = await getSession();
+    if (!session || !['ADMIN', 'STAFF'].includes(session.role)) {
+        return { error: "Unauthorized" };
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId }
+    });
+    if (!tenant) return { error: "Tenant not found" };
+
+    if (type === 'email') {
+        const existing = await prisma.user.findFirst({
+            where: { email: target, NOT: { id: tenant.studentId } }
+        });
+        if (existing) {
+            return { error: `This email is already registered to user: ${existing.name || 'Unknown'} (Permanent ID: ${existing.displayId || '—'}, Phone: ${existing.phone || '—'}).` };
+        }
+    } else {
+        const existing = await prisma.user.findFirst({
+            where: { phone: target, NOT: { id: tenant.studentId } }
+        });
+        if (existing) {
+            return { error: `This phone is already registered to user: ${existing.name || 'Unknown'} (Permanent ID: ${existing.displayId || '—'}, Email: ${existing.email || '—'}).` };
+        }
+    }
+
+    return { success: true };
+}
+
 export async function updateTenantProfile(
     tenantId: string,
     data: {

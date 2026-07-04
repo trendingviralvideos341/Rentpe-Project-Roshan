@@ -10,7 +10,7 @@ import {
     X, Download, FileText, CheckCircle2, TrendingUp, Shield, Building2, IndianRupee, Home,
     Edit2, Save, Plus, Trash2
 } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, updateTenantProfile } from "@/actions/tenants";
+import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, updateTenantProfile, validateAdminCredentialOverride } from "@/actions/tenants";
 import { getInvoiceForReceipt } from "@/actions/payments";
 import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
@@ -92,6 +92,11 @@ export default function TenantsPage() {
     const [editOccupationDetail, setEditOccupationDetail] = useState("");
     const [editStartDate, setEditStartDate] = useState("");
     const [editEmergencyContacts, setEditEmergencyContacts] = useState<any[]>([]);
+
+    const [emailValidationStatus, setEmailValidationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [emailValidationMessage, setEmailValidationMessage] = useState("");
+    const [phoneValidationStatus, setPhoneValidationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [phoneValidationMessage, setPhoneValidationMessage] = useState("");
 
     // Support ticket and reason validation state for saving edits
     const [showSaveEditDialog, setShowSaveEditDialog] = useState(false);
@@ -265,10 +270,64 @@ export default function TenantsPage() {
             } catch (e) {}
         }
         setEditEmergencyContacts(parsedEc);
+        setEmailValidationStatus('idle');
+        setEmailValidationMessage("");
+        setPhoneValidationStatus('idle');
+        setPhoneValidationMessage("");
         setIsEditingProfile(true);
     };
 
+    const handleValidateEmail = async () => {
+        if (!selectedTenant || !editEmail) return;
+        setEmailValidationStatus('loading');
+        try {
+            const res = await validateAdminCredentialOverride(selectedTenant.id, 'email', editEmail);
+            if (res?.error) {
+                setEmailValidationStatus('error');
+                setEmailValidationMessage(res.error);
+            } else {
+                setEmailValidationStatus('success');
+                setEmailValidationMessage("Email is available.");
+            }
+        } catch (e: any) {
+            setEmailValidationStatus('error');
+            setEmailValidationMessage("Failed to validate.");
+        }
+    };
+
+    const handleValidatePhone = async () => {
+        if (!selectedTenant || !editPhone) return;
+        setPhoneValidationStatus('loading');
+        try {
+            const res = await validateAdminCredentialOverride(selectedTenant.id, 'phone', editPhone);
+            if (res?.error) {
+                setPhoneValidationStatus('error');
+                setPhoneValidationMessage(res.error);
+            } else {
+                setPhoneValidationStatus('success');
+                setPhoneValidationMessage("Phone is available.");
+            }
+        } catch (e: any) {
+            setPhoneValidationStatus('error');
+            setPhoneValidationMessage("Failed to validate.");
+        }
+    };
+
     const handleSaveProfile = async () => {
+        if (!selectedTenant) return;
+        
+        const originalEmail = selectedTenant.booking?.user?.email || selectedTenant.email || "";
+        if (editEmail !== originalEmail && emailValidationStatus !== 'success') {
+            toast.error("Please validate the new email before saving.");
+            return;
+        }
+        
+        const originalPhone = selectedTenant.booking?.user?.phone || selectedTenant.phone || "";
+        if (editPhone !== originalPhone && phoneValidationStatus !== 'success') {
+            toast.error("Please validate the new phone before saving.");
+            return;
+        }
+
         if (!auditTicketId.trim() || !auditReason.trim()) {
             toast.error("Support Ticket ID and Reason for Update are required.");
             return;
@@ -748,19 +807,69 @@ export default function TenantsPage() {
                                             <div className="space-y-4">
                                                 <div className="space-y-1.5">
                                                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Phone className="w-3 h-3" /> Registered Phone</label>
-                                                    <Input
-                                                        value={editPhone}
-                                                        onChange={e => setEditPhone(e.target.value)}
-                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            value={editPhone}
+                                                            onChange={e => {
+                                                                setEditPhone(e.target.value);
+                                                                setPhoneValidationStatus('idle');
+                                                                setPhoneValidationMessage("");
+                                                            }}
+                                                            className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800 flex-1"
+                                                        />
+                                                        {editPhone !== (selectedTenant.booking?.user?.phone || selectedTenant.phone || "") && (
+                                                            <Button
+                                                                type="button"
+                                                                onClick={handleValidatePhone}
+                                                                disabled={phoneValidationStatus === 'loading'}
+                                                                className={`h-10 px-3 text-xs font-bold rounded-lg ${
+                                                                    phoneValidationStatus === 'success' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' :
+                                                                    phoneValidationStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
+                                                                    'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                                                }`}
+                                                            >
+                                                                {phoneValidationStatus === 'loading' ? 'Checking...' : phoneValidationStatus === 'success' ? 'Valid' : 'Validate'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    {phoneValidationMessage && (
+                                                        <p className={`text-[10px] font-bold ${phoneValidationStatus === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                            {phoneValidationMessage}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1"><Mail className="w-3 h-3" /> Registered Email</label>
-                                                    <Input
-                                                        value={editEmail}
-                                                        onChange={e => setEditEmail(e.target.value)}
-                                                        className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800"
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            value={editEmail}
+                                                            onChange={e => {
+                                                                setEditEmail(e.target.value);
+                                                                setEmailValidationStatus('idle');
+                                                                setEmailValidationMessage("");
+                                                            }}
+                                                            className="bg-slate-50 border-slate-200 text-xs font-bold text-slate-800 flex-1"
+                                                        />
+                                                        {editEmail !== (selectedTenant.booking?.user?.email || selectedTenant.email || "") && (
+                                                            <Button
+                                                                type="button"
+                                                                onClick={handleValidateEmail}
+                                                                disabled={emailValidationStatus === 'loading'}
+                                                                className={`h-10 px-3 text-xs font-bold rounded-lg ${
+                                                                    emailValidationStatus === 'success' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' :
+                                                                    emailValidationStatus === 'error' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
+                                                                    'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                                                }`}
+                                                            >
+                                                                {emailValidationStatus === 'loading' ? 'Checking...' : emailValidationStatus === 'success' ? 'Valid' : 'Validate'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    {emailValidationMessage && (
+                                                        <p className={`text-[10px] font-bold ${emailValidationStatus === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                            {emailValidationMessage}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Occupation Status</label>
