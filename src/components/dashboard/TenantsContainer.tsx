@@ -9,6 +9,7 @@ import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenan
 import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SettlementModal } from "@/components/dashboard/SettlementModal";
 
 function formatMonthLabel(m: string): string {
@@ -36,6 +37,8 @@ export function TenantsContainer() {
     const [showMoveOut, setShowMoveOut] = useState<any>(null); // tenant object or null
     const [viewingChecklist, setViewingChecklist] = useState<any>(null);
     const [viewingDetails, setViewingDetails] = useState<any>(null);
+    const [historyYear, setHistoryYear] = useState<string>("ALL");
+    const [historyMonth, setHistoryMonth] = useState<string>("ALL");
     const [initiatingMoveOut, setInitiatingMoveOut] = useState<any>(null);
     const [moveOutReason, setMoveOutReason] = useState("");
     const [moveOutDate, setMoveOutDate] = useState("");
@@ -51,6 +54,13 @@ export function TenantsContainer() {
     };
 
     useEffect(() => { fetchTenants(); }, []);
+
+    useEffect(() => {
+        if (!viewingDetails) {
+            setHistoryYear("ALL");
+            setHistoryMonth("ALL");
+        }
+    }, [viewingDetails]);
 
     const toggleHistory = (id: string) => {
         setExpandedHistory(prev => {
@@ -617,7 +627,7 @@ export function TenantsContainer() {
 
             {/* View Student Details Dialog */}
             <Dialog open={!!viewingDetails} onOpenChange={(open) => !open && setViewingDetails(null)}>
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl md:max-w-5xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             👤 Student Profile &amp; Ledger
@@ -628,58 +638,219 @@ export function TenantsContainer() {
                     </DialogHeader>
 
                     {viewingDetails && (
-                        <div className="space-y-6 pt-4 text-sm text-slate-800">
-                            {/* Profile details grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="border rounded-2xl p-4 bg-slate-50 space-y-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Personal Info</p>
-                                    <p className="font-black text-slate-900 text-base">{viewingDetails.name}</p>
-                                    <p className="text-xs text-slate-500 font-mono">{viewingDetails.displayId}</p>
-                                    <p className="text-xs text-slate-600">📞 {viewingDetails.phone}</p>
-                                    <p className="text-xs text-slate-600">✉️ {viewingDetails.email || '—'}</p>
-                                </div>
-                                <div className="border border-indigo-100 rounded-2xl p-4 bg-indigo-50/50 space-y-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tenancy Info</p>
-                                    <p className="font-bold text-indigo-900">{viewingDetails.property?.name || 'Unknown PG'}</p>
-                                    <p className="text-xs text-indigo-700">Room {viewingDetails.roomNumber} ({viewingDetails.roomType})</p>
-                                    <p className="text-xs text-slate-600">📅 Started: {viewingDetails.startDate || viewingDetails.moveInDate || '—'}</p>
-                                    <p className="text-xs text-slate-600">💰 Rent: ₹{viewingDetails.rentAmount || viewingDetails.rent}/month</p>
-                                </div>
-                            </div>
+                        <Tabs defaultValue="tenant-info" className="w-full pt-4">
+                            <TabsList className="grid w-full grid-cols-3 mb-6 bg-slate-100 p-1 rounded-xl">
+                                <TabsTrigger value="tenant-info" className="rounded-lg">Tenant Information</TabsTrigger>
+                                <TabsTrigger value="booking-stay" className="rounded-lg">Booking &amp; Stay</TabsTrigger>
+                                <TabsTrigger value="paid-history" className="rounded-lg">Tenant Paid History</TabsTrigger>
+                            </TabsList>
 
-                            {/* Monthly Rent Records Ledger */}
-                            <div className="space-y-3">
-                                <h3 className="font-bold text-slate-900 border-b pb-2">📅 Monthly Rent History</h3>
-                                {viewingDetails.rentRecords && viewingDetails.rentRecords.length > 0 ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
-                                        {viewingDetails.rentRecords.map((r: any) => (
-                                            <div key={r.id} className={`p-3 rounded-2xl border flex justify-between items-start gap-2 ${
-                                                r.paid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                                            }`}>
-                                                <div>
-                                                    <p className="font-bold text-slate-900">{formatMonthLabel(r.month)}</p>
-                                                    <p className="text-[10px] text-slate-500">₹{r.amount?.toLocaleString('en-IN')}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                        r.paid ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
-                                                    }`}>
-                                                        {r.paid ? 'Paid' : 'Unpaid'}
-                                                    </span>
-                                                    {r.paidAt && (
-                                                        <p className="text-[9px] text-slate-400 mt-1">
-                                                            {new Date(r.paidAt).toLocaleDateString('en-IN')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                            {/* Tab 1: Tenant Information */}
+                            <TabsContent value="tenant-info" className="space-y-4">
+                                <div className="border rounded-2xl p-6 bg-slate-50 space-y-4 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-800 border-b pb-2 flex items-center gap-2">
+                                        👤 Tenant Details
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Full Name</p>
+                                            <p className="font-black text-slate-900 text-base">{viewingDetails.name}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tenant ID</p>
+                                            <p className="font-mono text-purple-700 font-bold text-base">{viewingDetails.displayId}</p>
+                                        </div>
+                                        <div className="space-y-1 md:col-span-2">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phone Number</p>
+                                            <p className="text-slate-800 text-base font-bold flex items-center gap-1.5">
+                                                📞 {viewingDetails.phone}
+                                            </p>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-slate-400 italic text-center py-4">No rent records generated yet.</p>
-                                )}
-                            </div>
-                        </div>
+                                </div>
+                            </TabsContent>
+
+                            {/* Tab 2: Booking & Stay */}
+                            <TabsContent value="booking-stay" className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Property Details */}
+                                    <div className="border border-indigo-100 rounded-2xl p-6 bg-indigo-50/30 space-y-4 shadow-sm">
+                                        <h3 className="text-base font-bold text-indigo-950 border-b border-indigo-100 pb-2">
+                                            🏢 Property Details
+                                        </h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">PG Name</p>
+                                                <p className="font-black text-indigo-900 text-base">{viewingDetails.property?.name || '—'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Address</p>
+                                                <p className="text-slate-700 leading-relaxed font-semibold">
+                                                    {viewingDetails.property?.address || '—'}
+                                                    {viewingDetails.property?.city ? `, ${viewingDetails.property.city}` : ''}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Property Code / ID</p>
+                                                <p className="font-mono text-indigo-800 font-bold">{viewingDetails.property?.displayId || '—'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Assigned Room</p>
+                                                <p className="text-slate-800 font-bold">
+                                                    {viewingDetails.roomNumber} ({viewingDetails.roomType})
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Management & Stay Dates / Financials */}
+                                    <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50/50 space-y-4 shadow-sm">
+                                        <h3 className="text-base font-bold text-slate-800 border-b pb-2">
+                                            📞 Property Management Contact
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div className="col-span-2">
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Owner / Manager</p>
+                                                <p className="font-bold text-slate-900">{viewingDetails.property?.owner?.name || viewingDetails.property?.ownerName || '—'}</p>
+                                                <p className="text-xs text-slate-600 font-mono mt-0.5">{viewingDetails.property?.owner?.phone || '—'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-in Date</p>
+                                                <p className="font-semibold text-slate-900">{viewingDetails.startDate || viewingDetails.moveInDate || '—'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Check-out Date</p>
+                                                <p className="font-semibold text-slate-900">
+                                                    {viewingDetails.expectedMoveOutDate || 'Active Stay'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Monthly Rent</p>
+                                                <p className="font-bold text-slate-900">₹{viewingDetails.rentAmount || viewingDetails.rent}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Deposit Amount</p>
+                                                <p className="font-bold text-slate-900">₹{viewingDetails.billingProfile?.securityDeposit || viewingDetails.booking?.depositAmount || '—'}</p>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Food Service</p>
+                                                <p className="font-bold text-slate-900">
+                                                    {viewingDetails.property?.foodType && viewingDetails.property.foodType !== 'NOT_AVAILABLE' ? 'Available' : 'Not Available'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            {/* Tab 3: Tenant Paid History */}
+                            <TabsContent value="paid-history" className="space-y-4">
+                                <div className="border rounded-2xl p-6 bg-slate-50 space-y-4 shadow-sm">
+                                    <div className="flex flex-wrap justify-between items-center gap-4 border-b pb-4">
+                                        <h3 className="text-base font-bold text-slate-800">
+                                            💰 Payment History Ledger
+                                        </h3>
+                                        {/* Year and Month filters */}
+                                        <div className="flex gap-2">
+                                            <select 
+                                                className="border rounded-lg p-1.5 bg-white text-xs font-semibold text-slate-700 shadow-sm"
+                                                value={historyYear}
+                                                onChange={(e) => setHistoryYear(e.target.value)}
+                                            >
+                                                <option value="ALL">All Years</option>
+                                                {Array.from(new Set((viewingDetails.rentRecords || []).map((r: any) => r.month.split('-')[0]))).sort().map((y: any) => (
+                                                    <option key={y} value={y}>{y}</option>
+                                                ))}
+                                            </select>
+                                            <select 
+                                                className="border rounded-lg p-1.5 bg-white text-xs font-semibold text-slate-700 shadow-sm"
+                                                value={historyMonth}
+                                                onChange={(e) => setHistoryMonth(e.target.value)}
+                                            >
+                                                <option value="ALL">All Months</option>
+                                                {["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].map((m) => {
+                                                    const name = new Date(2000, Number(m) - 1, 1).toLocaleString('en-IN', { month: 'short' });
+                                                    return <option key={m} value={m}>{name}</option>
+                                                })}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Table of rent invoices / records */}
+                                    <div className="overflow-x-auto border rounded-xl bg-white shadow-inner">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-slate-50 border-b">
+                                                <tr>
+                                                    <th className="p-3 text-left font-bold text-slate-600 text-xs">Rent Paid Date</th>
+                                                    <th className="p-3 text-left font-bold text-slate-600 text-xs">Description</th>
+                                                    <th className="p-3 text-left font-bold text-slate-600 text-xs">Type</th>
+                                                    <th className="p-3 text-left font-bold text-slate-600 text-xs">Amount</th>
+                                                    <th className="p-3 text-left font-bold text-slate-600 text-xs">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(() => {
+                                                    const filtered = (viewingDetails.rentRecords || []).filter((r: any) => {
+                                                        const [y, m] = r.month.split('-');
+                                                        const matchYear = historyYear === "ALL" || y === historyYear;
+                                                        const matchMonth = historyMonth === "ALL" || m === historyMonth;
+                                                        return matchYear && matchMonth;
+                                                    });
+
+                                                    if (filtered.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={5} className="p-6 text-center text-xs text-slate-400 italic">
+                                                                    No payment records match the selected filters.
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return filtered.map((r: any) => {
+                                                        let pType = "—";
+                                                        if (r.note?.includes("Method: ONLINE") || r.note?.includes("admin_online_")) {
+                                                            pType = "Online";
+                                                        } else if (r.note?.includes("Method: CASH") || r.note?.includes("admin_cash_")) {
+                                                            pType = "Cash";
+                                                        } else {
+                                                            const invoice = viewingDetails.billingProfile?.invoices?.find((inv: any) => inv.month === r.month);
+                                                            if (invoice?.paymentMethod) {
+                                                                pType = invoice.paymentMethod === 'ONLINE' ? 'Online' : invoice.paymentMethod === 'CASH' ? 'Cash' : 'Bank Transfer';
+                                                            }
+                                                        }
+
+                                                        return (
+                                                            <tr key={r.id} className="border-b last:border-b-0 hover:bg-slate-50/50">
+                                                                <td className="p-3 font-semibold text-slate-700">
+                                                                    {r.paidOn || (r.paid ? "Yes" : "—")}
+                                                                </td>
+                                                                <td className="p-3 font-bold text-slate-900">
+                                                                    Rent — {formatMonthLabel(r.month)}
+                                                                </td>
+                                                                <td className="p-3 font-medium text-slate-600">
+                                                                    {pType}
+                                                                </td>
+                                                                <td className="p-3 font-bold text-slate-900">
+                                                                    ₹{r.amount?.toLocaleString('en-IN')}
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                                        r.paid ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+                                                                    }`}>
+                                                                        {r.paid ? 'Paid' : 'Unpaid'}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    });
+                                                })()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     )}
 
                     <DialogFooter>
