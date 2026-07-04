@@ -179,7 +179,6 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                             <div className="grid grid-cols-2 gap-2 text-sm">
                                 {[
                                     ["Full Name", booking.guestName],
-                                    ["Email", booking.guestEmail || "—"],
                                     ["Phone", booking.guestPhone || "—"],
                                     ["Occupation", booking.occupationType ? `${booking.occupationType} - ${booking.occupationDetail || ""}` : "—"],
                                     ["Move-in Date", booking.onboardingDate || booking.moveInDate || "—"],
@@ -236,12 +235,7 @@ function BookingDetail({ booking, onRefresh }: { booking: any; onRefresh: () => 
                                             <div className="text-sm font-black text-green-700">✅ PAID & VERIFIED</div>
                                         </div>
                                     </div>
-                                    {booking.tokenPaymentId && (
-                                        <div className="bg-white border border-teal-100 rounded p-2">
-                                            <div className="text-[10px] text-teal-600 uppercase font-bold">Razorpay Payment ID</div>
-                                            <div className="text-xs font-mono text-blue-700 break-all">{booking.tokenPaymentId}</div>
-                                        </div>
-                                    )}
+                                    
                                 </div>
                             )}
 
@@ -721,7 +715,6 @@ export function BookingsContainer() {
                                             </td>
                                             <td className="p-4">
                                                 <div className="font-semibold text-sm">{booking.guestName}</div>
-                                                <div className="text-[10px] text-muted-foreground">{booking.guestEmail}</div>
                                                 <div className="text-[10px] text-muted-foreground">{booking.guestPhone}</div>
                                             </td>
                                             <td className="p-4">
