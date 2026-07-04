@@ -77,14 +77,15 @@ async function main() {
 
     const owner = await prisma.user.upsert({
         where: { email: "owner@rentpe.in" },
-        update: {},
+        update: { emailVerified: true },
         create: {
             email: "owner@rentpe.in",
             passwordHash: ownerPassword,
             role: "OWNER",
             name: "Amit Kumar",
             phone: "9123456789",
-            status: "VERIFIED"
+            status: "VERIFIED",
+            emailVerified: true
         }
     });
     console.log("✅ Owner (upserted):", owner.email);
@@ -94,14 +95,15 @@ async function main() {
         const name = email.split('@')[0];
         await prisma.user.upsert({
             where: { email },
-            update: {},
+            update: { emailVerified: true },
             create: {
                 email,
                 passwordHash: studentPassword,
                 role: "USER",
                 name: name.charAt(0).toUpperCase() + name.slice(1),
                 phone: "9" + Math.floor(Math.random() * 900000000 + 100000000).toString(),
-                status: "ACTIVE"
+                status: "ACTIVE",
+                emailVerified: true
             }
         });
     }
