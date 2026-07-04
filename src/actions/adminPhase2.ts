@@ -995,6 +995,26 @@ export async function processOwnerPayout(payoutId: string) {
         description: `Payout ${payout.displayId} processed. Net: ₹${payout.netAmount} for period ${payout.period}`,
     });
 
+    if (owner?.email) {
+        try {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Payout Processed: Rs.  settled for  | RentPe`,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Payout Settlement Successful",
+                    `Dear , your payout of <strong>Rs. </strong> for the period <strong></strong> has been successfully processed and settled to your registered bank account.`,
+                    "/dashboard/owner/payouts",
+                    "View Payout Details"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        } catch (e) {
+            console.error("Email module error:", e);
+        }
+    }
+
     revalidatePath('/dashboard/admin/payouts');
     return payout;
 }
@@ -1210,4 +1230,5 @@ export async function getAdminTicketsWithSLA(status?: string, priority?: string)
         stats: { overdue, warning, open, closedToday }
     };
 }
+
 

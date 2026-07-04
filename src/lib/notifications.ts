@@ -87,18 +87,20 @@ export class NotificationService {
       targetRole: "USER"
     });
 
-    // Notify Owner
+    // Notify Owner (DISABLED per user request to not send owner booking notifications)
+    /*
     await this.trigger({
       bookingId: booking.id,
       userId: ownerId,
       type: "BOOKING",
       category: "BOOKING_REQUEST_NEW",
-      message: `New booking request from ${booking.guestName} for ${booking.propertyName}.`,
+      message: `New booking request from  for .`,
       actionUrl: "/dashboard/owner/bookings",
       actionLabel: "View Request",
       isPersistent: true,
       targetRole: "OWNER"
     });
+    */
   }
 
   static async onRequestAccepted(booking: any) {
@@ -312,3 +314,4 @@ export class NotificationService {
     }
   }
 }
+

@@ -150,7 +150,7 @@ export async function createProperty(data: FormData | any) {
     const [user, settings] = await Promise.all([
         prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, role: true, parentOwnerId: true, staffPermissions: true }
+            select: { id: true, name: true, email: true, role: true, parentOwnerId: true, staffPermissions: true }
         }),
         prisma.platformSettings.findUnique({ where: { id: "singleton" } })
     ]) as any[];
@@ -324,6 +324,27 @@ export async function createProperty(data: FormData | any) {
 
         return property;
     }, { timeout: 15000 });
+
+    // Send Property Submission Email
+    try {
+        const { sendEmail } = await import('@/lib/email');
+        const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+        if (user?.email) {
+            sendEmail({
+                to: user.email,
+                subject: `Property Submission Confirmed - ${name}`,
+                html: OwnerNotificationTemplate(
+                    user.name || "Owner",
+                    "Property Submission Received",
+                    `Thank you for listing <strong>${name}</strong> on RentPe. Your application is currently under review by our verification team. We will notify you once it is approved.`,
+                    "/dashboard/owner/properties",
+                    "View Property Status"
+                )
+            }).catch(e => console.error("Failed to send property submission email:", e));
+        }
+    } catch (e) {
+        console.error("Email module load error:", e);
+    }
 
     revalidatePath('/dashboard/owner/properties');
     return result;

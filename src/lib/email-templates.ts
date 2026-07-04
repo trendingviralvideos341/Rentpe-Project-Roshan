@@ -122,9 +122,10 @@ export const PaymentCompletedTemplate = (name: string, propertyName: string, amo
   name,
   status: "PAID",
   message: `A payment of <strong>₹${amount}</strong> for ${propertyName} has been successfully processed.`,
-  nextStep: "Download your receipt and prepare for move-in.",
-  actionLabel: "Download Receipt",
+  nextStep: "Download your official PDF receipt (for HRA / tax purposes) from your dashboard.",
+  actionLabel: "View Dashboard",
   actionUrl: "/dashboard/student",
+
   isSuccess: true,
 });
 
@@ -154,11 +155,11 @@ export const CheckinConfirmedTemplate = (name: string, propertyName: string) => 
 
 // 8. KYC_SUBMITTED (User/Verification Team)
 export const KycSubmittedTemplate = (name: string) => LifecycleTemplate({
-  title: "KYC Under Review",
+  title: "KYC Submitted - Physical Verification Required",
   name,
   status: "KYC_PENDING",
-  message: `Your KYC documents have been submitted and are now being reviewed by our verification team.`,
-  nextStep: "Verification usually takes 24-48 hours. Stay tuned!",
+  message: `Your documents have been submitted. Property management performs physical/manual verification.`,
+  nextStep: "Please ensure you are physically present at the property to complete the further verification process with the management team.",
   actionLabel: "Check KYC Status",
   actionUrl: "/dashboard/student",
 });
@@ -263,7 +264,8 @@ ${BaseLayout(`
   <p><strong>Amount Due:</strong> ₹${amount.toLocaleString('en-IN')}</p>
   <p><strong>Due Date:</strong> ${dueDate}</p>
   <p>Please pay your rent on time to avoid late fees.</p>
-  <a href="${BASE_URL}/dashboard/student/payments" class="btn">View & Pay Invoice</a>
+  <p style="font-size: 13px; color: #64748b; margin-top: 16px;"><em>For tax (HRA) purposes, you can download the official PDF invoice containing required PAN/GSTIN details from your dashboard once the payment is completed.</em></p>
+  <a href="${BASE_URL}/dashboard/student/payments" class="button" style="margin-top: 16px;">View & Pay Invoice</a>
 `)}
 `;
 

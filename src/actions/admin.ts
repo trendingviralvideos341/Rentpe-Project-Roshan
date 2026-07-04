@@ -1060,6 +1060,27 @@ export async function startPropertyVerification(propertyId: string) {
         return property;
     });
 
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Action Required: Onboarding Fee Due - `,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property Verified - Payment Required",
+                    `Your property <strong></strong> has been successfully verified! To make it LIVE and visible to students, please complete the onboarding fee payment in your dashboard.`,
+                    "/dashboard/owner/onboarding-fees",
+                    "Pay Onboarding Fee"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
+
     revalidatePath('/dashboard/admin/property-approval');
     return result;
 }
@@ -1091,6 +1112,27 @@ export async function verifyPropertyDocuments(propertyId: string) {
 
         return property;
     });
+
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Action Required: Onboarding Fee Due - `,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property Verified - Payment Required",
+                    `Your property <strong></strong> has been successfully verified! To make it LIVE and visible to students, please complete the onboarding fee payment in your dashboard.`,
+                    "/dashboard/owner/onboarding-fees",
+                    "Pay Onboarding Fee"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
 
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
@@ -1132,6 +1174,27 @@ export async function requirePropertyPayment(propertyId: string) {
 
         return property;
     });
+
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Action Required: Onboarding Fee Due - `,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property Verified - Payment Required",
+                    `Your property <strong></strong> has been successfully verified! To make it LIVE and visible to students, please complete the onboarding fee payment in your dashboard.`,
+                    "/dashboard/owner/onboarding-fees",
+                    "Pay Onboarding Fee"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
 
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
@@ -1210,6 +1273,27 @@ export async function exemptPropertyFee(propertyId: string, reason: string) {
         return updated;
     });
 
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Congratulations!  is now LIVE on RentPe`,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property is LIVE",
+                    `Your property <strong></strong> is now LIVE! The onboarding fee was waived. Students can now search for and book your property.`,
+                    "/dashboard/owner/properties",
+                    "View Your Property"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
+
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
     revalidatePath('/search');
@@ -1252,6 +1336,27 @@ export async function rejectProperty(propertyId: string, notes: string) {
         return property;
     });
 
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Action Required: Onboarding Fee Due - `,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property Verified - Payment Required",
+                    `Your property <strong></strong> has been successfully verified! To make it LIVE and visible to students, please complete the onboarding fee payment in your dashboard.`,
+                    "/dashboard/owner/onboarding-fees",
+                    "Pay Onboarding Fee"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
+
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
     return result;
@@ -1292,6 +1397,27 @@ export async function requestPropertyCorrections(propertyId: string, notes: stri
 
         return property;
     });
+
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Action Required: Onboarding Fee Due - `,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property Verified - Payment Required",
+                    `Your property <strong></strong> has been successfully verified! To make it LIVE and visible to students, please complete the onboarding fee payment in your dashboard.`,
+                    "/dashboard/owner/onboarding-fees",
+                    "Pay Onboarding Fee"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
 
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
@@ -1364,6 +1490,27 @@ export async function suspendProperty(propertyId: string, notes: string) {
 
         return property;
     });
+
+    try {
+        const owner = await prisma.user.findUnique({ where: { id: result.ownerId }, select: { email: true, name: true } });
+        if (owner?.email) {
+            const { sendEmail } = await import('@/lib/email');
+            const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
+            sendEmail({
+                to: owner.email,
+                subject: `Action Required: Onboarding Fee Due - `,
+                html: OwnerNotificationTemplate(
+                    owner.name || "Owner",
+                    "Property Verified - Payment Required",
+                    `Your property <strong></strong> has been successfully verified! To make it LIVE and visible to students, please complete the onboarding fee payment in your dashboard.`,
+                    "/dashboard/owner/onboarding-fees",
+                    "Pay Onboarding Fee"
+                )
+            }).catch(e => console.error("Email failed:", e));
+        }
+    } catch (e) {
+        console.error("Email module error:", e);
+    }
 
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath('/dashboard/owner/properties');
@@ -1703,3 +1850,5 @@ export async function logCorrectionView(propertyId: string) {
 
     return { success: true };
 }
+
+
