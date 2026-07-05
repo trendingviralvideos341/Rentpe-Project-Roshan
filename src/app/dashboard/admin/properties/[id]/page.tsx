@@ -28,7 +28,7 @@ import {
     ArrowLeft, Building2, User, Phone, Mail, MapPin, RefreshCcw,
     CheckCircle, XCircle, AlertCircle, Image as ImageIcon, Eye, BedDouble,
     FileText, Shield, ShieldCheck, X, ZoomIn, RotateCcw, ChevronLeft, ChevronRight,
-    Plus, Trash2, UtensilsCrossed, Pencil
+    Plus, Trash2, UtensilsCrossed, Pencil, Landmark
 } from "lucide-react";
 import Link from "next/link";
 
@@ -244,8 +244,18 @@ export default function AdminPropertyDetailPage() {
     const [actionModal, setActionModal] = useState<{ type: string } | null>(null);
     const [reason, setReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "verification">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "verification" | "bank_details">("overview");
     const [verifiedDocs, setVerifiedDocs] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab');
+            if (tab === "overview" || tab === "rooms" || tab === "verification" || tab === "bank_details") {
+                setActiveTab(tab);
+            }
+        }
+    }, []);
 
     // Viewer state
     const [viewer, setViewer] = useState<{
@@ -514,8 +524,8 @@ export default function AdminPropertyDetailPage() {
         { key: ["PENDING_VERIFICATION", "UNDER_REVIEW", "CORRECTED"], label: "Submitted", short: "1" },
         { key: ["VERIFYING_DOCUMENTS", "NEEDS_CORRECTION"], label: "Verifying Docs", short: "2" },
         { key: ["VERIFIED_SUCCESSFULLY"], label: "Docs Verified", short: "3" },
-        { key: ["APPROVED_PENDING_PAYMENT"], label: "Pending Payment", short: "4" },
-        { key: ["APPROVED_PAYMENT_VERIFIED"], label: "Payment Confirmed", short: "5" },
+        { key: ["AWAITING_BANK_DETAILS", "BANK_DETAILS_SUBMITTED"], label: "Bank Details", short: "4" },
+        { key: ["APPROVED_PENDING_PAYMENT", "APPROVED_PAYMENT_VERIFIED"], label: "Payment", short: "5" },
         { key: ["APPROVED", "LIVE"], label: "Live", short: "6" },
     ];
     const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
@@ -672,6 +682,17 @@ export default function AdminPropertyDetailPage() {
                             {verifiedDocs.length}
                         </span>
                     )}
+                </button>
+                <button
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-200 ${
+                        activeTab === "bank_details"
+                            ? "bg-purple-600 shadow-md shadow-purple-200 text-white border border-purple-700"
+                            : "bg-white shadow-md text-slate-900 border border-slate-200"
+                    }`}
+                    onClick={() => setActiveTab("bank_details")}
+                >
+                    <Landmark className="h-3.5 w-3.5" />
+                    Bank Details
                 </button>
             </div>
 
@@ -1211,10 +1232,64 @@ export default function AdminPropertyDetailPage() {
                             onOpenViewer={openViewer}
                         />
                     ))}
-                </div>
-            )}
+                    </div>
+                )}
 
-            {/* ── DOCUMENT VIEWER / AUDIT DIALOG ── */}
+                {/* Bank Details Tab */}
+                {activeTab === "bank_details" && (
+                    <div className="bg-white rounded-3xl border-2 border-slate-100 p-8 shadow-sm space-y-6">
+                        <div className="flex items-center gap-4 border-b-2 border-slate-50 pb-6">
+                            <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl">
+                                <Landmark className="w-8 h-8" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black tracking-tight text-slate-900">Bank Details</h3>
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Payment Routing Information</p>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beneficiary Name</label>
+                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100">{p.bankName || 'Not provided'}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Number</label>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">
+                                            {p.bankAccountNo ? p.bankAccountNo : 'Not provided'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">IFSC Code</label>
+                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">{p.bankIfsc ? p.bankIfsc : 'Not provided'}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cancelled Cheque / Passbook</label>
+                                {p.cancelChequeUrl ? (
+                                    <div className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group">
+                                        <img src={p.cancelChequeUrl} className="w-full aspect-video object-cover" alt="Cancelled Cheque" />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                                            <a href={p.cancelChequeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
+                                                <ZoomIn className="w-4 h-4" /> View Full Image
+                                            </a>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl aspect-video text-slate-400">
+                                        <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">No Image Provided</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── DOCUMENT VIEWER / AUDIT DIALOG ── */}
             {viewer && (() => {
                 const isVerified = verifiedDocs.includes(viewer.docKey);
                 return (

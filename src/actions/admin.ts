@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { stripImmutableFields } from "@/lib/sanitize";
+import { decryptIfPresent } from '@/lib/crypto';
 
 export async function getAdminStats() {
     try {
@@ -791,7 +792,7 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return prisma.property.findUnique({
+    const property = await prisma.property.findUnique({
         where: { id: propertyId },
         include: {
             owner: {
@@ -805,6 +806,18 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
             }
         }
     });
+
+    if (!property) return null;
+
+    const propertyToReturn = { ...property } as any;
+    if (propertyToReturn.bankAccountNoEncrypted) {
+        propertyToReturn.bankAccountNo = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+    }
+    if (propertyToReturn.bankIfscEncrypted) {
+        propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+    }
+
+    return propertyToReturn;
 }
 
 export async function adminAddRoomToProperty(propertyId: string, roomData: any) {

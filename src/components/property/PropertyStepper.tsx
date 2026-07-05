@@ -9,13 +9,12 @@ interface PropertyStepperProps {
 }
 
 const steps = [
-    { id: 'DRAFT', label: 'Draft', icon: Home, desc: 'Not Sent' },
-    { id: 'SUBMITTED', label: 'Submitted', icon: Clock, desc: 'Pending' },
-    { id: 'APPROVED_INIT', label: 'Approved', icon: FileText, desc: 'Step 1' },
-    { id: 'AUDITED', label: 'Verified', icon: ShieldCheck, desc: 'Step 2' },
-    { id: 'BANK_DETAILS', label: 'Bank Details', icon: Landmark, desc: 'Step 3' },
-    { id: 'PAYMENT', label: 'Payment', icon: CreditCard, desc: 'Due' },
-    { id: 'LIVE', label: 'Live', icon: ExternalLink, desc: 'Active' },
+    { id: 'SUBMITTED', label: 'Submitted', icon: Clock, desc: 'Step 1' },
+    { id: 'APPROVED_INIT', label: 'Verifying Docs', icon: FileText, desc: 'Step 2' },
+    { id: 'AUDITED', label: 'Verified', icon: ShieldCheck, desc: 'Step 3' },
+    { id: 'BANK_DETAILS', label: 'Bank Details', icon: Landmark, desc: 'Step 4' },
+    { id: 'PAYMENT', label: 'Payment', icon: CreditCard, desc: 'Step 5' },
+    { id: 'LIVE', label: 'Live', icon: ExternalLink, desc: 'Step 6' },
 ];
 
 const STATUS_MESSAGES: Record<string, { label: string; color: string; bg: string; border: string; icon: any }> = {
@@ -37,16 +36,16 @@ const STATUS_MESSAGES: Record<string, { label: string; color: string; bg: string
 
 export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
     const getActiveIndex = (s: string) => {
-        if (s === 'DRAFT') return 0;
-        if (s === 'PENDING_VERIFICATION') return 1; 
-        if (s === 'VERIFYING_DOCUMENTS') return 2; 
-        if (s === 'VERIFIED_SUCCESSFULLY') return 3;
-        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED') return 4;
-        if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 5;
-        if (s === 'APPROVED' || s === 'LIVE') return 6;
-        if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 3; 
-        if (s === 'REJECTED' || s === 'SUSPENDED') return 1;
-        return 1;
+        if (s === 'DRAFT') return -1;
+        if (s === 'PENDING_VERIFICATION') return 0; 
+        if (s === 'VERIFYING_DOCUMENTS') return 1; 
+        if (s === 'VERIFIED_SUCCESSFULLY') return 2;
+        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED') return 3;
+        if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
+        if (s === 'APPROVED' || s === 'LIVE') return 5;
+        if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 1; 
+        if (s === 'REJECTED' || s === 'SUSPENDED') return 0;
+        return 0;
     };
 
     const getStepStatus = (stepIndex: number, activeIndex: number, currentStatus: string) => {
