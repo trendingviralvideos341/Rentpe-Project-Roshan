@@ -1485,6 +1485,14 @@ export default function AdminPropertyDetailPage() {
                             <div className="p-6 space-y-4">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{c.title}</h3>
                                 <p className="text-sm font-medium text-slate-500">Acting on: <strong className="text-slate-900">{p.name}</strong></p>
+                                
+                                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                                    <p className="text-sm text-amber-800 font-medium leading-relaxed">
+                                        ⚠️ You are taking action on this property in the <strong className="font-bold bg-amber-100 px-1 rounded uppercase tracking-wider">{p.status.replace(/_/g, ' ')}</strong> stage. 
+                                        Please make sure you have verified all the documents and details correctly before confirming.
+                                    </p>
+                                </div>
+
                                 {c.warning && (
                                     <div className="p-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] font-bold text-slate-600">{c.warning}</div>
                                 )}
