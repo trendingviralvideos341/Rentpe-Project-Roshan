@@ -35,7 +35,7 @@ const STATUS_TABS = [
     { key: "AWAITING_BANK_DETAILS",  label: "Awaiting Bank Details", icon: FileText,      color: "bg-purple-600" },
     { key: "BANK_DETAILS_SUBMITTED", label: "Bank Submitted",        icon: CreditCard,    color: "bg-purple-600" },
     { key: "APPROVED_PENDING_PAYMENT",label: "Pending Payment",      icon: CreditCard,    color: "bg-orange-500" },
-    { key: "APPROVED_PAYMENT_VERIFIED",label: "Payment Received",    icon: DollarSign,    color: "bg-cyan-600" },
+    { key: "APPROVED_PAYMENT_VERIFIED",label: "Pending Live",        icon: DollarSign,    color: "bg-cyan-600" },
     { key: "LIVE",                   label: "Live Properties",       icon: Building,      color: "bg-green-600" },
     { key: "SUSPENDED",              label: "Suspended",             icon: ShieldOff,     color: "bg-slate-600" },
     { key: "REJECTED",               label: "Rejected Applications", icon: Trash2,        color: "bg-red-600" },
@@ -196,7 +196,7 @@ export default function AdminPropertiesPage() {
             </div>
 
             {/* Quick Stats — Neubrutalist Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-4">
                 {([
                     { key: "PENDING_VERIFICATION",    label: "Applications",    color: "text-blue-600",    border: "border-blue-600",    bg: "bg-blue-50/50" },
                     { key: "VERIFYING_DOCUMENTS",     label: "Verification",    color: "text-purple-600",  border: "border-purple-600",  bg: "bg-purple-50/50" },
@@ -204,6 +204,7 @@ export default function AdminPropertiesPage() {
                     { key: "AWAITING_BANK_DETAILS",   label: "Awaiting Bank",   color: "text-indigo-600",  border: "border-indigo-600",  bg: "bg-indigo-50/50" },
                     { key: "BANK_DETAILS_SUBMITTED",  label: "Bank Submitted",  color: "text-violet-600",  border: "border-violet-600",  bg: "bg-violet-50/50" },
                     { key: "APPROVED_PENDING_PAYMENT",label: "Payments",        color: "text-orange-600",  border: "border-orange-500",  bg: "bg-orange-50/50" },
+                    { key: "APPROVED_PAYMENT_VERIFIED",label:"Pending Live",    color: "text-cyan-600",    border: "border-cyan-600",    bg: "bg-cyan-50/50" },
                     { key: "LIVE",                   label: "Live Inventory",  color: "text-emerald-600", border: "border-emerald-600", bg: "bg-emerald-50/50" },
                     { key: "REJECTED",                label: "Rejected",        color: "text-red-600",     border: "border-red-600",     bg: "bg-red-50/50" },
                 ] as const).map((s) => (
@@ -218,10 +219,7 @@ export default function AdminPropertiesPage() {
                     >
                         <span className={`text-[9px] font-black uppercase tracking-widest leading-tight ${filter === s.key ? 'text-slate-300' : 'opacity-60'}`}>{s.label}</span>
                         <span className={`text-2xl font-black ${filter === s.key ? 'text-white' : s.color}`}>
-                            {s.key === 'APPROVED_PENDING_PAYMENT'
-                                ? (statusCounts['APPROVED_PENDING_PAYMENT'] || 0) + (statusCounts['APPROVED_PAYMENT_VERIFIED'] || 0)
-                                : (statusCounts[s.key] || 0)
-                            }
+                            {statusCounts[s.key] || 0}
                         </span>
                     </button>
                 ))}
