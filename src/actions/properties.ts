@@ -1295,6 +1295,7 @@ export async function getOwnerOnboardingFeeStatus() {
             id: true, displayId: true, name: true, city: true, status: true,
             onboardingPaidAt: true, onboardingPaymentMethod: true,
             onboardingRazorpayId: true, onboardingRazorpayOrderId: true, createdAt: true,
+            owner: { select: { name: true, email: true, phone: true } },
         },
         orderBy: { createdAt: 'desc' },
     });

@@ -439,7 +439,7 @@ function RazorpayOnboardingModal({
     onClose,
     onSuccess,
 }: {
-    property: { id: string; name: string; feeAmount: number };
+    property: { id: string; name: string; displayId?: string; owner?: { name: string; email: string; phone?: string }; feeAmount: number };
     onClose: () => void;
     onSuccess: () => void;
 }) {
@@ -472,9 +472,13 @@ function RazorpayOnboardingModal({
                 amount: order.amount,
                 currency: order.currency,
                 name: "RentPe",
-                description: `Property Onboarding Fee — ${order.propertyName}`,
+                description: `Onboarding Fee - ${property.name} (${property.displayId || ''}) - ${property.owner?.name || ''}`,
                 order_id: order.isMock ? undefined : order.orderId,
-                prefill: { name: "", email: "", contact: "" },
+                prefill: { 
+                    name: property.owner?.name || "", 
+                    email: property.owner?.email || "", 
+                    contact: property.owner?.phone || "" 
+                },
                 theme: { color: "#3730a3" },
                 handler: async (response: any) => {
                     setFlow("verifying");
@@ -525,7 +529,9 @@ function RazorpayOnboardingModal({
                             <p className="font-black text-lg">Onboarding Fee</p>
                         </div>
                     </div>
-                    <p className="text-indigo-200 text-xs mt-1 relative z-10 truncate">{property.name}</p>
+                    <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mt-1 relative z-10 truncate">
+                        {property.name} {property.displayId && `(${property.displayId})`} {property.owner?.name && `• ${property.owner.name}`}
+                    </p>
                 </div>
 
                 <div className="p-6 space-y-4">
