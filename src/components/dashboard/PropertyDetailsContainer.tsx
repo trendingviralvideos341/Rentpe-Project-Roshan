@@ -1352,14 +1352,34 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             <div className="space-y-1">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cancelled Cheque / Passbook</label>
                                 {property.cancelChequeUrl ? (
-                                    <div className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group">
+                                    <button 
+                                        onClick={() => setViewDialog({ isOpen: true, catKey: 'cancelChequeUrl', isArray: false, label: 'Cancelled Cheque', desc: 'Bank Document' })}
+                                        className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group w-full text-left"
+                                    >
                                         <img src={property.cancelChequeUrl} className="w-full aspect-video object-cover" alt="Cancelled Cheque" />
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                            <a href={property.cancelChequeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
+                                            <div className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
                                                 <Search className="w-4 h-4" /> View Full Image
-                                            </a>
+                                            </div>
                                         </div>
-                                    </div>
+                                        
+                                        {/* Status badge in corner */}
+                                        {property.verifiedDocs && property.verifiedDocs.includes("bank_cheque") ? (
+                                            <div className="absolute top-3 right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
+                                                <CheckCircle className="w-5 h-5" />
+                                            </div>
+                                        ) : property.status === 'AWAITING_BANK_DETAILS' ? (
+                                            <div className="absolute top-3 right-3 bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
+                                                <AlertCircle className="w-3 h-3 mr-1" />
+                                                <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
+                                            </div>
+                                        ) : (
+                                            <div className="absolute top-3 right-3 bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
+                                                <AlertCircle className="w-3 h-3 mr-1" />
+                                                <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
+                                            </div>
+                                        )}
+                                    </button>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl aspect-video text-slate-400">
                                         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
