@@ -1172,7 +1172,7 @@ export async function createOnboardingFeeOrder(propertyId: string) {
     }
 
     const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
-    if (!settings || !settings.feesEnabled) throw new Error('Platform fees are currently disabled');
+    if (!settings || !(settings as any).onboardingFeesEnabled) throw new Error('Property onboarding fees are currently disabled');
     const feeAmount = settings.ownerOnboardingFeeFlat || 99;
     const amountInPaise = Math.round(feeAmount * 100);
 
