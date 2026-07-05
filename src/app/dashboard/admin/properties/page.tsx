@@ -566,6 +566,8 @@ export default function AdminPropertiesPage() {
                                     <p className="text-sm text-amber-800 font-medium leading-relaxed">
                                         {actionModal.type === 'payment' ? (
                                             <>⚠️ You are requesting for property onboarding fee, make sure all docs and details are verified of property.</>
+                                        ) : actionModal.type === 'make_live' || actionModal.type === 'approve' ? (
+                                            <>⚠️ You are making the property LIVE. Please ensure all details, images, and payments have been received (if the onboarding fee was charged). If not charged, then proceed to make the property live.</>
                                         ) : (
                                             <>
                                                 ⚠️ You are taking action on this property in the <strong className="font-bold bg-amber-100 px-1 rounded uppercase tracking-wider">{actionModal.prop.status.replace(/_/g, ' ')}</strong> stage. 
