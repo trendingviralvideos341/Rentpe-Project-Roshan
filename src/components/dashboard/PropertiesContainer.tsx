@@ -210,7 +210,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? "bg-blue-600" :
                                             property.status === 'NEEDS_CORRECTION' ? "bg-orange-500" :
                                             property.status === 'CORRECTED' ? "bg-indigo-600" :
-                                            ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? "bg-amber-500 animate-pulse" :
+                                            property.status === 'APPROVED_PENDING_PAYMENT' ? "bg-amber-500 animate-pulse" :
+                                            property.status === 'APPROVED_PAYMENT_VERIFIED' ? "bg-blue-600" :
                                             property.status === 'AWAITING_BANK_DETAILS' ? "bg-purple-600 animate-pulse" :
                                             property.status === 'BANK_DETAILS_SUBMITTED' ? "bg-purple-600" :
                                             property.status === 'BANK_DETAILS_VERIFIED' ? "bg-emerald-600" :
@@ -221,7 +222,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                              ['PENDING_VERIFICATION', 'VERIFYING', 'UNDER_REVIEW', 'VERIFYING_DOCUMENTS'].includes(property.status) ? 'In Review' :
                                              property.status === 'NEEDS_CORRECTION' ? 'Pending' :
                                              property.status === 'CORRECTED' ? 'Resubmitted' :
-                                             ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? 'Action Needed' :
+                                             property.status === 'APPROVED_PENDING_PAYMENT' ? 'Action Needed' :
+                                             property.status === 'APPROVED_PAYMENT_VERIFIED' ? 'Pending Live' :
                                              property.status === 'AWAITING_BANK_DETAILS' ? 'Action Needed' :
                                              property.status === 'BANK_DETAILS_SUBMITTED' ? 'Verifying Bank' :
                                              property.status === 'BANK_DETAILS_VERIFIED' ? 'Bank Verified' :
