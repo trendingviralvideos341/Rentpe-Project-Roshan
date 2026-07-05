@@ -29,6 +29,7 @@ type PropertyFeeEntry = {
     feeAmount: number;
     feesEnabled: boolean;
     isPaid: boolean;
+    owner?: { name: string; email: string; phone?: string | null } | null;
 };
 
 type PageData = {
@@ -97,9 +98,13 @@ function PaymentModal({
                 amount: order.amount,
                 currency: order.currency,
                 name: "RentPe",
-                description: `Property Onboarding Fee — ${order.propertyName}`,
+                description: `Onboarding Fee - ${property.name} (${property.displayId || ''}) - ${property.owner?.name || ''}`,
                 order_id: order.isMock ? undefined : order.orderId,
-                prefill: { name: "", email: "", contact: "" },
+                prefill: { 
+                    name: property.owner?.name || "", 
+                    email: property.owner?.email || "", 
+                    contact: property.owner?.phone || "" 
+                },
                 theme: { color: "#3730a3" },
                 handler: async (response: any) => {
                     setFlow("verifying");
@@ -149,7 +154,7 @@ function PaymentModal({
                 <div className="bg-gradient-to-br from-indigo-700 to-purple-700 p-6 text-white relative overflow-hidden">
                     <div className="absolute -right-10 -top-10 w-36 h-36 bg-white/10 rounded-full" />
                     {flow === "idle" && (
-                        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all">
+                        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all z-50">
                             <X className="w-4 h-4" />
                         </button>
                     )}
@@ -164,7 +169,9 @@ function PaymentModal({
                             <p className="font-black text-lg">Onboarding Fee</p>
                         </div>
                     </div>
-                    <p className="text-indigo-200 text-xs mt-1 relative z-10 truncate">{property.name}</p>
+                    <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mt-1 relative z-10 truncate">
+                        {property.name} {property.displayId && `(${property.displayId})`} {property.owner?.name && `• ${property.owner.name}`}
+                    </p>
                 </div>
 
                 <div className="p-6 space-y-4">
@@ -194,13 +201,21 @@ function PaymentModal({
                                 <p className="text-xs text-amber-700 font-bold">⚠ One-time non-refundable fee</p>
                                 <p className="text-xs text-amber-600 mt-0.5">This fee is charged once per property listing on RentPe platform.</p>
                             </div>
-                            <button
-                                id="pay-onboarding-fee-btn"
-                                onClick={handlePay}
-                                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl text-base transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
-                            >
-                                <CreditCard className="w-5 h-5" /> Pay ₹{feeAmount} Securely
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={onClose}
+                                    className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-2xl text-sm transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    id="pay-onboarding-fee-btn"
+                                    onClick={handlePay}
+                                    className="w-2/3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl text-base transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+                                >
+                                    <CreditCard className="w-5 h-5" /> Pay ₹{feeAmount}
+                                </button>
+                            </div>
                             <p className="text-center text-[10px] text-slate-400">🔒 Secured by Razorpay · 256-bit SSL</p>
                         </>
                     )}
