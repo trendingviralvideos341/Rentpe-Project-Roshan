@@ -47,7 +47,7 @@ function StatusBadge({ status }: { status: string }) {
         VERIFYING_DOCUMENTS: { label: "VERIFYING DOCUMENTS", color: "bg-purple-50 text-purple-600 border-purple-200" },
         NEEDS_CORRECTION: { label: "NEEDS CORRECTION", color: "bg-amber-50 text-amber-600 border-amber-200" },
         VERIFIED_SUCCESSFULLY: { label: "VERIFIED SUCCESSFULLY", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-        AWAITING_BANK_DETAILS: { label: "AWAITING BANK DETAILS", color: "bg-purple-50 text-purple-600 border-purple-200" },
+        AWAITING_BANK_DETAILS: { label: "AWAITING BANK DETAILS", color: "bg-orange-50 text-orange-600 border-orange-200 animate-pulse" },
         BANK_DETAILS_SUBMITTED: { label: "BANK DETAILS SUBMITTED", color: "bg-purple-50 text-purple-600 border-purple-200" },
         APPROVED_PENDING_PAYMENT: { label: "PENDING PAYMENT", color: "bg-orange-50 text-orange-600 border-orange-200" },
         LIVE: { label: "LIVE & ACTIVE", color: "bg-green-50 text-green-600 border-green-200" },
