@@ -59,9 +59,9 @@ export function BankDetailsModal({ isOpen, onClose, propertyId, propertyName, on
 
     const handleNameChange = (val: string) => {
         setBankName(val);
-        const nameRegex = /^[a-zA-Z\s.\-]*$/;
+        const nameRegex = /^[a-zA-Z\s]*$/;
         if (!nameRegex.test(val)) {
-            setErrors(prev => ({ ...prev, bankName: "Invalid characters entered (only letters, spaces, dots, hyphens allowed)" }));
+            setErrors(prev => ({ ...prev, bankName: "Invalid characters entered (only letters and spaces allowed)" }));
         } else if (val.trim().length > 0 && val.trim().length < 3) {
             setErrors(prev => ({ ...prev, bankName: "Name must be at least 3 characters long" }));
         } else {
