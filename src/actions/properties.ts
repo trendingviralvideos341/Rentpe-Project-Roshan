@@ -1251,6 +1251,7 @@ export async function verifyOnboardingFeePayment(data: {
             onboardingPaymentMethod: 'ONLINE',
             onboardingRazorpayId: data.razorpay_payment_id,
             onboardingRazorpayOrderId: data.razorpay_order_id,
+            status: 'APPROVED_PAYMENT_VERIFIED',
         },
     });
 
