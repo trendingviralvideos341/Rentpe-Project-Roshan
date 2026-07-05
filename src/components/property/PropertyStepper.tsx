@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Clock, ShieldCheck, CreditCard, ExternalLink, AlertTriangle, Home, Eye, FileText } from "lucide-react";
+import { Check, Clock, ShieldCheck, CreditCard, ExternalLink, AlertTriangle, Home, Eye, FileText, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PropertyStepperProps {
@@ -13,6 +13,7 @@ const steps = [
     { id: 'SUBMITTED', label: 'Submitted', icon: Clock, desc: 'Pending' },
     { id: 'APPROVED_INIT', label: 'Approved', icon: FileText, desc: 'Step 1' },
     { id: 'AUDITED', label: 'Verified', icon: ShieldCheck, desc: 'Step 2' },
+    { id: 'BANK_DETAILS', label: 'Bank Details', icon: Landmark, desc: 'Step 3' },
     { id: 'PAYMENT', label: 'Payment', icon: CreditCard, desc: 'Due' },
     { id: 'LIVE', label: 'Live', icon: ExternalLink, desc: 'Active' },
 ];
@@ -39,8 +40,10 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (s === 'DRAFT') return 0;
         if (s === 'PENDING_VERIFICATION') return 1; 
         if (s === 'VERIFYING_DOCUMENTS') return 2; 
-        if (s === 'VERIFIED_SUCCESSFULLY' || s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED' || s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED') return 4;
-        if (s === 'APPROVED' || s === 'LIVE') return 5;
+        if (s === 'VERIFIED_SUCCESSFULLY') return 3;
+        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED') return 4;
+        if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 5;
+        if (s === 'APPROVED' || s === 'LIVE') return 6;
         if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 3; 
         if (s === 'REJECTED' || s === 'SUSPENDED') return 1;
         return 1;
@@ -49,8 +52,8 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
     const getStepStatus = (stepIndex: number, activeIndex: number, currentStatus: string) => {
         if (stepIndex < activeIndex) return 'completed';
         if (stepIndex === activeIndex) {
-            if ((currentStatus === 'APPROVED' || currentStatus === 'LIVE') && stepIndex === 5) return 'completed'; // Terminal state is completed
-            if (currentStatus === 'APPROVED_PAYMENT_VERIFIED' && stepIndex === 4) return 'completed';
+            if ((currentStatus === 'APPROVED' || currentStatus === 'LIVE') && stepIndex === 6) return 'completed'; // Terminal state is completed
+            if (currentStatus === 'APPROVED_PAYMENT_VERIFIED' && stepIndex === 5) return 'completed';
             if (currentStatus === 'SUSPENDED' || currentStatus === 'REJECTED') return 'error';
             if (currentStatus === 'NEEDS_CORRECTION' || currentStatus === 'APPROVED_PENDING_PAYMENT' || adminNotes?.includes('[REUPLOAD')) return 'warning';
             return 'active';
@@ -86,7 +89,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
             <div className="px-1">
                 <div className="flex items-center justify-between relative h-24">
                     {/* Progress Lines Container - Absolutely centered under icons */}
-                    <div className="absolute top-5 left-[8.33%] w-[83.33%] h-1.5 -z-10">
+                    <div className="absolute top-5 left-[7.14%] w-[85.71%] h-1.5 -z-10">
                         {/* Background Line */}
                         <div className="absolute inset-0 bg-slate-100 rounded-full shadow-inner" />
                         
@@ -144,4 +147,5 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         </div>
     );
 }
+
 

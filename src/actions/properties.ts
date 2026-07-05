@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
-import { encryptIfPresent } from '@/lib/crypto';
+import { encryptIfPresent, decryptIfPresent } from '@/lib/crypto';
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
@@ -86,7 +86,12 @@ export async function getPropertyById(id: string) {
 
     if (!property) return null;
 
-    if (session?.role === 'ADMIN') return property;
+    if (session?.role === 'ADMIN') {
+        const propertyToReturn = { ...property } as any;
+        propertyToReturn.bankAccountNo = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+        propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        return propertyToReturn;
+    }
 
     if (session?.role === 'OWNER' || session?.role === 'STAFF') {
         const user = await prisma.user.findUnique({ 
@@ -102,7 +107,11 @@ export async function getPropertyById(id: string) {
         } else if (property.ownerId !== (user?.parentOwnerId || session.userId)) {
              throw new Error("Access denied");
         }
-        return property;
+
+        const propertyToReturn = { ...property } as any;
+        propertyToReturn.bankAccountNo = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+        propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        return propertyToReturn;
     }
 
     if (!['LIVE', 'APPROVED'].includes(property.status)) return null;
@@ -1461,6 +1470,107 @@ export async function manualMakePropertyLive(propertyId: string) {
                 userId: property.ownerId,
                 type: 'PROPERTY_LIVE',
                 message: `Congratulations! Your bank details have been verified and your property "${property.name}" is now LIVE on RentPe.`,
+                targetRole: 'OWNER'
+            }
+        });
+
+        return { success: true };
+    });
+}
+
+export async function requestBankDetailsCorrection(propertyId: string, note: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
+    if (property.status !== 'BANK_DETAILS_SUBMITTED') {
+        throw new Error('Property must have bank details submitted to request corrections.');
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const newNotes = property.adminNotes 
+            ? `${property.adminNotes}\n[REUPLOAD:BANK_DETAILS] ${note}`
+            : `[REUPLOAD:BANK_DETAILS] ${note}`;
+
+        await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'AWAITING_BANK_DETAILS', adminNotes: newNotes }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin requested bank details correction for property "${property.name}". Reason: ${note}`,
+                newValue: { status: 'AWAITING_BANK_DETAILS' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: 'PROPERTY_PENDING',
+                message: `Action Required: We found an issue with your bank details for "${property.name}". Please review and update. Reason: ${note}`,
+                targetRole: 'OWNER'
+            }
+        });
+
+        return { success: true };
+    });
+}
+
+export async function approveBankDetails(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
+    if (property.status !== 'BANK_DETAILS_SUBMITTED') {
+        throw new Error('Property must have bank details submitted to approve.');
+    }
+
+    return prisma.$transaction(async (tx) => {
+        // Clear bank details reupload note if exists
+        let newNotes = property.adminNotes;
+        if (newNotes) {
+            newNotes = newNotes.split('\n').filter(line => !line.startsWith('[REUPLOAD:BANK_DETAILS]')).join('\n');
+            if (newNotes.trim() === '') newNotes = null;
+        }
+
+        // According to the flow, after bank details are approved, the status goes to APPROVED_PENDING_PAYMENT (or LIVE if no fee)
+        // We'll set it to APPROVED_PENDING_PAYMENT, the fee system will handle the rest
+        await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'APPROVED_PENDING_PAYMENT', adminNotes: newNotes }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: 'ADMIN',
+                actorName: session.name || 'Admin',
+                actionType: 'APPROVE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Admin approved bank details for property "${property.name}". Status changed to APPROVED_PENDING_PAYMENT.`,
+                newValue: { status: 'APPROVED_PENDING_PAYMENT' },
+                ipAddress: 'internal',
+                userAgent: 'server-action'
+            }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: 'PROPERTY_LIVE',
+                message: `Success! Bank details for "${property.name}" have been approved. Please pay the onboarding fee to go LIVE.`,
                 targetRole: 'OWNER'
             }
         });

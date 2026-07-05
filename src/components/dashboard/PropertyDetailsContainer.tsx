@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation, updatePropertyRules } from "@/actions/properties";
+import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation, updatePropertyRules, requestBankDetailsCorrection, approveBankDetails } from "@/actions/properties";
 import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
@@ -22,6 +22,7 @@ import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
 import { PropertyPhotoCarousel } from "@/components/PropertyPhotoCarousel";
+import { BankDetailsModal } from "./BankDetailsModal";
 import { toast } from "sonner";
 
 export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' | 'staff', permissions?: string[] }) {
@@ -89,6 +90,17 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     // View Photo State
     const [viewDialog, setViewDialog] = useState<{ isOpen: boolean; catKey: string; index?: number; isArray: boolean; label: string; desc: string } | null>(null);
     const [previewZoom, setPreviewZoom] = useState(1);
+
+    const [activeTab, setActiveTab] = useState("details");
+    const [isBankDetailsModalOpen, setIsBankDetailsModalOpen] = useState(false);
+    
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab');
+            if (tab) setActiveTab(tab);
+        }
+    }, []);
 
     const [refreshing, setRefreshing] = useState(false);
 
@@ -763,8 +775,8 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
             )}
 
             {/* Content Tabs */}
-            <Tabs defaultValue="details" className="w-full">
-                <TabsList className="flex items-center w-full max-w-2xl bg-white border border-slate-200 p-1.5 rounded-2xl h-14 mb-12 shadow-sm gap-1">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="flex items-center w-full max-w-3xl bg-white border border-slate-200 p-1.5 rounded-2xl h-14 mb-12 shadow-sm gap-1">
                     <TabsTrigger
                         value="details"
                         className="flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 text-slate-500 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-200 transition-all duration-200"
@@ -780,12 +792,24 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                     <TabsTrigger
                         value="verification"
                         className={`flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 text-slate-500 transition-all duration-200 data-[state=active]:text-white data-[state=active]:shadow-md ${
-                            property.adminNotes?.includes('[REUPLOAD')
+                            property.adminNotes?.includes('[REUPLOAD') && !property.adminNotes?.includes('[REUPLOAD:BANK_DETAILS]')
                                 ? 'data-[state=active]:bg-red-500 data-[state=active]:shadow-red-200'
                                 : 'data-[state=active]:bg-amber-500 data-[state=active]:shadow-amber-200'
                         }`}
                     >
                         <ShieldCheck className="w-4 h-4" /> Verification
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="bank_details"
+                        className={`flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 text-slate-500 transition-all duration-200 data-[state=active]:text-white data-[state=active]:shadow-md ${
+                            property.status === 'AWAITING_BANK_DETAILS'
+                                ? 'data-[state=active]:bg-purple-600 data-[state=active]:shadow-purple-200'
+                                : property.adminNotes?.includes('[REUPLOAD:BANK_DETAILS]')
+                                ? 'data-[state=active]:bg-red-500 data-[state=active]:shadow-red-200'
+                                : 'data-[state=active]:bg-indigo-600 data-[state=active]:shadow-indigo-200'
+                        }`}
+                    >
+                        <Landmark className="w-4 h-4" /> Bank Details
                     </TabsTrigger>
                 </TabsList>
 
@@ -1278,7 +1302,157 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                          </div>
                       </div>
                 </TabsContent>
+
+                <TabsContent value="bank_details" className="space-y-6">
+                    <div className="bg-white rounded-[32px] border-2 border-slate-100 p-8 shadow-sm">
+                        <div className="flex items-center gap-4 mb-8 pb-6 border-b-2 border-slate-50">
+                            <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl">
+                                <Landmark className="w-8 h-8" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black tracking-tight text-slate-900">Bank Details</h3>
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Payment Routing Information</p>
+                            </div>
+                            {property.status === 'AWAITING_BANK_DETAILS' && (
+                                <Badge className="ml-auto bg-amber-100 text-amber-700 border-amber-200 uppercase font-black text-[10px] tracking-widest">
+                                    Action Required
+                                </Badge>
+                            )}
+                            {property.status === 'BANK_DETAILS_SUBMITTED' && (
+                                <Badge className="ml-auto bg-indigo-100 text-indigo-700 border-indigo-200 uppercase font-black text-[10px] tracking-widest">
+                                    Pending Approval
+                                </Badge>
+                            )}
+                            {(property.status === 'APPROVED_PENDING_PAYMENT' || property.status === 'APPROVED_PAYMENT_VERIFIED' || property.status === 'APPROVED' || property.status === 'LIVE') && (
+                                <Badge className="ml-auto bg-emerald-100 text-emerald-700 border-emerald-200 uppercase font-black text-[10px] tracking-widest">
+                                    Verified
+                                </Badge>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beneficiary Name</label>
+                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100">{property.bankName || 'Not provided'}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Number</label>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">
+                                            {property.bankAccountNo ? property.bankAccountNo : 'Not provided'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">IFSC Code</label>
+                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">{property.bankIfsc ? property.bankIfsc : 'Not provided'}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cancelled Cheque / Passbook</label>
+                                {property.cancelChequeUrl ? (
+                                    <div className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group">
+                                        <img src={property.cancelChequeUrl} className="w-full aspect-video object-cover" alt="Cancelled Cheque" />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                                            <a href={property.cancelChequeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
+                                                <Search className="w-4 h-4" /> View Full Image
+                                            </a>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl aspect-video text-slate-400">
+                                        <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">No Image Provided</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Note from admin */}
+                        {property.adminNotes?.includes('[REUPLOAD:BANK_DETAILS]') && (
+                            <div className="mt-8 bg-red-50 border border-red-200 p-4 rounded-xl">
+                                <div className="flex items-center gap-2 text-red-700 font-black mb-1 uppercase text-[10px] tracking-widest">
+                                    <AlertTriangle className="w-4 h-4" /> Admin Note (Corrections Needed)
+                                </div>
+                                <p className="text-sm font-medium text-red-900">
+                                    {property.adminNotes.split('\n').find((l: string) => l.startsWith('[REUPLOAD:BANK_DETAILS]'))?.replace('[REUPLOAD:BANK_DETAILS]', '').trim()}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Owner Action */}
+                        {role === 'owner' && property.status === 'AWAITING_BANK_DETAILS' && (
+                            <div className="mt-8 pt-8 border-t-2 border-slate-50 flex justify-end">
+                                <Button
+                                    onClick={() => setIsBankDetailsModalOpen(true)}
+                                    className={`h-12 px-8 rounded-2xl font-black uppercase tracking-widest text-sm shadow-md transition-all ${
+                                        property.adminNotes?.includes('[REUPLOAD:BANK_DETAILS]')
+                                            ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse shadow-amber-200 border-2 border-amber-300'
+                                            : 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-100'
+                                    }`}
+                                >
+                                    {property.bankName ? 'Update Bank Details' : 'Add Bank Details'}
+                                </Button>
+                            </div>
+                        )}
+                        
+                        {/* Owner Not Editable Note */}
+                        {role === 'owner' && property.status !== 'AWAITING_BANK_DETAILS' && (
+                            <div className="mt-8 pt-8 border-t-2 border-slate-50">
+                                <p className="text-xs text-slate-400 italic text-center font-medium">Bank details cannot be edited while under review or verified.</p>
+                            </div>
+                        )}
+
+                        {/* Admin Actions */}
+                        {role === 'staff' && property.status === 'BANK_DETAILS_SUBMITTED' && (
+                            <div className="mt-8 pt-8 border-t-2 border-slate-50 flex justify-end gap-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={async () => {
+                                        const note = window.prompt("Enter correction reason:");
+                                        if (!note) return;
+                                        const toastId = toast.loading("Requesting corrections...");
+                                        try {
+                                            await requestBankDetailsCorrection(propertyId, note);
+                                            toast.success("Corrections requested.", { id: toastId });
+                                            fetchProperty(true);
+                                        } catch (e: any) {
+                                            toast.error(e.message, { id: toastId });
+                                        }
+                                    }}
+                                    className="h-12 px-8 rounded-2xl border-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-black uppercase tracking-widest text-sm"
+                                >
+                                    Corrections Needed
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        const toastId = toast.loading("Approving bank details...");
+                                        try {
+                                            await approveBankDetails(propertyId);
+                                            toast.success("Bank details approved!", { id: toastId });
+                                            fetchProperty(true);
+                                        } catch (e: any) {
+                                            toast.error(e.message, { id: toastId });
+                                        }
+                                    }}
+                                    className="h-12 px-8 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-sm shadow-md shadow-emerald-100"
+                                >
+                                    Approve & Continue
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
             </Tabs>
+
+            <BankDetailsModal
+                isOpen={isBankDetailsModalOpen}
+                onClose={() => setIsBankDetailsModalOpen(false)}
+                propertyId={propertyId}
+                propertyName={property?.name || ''}
+                onSuccess={() => fetchProperty(true)}
+            />
 
             {/* Edit Room Dialog — Premium Design */}
             <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>

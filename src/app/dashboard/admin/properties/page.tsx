@@ -473,12 +473,13 @@ export default function AdminPropertiesPage() {
                                         )}
 
                                         {prop.status === 'BANK_DETAILS_SUBMITTED' && (
-                                            <Button 
-                                                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-emerald-100"
-                                                onClick={() => setActionModal({ type: "make_live", prop })}
-                                            >
-                                                Review Bank & Make Live <CheckCircle className="h-3 w-3 ml-1.5" />
-                                            </Button>
+                                            <Link href={`/dashboard/admin/properties/${prop.id}?tab=bank_details`} className="w-full">
+                                                <Button 
+                                                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-emerald-100"
+                                                >
+                                                    Review Bank & Make Live <CheckCircle className="h-3 w-3 ml-1.5" />
+                                                </Button>
+                                            </Link>
                                         )}
 
                                         {prop.status === 'APPROVED_PENDING_PAYMENT' && (
