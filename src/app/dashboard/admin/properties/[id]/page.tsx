@@ -528,8 +528,8 @@ export default function AdminPropertyDetailPage() {
         { key: ["PENDING_VERIFICATION", "UNDER_REVIEW", "CORRECTED"], label: "Submitted", short: "1" },
         { key: ["VERIFYING_DOCUMENTS", "NEEDS_CORRECTION"], label: "Verifying Docs", short: "2" },
         { key: ["VERIFIED_SUCCESSFULLY"], label: "Docs Verified", short: "3" },
-        { key: ["AWAITING_BANK_DETAILS", "BANK_DETAILS_SUBMITTED", "BANK_DETAILS_VERIFIED"], label: "Bank Details", short: "4" },
-        { key: ["APPROVED_PENDING_PAYMENT", "APPROVED_PAYMENT_VERIFIED"], label: "Payment", short: "5" },
+        { key: ["AWAITING_BANK_DETAILS", "BANK_DETAILS_SUBMITTED"], label: "Bank Details", short: "4" },
+        { key: ["BANK_DETAILS_VERIFIED", "APPROVED_PENDING_PAYMENT", "APPROVED_PAYMENT_VERIFIED"], label: "Payment", short: "5" },
         { key: ["APPROVED", "LIVE"], label: "Live", short: "6" },
     ];
     const activeIdx = STAGES.findIndex(s => s.key.includes(p.status));
