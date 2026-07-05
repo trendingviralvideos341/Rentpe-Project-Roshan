@@ -1617,8 +1617,14 @@ export default function AdminPropertyDetailPage() {
                                 
                                 <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
                                     <p className="text-sm text-amber-800 font-medium leading-relaxed">
-                                        ⚠️ You are taking action on this property in the <strong className="font-bold bg-amber-100 px-1 rounded uppercase tracking-wider">{p.status.replace(/_/g, ' ')}</strong> stage. 
-                                        Please make sure you have verified all the documents and details correctly before confirming.
+                                        {actionModal.type === 'request_payment' ? (
+                                            <>⚠️ You are requesting for property onboarding fee, make sure all docs and details are verified of property.</>
+                                        ) : (
+                                            <>
+                                                ⚠️ You are taking action on this property in the <strong className="font-bold bg-amber-100 px-1 rounded uppercase tracking-wider">{p.status.replace(/_/g, ' ')}</strong> stage. 
+                                                Please make sure you have verified all the documents and details correctly before confirming.
+                                            </>
+                                        )}
                                     </p>
                                 </div>
 

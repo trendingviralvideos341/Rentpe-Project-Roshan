@@ -221,6 +221,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? "bg-amber-500 animate-pulse" :
                                             property.status === 'AWAITING_BANK_DETAILS' ? "bg-purple-600 animate-pulse" :
                                             property.status === 'BANK_DETAILS_SUBMITTED' ? "bg-purple-600" :
+                                            property.status === 'BANK_DETAILS_VERIFIED' ? "bg-emerald-600" :
                                             property.status === 'VERIFIED_SUCCESSFULLY' ? "bg-emerald-600" :
                                             property.status === 'SUSPENDED' ? "bg-orange-600" : "bg-red-600"
                                         )}>
@@ -231,6 +232,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                              ['APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'].includes(property.status) ? 'Action Needed' :
                                              property.status === 'AWAITING_BANK_DETAILS' ? 'Action Needed' :
                                              property.status === 'BANK_DETAILS_SUBMITTED' ? 'Verifying Bank' :
+                                             property.status === 'BANK_DETAILS_VERIFIED' ? 'Bank Verified' :
                                              property.status === 'VERIFIED_SUCCESSFULLY' ? 'Verified' :
                                              property.status === 'SUSPENDED' ? 'Suspended' : 'Rejected'}
                                         </Badge>
