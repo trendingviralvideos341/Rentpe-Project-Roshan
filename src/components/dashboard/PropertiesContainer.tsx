@@ -343,7 +343,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                                 <Button 
                                                     variant="default" 
                                                     size="sm" 
-                                                    className="bg-purple-600 hover:bg-purple-700 text-white font-black uppercase text-[10px] h-8 px-4 shadow-lg active:scale-95 shadow-purple-200" 
+                                                    className="bg-purple-600 hover:bg-purple-700 text-white font-black uppercase text-[10px] h-8 px-4 shadow-lg active:scale-95 shadow-purple-200 animate-pulse border border-purple-400" 
                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPropertyForBank({ id: property.id, name: property.name }); setBankModalOpen(true); }}
                                                 >
                                                     Add Bank Details

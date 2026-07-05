@@ -54,6 +54,24 @@ export function BankDetailsModal({ isOpen, onClose, propertyId, propertyName, on
             return;
         }
 
+        const nameRegex = /^[a-zA-Z\s.\-]+$/;
+        if (!nameRegex.test(bankName) || bankName.trim().length < 3) {
+            toast.error("Please enter a valid Beneficiary Name without special characters.");
+            return;
+        }
+
+        const accountRegex = /^\d{9,18}$/;
+        if (!accountRegex.test(bankAccountNo)) {
+            toast.error("Please enter a valid Account Number (9 to 18 digits only).");
+            return;
+        }
+
+        const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+        if (!ifscRegex.test(bankIfsc)) {
+            toast.error("Please enter a valid 11-character IFSC Code (e.g., HDFC0001234).");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await submitBankDetails(propertyId, {
