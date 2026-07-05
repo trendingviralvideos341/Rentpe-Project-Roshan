@@ -79,6 +79,7 @@ async function main() {
         where: { email: "owner@rentpe.in" },
         update: { emailVerified: true },
         create: {
+            displayId: `RP-U-${Math.floor(Math.random() * 9000000000) + 1000000000}`,
             email: "owner@rentpe.in",
             passwordHash: ownerPassword,
             role: "OWNER",
@@ -97,6 +98,7 @@ async function main() {
             where: { email },
             update: { emailVerified: true },
             create: {
+                displayId: `RP-U-${Math.floor(Math.random() * 9000000000) + 1000000000}`,
                 email,
                 passwordHash: studentPassword,
                 role: "USER",

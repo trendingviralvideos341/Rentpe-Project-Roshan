@@ -1296,21 +1296,25 @@ export default function StudentDashboardPage() {
                         const isProfileLocked = !!profile?.dateOfBirth;
                         return (
                             <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
-                                <CardHeader className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-8 relative">
+                                <CardHeader className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-5 md:p-6 relative shadow-md">
                                     {!isEditingProfile && (
                                         <Button 
                                             onClick={() => setIsEditingProfile(true)}
-                                            className="absolute top-8 right-8 bg-white/10 hover:bg-white/20 text-white font-bold border-0"
+                                            className="absolute top-5 right-5 bg-white/20 hover:bg-white/30 text-white font-bold backdrop-blur-sm border border-white/10"
+                                            size="sm"
                                         >
-                                            Edit Profile
+                                            <Edit2 className="w-4 h-4 mr-2" /> Edit Profile
                                         </Button>
                                     )}
-                                    <div className="flex items-center gap-6">
-                                        <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center border-2 border-white/20 text-white">
-                                            <User className="h-10 w-10" />
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-inner shadow-white/20">
+                                            <User className="h-8 w-8 md:h-10 md:w-10" />
                                         </div>
-                                        <div>
-                                            <CardTitle className="text-2xl font-black">{profile?.name || "Verified Resident"}</CardTitle>
+                                        <div className="flex flex-col">
+                                            <CardTitle className="text-xl md:text-3xl font-black drop-shadow-md tracking-tight">{profile?.name || "Verified Resident"}</CardTitle>
+                                            <span className="text-white/90 font-bold text-[10px] mt-1 bg-black/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit uppercase tracking-wider">
+                                                CUSTOMER ACCOUNT
+                                            </span>
                                         </div>
                                     </div>
                                 </CardHeader>
