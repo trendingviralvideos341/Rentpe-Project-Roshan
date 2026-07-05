@@ -196,7 +196,7 @@ export async function login(formData: FormData) {
             // Security Phase 3: Log failed attempt
             // Since we don't have a user, we use a system actor or dummy ID
             logAuditEvent({
-                actorId: '00000000-0000-0000-0000-000000000000',
+                actorId: 'SYSTEM-ANONYMOUS',
                 actorRole: 'USER',
                 actorName: 'Anonymous',
                 actionType: 'LOGIN',

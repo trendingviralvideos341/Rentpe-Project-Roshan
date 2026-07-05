@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id                     String               @id @default(uuid())
+  id                     String               @id @default(cuid())
   email                  String               @unique
   emailVerified          Boolean              @default(false)
   emailVerificationToken String?              @unique
@@ -103,7 +103,7 @@ model User {
 }
 
 model RoleUpgradeRequest {
-  id             String    @id @default(uuid())
+  id             String    @id @default(cuid())
   userId         String
   requestedRole  String    @default("OWNER")
   status         String    @default("PENDING")
@@ -119,7 +119,7 @@ model RoleUpgradeRequest {
 }
 
 model Property {
-  id                         String                       @id @default(uuid())
+  id                         String                       @id @default(cuid())
   displayId                  String?                      @unique
   ownerId                    String
   name                       String
@@ -209,7 +209,7 @@ model Property {
 }
 
 model Room {
-  id            String    @id @default(uuid())
+  id            String    @id @default(cuid())
   displayId     String?   @unique
   propertyId    String
   roomNumber    String
@@ -232,7 +232,7 @@ model Room {
 }
 
 model Bed {
-  id                String    @id @default(uuid())
+  id                String    @id @default(cuid())
   displayId         String?   @unique
   roomId            String
   bedNumber         String
@@ -252,7 +252,7 @@ model Bed {
 }
 
 model Booking {
-  id                          String           @id @default(uuid())
+  id                          String           @id @default(cuid())
   displayId                   String           @unique
   userId                      String
   propertyId                  String?
@@ -348,7 +348,7 @@ model Booking {
 
 
 model Waitlist {
-  id         String    @id @default(uuid())
+  id         String    @id @default(cuid())
   userId     String
   propertyId String
   roomType   String?
@@ -364,7 +364,7 @@ model Waitlist {
 }
 
 model Tenant {
-  id                  String            @id @default(uuid())
+  id                  String            @id @default(cuid())
   displayId           String            @unique
   studentId           String
   bookingId           String?           @unique
@@ -405,7 +405,7 @@ model Tenant {
 }
 
 model BillingProfile {
-  id               String           @id @default(uuid())
+  id               String           @id @default(cuid())
   tenantId         String           @unique
   propertyId       String
   roomId           String
@@ -423,7 +423,7 @@ model BillingProfile {
 }
 
 model RentInvoice {
-  id               String         @id @default(uuid())
+  id               String         @id @default(cuid())
   displayId        String         @unique
   billingProfileId String
   tenantId         String
@@ -459,7 +459,7 @@ model RentInvoice {
 
 
 model SecurityDeposit {
-  id                  String         @id @default(uuid())
+  id                  String         @id @default(cuid())
   billingProfileId    String         @unique
   tenantId            String
   amount              Float
@@ -489,7 +489,7 @@ model SecurityDeposit {
 }
 
 model SettlementRecord {
-  id               String   @id @default(uuid())
+  id               String   @id @default(cuid())
   tenantId         String   @unique
   finalRentPending Float
   utilityCharges   Float    @default(0)
@@ -503,7 +503,7 @@ model SettlementRecord {
 }
 
 model TenantHistory {
-  id               String   @id @default(uuid())
+  id               String   @id @default(cuid())
   tenantId         String
   studentId        String
   propertyName     String
@@ -517,7 +517,7 @@ model TenantHistory {
 }
 
 model Attendance {
-  id         String @id @default(uuid())
+  id         String @id @default(cuid())
   tenantId   String
   propertyId String
   date       String
@@ -529,7 +529,7 @@ model Attendance {
 }
 
 model MoveOutRequest {
-  id            String    @id @default(uuid())
+  id            String    @id @default(cuid())
   tenantId      String
   requestedBy   String
   requestedDate String
@@ -543,7 +543,7 @@ model MoveOutRequest {
 }
 
 model Review {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   propertyId String
   tenantId   String
   rating     Int
@@ -559,7 +559,7 @@ model Review {
 }
 
 model RentRecord {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   tenantId  String
   month     String
   amount    Float
@@ -583,7 +583,7 @@ model FoodRecord {
 }
 
 model Payment {
-  id              String           @id @default(uuid())
+  id              String           @id @default(cuid())
   bookingId       String
   invoiceId       String?
   depositId       String?
@@ -605,7 +605,7 @@ model Payment {
 }
 
 model FoodMenu {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   propertyId  String
   dayOfWeek   String
   mealType    String
@@ -617,7 +617,7 @@ model FoodMenu {
 }
 
 model FoodPreference {
-  id                String    @id @default(uuid())
+  id                String    @id @default(cuid())
   bookingId         String
   propertyId        String
   userId            String
@@ -643,7 +643,7 @@ model FoodPreference {
 }
 
 model Ticket {
-  id           String          @id @default(uuid())
+  id           String          @id @default(cuid())
   displayId    String          @unique
   userId       String
   propertyId   String?
@@ -669,7 +669,7 @@ model Ticket {
 }
 
 model TicketMessage {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   ticketId   String
   senderId   String
   senderRole String
@@ -682,7 +682,7 @@ model TicketMessage {
 
 
 model Notification {
-  id             String   @id @default(uuid())
+  id             String   @id @default(cuid())
   userId         String
   type           String
   category       String?
@@ -697,7 +697,7 @@ model Notification {
 }
 
 model AuditLog {
-  id            String   @id @default(uuid())
+  id            String   @id @default(cuid())
   actorId       String
   actorRole     String
   actorName     String
@@ -715,7 +715,7 @@ model AuditLog {
 }
 
 model ActionNote {
-  id           String   @id @default(uuid())
+  id           String   @id @default(cuid())
   targetUserId String?
   targetType   String
   targetId     String
@@ -727,7 +727,7 @@ model ActionNote {
 }
 
 model TenantDocument {
-  id           String    @id @default(uuid())
+  id           String    @id @default(cuid())
   bookingId    String
   type         String
   fileData     String
@@ -742,7 +742,7 @@ model TenantDocument {
 }
 
 model TeamMember {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   displayId   String   @unique
   name        String
   email       String
@@ -755,7 +755,7 @@ model TeamMember {
 }
 
 model OwnerStaff {
-  id           String   @id @default(uuid())
+  id           String   @id @default(cuid())
   displayId    String   @unique
   ownerId      String
   name         String
@@ -799,7 +799,7 @@ model PlatformSettings {
 }
 
 model PlatformFee {
-  id                String    @id @default(uuid())
+  id                String    @id @default(cuid())
   bookingId         String
   paymentId         String?   @unique
   paymentType       String?   // RENT | TOKEN
@@ -821,7 +821,7 @@ model PlatformFee {
 }
 
 model FeeExemption {
-  id                    String    @id @default(uuid())
+  id                    String    @id @default(cuid())
   userId                String?
   propertyId            String?
   propertyName          String?
@@ -848,7 +848,7 @@ model FeeExemption {
 }
 
 model OwnerOnboarding {
-  id                String    @id @default(uuid())
+  id                String    @id @default(cuid())
   displayId         String    @unique
   source            String
   ownerName         String
@@ -882,7 +882,7 @@ model OwnerOnboarding {
 }
 
 model Employee {
-  id                     String    @id @default(uuid())
+  id                     String    @id @default(cuid())
   displayId              String    @unique
   name                   String
   email                  String    @unique
@@ -937,7 +937,7 @@ model Employee {
 }
 
 model OwnerPayout {
-  id               String    @id @default(uuid())
+  id               String    @id @default(cuid())
   displayId        String    @unique
   ownerId          String
   propertyId       String?
@@ -960,7 +960,7 @@ model OwnerPayout {
 }
 
 model Dispute {
-  id           String    @id @default(uuid())
+  id           String    @id @default(cuid())
   displayId    String    @unique
   tenantId     String?
   bookingId    String?
@@ -987,7 +987,7 @@ model Dispute {
 }
 
 model BookingEvent {
-  id              String   @id @default(uuid())
+  id              String   @id @default(cuid())
   bookingId       String
   eventType       String
   title           String
@@ -999,7 +999,7 @@ model BookingEvent {
 }
 
 model FraudAlert {
-  id             String   @id @default(uuid())
+  id             String   @id @default(cuid())
   userId         String
   type           String
   severity       String   @default("MEDIUM")
@@ -1016,7 +1016,7 @@ model FraudAlert {
 }
 
 model SystemEvent {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   type      String
   severity  String   @default("INFO")
   message   String
@@ -1028,7 +1028,7 @@ model SystemEvent {
 }
 
 model LoginLog {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   userId     String
   userRole   String
   adminRole  String?
@@ -1041,7 +1041,7 @@ model LoginLog {
 }
 
 model RateLimit {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   key         String   @unique
   action      String
   count       Int      @default(1)
@@ -1051,7 +1051,7 @@ model RateLimit {
 }
 
 model AdminPermission {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   adminId    String
   permission String
   granted    Boolean  @default(true)
@@ -1061,7 +1061,7 @@ model AdminPermission {
 }
 
 model SavedProperty {
-  id         String    @id @default(uuid())
+  id         String    @id @default(cuid())
   userId     String
   propertyId String
   note       String?
@@ -1075,7 +1075,7 @@ model SavedProperty {
 }
 
 model Message {
-  id                String    @id @default(uuid())
+  id                String    @id @default(cuid())
   bookingId         String?
   propertyId        String?
   threadId          String
@@ -1094,7 +1094,7 @@ model Message {
 }
 
 model UserSession {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   userId     String
   token      String   @unique
   ipAddress  String?
@@ -1107,7 +1107,7 @@ model UserSession {
 }
 
 model RefundRecord {
-  id                   String    @id @default(uuid())
+  id                   String    @id @default(cuid())
   displayId            String    @unique  // RP-RFND-26-27-000001 (FY-sequential, GST-compliant)
   bookingId            String
   amount               Float
@@ -1140,7 +1140,7 @@ model RefundRecord {
 
 
 model OwnerStaffMember {
-  id                String                    @id @default(uuid())
+  id                String                    @id @default(cuid())
   displayId         String                    @unique
   ownerId           String
   name              String
@@ -1166,7 +1166,7 @@ model OwnerStaffMember {
 }
 
 model StaffPropertyAssignment {
-  id            String           @id @default(uuid())
+  id            String           @id @default(cuid())
   staffMemberId String
   propertyId    String
   assignedBy    String
@@ -1181,7 +1181,7 @@ model StaffPropertyAssignment {
 }
 
 model AdminEmployee {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   displayId   String   @unique
   userId      String?  @unique
   name        String
@@ -1199,7 +1199,7 @@ model AdminEmployee {
 }
 
 model Draft {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   userId     String
   entityType String
   entityId   String?
@@ -1216,7 +1216,7 @@ model Draft {
 }
 
 model UploadSession {
-  id             String   @id @default(uuid())
+  id             String   @id @default(cuid())
   userId         String
   fileName       String
   fileSize       Int
@@ -1233,7 +1233,7 @@ model UploadSession {
 }
 
 model CreditNote {
-  id             String   @id @default(uuid())
+  id             String   @id @default(cuid())
   displayId      String   @unique
   bookingId      String
   tenantId       String?
@@ -1255,7 +1255,7 @@ model CreditNote {
 }
 
 model FraudFlag {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   userId    String
   bookingId String?
   reason    String
@@ -1273,7 +1273,7 @@ model FraudFlag {
 }
 
 model UserFingerprint {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   userId     String
   deviceHash String?
   ipAddress  String
@@ -1287,7 +1287,7 @@ model UserFingerprint {
 }
 
 model LinkedAccount {
-  id              String   @id @default(uuid())
+  id              String   @id @default(cuid())
   userAId         String
   userBId         String
   linkType        String

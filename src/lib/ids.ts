@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
- * ║        RENTPE PROFESSIONAL IDENTITY ENGINE  (v3 — Collision-Proof)  ║
+ * ║        RENTPE PROFESSIONAL IDENTITY ENGINE  (v4 — Production-Ready) ║
  * ╠══════════════════════════════════════════════════════════════════════╣
  * ║  TWO-TRACK DESIGN:                                                   ║
  * ║                                                                      ║
@@ -13,10 +13,26 @@ import crypto from 'crypto';
  * ║    Method : Cryptographically random 10-digit number                 ║
  * ║    Safety : 3-layer collision protection (see below)                 ║
  * ║                                                                      ║
- * ║  TRACK B — SEQUENTIAL  (Bookings, Invoices, Payments)               ║
- * ║    Format : RP-B-00001   RP-INV-2627-000001                          ║
+ * ║  TRACK B — SEQUENTIAL  (Bookings, Tenancies, Invoices, Payments)    ║
+ * ║    Format : RP-B-000001   RP-TN-000001   RP-INV-26-27-000001        ║
  * ║    Method : Atomic DB counter — guaranteed no gaps, no duplicates    ║
  * ║    Safety : Serializable transaction + exponential retry             ║
+ * ║                                                                      ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  FINAL PRODUCTION ID TABLE:                                          ║
+ * ║                                                                      ║
+ * ║  User          RP-U-4839201746      Random (10-digit)               ║
+ * ║  Owner         RP-O-8291746501      Random (10-digit)               ║
+ * ║  Property      RP-P-9384726150      Random (10-digit)               ║
+ * ║  Room          RP-R-48372651        Random (8-digit)                ║
+ * ║  Bed           RP-BD-72836491       Random (8-digit)                ║
+ * ║  Staff         RP-S-48291036        Random (8-digit)                ║
+ * ║  Booking       RP-B-000001          Sequential (6-digit)            ║
+ * ║  Tenancy       RP-TN-000001         Sequential (6-digit)            ║
+ * ║  Invoice       RP-INV-26-27-000001  FY Sequential (6-digit)         ║
+ * ║  Payment       RP-PAY-26-27-000001  FY Sequential (6-digit)         ║
+ * ║  Refund        RP-RFND-26-27-000001 FY Sequential (6-digit)         ║
+ * ║  Credit Note   CN/26-27/0001        FY Sequential (4-digit)         ║
  * ║                                                                      ║
  * ╠══════════════════════════════════════════════════════════════════════╣
  * ║  3-LAYER COLLISION PROTECTION (OPAQUE IDs):                          ║
@@ -60,11 +76,11 @@ const ID_CONFIG: Record<string, {
     'KYC':      { prefix: 'RP-K',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: true  },
     'TICKET':   { prefix: 'RP-T',   track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
     'NOTICE':   { prefix: 'RP-VN',  track: 'OPAQUE', randomLen: 8,  resetPerFY: false, auditLog: false },
-    'TENANT':   { prefix: 'RP-TN',  track: 'OPAQUE', randomLen: 10, resetPerFY: false, auditLog: true  },
+    'TENANT':   { prefix: 'RP-TN',  track: 'SEQUENTIAL', pad: 6, resetPerFY: false, auditLog: true  },
 
     // ── SEQUENTIAL — Numbered IDs (Financial & Legal Records) ────────────
     // BOOKING does NOT reset per FY (a booking ID is permanent for its lifetime)
-    'BOOKING':  { prefix: 'RP-B',   track: 'SEQUENTIAL', pad: 5, resetPerFY: false, auditLog: true  },
+    'BOOKING':  { prefix: 'RP-B',   track: 'SEQUENTIAL', pad: 6, resetPerFY: false, auditLog: true  },
     // INVOICE & PAYMENT reset per FY (GST mandates fresh sequence each financial year)
     'INVOICE':  { prefix: 'RP-INV',  track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
     'PAYMENT':  { prefix: 'RP-PAY',  track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },

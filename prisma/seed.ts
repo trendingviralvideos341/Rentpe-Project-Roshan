@@ -112,6 +112,7 @@ async function main() {
     const student3 = await prisma.user.findUnique({ where: { email: "sneha@example.com" } }) as any;
     console.log("✅ Students (upserted)");
 
+
     // ─── Create Property ─────────────────────────────
     let property = await prisma.property.findFirst({
         where: { name: "Stanza Living Delhi - North Campus" }
@@ -138,11 +139,11 @@ async function main() {
     // ─── Create Rooms ────────────────────────────────
     const existingRooms = await prisma.room.findFirst({ where: { propertyId: property.id } });
     if (!existingRooms) {
-        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "101", type: "Single", price: 18000, availability: 1, displayId: "ROOM-001" } });
-        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "204", type: "Double", price: 15000, availability: 2, displayId: "ROOM-002" } });
-        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "305", type: "Triple", price: 12000, availability: 3, displayId: "ROOM-003" } });
-        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "102", type: "Single", price: 18000, availability: 1, displayId: "ROOM-004" } });
-        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "206", type: "Double", price: 15000, availability: 0, displayId: "ROOM-005" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "101", type: "Single", price: 18000, availability: 1, displayId: "RP-R-10000001" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "204", type: "Double", price: 15000, availability: 2, displayId: "RP-R-10000002" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "305", type: "Triple", price: 12000, availability: 3, displayId: "RP-R-10000003" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "102", type: "Single", price: 18000, availability: 1, displayId: "RP-R-10000004" } });
+        await prisma.room.create({ data: { propertyId: property.id, roomNumber: "206", type: "Double", price: 15000, availability: 0, displayId: "RP-R-10000005" } });
         console.log("✅ 5 Rooms created");
     } else {
         console.log("ℹ️ Rooms already exist");
@@ -158,21 +159,21 @@ async function main() {
         // ─── Create Tenants ──────────────────────────────
         const tenant1 = await prisma.tenant.create({
             data: {
-                displayId: "TNT-001", name: "Priya Verma", phone: "9876543210", email: "priya@example.com",
+                displayId: "RP-TN-000001", name: "Priya Verma", phone: "9876543210", email: "priya@example.com",
                 propertyId: property.id, roomId: room2.id, roomNumber: "204", roomType: "Double",
                 rent: 15000, startDate: "01 Jan 2024", status: "ACTIVE", studentId: student2.id
             }
         });
         const tenant2 = await prisma.tenant.create({
             data: {
-                displayId: "TNT-002", name: "Amit Rathore", phone: "9123456789", email: "amit.r@example.com",
+                displayId: "RP-TN-000002", name: "Amit Rathore", phone: "9123456789", email: "amit.r@example.com",
                 propertyId: property.id, roomId: room3.id, roomNumber: "305", roomType: "Triple",
                 rent: 12000, startDate: "15 Jan 2024", status: "ACTIVE", studentId: student1.id
             }
         });
         const tenant3 = await prisma.tenant.create({
             data: {
-                displayId: "TNT-003", name: "Sneha Gupta", phone: "9988776655", email: "sneha@example.com",
+                displayId: "RP-TN-000003", name: "Sneha Gupta", phone: "9988776655", email: "sneha@example.com",
                 propertyId: property.id, roomId: room1.id, roomNumber: "101", roomType: "Single",
                 rent: 18000, startDate: "01 Feb 2024", status: "ACTIVE", studentId: student3.id
             }
@@ -194,14 +195,14 @@ async function main() {
         // ─── Create Bookings ─────────────────────────────
         await prisma.booking.create({
             data: {
-                displayId: "REQ-10001001", userId: student1.id, propertyName: property.name,
+                displayId: "RP-B-000001", userId: student1.id, propertyName: property.name,
                 occupancy: "Double Occupancy (₹15,000/month)", guestName: "Rahul Sharma",
                 moveInDate: "2024-03-01", status: "PENDING_APPROVAL", paymentStatus: "UNPAID", amount: 15000
             }
         });
         await prisma.booking.create({
             data: {
-                displayId: "REQ-10001002", userId: student2.id, roomId: room2.id,
+                displayId: "RP-B-000002", userId: student2.id, roomId: room2.id,
                 propertyName: property.name, occupancy: "Double Occupancy (₹15,000/month)",
                 guestName: "Priya Verma", moveInDate: "2024-01-01",
                 status: "PAID", paymentStatus: "PAID", amount: 15000, roomAssigned: "204 (Double)"
@@ -239,14 +240,14 @@ async function main() {
     if (!existingTeam) {
         await prisma.teamMember.create({
             data: {
-                displayId: "ADM-T001", name: "Neha Kapoor", email: "neha@rentpe.in", phone: "9001020304",
+                displayId: "RP-E-10000001", name: "Neha Kapoor", email: "neha@rentpe.in", phone: "9001020304",
                 role: "Support Lead", permissions: JSON.stringify(["login_issues", "payment_failed", "support_tickets", "booking_disputes"]),
                 status: "ACTIVE"
             }
         });
         await prisma.teamMember.create({
             data: {
-                displayId: "ADM-T002", name: "Rajesh Pandey", email: "rajesh@rentpe.in", phone: "9405060708",
+                displayId: "RP-E-10000002", name: "Rajesh Pandey", email: "rajesh@rentpe.in", phone: "9405060708",
                 role: "Finance Ops", permissions: JSON.stringify(["payment_failed", "transaction_view", "reports"]),
                 status: "ACTIVE"
             }
@@ -261,7 +262,7 @@ async function main() {
     if (!existingStaff) {
         await prisma.ownerStaff.create({
             data: {
-                displayId: "STF-001", ownerId: owner.id, name: "Ravi Kumar",
+                displayId: "RP-S-10000001", ownerId: owner.id, name: "Ravi Kumar",
                 email: "ravi@pg.com", phone: "9112131415", designation: "Property Manager",
                 permissions: JSON.stringify(["view_bookings", "approve_bookings", "manage_tenants", "mark_rent", "vacate_tenant", "edit_rooms"]),
                 status: "ACTIVE"
@@ -269,7 +270,7 @@ async function main() {
         });
         await prisma.ownerStaff.create({
             data: {
-                displayId: "STF-002", ownerId: owner.id, name: "Anita Devi",
+                displayId: "RP-S-10000002", ownerId: owner.id, name: "Anita Devi",
                 email: "anita@pg.com", phone: "9223344556", designation: "Accountant",
                 permissions: JSON.stringify(["view_payments", "mark_rent", "view_bookings"]),
                 status: "ACTIVE"
@@ -281,9 +282,15 @@ async function main() {
     }
 
     console.log("\n🎉 Seeding complete! Demo accounts:");
-    console.log("   Admin:   admin@rentpe.in   / admin123");
-    console.log("   Owner:   owner@rentpe.in   / owner123");
-    console.log("   Student: rahul@example.com / student123");
+    console.log("   Admin:   admin@rentpe.in        / RentPeAdmin@2026");
+    console.log("   Staff:   admin_staff@rentpe.in  / RentPeStaff@2026");
+    console.log("   Owner:   owner@rentpe.in        / owner123");
+    console.log("   Student: rahul@example.com      / student123");
+    console.log("\n📋 New ID Format:");
+    console.log("   Bookings : RP-B-000001");
+    console.log("   Tenants  : RP-TN-000001");
+    console.log("   Invoices : RP-INV-26-27-000001");
+    console.log("   Payments : RP-PAY-26-27-000001");
 }
 
 main()
