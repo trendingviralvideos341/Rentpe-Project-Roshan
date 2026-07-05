@@ -766,7 +766,15 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
 
     const where: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
-        where.status = statusFilter;
+        if (statusFilter === 'APPROVED_PENDING_PAYMENT') {
+            where.status = { in: ['APPROVED_PENDING_PAYMENT', 'BANK_DETAILS_VERIFIED'] };
+        } else if (statusFilter === 'PENDING_VERIFICATION') {
+            where.status = { in: ['PENDING_VERIFICATION', 'UNDER_REVIEW', 'CORRECTED'] };
+        } else if (statusFilter === 'VERIFYING_DOCUMENTS') {
+            where.status = { in: ['VERIFYING_DOCUMENTS', 'VERIFIED_SUCCESSFULLY'] };
+        } else {
+            where.status = statusFilter;
+        }
     }
 
     return prisma.property.findMany({
@@ -1000,6 +1008,11 @@ export async function getAdminPropertyStatusCounts() {
         counts.forEach(count => {
             statusCounts[count.status] = count._count.status;
         });
+        
+        // Map counts for grouped tabs
+        statusCounts['PENDING_VERIFICATION'] = (statusCounts['PENDING_VERIFICATION'] || 0) + (statusCounts['UNDER_REVIEW'] || 0) + (statusCounts['CORRECTED'] || 0);
+        statusCounts['VERIFYING_DOCUMENTS'] = (statusCounts['VERIFYING_DOCUMENTS'] || 0) + (statusCounts['VERIFIED_SUCCESSFULLY'] || 0);
+        statusCounts['APPROVED_PENDING_PAYMENT'] = (statusCounts['APPROVED_PENDING_PAYMENT'] || 0) + (statusCounts['BANK_DETAILS_VERIFIED'] || 0);
 
         return statusCounts;
     } catch (e) {

@@ -1167,6 +1167,12 @@ export default function AdminPropertyDetailPage() {
                                         </Button>
                                     </div>
                                 )}
+                                {p.status === "BANK_DETAILS_VERIFIED" && (
+                                    <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all shadow-md shadow-purple-200"
+                                        onClick={() => setActionModal({ type: "request_payment" })}>
+                                        <FileText className="h-4 w-4 mr-2" /> Request Payment
+                                    </Button>
+                                )}
                                 {p.status === "APPROVED_PENDING_PAYMENT" && (
                                     <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                         onClick={() => setActionModal({ type: "approve" })}>

@@ -481,6 +481,15 @@ export default function AdminPropertiesPage() {
                                                 </Button>
                                             </Link>
                                         )}
+                                        
+                                        {prop.status === 'BANK_DETAILS_VERIFIED' && (
+                                            <Button 
+                                                className="w-full h-9 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-purple-100"
+                                                onClick={() => setActionModal({ type: "payment", prop })}
+                                            >
+                                                Request Payment <FileText className="h-3 w-3 ml-1.5" />
+                                            </Button>
+                                        )}
 
                                         {prop.status === 'APPROVED_PENDING_PAYMENT' && (
                                             <Button 

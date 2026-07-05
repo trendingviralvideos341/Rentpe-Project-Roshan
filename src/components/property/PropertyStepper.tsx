@@ -41,8 +41,8 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (s === 'PENDING_VERIFICATION') return 0; 
         if (s === 'VERIFYING_DOCUMENTS') return 1; 
         if (s === 'VERIFIED_SUCCESSFULLY') return 2;
-        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED' || s === 'BANK_DETAILS_VERIFIED') return 3;
-        if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
+        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED') return 3;
+        if (s === 'BANK_DETAILS_VERIFIED' || s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
         if (s === 'APPROVED' || s === 'LIVE') return 5;
         if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 1; 
         if (s === 'REJECTED' || s === 'SUSPENDED') return 0;
@@ -55,7 +55,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
             if ((currentStatus === 'APPROVED' || currentStatus === 'LIVE') && stepIndex === 6) return 'completed'; // Terminal state is completed
             if (currentStatus === 'APPROVED_PAYMENT_VERIFIED' && stepIndex === 5) return 'completed';
             if (currentStatus === 'SUSPENDED' || currentStatus === 'REJECTED') return 'error';
-            if (currentStatus === 'NEEDS_CORRECTION' || currentStatus === 'APPROVED_PENDING_PAYMENT' || adminNotes?.includes('[REUPLOAD')) return 'warning';
+            if (currentStatus === 'NEEDS_CORRECTION' || adminNotes?.includes('[REUPLOAD')) return 'warning';
             return 'active';
         }
         return 'pending';
