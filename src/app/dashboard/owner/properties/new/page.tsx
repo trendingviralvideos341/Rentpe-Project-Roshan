@@ -130,6 +130,7 @@ export default function AddPropertyPage() {
     const [showRecoveryAlert, setShowRecoveryAlert] = useState(false);
 
     const [onboardingFee, setOnboardingFee] = useState<number | null>(null);
+    const [onboardingFeesEnabled, setOnboardingFeesEnabled] = useState<boolean>(true);
 
     useEffect(() => {
         const loadProfileAndSettings = async () => {
@@ -168,6 +169,7 @@ export default function AddPropertyPage() {
             if (settings) {
                 // Industry Standard: Default to settings but we'll re-fetch on server for security
                 setOnboardingFee(settings.ownerOnboardingFeeFlat);
+                setOnboardingFeesEnabled((settings as any).onboardingFeesEnabled ?? true);
             }
         };
         loadProfileAndSettings();
@@ -585,7 +587,7 @@ export default function AddPropertyPage() {
         if (amenities.length === 0) errs.amenities = "Select at least one amenity";
         if (rooms.length === 0) errs.rooms = "Add at least one room";
         if (!termsAccepted) errs.termsAccepted = "You must accept terms to list your property";
-        if (onboardingFee !== null && onboardingFee > 0 && !feeTermsAccepted) {
+        if (onboardingFee !== null && onboardingFee > 0 && onboardingFeesEnabled && !feeTermsAccepted) {
             errs.feeTermsAccepted = "Fee acknowledgment is required.";
         }
         // ── Section 2 food validation ──
@@ -1781,7 +1783,7 @@ export default function AddPropertyPage() {
                             </div>
 
                             {/* Onboarding Fee Card */}
-                            {onboardingFee !== null && (
+                            {onboardingFee !== null && onboardingFeesEnabled && (
                                 <div className="space-y-3">
                                     <div className={`relative group p-5 rounded-2xl border-2 transition-all shadow-sm flex flex-col gap-4 ${feeTermsAccepted ? 'bg-emerald-50/50 border-emerald-400' : 'bg-white border-slate-200 hover:border-emerald-400'}`}>
                                         <div className="flex items-start gap-3">

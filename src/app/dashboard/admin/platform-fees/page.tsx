@@ -30,6 +30,7 @@ export default function PlatformFeesPage() {
     const [ownerRentFeeType, setOwnerRentFeeType] = useState("FLAT");
     const [ownerOnboardingFeeFlat, setOwnerOnboardingFeeFlat] = useState(99);
     const [tokenFeesEnabled, setTokenFeesEnabled] = useState(false);
+    const [onboardingFeesEnabled, setOnboardingFeesEnabled] = useState(true);
     const [studentTokenFeeFlat, setStudentTokenFeeFlat] = useState(0);
     const [studentTokenFeeType, setStudentTokenFeeType] = useState("FLAT");
     const [ownerTokenFeeFlat, setOwnerTokenFeeFlat] = useState(0);
@@ -90,6 +91,7 @@ export default function PlatformFeesPage() {
             setOwnerRentFeeType(s.ownerRentFeeType || "FLAT");
             setOwnerOnboardingFeeFlat(s.ownerOnboardingFeeFlat);
             setTokenFeesEnabled((s as any).tokenFeesEnabled ?? false);
+            setOnboardingFeesEnabled((s as any).onboardingFeesEnabled ?? true);
             setStudentTokenFeeFlat((s as any).studentTokenFeeFlat ?? 0);
             setStudentTokenFeeType((s as any).studentTokenFeeType || "FLAT");
             setOwnerTokenFeeFlat((s as any).ownerTokenFeeFlat ?? 0);
@@ -117,6 +119,7 @@ export default function PlatformFeesPage() {
                 ownerRentFeeType,
                 ownerOnboardingFeeFlat,
                 tokenFeesEnabled,
+                onboardingFeesEnabled,
                 studentTokenFeeFlat,
                 studentTokenFeeType,
                 ownerTokenFeeFlat,
@@ -428,6 +431,29 @@ export default function PlatformFeesPage() {
                                 >
                                     {tokenFeesEnabled ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                                     {tokenFeesEnabled ? "ON" : "OFF"}
+                                </button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Property Onboarding Fees Toggle */}
+                    <Card className={`border-2 ${onboardingFeesEnabled ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}>
+                        <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">🏠 Property Onboarding Fees</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        {onboardingFeesEnabled
+                                            ? `✅ ENABLED — Owners pay ₹${ownerOnboardingFeeFlat} onboarding fee per property activation`
+                                            : '⭕ DISABLED — No onboarding fee charged during registration. Admin can manually bypass at payment step.'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setOnboardingFeesEnabled(!onboardingFeesEnabled)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${onboardingFeesEnabled ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+                                >
+                                    {onboardingFeesEnabled ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                                    {onboardingFeesEnabled ? 'ON' : 'OFF'}
                                 </button>
                             </div>
                         </CardContent>

@@ -19,6 +19,7 @@ import {
     adminUpdateProperty,
     requestBankCorrections,
     verifyBankDetails,
+    bypassOnboardingPayment,
 } from "@/actions/admin";
 import { verifyDocument } from "@/actions/adminPhase2";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
@@ -246,6 +247,7 @@ export default function AdminPropertyDetailPage() {
     const [actionModal, setActionModal] = useState<{ type: string } | null>(null);
     const [reason, setReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
+    const [bypassConfirmOpen, setBypassConfirmOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "verification" | "bank_details">("overview");
     const [verifiedDocs, setVerifiedDocs] = useState<string[]>([]);
 
@@ -386,7 +388,15 @@ export default function AdminPropertyDetailPage() {
             switch (actionModal.type) {
                 case "start_review": await startPropertyVerification(property.id); toast.success("Moved to Document Verification"); break;
                 case "verify_docs": await verifyPropertyDocuments(property.id); toast.success("Docs verified ✅"); break;
-                case "request_payment": await requirePropertyPayment(property.id); toast.success("Owner notified to pay"); break;
+                case "request_payment":
+                    if ((property as any).onboardingPaymentMethod === 'NOT_CHARGED') {
+                        setActionModal(null);
+                        setBypassConfirmOpen(true);
+                        setActionLoading(false);
+                        return;
+                    }
+                    await requirePropertyPayment(property.id); toast.success("Owner notified to pay"); break;
+                case "bypass_payment": await bypassOnboardingPayment(property.id); toast.success("✅ Payment bypassed — property moved to Pending Live!"); break;
                 case "approve": await exemptPropertyFee(property.id, reason); toast.success("Fee exempted — property is LIVE 🎉"); break;
                 case "activate": await activateProperty(property.id); toast.success("Property is now LIVE 🚀"); break;
                 case "move_back": await moveToReview(property.id); toast.success("Moved back to Verifying Documents"); break;
@@ -1586,6 +1596,57 @@ export default function AdminPropertyDetailPage() {
                                     disabled={savingEditRoom}
                                 >{savingEditRoom ? 'Saving...' : 'Save Changes'}</Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── BYPASS PAYMENT CONFIRM MODAL ── */}
+            {bypassConfirmOpen && property && (
+                <div className="fixed inset-0 bg-black/60 z-[115] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center">
+                                <span className="text-2xl">⚠️</span>
+                            </div>
+                            <div>
+                                <h2 className="font-black text-slate-900 text-lg">Onboarding Fee Not Charged</h2>
+                                <p className="text-xs text-slate-500">Registered when fees were disabled</p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+                            <p className="text-sm text-amber-800 font-semibold">
+                                During property registration, the onboarding fee was <strong>not charged</strong> as it was disabled at time of submission.
+                            </p>
+                            <p className="text-xs text-amber-700">
+                                Submitted on: <strong>{property.createdAt ? new Date(property.createdAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' }) : '—'}</strong>
+                            </p>
+                            <p className="text-sm text-amber-800 mt-1">
+                                Confirming will <strong>skip payment</strong> and move this property directly to <strong>Pending Live</strong>.
+                            </p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setBypassConfirmOpen(false)}
+                                className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setBypassConfirmOpen(false);
+                                    setActionLoading(true);
+                                    try {
+                                        await bypassOnboardingPayment(property.id);
+                                        toast.success("✅ Payment bypassed — property moved to Pending Live!");
+                                        fetchProperty();
+                                    } catch (e: any) { toast.error(e.message || "Action failed"); }
+                                    finally { setActionLoading(false); }
+                                }}
+                                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black hover:from-amber-600 hover:to-orange-600 transition-all"
+                            >
+                                ✅ Confirm &amp; Skip Payment
+                            </button>
                         </div>
                     </div>
                 </div>
