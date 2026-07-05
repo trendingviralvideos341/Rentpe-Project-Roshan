@@ -2,14 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building, Plus, MapPin, AlertCircle, ArrowRight, CreditCard, Trash2, RefreshCcw, Activity, CheckCircle, BedDouble } from "lucide-react";
+import { Building, Plus, MapPin, AlertCircle, ArrowRight, CreditCard, Trash2, RefreshCcw, Activity, CheckCircle, BedDouble, Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { getProperties } from "@/actions/properties";
 import { Badge } from "@/components/ui/badge";
 import { ImageCarousel } from "@/components/ImageCarousel";
 import { PropertyStepper } from "@/components/property/PropertyStepper";
-import { payOnboardingFee, deleteProperty } from "@/actions/properties";
+import { deleteProperty, createOnboardingFeeOrder, verifyOnboardingFeePayment } from "@/actions/properties";
 import { getPlatformSettings } from "@/actions/platform";
 import { BankDetailsModal } from "./BankDetailsModal";
 import { Landmark } from "lucide-react";
@@ -42,6 +42,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
     const [propertyToCancel, setPropertyToCancel] = useState<{ id: string; name: string } | null>(null);
     const [bankModalOpen, setBankModalOpen] = useState(false);
     const [propertyForBank, setPropertyForBank] = useState<{ id: string; name: string } | null>(null);
+    const [payingProperty, setPayingProperty] = useState<{ id: string; name: string; feeAmount: number } | null>(null);
 
     const fetchProperties = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -80,17 +81,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
         }
     };
 
-    const handleQuickPay = async (id: string) => {
-        setProcessingId(id);
-        try {
-            await payOnboardingFee(id, "UPI (Dummy)");
-            toast.success("Onboarding fee paid via dummy UPI. Awaiting activation.");
-            fetchProperties();
-        } catch (error: any) {
-            toast.error(error.message || "Failed to process payment.");
-        } finally {
-            setProcessingId(null);
-        }
+    const handleQuickPay = (id: string, name: string) => {
+        setPayingProperty({ id, name, feeAmount: onboardingFee });
     };
 
     const handleCancelClick = (e: React.MouseEvent, id: string, name: string) => {
@@ -335,10 +327,10 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                                     variant="default" 
                                                     size="sm" 
                                                     className="bg-amber-600 hover:bg-amber-700 text-white font-black uppercase text-[10px] h-8 px-4 shadow-lg active:scale-95 animate-bounce shadow-amber-200" 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleQuickPay(property.id); }}
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleQuickPay(property.id, property.name); }}
                                                     disabled={processingId === property.id}
                                                 >
-                                                    {processingId === property.id ? "Processing..." : "PAY ₹99"}
+                                                    {processingId === property.id ? "Processing..." : `PAY ₹${onboardingFee}`}
                                                 </Button>
                                             )}
                                             {property.status === 'AWAITING_BANK_DETAILS' && (role === 'owner' || permissions.includes('manage_properties')) && (
@@ -426,6 +418,191 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                     onSuccess={() => fetchProperties(true)}
                 />
             )}
+
+            {/* Razorpay Onboarding Payment Modal */}
+            {payingProperty && (
+                <RazorpayOnboardingModal
+                    property={payingProperty}
+                    onClose={() => setPayingProperty(null)}
+                    onSuccess={() => { setPayingProperty(null); fetchProperties(); }}
+                />
+            )}
+        </div>
+    );
+}
+
+// ── Inline Razorpay Onboarding Modal ─────────────────────────────────────────
+declare global { interface Window { Razorpay: any; } }
+
+function RazorpayOnboardingModal({
+    property,
+    onClose,
+    onSuccess,
+}: {
+    property: { id: string; name: string; feeAmount: number };
+    onClose: () => void;
+    onSuccess: () => void;
+}) {
+    const [flow, setFlow] = useState<"idle" | "processing" | "verifying" | "success" | "error">("idle");
+    const [errorMsg, setErrorMsg] = useState("");
+    const [countdown, setCountdown] = useState(10);
+
+    const GST_RATE = 0.18;
+    const feeBase = Math.round((property.feeAmount / (1 + GST_RATE)) * 100) / 100;
+    const gst = Math.round((property.feeAmount - feeBase) * 100) / 100;
+    const cgst = Math.round((gst / 2) * 100) / 100;
+    const sgst = Math.round((gst - cgst) * 100) / 100;
+
+    const handlePay = async () => {
+        setFlow("processing");
+        setErrorMsg("");
+        try {
+            const order = await createOnboardingFeeOrder(property.id);
+            if (!window.Razorpay) {
+                await new Promise<void>((resolve, reject) => {
+                    const script = document.createElement("script");
+                    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error("Failed to load Razorpay"));
+                    document.body.appendChild(script);
+                });
+            }
+            const rzp = new window.Razorpay({
+                key: order.key,
+                amount: order.amount,
+                currency: order.currency,
+                name: "RentPe",
+                description: `Property Onboarding Fee — ${order.propertyName}`,
+                order_id: order.isMock ? undefined : order.orderId,
+                prefill: { name: "", email: "", contact: "" },
+                theme: { color: "#3730a3" },
+                handler: async (response: any) => {
+                    setFlow("verifying");
+                    let tick = 10;
+                    setCountdown(10);
+                    const interval = setInterval(() => { tick--; setCountdown(tick); if (tick <= 0) clearInterval(interval); }, 1000);
+                    try {
+                        await verifyOnboardingFeePayment({
+                            razorpay_order_id: response.razorpay_order_id || order.orderId,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature || "mock_signature",
+                            propertyId: property.id,
+                        });
+                        clearInterval(interval);
+                        setFlow("success");
+                        onSuccess();
+                    } catch (verifyErr: any) {
+                        clearInterval(interval);
+                        setErrorMsg(verifyErr.message || "Verification failed. Please contact support.");
+                        setFlow("error");
+                    }
+                },
+                modal: { ondismiss: () => { if (flow === "processing") setFlow("idle"); } },
+            });
+            rzp.open();
+        } catch (err: any) {
+            setErrorMsg(err.message || "Failed to create payment order. Please try again.");
+            setFlow("error");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="bg-gradient-to-br from-indigo-700 to-purple-700 p-6 text-white relative overflow-hidden">
+                    <div className="absolute -right-10 -top-10 w-36 h-36 bg-white/10 rounded-full" />
+                    {flow === "idle" && (
+                        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all">
+                            <span className="text-white font-black text-lg leading-none">×</span>
+                        </button>
+                    )}
+                    <div className="flex items-center gap-3 mb-1 relative z-10">
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <CreditCard className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Owner Per Property</p>
+                            <p className="font-black text-lg">Onboarding Fee</p>
+                        </div>
+                    </div>
+                    <p className="text-indigo-200 text-xs mt-1 relative z-10 truncate">{property.name}</p>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    {flow === "idle" && (
+                        <>
+                            <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Fee Breakdown</p>
+                                <div className="flex justify-between text-sm text-slate-600">
+                                    <span>Base Service Fee</span><span className="font-bold">₹{feeBase.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm text-slate-600">
+                                    <span>CGST @ 9%</span><span className="font-bold">₹{cgst.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm text-slate-600">
+                                    <span>SGST @ 9%</span><span className="font-bold">₹{sgst.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
+                                    <span className="font-black text-slate-900">Total (incl. 18% GST)</span>
+                                    <span className="font-black text-xl text-indigo-700">₹{property.feeAmount}</span>
+                                </div>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                                <p className="text-xs text-amber-700 font-bold">⚠ One-time non-refundable fee</p>
+                                <p className="text-xs text-amber-600 mt-0.5">This fee is charged once per property listing on RentPe platform.</p>
+                            </div>
+                            <button
+                                onClick={handlePay}
+                                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl text-base transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+                            >
+                                <CreditCard className="w-5 h-5" /> Pay ₹{property.feeAmount} Securely
+                            </button>
+                            <p className="text-center text-[10px] text-slate-400">🔒 Secured by Razorpay · 256-bit SSL</p>
+                        </>
+                    )}
+                    {flow === "processing" && (
+                        <div className="py-8 flex flex-col items-center gap-4">
+                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                            </div>
+                            <p className="font-bold text-slate-700">Opening Razorpay checkout...</p>
+                            <p className="text-sm text-slate-400 text-center">Complete the payment in the Razorpay window</p>
+                        </div>
+                    )}
+                    {flow === "verifying" && (
+                        <div className="py-8 flex flex-col items-center gap-4">
+                            <div className="relative w-20 h-20">
+                                <div className="w-20 h-20 rounded-full border-4 border-indigo-100 flex items-center justify-center">
+                                    <span className="text-2xl font-black text-indigo-700">{countdown}</span>
+                                </div>
+                                <Loader2 className="w-5 h-5 text-indigo-500 animate-spin absolute -top-1 -right-1" />
+                            </div>
+                            <p className="font-black text-slate-800 text-lg">Please wait...</p>
+                            <p className="text-sm text-slate-500 text-center">Verifying payment with Razorpay.<br />Do not close this window.</p>
+                        </div>
+                    )}
+                    {flow === "success" && (
+                        <div className="py-6 flex flex-col items-center gap-4">
+                            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
+                                <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+                            </div>
+                            <p className="font-black text-slate-800 text-xl">Payment Verified!</p>
+                            <p className="text-sm text-slate-500 text-center">Your onboarding fee has been confirmed.<br />A receipt has been sent to your email.</p>
+                            <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-600 font-bold transition-colors">Close</button>
+                        </div>
+                    )}
+                    {flow === "error" && (
+                        <div className="py-6 flex flex-col items-center gap-4">
+                            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
+                                <AlertTriangle className="w-10 h-10 text-red-500" />
+                            </div>
+                            <p className="font-black text-slate-800 text-lg">Payment Failed</p>
+                            <p className="text-sm text-red-600 text-center">{errorMsg}</p>
+                            <button onClick={() => { setFlow("idle"); setErrorMsg(""); }} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl transition-all">Try Again</button>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
