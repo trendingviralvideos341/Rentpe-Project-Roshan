@@ -81,8 +81,8 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
         }
     };
 
-    const handleQuickPay = (id: string, name: string) => {
-        setPayingProperty({ id, name, feeAmount: onboardingFee });
+    const handleQuickPay = (property: any) => {
+        setPayingProperty({ ...property, feeAmount: onboardingFee });
     };
 
     const handleCancelClick = (e: React.MouseEvent, id: string, name: string) => {
@@ -327,7 +327,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                                     variant="default" 
                                                     size="sm" 
                                                     className="bg-amber-600 hover:bg-amber-700 text-white font-black uppercase text-[10px] h-8 px-4 shadow-lg active:scale-95 animate-bounce shadow-amber-200" 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleQuickPay(property.id, property.name); }}
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleQuickPay(property); }}
                                                     disabled={processingId === property.id}
                                                 >
                                                     {processingId === property.id ? "Processing..." : `PAY ₹${onboardingFee}`}

@@ -23,6 +23,7 @@ export async function getPlatformSettings() {
 // ── Update settings (admin only) ─────────────────────
 export async function updatePlatformSettings(data: {
     feesEnabled?: boolean;
+    onboardingFeesEnabled?: boolean;
     studentRentFeeFlat?: number;
     studentRentFeeType?: string;
     ownerRentFeeFlat?: number;

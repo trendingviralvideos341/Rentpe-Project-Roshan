@@ -789,6 +789,7 @@ model OwnerStaff {
 model PlatformSettings {
   id                       String   @id @default("singleton")
   feesEnabled              Boolean  @default(false)
+  onboardingFeesEnabled    Boolean  @default(true)
   studentRentFeeFlat       Float    @default(9)
   studentRentFeeType       String   @default("FLAT")
   ownerRentFeeFlat         Float    @default(9)
