@@ -17,6 +17,8 @@ import {
     adminEditRoom,
     adminDeleteRoom,
     adminUpdateProperty,
+    requestBankCorrections,
+    verifyBankDetails,
 } from "@/actions/admin";
 import { verifyDocument } from "@/actions/adminPhase2";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
@@ -377,7 +379,7 @@ export default function AdminPropertyDetailPage() {
 
     const handleAction = async () => {
         if (!property || !actionModal) return;
-        const needsReason = ["reject", "correction", "suspend", "approve"].includes(actionModal.type);
+        const needsReason = ["reject", "correction", "suspend", "approve", "bank_correction"].includes(actionModal.type);
         if (needsReason && !reason.trim()) { toast.error("Please provide a reason"); return; }
         setActionLoading(true);
         try {
@@ -391,6 +393,8 @@ export default function AdminPropertyDetailPage() {
                 case "reject": await rejectProperty(property.id, reason); toast.success("Rejected — owner notified"); break;
                 case "correction": await requestPropertyCorrections(property.id, reason); toast.success("Correction request sent"); break;
                 case "suspend": await suspendProperty(property.id, reason); toast.success("Property suspended"); break;
+                case "bank_correction": await requestBankCorrections(property.id, reason); toast.success("Bank details correction request sent"); break;
+                case "verify_bank": await verifyBankDetails(property.id); toast.success("Bank details verified"); break;
             }
             setActionModal(null); setReason(""); fetchProperty();
         } catch (e: any) { toast.error(e.message || "Action failed"); }
@@ -524,7 +528,7 @@ export default function AdminPropertyDetailPage() {
         { key: ["PENDING_VERIFICATION", "UNDER_REVIEW", "CORRECTED"], label: "Submitted", short: "1" },
         { key: ["VERIFYING_DOCUMENTS", "NEEDS_CORRECTION"], label: "Verifying Docs", short: "2" },
         { key: ["VERIFIED_SUCCESSFULLY"], label: "Docs Verified", short: "3" },
-        { key: ["AWAITING_BANK_DETAILS", "BANK_DETAILS_SUBMITTED"], label: "Bank Details", short: "4" },
+        { key: ["AWAITING_BANK_DETAILS", "BANK_DETAILS_SUBMITTED", "BANK_DETAILS_VERIFIED"], label: "Bank Details", short: "4" },
         { key: ["APPROVED_PENDING_PAYMENT", "APPROVED_PAYMENT_VERIFIED"], label: "Payment", short: "5" },
         { key: ["APPROVED", "LIVE"], label: "Live", short: "6" },
     ];
@@ -1270,14 +1274,24 @@ export default function AdminPropertyDetailPage() {
                             <div className="space-y-1">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cancelled Cheque / Passbook</label>
                                 {p.cancelChequeUrl ? (
-                                    <div className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group">
+                                    <button 
+                                        className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group w-full text-left"
+                                        onClick={() => openViewer(p.cancelChequeUrl, "Bank Cheque", "bank_cheque", true)}
+                                    >
                                         <img src={p.cancelChequeUrl} className="w-full aspect-video object-cover" alt="Cancelled Cheque" />
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                            <a href={p.cancelChequeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
-                                                <ZoomIn className="w-4 h-4" /> View Full Image
-                                            </a>
+                                            <div className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
+                                                <ZoomIn className="w-4 h-4" /> View & Verify
+                                            </div>
                                         </div>
-                                    </div>
+                                        
+                                        {/* Status badge in corner */}
+                                        {verifiedDocs.includes("bank_cheque") && (
+                                            <div className="absolute top-3 right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
+                                                <CheckCircle className="w-5 h-5" />
+                                            </div>
+                                        )}
+                                    </button>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl aspect-video text-slate-400">
                                         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
@@ -1286,6 +1300,38 @@ export default function AdminPropertyDetailPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Action Buttons */}
+                        {(p.status === "BANK_DETAILS_SUBMITTED" || p.status === "AWAITING_BANK_DETAILS" || p.status === "BANK_DETAILS_VERIFIED") && (
+                            <div className="pt-6 mt-6 border-t border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-end">
+                                {p.status !== "BANK_DETAILS_VERIFIED" && (
+                                    <>
+                                        <Button 
+                                            variant="outline" 
+                                            className="w-full sm:w-auto h-12 border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 hover:text-orange-800 rounded-xl font-black uppercase tracking-widest text-[11px]"
+                                            onClick={() => setActionModal({ type: "bank_correction" })}
+                                        >
+                                            <AlertCircle className="w-4 h-4 mr-2" /> Needs Corrections
+                                        </Button>
+                                        <Button 
+                                            className="w-full sm:w-auto h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-[11px]"
+                                            onClick={() => setActionModal({ type: "verify_bank" })}
+                                        >
+                                            <ShieldCheck className="w-4 h-4 mr-2" /> Verified Bank Details
+                                        </Button>
+                                    </>
+                                )}
+                                
+                                {p.status === "BANK_DETAILS_VERIFIED" && (
+                                    <Button 
+                                        className="w-full sm:w-auto h-12 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-purple-200"
+                                        onClick={() => setActionModal({ type: "request_payment" })}
+                                    >
+                                        <FileText className="w-4 h-4 mr-2" /> Request Payment
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1551,6 +1597,8 @@ export default function AdminPropertyDetailPage() {
                     reject:          { title: "Reject Application", color: "bg-indigo-600 hover:bg-indigo-700", needsReason: true, placeholder: "Why is this being rejected?" },
                     correction:      { title: "Request Corrections", color: "bg-orange-600 hover:bg-orange-700", needsReason: true, placeholder: "What needs correction?" },
                     suspend:         { title: "Suspend Property", color: "bg-red-700 hover:bg-red-800", needsReason: true, placeholder: "Reason for suspension (visible to owner)?" },
+                    bank_correction: { title: "Bank Details Corrections", color: "bg-orange-600 hover:bg-orange-700", needsReason: true, placeholder: "What needs correction in bank details?" },
+                    verify_bank:     { title: "Verify Bank Details", color: "bg-blue-600 hover:bg-blue-700", needsReason: false, warning: "Marks the bank details as verified and enables payment request." },
                 };
                 const c = cfg[actionModal.type];
                 return (

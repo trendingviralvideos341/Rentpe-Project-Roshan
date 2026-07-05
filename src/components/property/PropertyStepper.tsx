@@ -32,6 +32,7 @@ const STATUS_MESSAGES: Record<string, { label: string; color: string; bg: string
     REJECTED: { label: 'Property Rejected', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-300', icon: AlertTriangle },
     AWAITING_BANK_DETAILS: { label: 'Bank Details Required', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-300', icon: CreditCard },
     BANK_DETAILS_SUBMITTED: { label: 'Bank Details Submitted', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-300', icon: CreditCard },
+    BANK_DETAILS_VERIFIED: { label: 'Bank Details Verified', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-300', icon: ShieldCheck },
 };
 
 export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
@@ -40,7 +41,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (s === 'PENDING_VERIFICATION') return 0; 
         if (s === 'VERIFYING_DOCUMENTS') return 1; 
         if (s === 'VERIFIED_SUCCESSFULLY') return 2;
-        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED') return 3;
+        if (s === 'AWAITING_BANK_DETAILS' || s === 'BANK_DETAILS_SUBMITTED' || s === 'BANK_DETAILS_VERIFIED') return 3;
         if (s === 'APPROVED_PENDING_PAYMENT' || s === 'APPROVED_PAYMENT_VERIFIED') return 4;
         if (s === 'APPROVED' || s === 'LIVE') return 5;
         if (s === 'NEEDS_CORRECTION' || s === 'CORRECTED') return 1; 

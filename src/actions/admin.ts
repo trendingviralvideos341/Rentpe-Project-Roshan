@@ -1864,4 +1864,75 @@ export async function logCorrectionView(propertyId: string) {
     return { success: true };
 }
 
+export async function requestBankCorrections(propertyId: string, notes: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'AWAITING_BANK_DETAILS', adminNotes: notes || null }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_PENDING",
+                message: `Action Required: Your property "${property.name}" needs corrections in Bank Details. Admin Note: ${notes}`
+            }
+        });
+
+        return property;
+    });
+    
+    await logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Admin requested bank corrections: ${notes}`,
+    });
+    revalidatePath("/dashboard/admin/properties");
+    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    return result;
+}
+
+export async function verifyBankDetails(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: { status: 'BANK_DETAILS_VERIFIED', adminNotes: null }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "PROPERTY_APPROVED",
+                message: `Success! Your bank details for "${property.name}" have been verified.`
+            }
+        });
+
+        return property;
+    });
+    
+    await logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Admin verified bank details`,
+    });
+    revalidatePath("/dashboard/admin/properties");
+    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    return result;
+}
+
+
 
