@@ -210,12 +210,14 @@ export default function AdminPropertiesPage() {
                     <button
                         key={s.key}
                         onClick={() => setFilter(s.key)}
-                        className={`p-4 rounded-2xl border-[3px] border-slate-950 flex flex-col gap-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${s.bg} ${
-                            filter === s.key ? "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -translate-y-1 bg-white ring-4 ring-indigo-50" : "shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        className={`p-4 rounded-2xl border-[3px] border-slate-950 flex flex-col gap-1 transition-all duration-300 text-left ${
+                            filter === s.key 
+                                ? "bg-slate-950 shadow-none translate-y-1 translate-x-0.5 ring-4 ring-slate-950/20" 
+                                : `${s.bg} shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`
                         }`}
                     >
-                        <span className="text-[9px] font-black uppercase tracking-widest opacity-60 leading-tight">{s.label}</span>
-                        <span className={`text-2xl font-black ${s.color}`}>{statusCounts[s.key] || 0}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest leading-tight ${filter === s.key ? 'text-slate-300' : 'opacity-60'}`}>{s.label}</span>
+                        <span className={`text-2xl font-black ${filter === s.key ? 'text-white' : s.color}`}>{statusCounts[s.key] || 0}</span>
                     </button>
                 ))}
             </div>
