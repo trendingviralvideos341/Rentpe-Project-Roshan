@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { signup } from "@/actions/auth";
-import { CheckCircle, XCircle, Loader2, Info } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Edit2, ShieldCheck, ArrowRight, Check } from "lucide-react";
 import { validateEmail, validateName, validatePhone } from "@/lib/validators";
 import { useRouter } from "next/navigation";
 
@@ -31,160 +30,183 @@ const ROLE_OPTIONS = [
         value: "USER",
         emoji: "🎓",
         label: "Student / Tenant",
-        sublabel1: "Working Professional",
-        sublabel2: "Others",
-        gradient: "from-blue-600 to-indigo-600",
-        selectedBg: "bg-gradient-to-br from-blue-600 to-indigo-600",
-        border: "border-blue-500",
-        ring: "ring-blue-300",
+        selectedBg: "bg-blue-100 border-blue-500",
+        defaultBg: "bg-white border-gray-200",
     },
     {
         value: "OWNER",
-        emoji: "🏢",
+        emoji: "🏠",
         label: "Property Owner",
-        sublabel1: "PG / Hostel / Coliving",
-        sublabel2: "Building Owner",
-        gradient: "from-orange-500 to-amber-500",
-        selectedBg: "bg-gradient-to-br from-orange-500 to-amber-500",
-        border: "border-orange-400",
-        ring: "ring-orange-200",
+        selectedBg: "bg-blue-100 border-blue-500",
+        defaultBg: "bg-white border-gray-200",
     },
 ];
 
 export default function SignupPage() {
     const router = useRouter();
+    const [step, setStep] = useState(1);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [firstName, setFirstName] = useState("");
-    const [middleName, setMiddleName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [phone, setPhone] = useState("");
+    
+    // Form States
     const [role, setRole] = useState("USER");
-    const [showPassword, setShowPassword] = useState(false);
-    const [agreed, setAgreed] = useState(false);
-    const [otpStep, setOtpStep] = useState(false);
-    const [otp, setOtp] = useState("");
-    const [otpError, setOtpError] = useState<string | null>(null);
-    const [phoneOtp, setPhoneOtp] = useState("");
-    const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
-    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [resendCooldown, setResendCooldown] = useState(0); // seconds remaining;
+    const [fullName, setFullName] = useState("");
+    const [phone, setPhone] = useState("");
+    const [email, setEmail] = useState("");
+    
+    const [phoneOtp, setPhoneOtp] = useState(["", "", "", "", "", ""]);
+    const [emailOtp, setEmailOtp] = useState(["", "", "", "", "", ""]);
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const phoneInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const emailInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+    const [password, setPassword] = useState("");
+    const [scrolledToBottom, setScrolledToBottom] = useState(false);
+    const [agreedTerms, setAgreedTerms] = useState(false);
+    const [agreedMarketing, setAgreedMarketing] = useState(false);
+    const [agreedData, setAgreedData] = useState(false);
+    
+    const termsRef = useRef<HTMLDivElement>(null);
     const { checks, passed } = getStrength(password);
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
+    // Validation States
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+    // Handlers
+    const handleNextStep1 = async () => {
         setError(null);
         setFieldErrors({});
 
-        // Validation
-        const fnErr = validateName(firstName);
-        const lnErr = validateName(lastName);
+        const fnErr = validateName(fullName);
         const emErr = validateEmail(email);
         const phErr = validatePhone(`+91${phone}`);
-        if (fnErr || lnErr || emErr || phErr) {
-            setFieldErrors({ firstName: fnErr, lastName: lnErr, email: emErr, phone: phErr });
-            return;
-        }
-
-        if (password.length < 8) { setError("Password must be at least 8 characters long."); return; }
-        if (!checks.upper || !checks.lower || !checks.number) {
-            setError("Password must include uppercase, lowercase and a number.");
-            return;
-        }
-        if (!agreed) {
-            setError("Please agree to the Terms of Service and Privacy Policy to continue.");
+        
+        if (fnErr || emErr || phErr) {
+            setFieldErrors({ fullName: fnErr, email: emErr, phone: phErr });
             return;
         }
 
         setLoading(true);
         try {
-            if (!otpStep) {
-                // Step 1 — Send OTP to email
-                const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
-                const res = await fetch('/api/auth/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, phone: `+91${phone}`, name: fullName }),
-                });
-                const data = await res.json();
-                if (!res.ok || data.error) {
-                    setError(data.error || 'Failed to send OTP. Please try again.');
-                    setLoading(false);
-                    return;
-                }
-                setOtpStep(true);
+            const res = await fetch('/api/auth/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, phone: `+91${phone}`, name: fullName }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                setError(data.error || 'Failed to send OTP. Please try again.');
                 setLoading(false);
-                // Start resend cooldown (60s)
-                setResendCooldown(60);
-                const timer = setInterval(() => {
-                    setResendCooldown(prev => {
-                        if (prev <= 1) { clearInterval(timer); return 0; }
-                        return prev - 1;
-                    });
-                }, 1000);
                 return;
             }
+            
+            setStep(2);
+            startCooldown();
+        } catch (err) {
+            setError("An unexpected error occurred. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
+    const startCooldown = () => {
+        setResendCooldown(24);
+        const timer = setInterval(() => {
+            setResendCooldown(prev => {
+                if (prev <= 1) { clearInterval(timer); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const handleOtpChange = (type: 'phone' | 'email', index: number, value: string) => {
+        const val = value.replace(/\D/g, "").slice(0, 1);
+        const newOtp = type === 'phone' ? [...phoneOtp] : [...emailOtp];
+        newOtp[index] = val;
+        
+        if (type === 'phone') {
+            setPhoneOtp(newOtp);
+            if (val && index < 5) phoneInputRefs.current[index + 1]?.focus();
+        } else {
+            setEmailOtp(newOtp);
+            if (val && index < 5) emailInputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleOtpKeyDown = (type: 'phone' | 'email', index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Backspace' && !e.currentTarget.value && index > 0) {
+            const refs = type === 'phone' ? phoneInputRefs : emailInputRefs;
+            refs.current[index - 1]?.focus();
+        }
+    };
+
+    const isPhoneVerified = phoneOtp.join("").length === 6; // Mock UI verification
+    const isEmailVerified = emailOtp.join("").length === 6;
+
+    const handleNextStep2 = () => {
+        if (isPhoneVerified && isEmailVerified) {
+            setStep(3);
+        }
+    };
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+        if (Math.abs(target.scrollHeight - target.clientHeight - target.scrollTop) < 5) {
+            setScrolledToBottom(true);
+        }
+    };
+
+    const handleSubmit = async () => {
+        setError(null);
+        if (password.length < 8 || !checks.upper || !checks.lower || !checks.number) {
+            setError("Please enter a valid password meeting all requirements.");
+            return;
+        }
+        if (!agreedTerms || !agreedData) {
+            setError("Please accept all required terms to continue.");
+            return;
+        }
+
+        setLoading(true);
+        try {
             const formData = new FormData();
             formData.set("name", fullName);
             formData.set("email", email);
             formData.set("password", password);
             formData.set("phone", `+91${phone}`);
             formData.set("role", role);
-            formData.set("otp", otp);
-            formData.set("phoneOtp", phoneOtp);
-            formData.set("agreed", agreed ? "true" : "false");
-            
-            // Honeypot field
-            const formObj = e.target as HTMLFormElement;
-            const hpValue = (formObj.elements.namedItem("hp") as HTMLInputElement)?.value;
-            if (hpValue) formData.set("hp", hpValue);
+            formData.set("otp", emailOtp.join(""));
+            formData.set("phoneOtp", phoneOtp.join(""));
+            formData.set("agreed", agreedTerms ? "true" : "false");
+            formData.set("marketingAgreed", agreedMarketing ? "true" : "false");
+            formData.set("dataSharingAgreed", agreedData ? "true" : "false");
+            formData.set("hp", ""); // Anti-bot honeypot
 
             const result = await signup(formData);
             
             if (result?.error) {
-                // If it's an OTP error, show it near the respective OTP field
-                if (result.error.toLowerCase().includes("phone otp") || result.error.toLowerCase().includes("mobile otp") || result.error.toLowerCase().includes("phone verification")) {
-                    setPhoneOtpError(result.error);
-                } else if (result.error.toLowerCase().includes("otp")) {
-                    setOtpError(result.error);
-                } else {
-                    setError(result.error);
-                }
+                setError(result.error);
+                if (result.error.toLowerCase().includes("otp")) setStep(2);
             } else if (result?.success) {
                 setSuccess(true);
-                // Redirect after a short delay so they see the success message
-                setTimeout(() => {
-                    router.push("/login?signup=success");
-                }, 2000);
+                setTimeout(() => router.push("/login?signup=success"), 2000);
             }
         } catch (err: any) {
-            console.error("Signup error:", err);
             setError("An unexpected error occurred. Please try again.");
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     if (success) {
         return (
-            <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-muted/30 px-4 py-8">
-                <Card className="w-full max-w-lg shadow-xl border-0 ring-1 ring-border text-center p-8">
+            <div className="flex items-center justify-center min-h-screen bg-slate-50 px-4">
+                <Card className="w-full max-w-lg shadow-xl text-center p-8 border-0">
                     <div className="flex flex-col items-center space-y-4">
-                        <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
-                            <CheckCircle className="h-12 w-12 text-green-600" />
-                        </div>
-                        <CardTitle className="text-2xl font-bold text-green-700">Registration Successful!</CardTitle>
-                        <CardDescription className="text-lg">
-                            Welcome to RentPe, <strong>{firstName}</strong>! Your account is verified and ready to use.
-                        </CardDescription>
-                        <p className="text-muted-foreground">Redirecting you to login...</p>
-                        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+                        <CheckCircle className="h-16 w-16 text-green-500" />
+                        <h2 className="text-2xl font-bold">Account Created!</h2>
+                        <p className="text-muted-foreground">Redirecting to login...</p>
                     </div>
                 </Card>
             </div>
@@ -192,374 +214,363 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-muted/30 px-4 py-8">
-            <Card className="w-full max-w-lg shadow-xl border-0 ring-1 ring-border">
-                <div className="h-2 rounded-t-xl bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600" />
-
-                <CardHeader className="space-y-1 pt-6 text-center">
-                    <CardTitle className="text-3xl font-bold">Create an account</CardTitle>
-                    <CardDescription>Enter your details to get started with RentPe</CardDescription>
-                </CardHeader>
-
-                <form onSubmit={handleSubmit}>
-                    {/* Honeypot Bot Protection */}
-                    <input type="text" name="hp" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+        <div className="min-h-screen flex bg-slate-50">
+            {/* Desktop Left Panel */}
+            <div className="hidden md:flex md:w-5/12 bg-[#1A103C] text-white flex-col justify-center px-12 lg:px-20 relative overflow-hidden">
+                <div className="z-10 space-y-10">
+                    <div>
+                        <div className="bg-white/10 w-fit p-3 rounded-2xl mb-6">
+                            <ShieldCheck className="h-10 w-10 text-green-400" />
+                        </div>
+                        <h1 className="text-4xl font-bold leading-tight mb-4">The secure way to rent and manage properties.</h1>
+                        <p className="text-indigo-200 text-lg">Join RentPe and experience transparent, hassle-free rentals.</p>
+                    </div>
                     
-                    <CardContent className="space-y-5">
-                        {error && (
-                            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2">
-                                <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                                {error}
-                            </div>
-                        )}
+                    <div className="space-y-6 pt-4">
+                        <div className="flex items-center gap-4">
+                            <CheckCircle className="h-6 w-6 text-green-400 shrink-0" />
+                            <span className="text-lg">Verified Users & Properties</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <CheckCircle className="h-6 w-6 text-green-400 shrink-0" />
+                            <span className="text-lg">Zero Hidden Charges</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <CheckCircle className="h-6 w-6 text-green-400 shrink-0" />
+                            <span className="text-lg">Secure Digital Agreements</span>
+                        </div>
+                    </div>
+                </div>
+                {/* Decorative circles */}
+                <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+            </div>
 
-                        {otpStep && (
-                            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 space-y-3 animate-in fade-in zoom-in duration-300">
-                                <h3 className="text-sm font-bold text-violet-900 border-b border-violet-100 pb-2 flex items-center gap-2">
-                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-white text-[10px]">OTP</span>
-                                    Verify your email address
-                                </h3>
-                                <p className="text-xs text-violet-700">A 6-digit verification code has been sent to <strong>{email}</strong></p>
+            {/* Right Panel - Form */}
+            <div className="w-full md:w-7/12 flex items-center justify-center p-4 py-8">
+                <div className="w-full max-w-[420px] mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+                    
+                    {/* Progress Indicator */}
+                    <div className="flex justify-center gap-2 mb-8">
+                        <div className={`h-1.5 rounded-full w-4 transition-colors ${step >= 1 ? (step > 1 ? 'bg-green-500' : 'bg-blue-600') : 'bg-gray-200'}`} />
+                        <div className={`h-1.5 rounded-full w-4 transition-colors ${step >= 2 ? (step > 2 ? 'bg-green-500' : 'bg-blue-600') : 'bg-gray-200'}`} />
+                        <div className={`h-1.5 rounded-full w-4 transition-colors ${step >= 3 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                    </div>
 
-                                {/* 🚧 Dev/Testing hint — remove when going live */}
-                                {process.env.NODE_ENV !== 'production' && (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 font-medium">
-                                        🚧 Testing mode — use OTP: <span className="font-black tracking-widest">123456</span>
-                                    </div>
-                                )}
+                    {/* Headers */}
+                    <div className="text-center mb-8 space-y-3">
+                        <div className="inline-block bg-blue-50 text-blue-700 text-xs font-bold px-4 py-1.5 rounded-full mb-1">
+                            {step === 1 && "Who are you?"}
+                            {step === 2 && "Verify your details"}
+                            {step === 3 && "Almost there!"}
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900">
+                            {step === 1 && "Join RentPe"}
+                            {step === 2 && "Enter OTPs"}
+                            {step === 3 && "Set your password"}
+                        </h2>
+                        <p className="text-sm text-slate-500">
+                            {step === 1 && "Choose how you want to use RentPe"}
+                            {step === 2 && "Check your phone and email for codes"}
+                            {step === 3 && "Create a secure password for your account"}
+                        </p>
+                    </div>
 
-                                <div className="space-y-1">
-                                    <Input
-                                        placeholder="Enter 6-digit OTP"
-                                        className={`text-center text-lg tracking-[0.5em] font-black ${otpError ? "border-red-400" : "border-violet-300 focus:ring-violet-400"}`}
-                                        value={otp}
-                                        maxLength={6}
-                                        onChange={e => {
-                                            const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                                            setOtp(v);
-                                            setOtpError(null);
-                                        }}
-                                    />
-                                    {otpError && <p className="text-[10px] text-red-500 text-center font-semibold">{otpError}</p>}
-                                </div>
-                                <p className="text-[10px] text-muted-foreground text-center">
-                                    Didn&apos;t receive the code?{" "}
-                                    {resendCooldown > 0 ? (
-                                        <span className="text-violet-400">Resend in {resendCooldown}s</span>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            className="text-violet-600 font-bold hover:underline"
-                                            onClick={async () => {
-                                                const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(" ");
-                                                const res = await fetch('/api/auth/send-otp', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ email, phone: `+91${phone}`, name: fullName }),
-                                                });
-                                                const data = await res.json();
-                                                if (data.error) { setOtpError(data.error); return; }
-                                                setOtpError(null);
-                                                setResendCooldown(60);
-                                                const timer = setInterval(() => {
-                                                    setResendCooldown(prev => {
-                                                        if (prev <= 1) { clearInterval(timer); return 0; }
-                                                        return prev - 1;
-                                                    });
-                                                }, 1000);
-                                            }}
-                                        >Resend OTP</button>
-                                    )}
-                                </p>
-                            </div>
-                        )}
+                    {error && (
+                        <div className="mb-6 p-3 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 flex items-start gap-2">
+                            <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                            <span className="text-left">{error}</span>
+                        </div>
+                    )}
 
-                        {otpStep && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-3 animate-in fade-in zoom-in duration-300">
-                                <h3 className="text-sm font-bold text-blue-900 border-b border-blue-100 pb-2 flex items-center gap-2">
-                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-[10px]">OTP</span>
-                                    Verify your mobile number
-                                </h3>
-                                <p className="text-xs text-blue-700">A 6-digit verification code has been sent to <strong>+91 {phone}</strong></p>
-
-                                {/* 🚧 Dev/Testing hint — remove when going live */}
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 font-medium">
-                                    🚧 Currently using Mock SMS OTP: <span className="font-black tracking-widest">123456</span>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Input
-                                        placeholder="Enter 6-digit Mobile OTP"
-                                        className={`text-center text-lg tracking-[0.5em] font-black ${phoneOtpError ? "border-red-400" : "border-blue-300 focus:ring-blue-400"}`}
-                                        value={phoneOtp}
-                                        maxLength={6}
-                                        onChange={e => {
-                                            const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                                            setPhoneOtp(v);
-                                            setPhoneOtpError(null);
-                                        }}
-                                    />
-                                    {phoneOtpError && <p className="text-[10px] text-red-500 text-center font-semibold">{phoneOtpError}</p>}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Role Chip Selector */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold text-foreground block text-center w-full bg-muted/50 py-1.5 rounded-lg border border-border/50 shadow-sm">
-                                I am joining as:
-                            </label>
+                    {/* Step 1 */}
+                    {step === 1 && (
+                        <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
                             <div className="grid grid-cols-2 gap-3">
-                                {ROLE_OPTIONS.map((opt) => {
-                                    const isSelected = role === opt.value;
-                                    return (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            suppressHydrationWarning
-                                            onClick={() => {
-                                                setRole(opt.value);
-                                                setAgreed(false);
-                                            }}
-                                            className={`relative flex flex-col items-center justify-center gap-1 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer min-h-[110px]
-                                                ${isSelected
-                                                    ? `${opt.selectedBg} border-transparent text-white shadow-lg scale-[1.02] ring-4 ${opt.ring}`
-                                                    : `bg-card border-border hover:border-gray-400 text-foreground hover:shadow-md`
-                                                }`}
-                                        >
-                                            {isSelected && (
-                                                <CheckCircle className="absolute top-2 right-2 h-4 w-4 text-white/80" />
-                                            )}
-                                            <span className="text-3xl leading-none">{opt.emoji}</span>
-                                            <span className="font-bold text-sm text-center leading-tight mt-1">{opt.label}</span>
-                                            <span className={`text-[11px] text-center leading-tight ${isSelected ? "text-white/70" : "text-muted-foreground"}`}>
-                                                {opt.sublabel1}
-                                            </span>
-                                            <span className={`text-[11px] text-center leading-tight ${isSelected ? "text-white/60" : "text-muted-foreground/70"}`}>
-                                                {opt.sublabel2}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+                                {ROLE_OPTIONS.map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setRole(opt.value)}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${role === opt.value ? opt.selectedBg : opt.defaultBg} hover:border-blue-300`}
+                                    >
+                                        <span className="text-2xl mb-2">{opt.emoji}</span>
+                                        <span className="text-sm font-semibold text-slate-800">{opt.label}</span>
+                                    </button>
+                                ))}
                             </div>
-                            <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 flex gap-3 items-center">
-                                <Info className="h-4 w-4 text-blue-600 shrink-0" />
-                                <p className="text-[10px] text-blue-800 italic leading-relaxed">
-                                    {role === "OWNER"
-                                        ? "Legal Eligibility: By registering as an Owner, you confirm you are 18+ and have full legal authority to list and manage rental accommodations."
-                                        : "Legal Eligibility: By registering as a Student/Tenant, you confirm you are 18+ or have express guardian consent to book accommodation."}
+
+                            <div className="space-y-3 pt-2">
+                                <div className={`relative border rounded-2xl p-3 px-4 ${fieldErrors.fullName ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500'}`}>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Full name</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Enter your full name" 
+                                        className="w-full bg-transparent outline-none text-slate-900 font-semibold placeholder:font-normal placeholder:text-slate-300"
+                                        value={fullName}
+                                        onChange={e => {
+                                            setFullName(e.target.value.replace(/[^a-zA-Z\s]/g, ""));
+                                            setFieldErrors(p => ({...p, fullName: ""}));
+                                        }}
+                                    />
+                                    {fieldErrors.fullName && <p className="text-[10px] text-red-500 absolute -bottom-4 left-2">{fieldErrors.fullName}</p>}
+                                </div>
+
+                                <div className={`relative border rounded-2xl p-3 px-4 ${fieldErrors.phone ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500'}`}>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Mobile number</label>
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        <span className="text-slate-500">+91</span>
+                                        <input 
+                                            type="tel" 
+                                            placeholder="98765 43210" 
+                                            maxLength={10}
+                                            className="w-full bg-transparent outline-none text-slate-900 placeholder:font-normal placeholder:text-slate-300"
+                                            value={phone}
+                                            onChange={e => {
+                                                setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                                                setFieldErrors(p => ({...p, phone: ""}));
+                                            }}
+                                        />
+                                    </div>
+                                    {fieldErrors.phone && <p className="text-[10px] text-red-500 absolute -bottom-4 left-2">{fieldErrors.phone}</p>}
+                                </div>
+
+                                <div className={`relative border rounded-2xl p-3 px-4 ${fieldErrors.email ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500'}`}>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Email address</label>
+                                    <input 
+                                        type="email" 
+                                        placeholder="you@example.com" 
+                                        className="w-full bg-transparent outline-none text-slate-900 font-semibold placeholder:font-normal placeholder:text-slate-300"
+                                        value={email}
+                                        onChange={e => {
+                                            setEmail(e.target.value);
+                                            setFieldErrors(p => ({...p, email: ""}));
+                                        }}
+                                    />
+                                    {fieldErrors.email && <p className="text-[10px] text-red-500 absolute -bottom-4 left-2">{fieldErrors.email}</p>}
+                                </div>
+                            </div>
+
+                            <Button 
+                                onClick={handleNextStep1} 
+                                disabled={loading || !fullName || phone.length !== 10 || !email.includes('@')}
+                                className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base mt-4 shadow-lg shadow-blue-600/20"
+                            >
+                                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
+                                    <>Continue <ArrowRight className="ml-2 h-5 w-5" /></>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Step 2 */}
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            {/* Phone Verification Block */}
+                            <div className="border border-gray-200 rounded-2xl p-4 bg-white relative">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Mobile number</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-bold text-slate-900">+91 {phone}</p>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isPhoneVerified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                {isPhoneVerified ? '✓ verified' : 'pending'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => setStep(1)} className="text-blue-600 flex items-center gap-1 text-sm font-semibold hover:text-blue-700">
+                                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                                    </button>
+                                </div>
+                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-2 text-center tracking-wider">Phone OTP</p>
+                                <div className="flex justify-center gap-2 mb-2">
+                                    {phoneOtp.map((digit, i) => (
+                                        <input
+                                            key={`p-${i}`}
+                                            ref={el => { phoneInputRefs.current[i] = el; }}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={e => handleOtpChange('phone', i, e.target.value)}
+                                            onKeyDown={e => handleOtpKeyDown('phone', i, e)}
+                                            className={`w-10 h-12 text-center font-bold text-xl rounded-xl border-2 outline-none transition-colors
+                                                ${isPhoneVerified ? 'bg-green-50 border-green-300 text-green-700' : 
+                                                digit ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 focus:border-blue-400 focus:bg-white'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="flex justify-end pr-2">
+                                    {isPhoneVerified ? (
+                                        <p className="text-[11px] text-green-600 font-bold flex items-center gap-1"><Check className="h-3 w-3"/> Phone verified</p>
+                                    ) : (
+                                        <p className="text-[11px] text-slate-500">Resend in {resendCooldown}s</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Email Verification Block */}
+                            <div className="border border-gray-200 rounded-2xl p-4 bg-white relative">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Email address</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-bold text-slate-900 truncate max-w-[180px]">{email}</p>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isEmailVerified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                {isEmailVerified ? '✓ verified' : 'pending'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => setStep(1)} className="text-blue-600 flex items-center gap-1 text-sm font-semibold hover:text-blue-700">
+                                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                                    </button>
+                                </div>
+                                <p className="text-[10px] uppercase font-bold text-slate-400 mb-2 text-center tracking-wider">Email OTP</p>
+                                <div className="flex justify-center gap-2 mb-2">
+                                    {emailOtp.map((digit, i) => (
+                                        <input
+                                            key={`e-${i}`}
+                                            ref={el => { emailInputRefs.current[i] = el; }}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={e => handleOtpChange('email', i, e.target.value)}
+                                            onKeyDown={e => handleOtpKeyDown('email', i, e)}
+                                            className={`w-10 h-12 text-center font-bold text-xl rounded-xl border-2 outline-none transition-colors
+                                                ${isEmailVerified ? 'bg-green-50 border-green-300 text-green-700' : 
+                                                digit ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 focus:border-blue-400 focus:bg-white'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="flex justify-end pr-2">
+                                    {isEmailVerified ? (
+                                        <p className="text-[11px] text-green-600 font-bold flex items-center gap-1"><Check className="h-3 w-3"/> Email verified</p>
+                                    ) : (
+                                        <p className="text-[11px] text-slate-500">Resend email OTP</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {isPhoneVerified && isEmailVerified ? (
+                                <div className="bg-green-100 text-green-800 p-3 rounded-xl flex items-center justify-center font-bold text-sm">
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Both verified — you're good to go!
+                                </div>
+                            ) : (
+                                <div className="bg-amber-100 text-amber-800 p-3 rounded-xl flex items-center justify-center font-semibold text-sm">
+                                    ⚠️ Both phone and email must be verified to continue
+                                </div>
+                            )}
+
+                            <Button 
+                                type="button"
+                                onClick={handleNextStep2} 
+                                disabled={!isPhoneVerified || !isEmailVerified}
+                                className={`w-full h-14 rounded-2xl font-bold text-base shadow-lg transition-all
+                                    ${isPhoneVerified && isEmailVerified ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20' : 'bg-gray-200 text-gray-400'}`}
+                            >
+                                Verify & Continue <ArrowRight className="ml-2 h-5 w-5" />
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Step 3 */}
+                    {step === 3 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            
+                            <div className="border border-gray-200 rounded-2xl p-1 bg-white focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                                <div className="text-center pt-2 pb-1 text-[10px] uppercase font-bold text-slate-400">Password</div>
+                                <input 
+                                    type="password" 
+                                    placeholder="••••••••" 
+                                    className="w-full bg-transparent outline-none text-slate-900 font-bold text-2xl tracking-[0.3em] text-center pb-2 placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-300"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                />
+                            </div>
+                            
+                            {/* Strength indicator */}
+                            {password.length > 0 && (
+                                <div className="space-y-1.5 -mt-2">
+                                    <div className="flex gap-1 h-1">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <div key={i} className={`flex-1 rounded-full ${i <= passed ? strengthColor[passed] : "bg-slate-200"}`} />
+                                        ))}
+                                    </div>
+                                    <p className={`text-xs text-center font-bold ${strengthText[passed]}`}>{strengthLabel[passed]}</p>
+                                </div>
+                            )}
+
+                            <div className="pt-2">
+                                <p className="text-[11px] uppercase font-bold text-slate-400 text-center tracking-wider mb-2">Read Before Continuing</p>
+                                
+                                <div 
+                                    ref={termsRef}
+                                    onScroll={handleScroll}
+                                    className="h-[120px] overflow-y-auto border border-gray-200 rounded-xl p-3 text-[11px] text-slate-600 leading-relaxed bg-slate-50 scrollbar-thin scrollbar-thumb-slate-300"
+                                >
+                                    <p className="font-bold text-slate-800 mb-1 text-center">Terms of Service</p>
+                                    <p className="mb-2">By creating an account on RentPe, you agree to use this platform only for lawful purposes. You confirm that all information provided is accurate and complete.</p>
+                                    
+                                    <p className="font-bold text-slate-800 mb-1 text-center mt-3">Privacy Policy</p>
+                                    <p className="mb-2">We collect and process your personal data in accordance with our Privacy Policy. This includes your contact details and interaction history on our platform.</p>
+                                    
+                                    <p className="font-bold text-slate-800 mb-1 text-center mt-3">Refund Policy</p>
+                                    <p className="mb-2">Payments made through the platform are subject to the specific terms set by the property owner. RentPe facilitates these transactions securely.</p>
+                                    
+                                    <p className="font-bold text-slate-800 mb-1 text-center mt-3">Cookie Policy</p>
+                                    <p className="pb-4">We use essential cookies to provide our services and optional cookies to improve user experience. You can manage your preferences in settings.</p>
+                                </div>
+                                <p className="text-[10px] text-center text-slate-400 mt-1.5 flex justify-center items-center gap-1">
+                                    <span className="animate-bounce">↓</span> Scroll to read all terms
                                 </p>
                             </div>
-                        </div>
 
-                        {/* Name — First / Middle / Last */}
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Full Name</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="space-y-1">
-                                    <Input id="firstName" placeholder="First name" required
-                                        className={fieldErrors.firstName ? "border-red-400" : ""}
-                                        value={firstName} onChange={e => {
-                                            const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
-                                            setFirstName(v);
-                                            const err = v.length > 0 ? validateName(v) : "";
-                                            setFieldErrors(p => { const n = { ...p }; if (err) n.firstName = err; else delete n.firstName; return n; });
-                                        }} />
-                                    {fieldErrors.firstName && <p className="text-[10px] text-red-500">{fieldErrors.firstName}</p>}
-                                    <p className="text-[10px] text-muted-foreground text-center">First</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Input placeholder="Middle name"
-                                        value={middleName} onChange={e => {
-                                            const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
-                                            setMiddleName(v);
-                                        }} />
-                                    <p className="text-[10px] text-muted-foreground text-center">Middle <span className="opacity-60">(optional)</span></p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Input placeholder="Last name" required
-                                        className={fieldErrors.lastName ? "border-red-400" : ""}
-                                        value={lastName} onChange={e => {
-                                            const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
-                                            setLastName(v);
-                                            const err = v.length > 0 ? validateName(v) : "";
-                                            setFieldErrors(p => { const n = { ...p }; if (err) n.lastName = err; else delete n.lastName; return n; });
-                                        }} />
-                                    {fieldErrors.lastName && <p className="text-[10px] text-red-500">{fieldErrors.lastName}</p>}
-                                    <p className="text-[10px] text-muted-foreground text-center">Last</p>
-                                </div>
-                            </div>
-                        </div>
+                            <div className="space-y-3">
+                                <label className={`flex items-start gap-3 ${!scrolledToBottom ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} transition-opacity`}>
+                                    <input type="checkbox" disabled={!scrolledToBottom} checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed cursor-pointer" />
+                                    <span className="text-xs text-slate-600 leading-tight">
+                                        I have read and agree to the <span className="text-blue-600 font-medium">Terms of Service</span> and <span className="text-blue-600 font-medium">Privacy Policy</span> (Required)
+                                    </span>
+                                </label>
+                                
+                                <label className={`flex items-start gap-3 ${!scrolledToBottom ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} transition-opacity`}>
+                                    <input type="checkbox" disabled={!scrolledToBottom} checked={agreedMarketing} onChange={e => setAgreedMarketing(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed cursor-pointer" />
+                                    <span className="text-xs text-slate-600 leading-tight">
+                                        I consent to receiving property alerts via Email/WhatsApp (Optional)
+                                    </span>
+                                </label>
 
-                        {/* Email */}
-                        <div className="space-y-1">
-                            <label htmlFor="email" className="text-sm font-medium">Email</label>
-                            <Input id="email" placeholder="john@example.com" type="email" required
-                                className={fieldErrors.email ? "border-red-400" : ""}
-                                value={email} onChange={e => {
-                                    setEmail(e.target.value);
-                                    const err = e.target.value.length > 3 ? validateEmail(e.target.value) : "";
-                                    setFieldErrors(p => { const n = { ...p }; if (err) n.email = err; else delete n.email; return n; });
-                                }} />
-                            {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
-                        </div>
-
-                        {/* Mobile Number */}
-                        <div className="space-y-1">
-                            <label htmlFor="phone" className="text-sm font-medium">Mobile Number</label>
-                            <div className="flex rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
-                                <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-muted border-r border-input text-sm font-semibold text-foreground select-none whitespace-nowrap shrink-0">
-                                    <span className="text-muted-foreground font-bold">+91</span>
-                                </span>
-                                <input
-                                    id="phone"
-                                    name="phone"
-                                    placeholder="98765 43210"
-                                    type="tel"
-                                    required
-                                    maxLength={10}
-                                    suppressHydrationWarning
-                                    className={`flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground ${fieldErrors.phone ? "border-red-400" : ""}`}
-                                    value={phone}
-                                    onChange={e => {
-                                        const v = e.target.value.replace(/\D/g, "").slice(0, 10);
-                                        setPhone(v);
-                                        const err = v.length === 10 ? validatePhone(`+91${v}`) : "";
-                                        setFieldErrors(p => {
-                                            const n = { ...p };
-                                            if (err) n.phone = err; else delete n.phone;
-                                            return n;
-                                        });
-                                    }}
-                                />
-                            </div>
-                            {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
-                            <p className="text-[10px] text-muted-foreground italic">Standard Indian 10-digit mobile number</p>
-                        </div>
-
-                        {/* Password */}
-                        <div className="space-y-2">
-                            <label htmlFor="password" className="text-sm font-medium">Password</label>
-                            <div className="relative">
-                                <Input
-                                    id="password" name="password"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Min. 8 chars, A-Z, 0-9…" required
-                                    value={password} onChange={e => setPassword(e.target.value)} className="pr-12"
-                                />
-                                <button type="button" onClick={() => setShowPassword(v => !v)}
-                                    title={showPassword ? "Hide password" : "Show password"}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xl leading-none select-none hover:scale-125 transition-transform duration-200"
-                                    tabIndex={-1}>
-                                    {showPassword ? "🐵" : "🙈"}
-                                </button>
+                                <label className={`flex items-start gap-3 ${!scrolledToBottom ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} transition-opacity`}>
+                                    <input type="checkbox" disabled={!scrolledToBottom} checked={agreedData} onChange={e => setAgreedData(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed cursor-pointer" />
+                                    <span className="text-xs text-slate-600 leading-tight">
+                                        I consent to RentPe sharing my profile with property owners for bookings (Required)
+                                    </span>
+                                </label>
                             </div>
 
-                            {password.length > 0 && (
-                                <div className="space-y-2 pt-1">
-                                    <div className="flex gap-1 h-1.5">
-                                        {[1, 2, 3, 4, 5].map(i => (
-                                            <div key={i}
-                                                className={`flex-1 rounded-full transition-all duration-300 ${i <= passed ? strengthColor[passed] : "bg-muted"}`}
-                                            />
-                                        ))}
-                                    </div>
-                                    <p className={`text-xs font-semibold ${strengthText[passed]}`}>{strengthLabel[passed]}</p>
-                                    <div className="grid grid-cols-2 gap-1 text-xs">
-                                        {([
-                                            ["8+ characters", checks.length],
-                                            ["Uppercase (A-Z)", checks.upper],
-                                            ["Lowercase (a-z)", checks.lower],
-                                            ["Number (0-9)", checks.number],
-                                            ["Special character", checks.special],
-                                        ] as [string, boolean][]).map(([label, ok]) => (
-                                            <div key={label} className={`flex items-center gap-1 ${ok ? "text-green-600" : "text-muted-foreground"}`}>
-                                                {ok ? <CheckCircle className="h-3 w-3 shrink-0" /> : <XCircle className="h-3 w-3 shrink-0" />}
-                                                {label}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                            <Button 
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={loading || !scrolledToBottom || !agreedTerms || !agreedData || password.length < 8 || !checks.upper || !checks.lower || !checks.number}
+                                className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20"
+                            >
+                                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "🚀 Create Account"}
+                            </Button>
+                            {!scrolledToBottom && (
+                                <p className="text-[10px] text-center text-slate-400 mt-2">Must scroll and tick required boxes to enable</p>
                             )}
                         </div>
-                    </CardContent>
-
-                    <CardFooter className="flex flex-col space-y-4">
-                        {/* ⚖️ Granular Consent (DPDP Act Compliance) */}
-                        <div className="space-y-3 pt-2">
-                            <label className="flex items-start gap-3 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    name="agreed"
-                                    suppressHydrationWarning
-                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
-                                    required
-                                    checked={agreed}
-                                    onChange={e => setAgreed(e.target.checked)}
-                                />
-                                <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors uppercase tracking-wider font-bold">
-                                    I AGREE TO THE{" "}
-                                    <Link
-                                        href={role === "OWNER" ? "/terms/owner" : "/terms/tenant"}
-                                        target="_blank"
-                                        className="text-violet-600 underline"
-                                    >
-                                        {role === "OWNER" ? "OWNER TERMS" : "TENANT TERMS"}
-                                    </Link>{" "}
-                                    AND{" "}
-                                    <Link href="/privacy" target="_blank" className="text-violet-600 underline">PRIVACY POLICY</Link>
-                                    {" "}(REQUIRED)
-                                </span>
-                            </label>
-
-                            <label className="flex items-start gap-3 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    name="marketingAgreed"
-                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
-                                />
-                                <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                                    {role === "OWNER" 
-                                        ? "I consent to receiving leads, platform updates, and business marketing via Email/SMS/WhatsApp. (Optional)"
-                                        : "I consent to receiving property alerts, offers, and marketing updates via Email/SMS/WhatsApp. (Optional)"}
-                                </span>
-                            </label>
-
-                            <label className="flex items-start gap-3 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    name="dataSharingAgreed"
-                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
-                                />
-                                <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
-                                    {role === "OWNER"
-                                        ? "I consent to RentPe sharing my verified owner profile and property details with potential tenants and RentPe Business for booking management and trust verification. (Required)"
-                                        : "I consent to RentPe sharing my verified tenant profile with property owners for faster background checks and booking reliability. (Required)"}
-                                </span>
-                            </label>
-                        </div>
-                        <Button
-                            className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 hover:from-violet-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold text-base py-5 shadow-lg hover:shadow-xl transition-all"
-                            type="submit" disabled={loading}>
-                            {loading ? (
-                                <span className="flex items-center gap-2">
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                                    </svg>
-                                    {otpStep ? "Verifying..." : "Sending OTP..."}
-                                </span>
-                            ) : (
-                                <span>{otpStep ? "✅ Verify & Create Account" : "🚀 Get Started & Send OTP"}</span>
-                            )}
-                        </Button>
-                        <div className="text-center text-sm text-muted-foreground">
+                    )}
+                    
+                    {step === 1 && (
+                        <div className="text-center mt-6 text-sm text-slate-500">
                             Already have an account?{" "}
-                            <Link href="/login" className="text-purple-600 font-semibold hover:underline">Sign in</Link>
+                            <Link href="/login" className="text-blue-600 font-bold hover:underline">Sign in</Link>
                         </div>
-                    </CardFooter>
-                </form>
-            </Card>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

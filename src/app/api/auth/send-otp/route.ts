@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmailOTP } from '@/lib/otp';
+import { validateEmail, validateName, validatePhone } from '@/lib/validators';
 import { Redis } from '@upstash/redis';
 import prisma from '@/lib/prisma';
 
@@ -63,8 +64,19 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { email, name, phone } = body;
 
-        if (!email || typeof email !== 'string' || !email.includes('@') || email.length > 254) {
-            return NextResponse.json({ error: 'Valid email address is required' }, { status: 400 });
+        const emErr = validateEmail(email || "");
+        if (emErr) {
+            return NextResponse.json({ error: emErr }, { status: 400 });
+        }
+
+        const phErr = validatePhone(phone || "");
+        if (phErr) {
+            return NextResponse.json({ error: phErr }, { status: 400 });
+        }
+
+        const nameErr = validateName(name || "");
+        if (nameErr) {
+            return NextResponse.json({ error: nameErr }, { status: 400 });
         }
 
         const normalizedEmail = email.toLowerCase().trim();
