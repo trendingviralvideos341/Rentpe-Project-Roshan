@@ -515,11 +515,9 @@ function RazorpayOnboardingModal({
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
                 <div className="bg-gradient-to-br from-indigo-700 to-purple-700 p-6 text-white relative overflow-hidden">
                     <div className="absolute -right-10 -top-10 w-36 h-36 bg-white/10 rounded-full" />
-                    {flow === "idle" && (
-                        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-white/20 rounded-xl transition-all">
-                            <span className="text-white font-black text-lg leading-none">×</span>
-                        </button>
-                    )}
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-xl transition-all z-50">
+                        <span className="text-white font-black text-xl leading-none">×</span>
+                    </button>
                     <div className="flex items-center gap-3 mb-1 relative z-10">
                         <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
                             <CreditCard className="w-5 h-5" />
@@ -557,12 +555,20 @@ function RazorpayOnboardingModal({
                                 <p className="text-xs text-amber-700 font-bold">⚠ One-time non-refundable fee</p>
                                 <p className="text-xs text-amber-600 mt-0.5">This fee is charged once per property listing on RentPe platform.</p>
                             </div>
-                            <button
-                                onClick={handlePay}
-                                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl text-base transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
-                            >
-                                <CreditCard className="w-5 h-5" /> Pay ₹{property.feeAmount} Securely
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={onClose}
+                                    className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-2xl text-sm transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handlePay}
+                                    className="w-2/3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black py-4 rounded-2xl text-base transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+                                >
+                                    <CreditCard className="w-5 h-5" /> Pay ₹{property.feeAmount}
+                                </button>
+                            </div>
                             <p className="text-center text-[10px] text-slate-400">🔒 Secured by Razorpay · 256-bit SSL</p>
                         </>
                     )}
