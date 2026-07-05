@@ -1104,7 +1104,11 @@ export default function AdminPropertyDetailPage() {
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 text-sm text-slate-600"><Mail className="h-4 w-4 text-slate-400" />{p.owner?.email}</div>
                                     <div className="flex items-center gap-2 text-sm text-slate-600"><Phone className="h-4 w-4 text-slate-400" />{p.owner?.phone}</div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-600"><User className="h-4 w-4 text-slate-400" />{p.owner?.id}</div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <User className="h-4 w-4 text-slate-400" />
+                                        <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px] mr-1">Owner ID:</span> 
+                                        {p.owner?.displayId || p.owner?.id}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
