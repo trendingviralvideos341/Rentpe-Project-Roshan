@@ -11,7 +11,7 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 // Define protected and public routes
 const protectedRoutes = ['/dashboard'];
-const publicRoutes = ['/login', '/signup', '/'];
+const publicRoutes = ['/login', '/signup', '/', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email'];
 
 export default async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
@@ -79,6 +79,11 @@ export default async function middleware(req: NextRequest) {
                 : [role];
         const isImpersonating = !!(session as any).impersonatorId;
 
+        // FIX [3]: Admin impersonating another user — skip all RBAC checks.
+        // Without this, an Admin impersonating a Student would be immediately bounced
+        // back to /dashboard/admin by the RBAC below (since roles[] still contains ADMIN).
+        if (isImpersonating) return NextResponse.next();
+
         // Block non-Admins from Admin dashboard (strict — roles array must include ADMIN)
         if (path.startsWith('/dashboard/admin') && !roles.includes('ADMIN') && role !== 'ADMIN') {
             if (roles.includes('OWNER') || role === 'OWNER') return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
@@ -133,22 +138,34 @@ export default async function middleware(req: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
 
-        // Legacy staff routes redirection
+        // FIX [4]: Onboarder/Verifier RBAC — redirect to /dashboard/student, not homepage.
+        // Sending them to '/' drops them on the marketing page which is confusing UX.
         if (path.startsWith('/dashboard/onboarder') && role !== 'ONBOARDER') {
-            return NextResponse.redirect(new URL('/', req.nextUrl));
+            if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
+            if (roles.includes('OWNER') || role === 'OWNER') return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
         if (path.startsWith('/dashboard/verifier') && role !== 'VERIFIER') {
-            return NextResponse.redirect(new URL('/', req.nextUrl));
+            if (roles.includes('ADMIN') || role === 'ADMIN') return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
+            if (roles.includes('OWNER') || role === 'OWNER') return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+            return NextResponse.redirect(new URL('/dashboard/student', req.nextUrl));
         }
     }
 
     // 4. Redirect to dashboard if trying to access auth pages while logged in
     if (isPublicRoute && session && (path === '/login' || path === '/signup')) {
-        const role = (session as any).role;
+        // FIX [1]: Use primaryRole for redirect — dual-role users who switched to Owner mode
+        // have role='USER' (signup role) but primaryRole='OWNER' (active mode). Without this,
+        // they'd land on /dashboard/student every time they revisit /login.
+        const role = (session as any).primaryRole || (session as any).role;
         if (role === 'ADMIN') {
             return NextResponse.redirect(new URL('/dashboard/admin', req.nextUrl));
         } else if (role === 'OWNER') {
             return NextResponse.redirect(new URL('/dashboard/owner', req.nextUrl));
+        } else if (role === 'ONBOARDER') {
+            return NextResponse.redirect(new URL('/dashboard/onboarder', req.nextUrl));
+        } else if (role === 'VERIFIER') {
+            return NextResponse.redirect(new URL('/dashboard/verifier', req.nextUrl));
         } else if (role === 'STAFF') {
             return NextResponse.redirect(new URL('/dashboard/staff', req.nextUrl));
         } else {
