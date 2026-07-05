@@ -546,6 +546,15 @@ export default function AdminPropertiesPage() {
                                 <p className="text-xs text-slate-400 font-medium">ID: {actionModal.prop.displayId}</p>
                             </div>
 
+                            {actionModal.type !== 'view_correction' && (
+                                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                                    <p className="text-sm text-amber-800 font-medium leading-relaxed">
+                                        ⚠️ You are taking action on this property in the <strong className="font-bold bg-amber-100 px-1 rounded uppercase tracking-wider">{actionModal.prop.status.replace(/_/g, ' ')}</strong> stage. 
+                                        Please make sure you have verified all the documents and details correctly before confirming.
+                                    </p>
+                                </div>
+                            )}
+
                             {(actionModal.type === 'reject' || actionModal.type === 'correction' || actionModal.type === 'rollback') && (
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Reason / Note <span className="text-red-500">*</span></label>
