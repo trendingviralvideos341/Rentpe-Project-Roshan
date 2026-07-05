@@ -547,7 +547,7 @@ export default function AdminPropertiesPage() {
                                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
                                     {actionModal.type === 'approve' ? (actionModal.prop.status === 'APPROVED_PENDING_PAYMENT' ? 'Final Activation' : 'Approve Submission') : 
                                      actionModal.type === 'verify' ? 'Confirm Verification' :
-                                     actionModal.type === 'make_live' ? 'Verify Bank & Make Live' :
+                                     actionModal.type === 'make_live' ? 'Activate — Make Property Live' :
                                      actionModal.type === 'request_bank' ? 'Request Bank Details' :
                                      actionModal.type === 'correction' ? 'Request Correction' :
                                      actionModal.type === 'view_correction' ? 'Correction Details' :
@@ -603,30 +603,7 @@ export default function AdminPropertiesPage() {
                                 </div>
                             )}
 
-                            {actionModal.type === 'make_live' && (
-                                <div className="space-y-3">
-                                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
-                                        <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">Bank Account</p>
-                                        <p className="text-sm font-mono font-black text-slate-900">{actionModal.prop.bankAccountNo}</p>
-                                    </div>
-                                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
-                                        <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">IFSC Code</p>
-                                        <p className="text-sm font-mono font-black text-slate-900 uppercase">{actionModal.prop.bankIfsc}</p>
-                                    </div>
-                                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
-                                        <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">Beneficiary Name</p>
-                                        <p className="text-sm font-black text-slate-900">{actionModal.prop.bankName}</p>
-                                    </div>
-                                    {actionModal.prop.cancelChequeUrl && (
-                                        <div className="mt-4">
-                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Cancelled Cheque Photo</p>
-                                            <a href={actionModal.prop.cancelChequeUrl} target="_blank" rel="noopener noreferrer">
-                                                <img src={actionModal.prop.cancelChequeUrl} alt="Cancelled Cheque" className="w-full h-40 object-cover rounded-xl border-2 border-slate-200 shadow-sm" />
-                                            </a>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+
 
                             <div className="flex gap-3 pt-4">
                                 <Button 
