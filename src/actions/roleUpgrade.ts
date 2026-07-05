@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { generateSequentialId } from "@/lib/ids";
 
 // ─── 1. Student requests Owner role upgrade ───────────────────────────────────
 export async function requestOwnerUpgrade(
@@ -106,7 +107,7 @@ export async function processRoleUpgradeRequest(
     // Fetch the request
     const request = await (prisma as any).roleUpgradeRequest.findUnique({
         where: { id: requestId },
-        include: { user: { select: { id: true, name: true, email: true, roles: true, isOwner: true } } }
+        include: { user: { select: { id: true, name: true, email: true, roles: true, isOwner: true, displayId: true } } }
     });
 
     if (!request) throw new Error("Request not found");
@@ -118,11 +119,20 @@ export async function processRoleUpgradeRequest(
     if (decision === 'APPROVED') {
         // Add OWNER to user.roles array and update flags
         const updatedRoles = Array.from(new Set([...targetUser.roles, 'OWNER']));
+
+        // Generate a proper RP-O- displayId if the user still has RP-U- prefix
+        let newDisplayId: string | undefined;
+        if (!targetUser.displayId || !targetUser.displayId.startsWith('RP-O-')) {
+            newDisplayId = await generateSequentialId('OWNER');
+        }
+
         await prisma.user.update({
             where: { id: targetUser.id },
             data: {
                 roles: updatedRoles,
                 isOwner: true,
+                // Upgrade displayId from RP-U- to RP-O- since they are now an Owner
+                ...(newDisplayId ? { displayId: newDisplayId, applicationId: newDisplayId } : {}),
                 // Keep primaryRole/role as USER until they explicitly switch
             }
         });
