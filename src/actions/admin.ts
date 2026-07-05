@@ -209,8 +209,6 @@ export async function adminUpdateUserProfile(userId: string, data: { name?: stri
     return user;
 }
 
-
-
 export async function getTransactions() {
     try {
         const session = await getSession();
@@ -1947,5 +1945,33 @@ export async function verifyBankDetails(propertyId: string) {
     return result;
 }
 
+export async function bypassOnboardingPayment(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error('Property not found');
 
+    await prisma.property.update({
+        where: { id: propertyId },
+        data: {
+            status: 'APPROVED_PAYMENT_VERIFIED',
+            onboardingPaidAt: new Date(),
+            onboardingPaymentMethod: 'NOT_CHARGED',
+        },
+    });
+
+    await logAuditEvent({
+        actorId: (session as any).userId,
+        actorRole: (session as any).role || 'ADMIN',
+        actorName: (session as any).name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        entityName: property.name,
+        description: `Admin bypassed onboarding payment for property ${property.name} — registered when fees were disabled.`,
+    });
+
+    revalidatePath('/dashboard/admin/properties');
+    return { success: true };
+}

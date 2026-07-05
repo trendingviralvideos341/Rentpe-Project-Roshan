@@ -49,7 +49,7 @@ export async function getProperties(ownerId?: string) {
                 select: { id: true, roomNumber: true, status: true }
             },
             owner: {
-                select: { name: true, email: true }
+                select: { name: true, email: true, phone: true }
             }
         },
         orderBy: { updatedAt: 'desc' }
@@ -198,9 +198,9 @@ export async function createProperty(data: FormData | any) {
         throw new Error("Food price per month is required when food service is Optional.");
     }
 
-    const onboardingFee = settings?.feesEnabled ? settings.ownerOnboardingFeeFlat : 0;
+    const onboardingFee = (settings?.onboardingFeesEnabled ?? true) ? settings.ownerOnboardingFeeFlat : 0;
     if (onboardingFee > 0 && !feeTermsAccepted) {
-        throw new Error(`Acknowledgment of the Ã¢â€šÂ¹${onboardingFee} platform onboarding fee is mandatory.`);
+        throw new Error(`Acknowledgment of the ₹${onboardingFee} platform onboarding fee is mandatory.`);
     }
 
     const buildingPhotos = getAllVal("buildingPhotos");
