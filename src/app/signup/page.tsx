@@ -214,43 +214,10 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="min-h-screen flex bg-slate-50">
-            {/* Desktop Left Panel */}
-            <div className="hidden md:flex md:w-5/12 bg-[#1A103C] text-white flex-col justify-center px-12 lg:px-20 relative overflow-hidden">
-                <div className="z-10 space-y-10">
-                    <div>
-                        <div className="bg-white/10 w-fit p-3 rounded-2xl mb-6">
-                            <ShieldCheck className="h-10 w-10 text-green-400" />
-                        </div>
-                        <h1 className="text-4xl font-bold leading-tight mb-4">The secure way to rent and manage properties.</h1>
-                        <p className="text-indigo-200 text-lg">Join RentPe and experience transparent, hassle-free rentals.</p>
-                    </div>
-                    
-                    <div className="space-y-6 pt-4">
-                        <div className="flex items-center gap-4">
-                            <CheckCircle className="h-6 w-6 text-green-400 shrink-0" />
-                            <span className="text-lg">Verified Users & Properties</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <CheckCircle className="h-6 w-6 text-green-400 shrink-0" />
-                            <span className="text-lg">Zero Hidden Charges</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <CheckCircle className="h-6 w-6 text-green-400 shrink-0" />
-                            <span className="text-lg">Secure Digital Agreements</span>
-                        </div>
-                    </div>
-                </div>
-                {/* Decorative circles */}
-                <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
-                <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
-            </div>
-
-            {/* Right Panel - Form */}
-            <div className="w-full md:w-7/12 flex items-center justify-center p-4 py-8">
-                <div className="w-full max-w-[420px] mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
-                    
-                    {/* Progress Indicator */}
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 py-8">
+            <div className="w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+                
+                {/* Progress Indicator */}
                     <div className="flex justify-center gap-2 mb-8">
                         <div className={`h-1.5 rounded-full w-4 transition-colors ${step >= 1 ? (step > 1 ? 'bg-green-500' : 'bg-blue-600') : 'bg-gray-200'}`} />
                         <div className={`h-1.5 rounded-full w-4 transition-colors ${step >= 2 ? (step > 2 ? 'bg-green-500' : 'bg-blue-600') : 'bg-gray-200'}`} />
