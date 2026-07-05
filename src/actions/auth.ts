@@ -332,6 +332,7 @@ export async function verify2FALogin(userId: string, token: string) {
                 email: true,
                 role: true,
                 roles: true,
+                primaryRole: true,
                 name: true,
                 phone: true,
                 displayId: true,
@@ -394,7 +395,18 @@ export async function verify2FALogin(userId: string, token: string) {
             data: { lastLoginAt: new Date() }
         });
 
-        return { success: true, redirect: user.role === 'ADMIN' ? '/dashboard/admin' : user.role === 'OWNER' ? '/dashboard/owner' : user.role === 'STAFF' ? '/dashboard/staff' : '/dashboard/student' };
+        // FIX [2]: Use primaryRole for redirect so dual-role users land on the correct dashboard.
+        // user.role is the authoritative role (set at signup); primaryRole is the last-active dashboard.
+        const primaryRole = (user as any).primaryRole ?? user.role;
+        const redirectPath =
+            primaryRole === 'ADMIN'     ? '/dashboard/admin'     :
+            primaryRole === 'OWNER'     ? '/dashboard/owner'     :
+            primaryRole === 'ONBOARDER' ? '/dashboard/onboarder' :
+            primaryRole === 'VERIFIER'  ? '/dashboard/verifier'  :
+            primaryRole === 'STAFF'     ? '/dashboard/staff'     :
+                                          '/dashboard/student';
+
+        return { success: true, redirect: redirectPath };
     } catch (e) {
         console.error("2FA Login Error:", e);
         return { error: 'Authentication failed' };
@@ -450,12 +462,9 @@ export async function verifyEmail(token: string) {
             description: `Email verified successfully for: ${user.email}.`,
         });
 
-        // Send final Welcome Email after verification
-        sendEmail({
-            to: user.email,
-            subject: 'Account Verified! Welcome to RentPe 🚀',
-            html: WelcomeTemplate(user.name || 'Resident'),
-        }).catch(err => console.error('Failed to send welcome email:', err));
+        // FIX [3]: Welcome email removed from here — signup() already sends it immediately
+        // after OTP verification. Sending it again here would result in duplicate welcome emails.
+        // This path is now a legacy fallback for token-based verification (no longer the primary flow).
 
         return { success: true, message: "Email verified successfully! You can now log in." };
     } catch (e) {
@@ -674,7 +683,20 @@ export async function deleteUserAccount() {
 
     try {
         const userId = session.userId as string;
-        
+
+        // FIX [4]: Block deletion if user has any active bookings/tenancy.
+        // Deleting an account mid-tenancy would orphan the owner's tenant records and break active agreements.
+        const activeBookings = await prisma.booking.count({
+            where: {
+                userId,
+                status: { in: ['ACTIVE', 'APPROVED', 'APPLIED'] },
+                deletedAt: null,
+            }
+        });
+        if (activeBookings > 0) {
+            return { error: 'Cannot delete account with active bookings. Please vacate your current PG first.' };
+        }
+
         // 1. Mark user as DELETED (Anonymization)
         await prisma.user.update({
             where: { id: userId },
@@ -712,9 +734,21 @@ export async function getSecurityLogs() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
+    // FIX [5]: Previously queried 'LOGIN_FAILURE' and 'ACCOUNT_PURGED' which are never written.
+    // Actual logged values are: 'LOGIN' (for both success & failure), 'LOGOUT', and 'DELETE'.
+    // We filter failures by checking the description for 'Failed' to surface only security events.
     return await prisma.auditLog.findMany({
         where: {
-            actionType: { in: ['LOGIN_FAILURE', 'ACCOUNT_PURGED'] }
+            OR: [
+                {
+                    actionType: { in: ['LOGIN', 'LOGOUT', 'DELETE'] },
+                    description: { contains: 'Failed' }
+                },
+                {
+                    actionType: 'DELETE',
+                    entityType: 'USER',
+                }
+            ]
         },
         orderBy: { createdAt: 'desc' },
         take: 50
