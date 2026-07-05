@@ -980,10 +980,10 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                         <div className={`text-xs font-bold px-2 py-1 rounded w-fit ${previewDoc.status === "VERIFIED" ? "bg-green-100 text-green-700" : previewDoc.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
                             {previewDoc.status}{previewDoc.rejectedNote ? ` — ${previewDoc.rejectedNote}` : ""}
                         </div>
-                        {previewDoc.fileData?.startsWith("data:image") ? (
-                            <img src={previewDoc.fileData} alt="Document" className="w-full rounded-lg border max-h-96 object-contain" />
-                        ) : previewDoc.fileData?.startsWith("data:application/pdf") ? (
-                            <div className="p-4 bg-muted rounded text-center text-sm">📄 PDF — <a href={previewDoc.fileData} download={previewDoc.fileName} className="text-blue-600 underline">Download</a></div>
+                        {previewDoc.fileUrl?.startsWith("data:image") ? (
+                            <img src={previewDoc.fileUrl} alt="Document" className="w-full rounded-lg border max-h-96 object-contain" />
+                        ) : previewDoc.fileUrl?.startsWith("data:application/pdf") ? (
+                            <div className="p-4 bg-muted rounded text-center text-sm">📄 PDF — <a href={previewDoc.fileUrl} download={previewDoc.fileName} className="text-blue-600 underline">Download</a></div>
                         ) : (
                             <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">Preview not available</div>
                         )}

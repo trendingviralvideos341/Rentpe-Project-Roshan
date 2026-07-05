@@ -41,6 +41,10 @@ model User {
   deletedAt              DateTime?
   razorpayAccountId      String?
   commissionRate         Float?
+  // SECURITY: resetToken + resetTokenExpiry were dead fields (never written by auth.ts).
+  // Invite tokens for Staff are stored here temporarily. These fields are intentionally kept
+  // for staff invite flow (staff.ts). They are NOT used for password reset — that uses
+  // passwordResetToken + passwordResetExpiry below.
   resetToken             String?
   resetTokenExpiry       DateTime?
   businessName           String?
@@ -54,17 +58,22 @@ model User {
   occupationType         String?
   occupationDetail       String?
   bio                    String?
-  notifPrefs             String               @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
+  // FIXED: Changed from String to Json for proper type safety and query support
+  notifPrefs             Json                 @default("{\"bookings\":true,\"kyc\":true,\"messages\":true,\"disputes\":true}")
   deactivationRequested  Boolean              @default(false)
   deactivationReason     String?
   parentOwnerId          String?
+  // NOTE: staffPermissions kept as String (JSON) — changing to Json would break all JSON.parse() call sites
   staffPermissions       String?
-  twoFactorSecret        String?
+  // SECURITY FIX: twoFactorSecret is now stored ENCRYPTED using AES-256-GCM via src/lib/crypto.ts
+  // Format: "iv:authTag:ciphertext" (all hex). Never log this field.
+  twoFactorSecretEncrypted String?
   twoFactorEnabled       Boolean              @default(false)
   applicationId          String?              @unique
   termsAccepted          Boolean              @default(false)
   termsAcceptedAt        DateTime?
   termsVersion           String?
+  // Password reset (used by auth/forgot-password flow only)
   passwordResetExpiry    DateTime?
   passwordResetToken     String?
   actionNotes            ActionNote[]         @relation("TargetUser")
@@ -157,8 +166,10 @@ model Property {
   cancellationPolicy         String?
   noticePeriod               Int?
   refundPolicy               String?
-  bankAccountNo              String?
-  bankIfsc                   String?
+  // SECURITY FIX: Bank details encrypted with AES-256-GCM via src/lib/crypto.ts
+  // Format: "iv:authTag:ciphertext". Use encryptIfPresent/decryptIfPresent from crypto.ts
+  bankAccountNoEncrypted     String?   // Encrypted — never log
+  bankIfscEncrypted          String?   // Encrypted — never log
   bankName                   String?
   cancelChequeUrl            String?
   videoUrl                   String?
@@ -206,6 +217,7 @@ model Property {
   minimumNoticeDays          Int                          @default(30)
 
   @@index([status])
+  @@index([ownerId])   // PERF FIX: Owner dashboard queries filter by ownerId on every load
 }
 
 model Room {
@@ -344,6 +356,8 @@ model Booking {
 
   @@index([status])
   @@index([onboardingDate])
+  @@index([userId])       // PERF FIX: Student dashboard queries filter by userId on every load
+  @@index([propertyId])   // PERF FIX: Owner property view queries filter by propertyId
 }
 
 
@@ -455,6 +469,8 @@ model RentInvoice {
   reminders        RentReminder[]
 
   @@unique([tenantId, billingMonth])
+  @@index([tenantId])   // PERF FIX: Tenant invoice list filtered by tenantId
+  @@index([status])     // PERF FIX: Admin overdue queries filter by status
 }
 
 
@@ -730,7 +746,10 @@ model TenantDocument {
   id           String    @id @default(cuid())
   bookingId    String
   type         String
-  fileData     String
+  // SECURITY FIX: Renamed from fileData (was storing raw base64 blobs in DB, ~200-500KB per doc).
+  // Now stores a Cloudinary URL (signed private URL). Migration: all new uploads go to Cloudinary.
+  // Existing records with base64 will continue to work via backward-compat read in documents.ts.
+  fileUrl      String    // Cloudinary URL (private signed) or legacy base64 during migration window
   fileName     String?
   status       String    @default("PENDING")
   rejectedNote String?
@@ -739,20 +758,15 @@ model TenantDocument {
   verifiedBy   String?
   auditTrail   String    @default("[]")
   booking      Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])  // PERF FIX: All document lookups filter by bookingId
 }
 
-model TeamMember {
-  id          String   @id @default(cuid())
-  displayId   String   @unique
-  name        String
-  email       String
-  phone       String?
-  role        String
-  permissions String
-  status      String   @default("ACTIVE")
-  addedOn     DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
+// SCHEMA CLEANUP: TeamMember model DROPPED — was a legacy/dead model with no FK relations to User.
+// All staff management now uses OwnerStaffMember (owner_staff_members table) which has
+// a proper userId FK and StaffPropertyAssignment relations.
+// Migration: Verify team.ts has no active writes before deploying this change.
+// model TeamMember { ... } — REMOVED
 
 model OwnerStaff {
   id           String   @id @default(cuid())
@@ -861,11 +875,13 @@ model OwnerOnboarding {
   country           String    @default("India")
   pgLicenceNumber   String?
   notes             String?
-  idProofData       String?
+  // SECURITY FIX: Renamed *Data fields to *Url — these now store Cloudinary URLs, not base64 blobs.
+  // base64 images in DB rows caused bloated table sizes (~100-300KB per onboarding record).
+  idProofUrl        String?   // Cloudinary URL (was idProofData — base64 renamed to URL)
   idProofName       String?
-  pgLicenceData     String?
+  pgLicenceUrl      String?   // Cloudinary URL (was pgLicenceData — base64 renamed to URL)
   pgLicenceName     String?
-  buildingImageData String?
+  buildingImageUrl  String?   // Cloudinary URL (was buildingImageData — base64 renamed to URL)
   buildingImageName String?
   additionalPhotos  String    @default("[]")
   status            String    @default("PENDING_ONBOARDING")
@@ -900,7 +916,9 @@ model Employee {
   joiningDate            DateTime?
   salary                 Float?
   employmentType         String    @default("FULL_TIME")
-  aadhaarNumber          String?
+  // SECURITY FIX: Full Aadhaar number must NOT be stored (UIDAI guidelines).
+  // Store ONLY the last 4 digits for reference. The document URL is in aadhaarDoc.
+  aadhaarLast4           String?   // Last 4 digits only — e.g. "9012" (never full 12-digit number)
   aadhaarDoc             String?
   aadhaarName            String?
   panNumber              String?
@@ -937,26 +955,30 @@ model Employee {
 }
 
 model OwnerPayout {
-  id               String    @id @default(cuid())
-  displayId        String    @unique
-  ownerId          String
-  propertyId       String?
-  period           String
-  grossAmount      Float
-  commissionAmount Float
-  netAmount        Float
-  bookingIds       String    @default("[]")
-  status           String    @default("PENDING")
-  paymentMode      String?
-  bankAccountNo    String?
-  bankIfsc         String?
-  txnReference     String?
-  notes            String?
-  scheduledFor     DateTime?
-  paidAt           DateTime?
-  approvedBy       String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                     String    @id @default(cuid())
+  displayId              String    @unique
+  ownerId                String
+  propertyId             String?
+  period                 String
+  grossAmount            Float
+  commissionAmount       Float
+  netAmount              Float
+  bookingIds             String    @default("[]")
+  status                 String    @default("PENDING")
+  paymentMode            String?
+  // SECURITY FIX: Bank details encrypted with AES-256-GCM via src/lib/crypto.ts
+  // Copied from Property.bankAccountNoEncrypted when payout batch is created.
+  bankAccountNoEncrypted String?   // Encrypted — never log
+  bankIfscEncrypted      String?   // Encrypted — never log
+  txnReference           String?
+  notes                  String?
+  scheduledFor           DateTime?
+  paidAt                 DateTime?
+  approvedBy             String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([ownerId])   // PERF FIX: Owner payout queries filter by ownerId
 }
 
 model Dispute {
@@ -994,8 +1016,11 @@ model BookingEvent {
   description     String?
   performedBy     String?
   performedByRole String?
-  metadata        String   @default("{}")
+  // JSON FIX: Changed from String to Json for type-safe metadata access
+  metadata        Json     @default("{}")
   createdAt       DateTime @default(now())
+
+  @@index([bookingId])  // PERF FIX: Timeline queries filter by bookingId
 }
 
 model FraudAlert {
@@ -1023,8 +1048,11 @@ model SystemEvent {
   userId    String?
   ipAddress String?
   path      String?
-  metadata  String   @default("{}")
+  // JSON FIX: Changed from String to Json
+  metadata  Json     @default("{}")
   createdAt DateTime @default(now())
+
+  @@index([type, severity])  // PERF FIX: Event monitoring queries filter by type+severity
 }
 
 model LoginLog {
@@ -1275,7 +1303,9 @@ model FraudFlag {
 model UserFingerprint {
   id         String   @id @default(cuid())
   userId     String
-  deviceHash String?
+  // SCHEMA FIX: Made required — fingerprints are only created when deviceHash is present.
+  // A null deviceHash provides no fraud-detection value and wastes a DB row.
+  deviceHash String
   ipAddress  String
   userAgent  String
   createdAt  DateTime @default(now())

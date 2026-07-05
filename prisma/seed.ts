@@ -237,24 +237,28 @@ async function main() {
         console.log("ℹ️ Food menu already exists");
     }
 
-    // ─── Team Members ────────────────────────────────
-    const existingTeam = await prisma.teamMember.findFirst({ where: { email: "neha@rentpe.in" } });
+    // ─── Team Members (now using Employee model — TeamMember was dropped July 2026) ──
+    const existingTeam = await prisma.employee.findFirst({ where: { email: "neha@rentpe.in" } });
     if (!existingTeam) {
-        await prisma.teamMember.create({
+        await prisma.employee.create({
             data: {
                 displayId: "RP-E-10000001", name: "Neha Kapoor", email: "neha@rentpe.in", phone: "9001020304",
-                role: "Support Lead", permissions: JSON.stringify(["login_issues", "payment_failed", "support_tickets", "booking_disputes"]),
+                designation: "Support Lead",      // Employee uses designation (not role)
+                department: "Customer Support",    // required field
+                permissions: JSON.stringify(["login_issues", "payment_failed", "support_tickets", "booking_disputes"]),
                 status: "ACTIVE"
             }
         });
-        await prisma.teamMember.create({
+        await prisma.employee.create({
             data: {
                 displayId: "RP-E-10000002", name: "Rajesh Pandey", email: "rajesh@rentpe.in", phone: "9405060708",
-                role: "Finance Ops", permissions: JSON.stringify(["payment_failed", "transaction_view", "reports"]),
+                designation: "Finance Ops",
+                department: "Finance",
+                permissions: JSON.stringify(["payment_failed", "transaction_view", "reports"]),
                 status: "ACTIVE"
             }
         });
-        console.log("✅ Admin team members created");
+        console.log("✅ Admin team members created (Employee model)");
     } else {
         console.log("ℹ️ Admin team members already exist");
     }

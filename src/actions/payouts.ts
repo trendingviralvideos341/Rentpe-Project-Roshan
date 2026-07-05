@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { encryptIfPresent, decryptIfPresent, maskBankAccount } from "@/lib/crypto";
 
 /**
  * Admin creates a payout batch for an owner
@@ -42,8 +43,13 @@ export async function createPayoutBatch(data: {
             status: 'PENDING',
             paymentMode: data.paymentMode,
             scheduledFor: data.scheduledFor,
-            bankAccountNo: property?.bankAccountNo,
-            bankIfsc: property?.bankIfsc,
+            // SECURITY FIX: Encrypt bank details before storing
+            bankAccountNoEncrypted: encryptIfPresent((property as any)?.bankAccountNoEncrypted
+                ? decryptIfPresent((property as any).bankAccountNoEncrypted)
+                : null),
+            bankIfscEncrypted: encryptIfPresent((property as any)?.bankIfscEncrypted
+                ? decryptIfPresent((property as any).bankIfscEncrypted)
+                : null),
             notes: data.notes,
         }
     });
@@ -129,16 +135,30 @@ export async function getAllPayouts(status?: string) {
 }
 
 /**
- * Owner gets their own payouts
+ * Owner gets their own payouts — bank account numbers masked for display
  */
 export async function getMyPayouts() {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
-    return prisma.ownerPayout.findMany({
+    const payouts = await prisma.ownerPayout.findMany({
         where: { ownerId: session.userId },
         orderBy: { createdAt: 'desc' }
     });
+
+    // Decrypt and mask bank account for display (owner can see last 4 digits only)
+    return payouts.map(p => ({
+        ...p,
+        bankAccountDisplay: p.bankAccountNoEncrypted
+            ? maskBankAccount(decryptIfPresent(p.bankAccountNoEncrypted) || '')
+            : null,
+        bankIfscDisplay: p.bankIfscEncrypted
+            ? decryptIfPresent(p.bankIfscEncrypted)
+            : null,
+        // Never return encrypted raw values
+        bankAccountNoEncrypted: undefined,
+        bankIfscEncrypted: undefined,
+    }));
 }
 
 /**

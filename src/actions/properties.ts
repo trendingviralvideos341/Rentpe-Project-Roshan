@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
+import { encryptIfPresent } from '@/lib/crypto';
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
@@ -1384,8 +1385,9 @@ export async function submitBankDetails(propertyId: string, bankData: { bankAcco
         await tx.property.update({
             where: { id: propertyId },
             data: {
-                bankAccountNo: bankData.bankAccountNo,
-                bankIfsc: bankData.bankIfsc,
+                // SECURITY FIX: Encrypt bank details with AES-256-GCM before storing
+                bankAccountNoEncrypted: encryptIfPresent(bankData.bankAccountNo),
+                bankIfscEncrypted: encryptIfPresent(bankData.bankIfsc),
                 bankName: bankData.bankName,
                 cancelChequeUrl: bankData.cancelChequeUrl,
                 status: 'BANK_DETAILS_SUBMITTED'

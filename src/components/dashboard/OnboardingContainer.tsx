@@ -500,14 +500,14 @@ function OnboardingCard({ booking, rooms, properties, onRefresh }: { booking: an
                              </button>
                         </div>
                         <div className="p-8 bg-slate-50 flex items-center justify-center min-h-[400px]">
-                            {previewDoc.fileData?.includes("pdf") ? (
+                            {previewDoc.fileUrl?.includes("pdf") ? (
                                 <div className="text-center space-y-4">
                                     <div className="text-6xl text-slate-300">📄</div>
                                     <p className="font-bold text-slate-500">Document available in PDF format</p>
-                                    <Button asChild className="rounded-xl font-bold bg-indigo-600"><a href={previewDoc.fileData} download>DOWNLOAD PDF</a></Button>
+                                    <Button asChild className="rounded-xl font-bold bg-indigo-600"><a href={previewDoc.fileUrl} download>DOWNLOAD PDF</a></Button>
                                 </div>
                             ) : (
-                                <img src={previewDoc.fileData} className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl border-4 border-white object-contain" alt="Document" />
+                                <img src={previewDoc.fileUrl} className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl border-4 border-white object-contain" alt="Document" />
                             )}
                         </div>
                     </DialogContent>

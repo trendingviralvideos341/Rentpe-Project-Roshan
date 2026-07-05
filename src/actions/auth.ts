@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { sendEmail } from '@/lib/email';
 import { WelcomeTemplate, EmailVerificationTemplate, PasswordResetTemplate } from '@/lib/email-templates';
 import { verify2FAToken } from "@/lib/2fa";
+import { decrypt } from "@/lib/crypto";
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { encryptPassword, comparePassword, signJWT, getSession } from '@/lib/auth';
@@ -187,7 +188,7 @@ export async function login(formData: FormData) {
                 displayId: true,
                 phone: true,
                 twoFactorEnabled: true,
-                twoFactorSecret: true,
+                twoFactorSecretEncrypted: true,
                 emailVerified: true,
             }
         });
@@ -337,15 +338,17 @@ export async function verify2FALogin(userId: string, token: string) {
                 phone: true,
                 displayId: true,
                 twoFactorEnabled: true,
-                twoFactorSecret: true,
+                twoFactorSecretEncrypted: true,
             }
         });
 
-        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+        if (!user || !user.twoFactorEnabled || !user.twoFactorSecretEncrypted) {
             return { error: 'Invalid session or 2FA not enabled' };
         }
 
-        const isValid = verify2FAToken(user.twoFactorSecret, token);
+        // SECURITY FIX: Decrypt the stored secret before TOTP verification
+        const decryptedSecret = decrypt(user.twoFactorSecretEncrypted);
+        const isValid = verify2FAToken(decryptedSecret, token);
         if (!isValid) {
             return { error: 'Invalid verification code' };
         }

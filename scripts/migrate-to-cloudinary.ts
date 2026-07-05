@@ -30,16 +30,16 @@ async function uploadToCloudinary(base64Data: string, folder: string): Promise<s
 async function migrate() {
   console.log('🚀 Starting Cloudinary Migration...');
 
-  // 1. Tenant Documents
+  // 1. Tenant Documents — fileData was renamed to fileUrl in July 2026 schema cleanup
   const docs = await prisma.tenantDocument.findMany({
-    where: { fileData: { startsWith: 'data:' } }
+    where: { fileUrl: { startsWith: 'data:' } }
   });
   console.log(`Found ${docs.length} Tenant Documents to migrate.`);
   for (const doc of docs) {
-    const url = await uploadToCloudinary(doc.fileData, `kyc/${doc.bookingId}`);
+    const url = await uploadToCloudinary(doc.fileUrl, `kyc/${doc.bookingId}`);
     await prisma.tenantDocument.update({
       where: { id: doc.id },
-      data: { fileData: url }
+      data: { fileUrl: url }
     });
   }
 
@@ -108,12 +108,12 @@ async function migrate() {
     }
   }
 
-  // 4. Owner Onboarding
+  // 4. Owner Onboarding — *Data fields renamed to *Url in July 2026 schema cleanup
   const onboards = await prisma.ownerOnboarding.findMany();
   console.log(`Checking ${onboards.length} Owner Onboarding records...`);
   for (const o of onboards) {
     const updateData: any = {};
-    const fields = ['idProofData', 'pgLicenceData', 'buildingImageData'];
+    const fields = ['idProofUrl', 'pgLicenceUrl', 'buildingImageUrl'];
     for (const f of fields) {
         const val = (o as any)[f];
         if (val && val.startsWith('data:')) {

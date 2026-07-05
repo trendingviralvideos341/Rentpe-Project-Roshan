@@ -88,7 +88,8 @@ export interface TenantDocument {
     id: string;
     bookingId: string;
     type: string;
-    fileData: string;
+    /** SECURITY FIX: Renamed from fileData. Stores a Cloudinary signed URL (not base64). */
+    fileUrl: string;
     fileName?: string | null;
     status: 'PENDING' | 'VERIFIED' | 'REJECTED';
     rejectedNote?: string | null;

@@ -324,8 +324,8 @@ function AdminBookingDetail({ booking, rooms, onRefresh, defaultTab = "onboardin
                                     <h2 className="font-bold">{TYPE_LABELS[previewDoc.type] || "Document Preview"}</h2>
                                     <XCircle className="h-5 w-5 cursor-pointer text-muted-foreground" onClick={() => setPreviewDoc(null)} />
                                 </div>
-                                {previewDoc.fileData?.startsWith("data:image") ? (
-                                    <img src={previewDoc.fileData} alt="Doc" className="w-full rounded border max-h-80 object-contain" />
+                                {previewDoc.fileUrl?.startsWith("data:image") ? (
+                                    <img src={previewDoc.fileUrl} alt="Doc" className="w-full rounded border max-h-80 object-contain" />
                                 ) : (
                                     <div className="h-40 flex items-center justify-center bg-muted rounded text-xs">Preview unavailable</div>
                                 )}

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
             document = await prisma.tenantDocument.update({
                 where: { id: existingDoc.id },
                 data: {
-                    fileData: url,
+                    fileUrl: url,    // SECURITY FIX: Renamed from fileData — stores Cloudinary URL only
                     fileName: fileName || null,
                     status: 'PENDING',
                     uploadedAt: new Date(),
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
                 data: {
                     bookingId,
                     type,
-                    fileData: url,
+                    fileUrl: url,    // SECURITY FIX: Renamed from fileData — stores Cloudinary URL only
                     fileName: fileName || null,
                     status: 'PENDING',
                     auditTrail: JSON.stringify([{ action: 'UPLOAD', by: (session as any).userId, at: new Date() }])

@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -59,7 +59,7 @@ export async function uploadTenantDocument(data: {
         return await prisma.tenantDocument.update({
             where: { id: existing.id },
             data: {
-                fileData: cloudUrl,
+                fileUrl: cloudUrl,          // SECURITY FIX: Cloudinary URL replaces base64 fileData
                 fileName: data.fileName,
                 status: 'PENDING',
                 rejectedNote: null,
@@ -75,7 +75,7 @@ export async function uploadTenantDocument(data: {
         data: {
             bookingId: data.bookingId,
             type: data.type,
-            fileData: cloudUrl,
+            fileUrl: cloudUrl,             // SECURITY FIX: Cloudinary URL replaces base64 fileData
             fileName: data.fileName,
             status: 'PENDING',
             auditTrail: JSON.stringify([auditEvent])
