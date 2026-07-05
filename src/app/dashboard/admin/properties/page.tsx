@@ -139,7 +139,7 @@ export default function AdminPropertiesPage() {
                 await requestBankDetails(propId);
                 toast.success(`Requested Bank Details for "${propName}"`);
             } else if (actionModal.type === "make_live") {
-                await manualMakePropertyLive(propId);
+                await activateProperty(propId, actionReason || "Activated via admin properties queue");
                 toast.success(`"${propName}" is now LIVE!`);
             } else if (actionModal.type === "reject") {
                 if (!actionReason.trim()) throw new Error("Reason required");
@@ -217,7 +217,12 @@ export default function AdminPropertiesPage() {
                         }`}
                     >
                         <span className={`text-[9px] font-black uppercase tracking-widest leading-tight ${filter === s.key ? 'text-slate-300' : 'opacity-60'}`}>{s.label}</span>
-                        <span className={`text-2xl font-black ${filter === s.key ? 'text-white' : s.color}`}>{statusCounts[s.key] || 0}</span>
+                        <span className={`text-2xl font-black ${filter === s.key ? 'text-white' : s.color}`}>
+                            {s.key === 'APPROVED_PENDING_PAYMENT'
+                                ? (statusCounts['APPROVED_PENDING_PAYMENT'] || 0) + (statusCounts['APPROVED_PAYMENT_VERIFIED'] || 0)
+                                : (statusCounts[s.key] || 0)
+                            }
+                        </span>
                     </button>
                 ))}
             </div>
@@ -504,8 +509,8 @@ export default function AdminPropertiesPage() {
 
                                         {prop.status === 'APPROVED_PAYMENT_VERIFIED' && (
                                             <Button 
-                                                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-emerald-100"
-                                                onClick={() => setActionModal({ type: "approve", prop })}
+                                                className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-emerald-100 animate-pulse"
+                                                onClick={() => setActionModal({ type: "make_live", prop })}
                                             >
                                                 Activate & Make Live <CheckCircle className="h-3 w-3 ml-1.5" />
                                             </Button>
