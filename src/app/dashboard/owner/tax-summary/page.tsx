@@ -8,9 +8,6 @@ import {
     BadgeCheck, AlertTriangle, TrendingUp, Receipt, Building2,
     Eye, X, Info, CheckSquare, Square, CalendarDays, HelpCircle, Search
 } from 'lucide-react';
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer
-} from 'recharts';
 
 function buildFYOptions() {
     const year = new Date().getFullYear();
@@ -68,7 +65,6 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'indigo' }: any) {
 }
 
 export default function TaxSummaryPage() {
-    const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
     const [report, setReport] = useState<any>(null);
@@ -157,7 +153,6 @@ export default function TaxSummaryPage() {
     };
 
     useEffect(() => {
-        setMounted(true);
         reload(selectedFY);
     }, [selectedFY]);
 
@@ -280,13 +275,6 @@ export default function TaxSummaryPage() {
 
     const s = report?.summary;
 
-    // Map data for charts
-    const chartData = [...monthly].reverse().map(m => ({
-        name: m.month.split(' ')[0],
-        Rent: m.grossRent,
-        Commission: m.platformFee + m.gst,
-    }));
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20">
             {/* Premium Header */}
@@ -378,11 +366,6 @@ export default function TaxSummaryPage() {
                 {/* ── Tab 1: Financial Overview ── */}
                 {activeTab === 'overview' && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        {/* Summary Banner */}
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-700 font-medium">
-                            📊 This tab displays your high-level earnings, platform expenses, and legal CA guidance to help you file taxes.
-                        </div>
-
                         {/* KPI Cards */}
                         {s && (
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -395,31 +378,6 @@ export default function TaxSummaryPage() {
                                 {s.totalOnboardingPaid > 0 && (
                                     <KpiCard label="Property Onboarding Paid" value={fmtShort(s.totalOnboardingPaid)} icon={Building2} color="indigo" sub={`Incl. ${fmtShort(s.totalOnboardingGst)} GST ITC`} />
                                 )}
-                            </div>
-                        )}
-
-                        {/* Visual Analytics */}
-                        {monthly.length > 0 && (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                                <h3 className="font-black text-slate-900 text-lg">Earnings vs. Commission Charges</h3>
-                                <p className="text-xs text-slate-500 mb-6">Compare gross rent processed against total platform fees paid (excl. TDS)</p>
-                                <div className="h-64 w-full flex items-center justify-center">
-                                    {!mounted ? (
-                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
-                                    ) : (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                                <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                                <ChartTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`]} />
-                                                <Legend />
-                                                <Bar dataKey="Rent" name="Gross Rent processed" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                                                <Bar dataKey="Commission" name="Platform Commission + GST" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    )}
-                                </div>
                             </div>
                         )}
 
