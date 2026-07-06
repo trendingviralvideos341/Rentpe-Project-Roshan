@@ -691,7 +691,7 @@ function BookingCard({
                     )}
 
                     {!isActive && !isVacating && !isCompleted && !isCancelled && booking.status !== 'REJECTED' && (
-                        <button onClick={() => handleCancel(booking.id, booking.propertyName)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : '✖ Cancel'}</button>
+                        <button onClick={() => handleCancel(booking.id)} disabled={cancellingId === booking.id} className="h-8 px-4 text-[10px] font-black bg-red-600 text-white rounded-full uppercase tracking-wider">{cancellingId === booking.id ? '...' : '✖ Cancel'}</button>
                     )}
                 </div>
 
@@ -1295,33 +1295,22 @@ export default function StudentDashboardPage() {
                     {(() => {
                         const isProfileLocked = !!profile?.dateOfBirth;
                         return (
-                            <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
-                                <CardHeader className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-5 md:p-6 relative shadow-md">
-                                    {!isEditingProfile && (
-                                        <Button 
-                                            onClick={() => setIsEditingProfile(true)}
-                                            className="absolute top-5 right-5 bg-white/20 hover:bg-white/30 text-white font-bold backdrop-blur-sm border border-white/10"
-                                            size="sm"
-                                        >
-                                            <Edit2 className="w-4 h-4 mr-2" /> Edit Profile
-                                        </Button>
-                                    )}
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-inner shadow-white/20">
-                                            <User className="h-8 w-8 md:h-10 md:w-10" />
+                            isEditingProfile ? (
+                                <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
+                                    <CardHeader className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-5 md:p-6 relative shadow-md">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-inner shadow-white/20">
+                                                <User className="h-8 w-8 md:h-10 md:w-10" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <CardTitle className="text-xl md:text-3xl font-black drop-shadow-md tracking-tight">Edit Profile</CardTitle>
+                                                <span className="text-white/90 font-bold text-[10px] mt-1 bg-black/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit uppercase tracking-wider">
+                                                    CUSTOMER ACCOUNT
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <CardTitle className="text-xl md:text-3xl font-black drop-shadow-md tracking-tight">{profile?.name || "Verified Resident"}</CardTitle>
-                                            <span className="text-white/90 font-bold text-[10px] mt-1 bg-black/20 backdrop-blur-sm px-2.5 py-1 rounded-md w-fit uppercase tracking-wider">
-                                                CUSTOMER ACCOUNT
-                                            </span>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-
-                        {/* EDIT MODE */}
-                        {isEditingProfile ? (
-                            <CardContent className="p-6 md:p-8 space-y-6 bg-slate-50">
+                                    </CardHeader>
+                                    <CardContent className="p-6 md:p-8 space-y-6 bg-slate-50">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Column 1: Demographics & Occupation */}
                                     <div className="space-y-4">
@@ -1484,176 +1473,133 @@ export default function StudentDashboardPage() {
                                     </Button>
                                 </div>
                             </CardContent>
-                        ) : (
-                            <CardContent className="p-0">
-                                {/* READ ONLY MODE */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                                    
-                                    {/* Column 1: Demographics & Contact */}
-                                    <div className="p-6 md:p-8 space-y-6">
-                                        {/* Permanent User ID Card */}
-                                        <div className="flex items-center gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Permanent User ID:</span>
-                                            <span className="font-mono font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">{profile?.displayId || '-'}</span>
+                                </Card>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Hero row */}
+                                    <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-5 flex items-center gap-4 relative">
+                                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                                            <User className="h-8 w-8 text-white" />
                                         </div>
-                                        
-                                        <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><User className="w-4 h-4 text-indigo-500"/> Demographics & Contact</h3>
-                                        {(() => {
-                                            let contacts: any[] = [];
-                                            try {
-                                                if (profile?.emergencyContact) {
-                                                    const parsed = JSON.parse(profile.emergencyContact);
-                                                    if (Array.isArray(parsed)) {
-                                                        contacts = parsed;
-                                                    }
-                                                }
-                                            } catch (e) {
-                                                if (profile?.emergencyContact) {
-                                                    contacts = [{ name: profile.emergencyContact, relation: "Family", phone: "" }];
-                                                }
-                                            }
-
-                                            return (
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Birth</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : '-'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Gender</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.gender || '-'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nationality</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.nationality || '-'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Occupation Status</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.occupationType || '-'}</div>
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Institution / Company Name</label>
-                                                        <div className="text-sm font-bold text-slate-800">{profile?.occupationDetail || '-'}</div>
-                                                    </div>
-                                                    {/* Contact Details stacked beautifully */}
-                                                    <div className="col-span-2 border-t border-slate-100 pt-6 mt-4">
-                                                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                                            <Mail className="w-3.5 h-3.5 text-slate-400" /> Contact Details
-                                                        </h4>
-                                                        <div className="grid grid-cols-1 gap-3">
-                                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center gap-3">
-                                                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                                                                    <Mail className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="min-w-0 flex-1">
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Official Email</span>
-                                                                    <span className="text-sm font-bold text-slate-800 break-all">{profile?.email || '-'}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center gap-3">
-                                                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                                                                    <Phone className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="min-w-0 flex-1">
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Registered Phone</span>
-                                                                    <span className="text-sm font-bold text-slate-800">{profile?.phone || '-'}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="col-span-2 border-t border-slate-100 pt-4 mt-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Emergency Contacts</label>
-                                                        {contacts.length > 0 ? (
-                                                            <div className="space-y-2">
-                                                                {contacts.map((c, idx) => (
-                                                                    <div key={idx} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-slate-400">{idx + 1}.</span>
-                                                                            <span className="text-slate-800">{c.name}</span>
-                                                                            <Badge className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase">
-                                                                                {c.relation}
-                                                                            </Badge>
-                                                                        </div>
-                                                                        {c.phone && <span className="text-slate-500 font-mono text-[11px]">{c.phone}</span>}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-sm font-bold text-slate-400">-</div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
+                                        <div>
+                                            <h2 className="text-xl font-black text-white">{profile?.name}</h2>
+                                            <p className="text-white/70 text-xs">Student / Tenant</p>
+                                            <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full mt-1 inline-block font-mono">
+                                                {profile?.permanentId || profile?.displayId || "RP-U-XXXXXX"}
+                                            </span>
+                                        </div>
+                                        <Button size="sm" variant="outline" onClick={() => setIsEditingProfile(true)} className="absolute top-4 right-4 bg-white/10 border-white/30 text-white text-xs hover:bg-white/20">
+                                            Edit profile
+                                        </Button>
                                     </div>
 
-                                    {/* Column 2: Stay & IDs */}
-                                    <div className="p-6 md:p-8 space-y-6 bg-slate-50/50 h-full">
-                                        <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><MapPin className="w-4 h-4 text-emerald-500"/> Current Stay & IDs</h3>
-                                        
+                                    {/* 2-col row */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Personal info card */}
+                                        <div className="bg-white border rounded-xl p-4 space-y-3">
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Personal info</p>
+                                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                                <div><p className="text-xs text-slate-400">Date of birth</p><p className="font-medium">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB') : profile?.dob || "—"}</p></div>
+                                                <div><p className="text-xs text-slate-400">Gender</p><p className="font-medium">{profile?.gender || "—"}</p></div>
+                                                <div><p className="text-xs text-slate-400">Nationality</p><p className="font-medium">{profile?.nationality || "Indian"}</p></div>
+                                                <div><p className="text-xs text-slate-400">Occupation</p><p className="font-medium">{profile?.occupationType || "Student"}</p></div>
+                                            </div>
+                                            <div><p className="text-xs text-slate-400">Institution / company</p><p className="text-sm font-medium">{profile?.occupationDetail || profile?.institution || "—"}</p></div>
+                                        </div>
+
+                                        {/* Current stay card */}
                                         {profile?.activeTenant ? (
-                                            <div className="space-y-4">
-                                                {/* Premium Current Stay Card */}
-                                                <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-4 rounded-2xl border border-emerald-100 shadow-sm flex items-start gap-3">
-                                                    <div className="p-2 bg-white rounded-xl shadow-sm border border-emerald-100 text-emerald-600 shrink-0">
-                                                        <Building2 className="w-5 h-5" />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Current Stay PG</label>
-                                                        <div className="text-sm font-black text-emerald-900 leading-snug">{profile?.activeTenant?.property?.name || profile?.activeTenant?.booking?.propertyName || 'Property Name Unavailable'}</div>
-                                                        <div className="text-xs font-bold text-emerald-700/70 mt-1 leading-snug">{profile?.activeTenant?.property?.address || profile?.activeTenant?.booking?.propertyAddress || 'Address Unavailable'}</div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex gap-4">
-                                                    <div className="flex-1 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Check-in Date</label>
-                                                        <div className="text-sm font-black text-slate-800">{new Date(profile.activeTenant.startDate).toLocaleDateString('en-GB')}</div>
-                                                    </div>
-                                                    <div className="flex-1 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Check-out Date</label>
-                                                        <div className="text-sm font-black text-slate-800">{profile.activeTenant.actualMoveOutDate ? new Date(profile.activeTenant.actualMoveOutDate).toLocaleDateString('en-GB') : <span className="text-emerald-600">Active Stay</span>}</div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3 pt-2">
-                                                    <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                        <span className="text-xs font-bold text-slate-500">Tenant ID</span>
-                                                        <Badge variant="outline" className="font-black text-[10px] text-slate-700 border-slate-300">{profile.activeTenant.displayId}</Badge>
-                                                    </div>
-                                                    <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                                        <span className="text-xs font-bold text-slate-500">Booking ID</span>
-                                                        <Badge variant="outline" className="font-black text-[10px] text-slate-700 border-slate-300">{profile.activeTenant.booking?.displayId || profile.lastBooking?.displayId || '-'}</Badge>
-                                                    </div>
+                                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+                                                <p className="text-xs font-black text-blue-400 uppercase tracking-widest">Current stay</p>
+                                                <div className="text-sm font-bold text-blue-900">{profile?.activeTenant?.property?.name || profile?.activeTenant?.booking?.propertyName || "Property Name Unavailable"}</div>
+                                                <div className="text-xs text-blue-700">{profile?.activeTenant?.property?.address || profile?.activeTenant?.booking?.propertyAddress || "Address Unavailable"}</div>
+                                                <div className="flex gap-2 mt-2">
+                                                    <Badge variant="outline" className="bg-white text-blue-700 border-blue-200 font-mono text-[10px] font-black">{profile?.activeTenant?.displayId}</Badge>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-                                                <p className="text-xs font-bold text-slate-500">No active stay found.</p>
-                                            </div>
-                                        )}
-                                        
-                                        {/* Lock Warning Notice */}
-                                        {isProfileLocked && (
-                                            <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl flex gap-3 text-amber-900 mt-4">
-                                                <span className="text-xl">🔒</span>
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-black uppercase tracking-wider text-amber-700">Details Verified & Locked</p>
-                                                    <p className="text-[11px] font-bold leading-normal">
-                                                        For security, demographics, occupation and contact info are locked. To request updates, please{" "}
-                                                        <Link href="/dashboard/student/tickets" className="text-indigo-600 underline font-black">
-                                                            Raise a Support Ticket
-                                                        </Link>.
-                                                    </p>
-                                                </div>
+                                            <div className="border-2 border-dashed rounded-xl p-6 text-center text-slate-400">
+                                                <p className="text-sm">No active stay</p>
+                                                <p className="text-xs mt-1">Book a PG to see stay details</p>
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* 3-col row */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {/* Contact */}
+                                        <div className="bg-white border rounded-xl p-4">
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Contact</p>
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-2">
+                                                    <Mail className="h-4 w-4 text-blue-500 shrink-0" />
+                                                    <div className="min-w-0 flex-1"><p className="text-xs text-slate-400">Email</p><p className="text-sm font-medium truncate">{profile?.email}</p></div>
+                                                </div>
+                                                <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-2">
+                                                    <Phone className="h-4 w-4 text-blue-500 shrink-0" />
+                                                    <div className="min-w-0 flex-1"><p className="text-xs text-slate-400">Mobile</p><p className="text-sm font-medium truncate">{profile?.phone}</p></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Emergency contact */}
+                                        <div className="bg-white border rounded-xl p-4">
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Emergency contact</p>
+                                            {profile?.emergencyContact ? (
+                                                <div>
+                                                    <div className="text-sm font-medium">{(() => {
+                                                        try {
+                                                            const parsed = JSON.parse(profile.emergencyContact);
+                                                            return Array.isArray(parsed) && parsed.length > 0 ? parsed[0].name : profile.emergencyContact;
+                                                        } catch(e) {
+                                                            return profile.emergencyContact;
+                                                        }
+                                                    })()}</div>
+                                                    <div className="text-xs text-slate-500 mt-1 font-mono">{(() => {
+                                                        try {
+                                                            const parsed = JSON.parse(profile.emergencyContact);
+                                                            return Array.isArray(parsed) && parsed.length > 0 ? parsed[0].phone : '';
+                                                        } catch(e) {
+                                                            return '';
+                                                        }
+                                                    })()}</div>
+                                                </div>
+                                            ) : (
+                                                <div className="border-2 border-dashed rounded-lg p-4 text-center text-slate-400">
+                                                    <p className="text-xs">Add emergency contact</p>
+                                                    <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setIsEditingProfile(true)}>Add</Button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Security */}
+                                        <div className="bg-white border rounded-xl p-4">
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Security</p>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                                                    <span className="text-sm flex items-center gap-2 text-slate-700"><Lock className="h-4 w-4" />Password</span>
+                                                    <Button size="sm" variant="ghost" className="text-xs text-blue-600 font-bold hover:text-blue-700 h-auto p-0"
+                                                        onClick={async () => {
+                                                            const fd = new FormData(); fd.append('email', profile?.email);
+                                                            const { forgotPassword } = await import("@/actions/auth");
+                                                            const result = await forgotPassword(fd);
+                                                            if (result.success) toast.success("Reset link sent to your email");
+                                                            else toast.error(result.error || "Failed to send reset link");
+                                                        }}>Change</Button>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                                                    <span className="text-sm flex items-center gap-2 text-slate-700"><Mail className="h-4 w-4" />Email</span>
+                                                    <span className="text-xs text-green-600 flex items-center gap-1 font-bold"><CheckCircle className="h-3 w-3" />Verified</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2">
+                                                    <span className="text-sm flex items-center gap-2 text-slate-700"><Phone className="h-4 w-4" />Phone</span>
+                                                    <span className="text-xs text-green-600 flex items-center gap-1 font-bold"><CheckCircle className="h-3 w-3" />Verified</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </CardContent>
-                        )}
-                            </Card>
+                            )
                         );
                     })()}
                 </TabsContent>
@@ -1705,16 +1651,7 @@ export default function StudentDashboardPage() {
                 bookingDisplayId={signingBooking?.displayId || null}
             />
 
-            {/* Cancel Modal */}
-            {cancelModal && (
-                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-md rounded-3xl p-8 space-y-6 shadow-2xl">
-                        <div className="flex items-center gap-3"><XCircle className="h-6 w-6 text-red-600" /><h3 className="font-black text-xl">Cancel Booking</h3></div>
-                        <textarea className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm resize-none h-28" placeholder="Reason..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
-                        <div className="flex gap-4"><Button variant="outline" className="flex-1" onClick={() => setCancelModal(null)}>BACK</Button><Button variant="destructive" className="flex-1" onClick={confirmCancelStudent} disabled={!cancelReason.trim() || cancellingId === cancelModal.id}>CONFIRM</Button></div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Self-Service Credentials Edit Modal */}
             {selfServiceModal && selfServiceModal.open && (
