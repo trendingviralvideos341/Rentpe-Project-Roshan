@@ -6,8 +6,9 @@ import { getAdminStats } from "@/actions/admin";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Shield, Mail, Phone, Calendar, CheckCircle, MessageSquareWarning, ArrowRight, EyeOff, Check, User, Activity, Users, CreditCard, Ticket, Building2, RefreshCcw, Star, AlertTriangle } from "lucide-react";
+import { Shield, Mail, Phone, Calendar, CheckCircle, MessageSquareWarning, ArrowRight, EyeOff, Check, User, Activity, Users, CreditCard, Ticket, Building2, RefreshCcw, Star, AlertTriangle, Bell, XCircle, Home } from "lucide-react";
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
+import Link from "next/link";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -179,6 +180,12 @@ export default function AdminDashboard() {
         </div>
     );
 
+    const openDisputesCount = snapshot?.disputes?.open ?? 0;
+    const fraudAlertsCount = snapshot?.fraud?.open ?? 0;
+    const pendingPropertiesCount = Math.max(0, (snapshot?.properties?.total ?? 0) - (snapshot?.properties?.live ?? 0));
+    const supportTicketsCount = snapshot?.support?.tickets ?? 0;
+    const attentionCount = openDisputesCount + fraudAlertsCount + pendingPropertiesCount + supportTicketsCount;
+
     return (
         <div className="space-y-8 pb-8">
             <div className="flex justify-between items-center">
@@ -230,6 +237,17 @@ export default function AdminDashboard() {
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Shield className="h-4 w-4 mr-2" /> Security Log
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="attention"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
+                    >
+                        <Bell className="h-4 w-4 mr-2" /> Requires Attention
+                        {attentionCount > 0 && (
+                            <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                {attentionCount}
+                            </span>
+                        )}
                     </TabsTrigger>
                 </TabsList>
 
@@ -486,6 +504,167 @@ export default function AdminDashboard() {
                             ))}
                         </div>
                     )}
+                </TabsContent>
+                {/* Requires Attention Tab */}
+                <TabsContent value="attention" className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                    <div className="px-6 py-6 max-w-screen-xl mx-auto">
+                        <div className="mb-5">
+                            <h2 className="text-base font-semibold text-slate-800">
+                                Action Items
+                            </h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                Click any card to go directly to that section. No data changes here.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                            <Link href="/dashboard/admin/disputes"
+                                className="bg-white rounded-2xl border border-slate-100 hover:border-red-200
+                                           hover:shadow-md transition-all group overflow-hidden">
+                                <div className="flex items-center gap-4 p-5">
+                                    <div className="h-11 w-11 rounded-2xl bg-red-50 flex items-center
+                                                    justify-center flex-shrink-0 group-hover:bg-red-100 transition">
+                                        <XCircle className="h-5 w-5 text-red-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-red-600">Open Disputes</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Active disputes requiring admin resolution
+                                        </p>
+                                    </div>
+                                    {/* Same data already fetched on dashboard */}
+                                    <span className="text-2xl font-bold text-red-500">
+                                        {openDisputesCount}
+                                    </span>
+                                </div>
+                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
+                                                items-center bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">No data change</span>
+                                    <span className="text-xs text-red-500 font-semibold
+                                                     group-hover:underline">
+                                        Go to Disputes →
+                                    </span>
+                                </div>
+                            </Link>
+
+                            <Link href="/dashboard/admin/fraud"
+                                className="bg-white rounded-2xl border border-slate-100 hover:border-orange-200
+                                           hover:shadow-md transition-all group overflow-hidden">
+                                <div className="flex items-center gap-4 p-5">
+                                    <div className="h-11 w-11 rounded-2xl bg-orange-50 flex items-center
+                                                    justify-center flex-shrink-0 group-hover:bg-orange-100 transition">
+                                        <AlertTriangle className="h-5 w-5 text-orange-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-orange-600">Fraud Alerts</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Flagged accounts and suspicious activity
+                                        </p>
+                                    </div>
+                                    {/* Same count already fetched on dashboard */}
+                                    <span className="text-2xl font-bold text-orange-500">
+                                        {fraudAlertsCount}
+                                    </span>
+                                </div>
+                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
+                                                items-center bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">No data change</span>
+                                    <span className="text-xs text-orange-500 font-semibold
+                                                     group-hover:underline">
+                                        Go to Fraud Management →
+                                    </span>
+                                </div>
+                            </Link>
+
+                            <Link href="/dashboard/admin/properties?status=pending"
+                                className="bg-white rounded-2xl border border-slate-100 hover:border-blue-200
+                                           hover:shadow-md transition-all group overflow-hidden">
+                                <div className="flex items-center gap-4 p-5">
+                                    <div className="h-11 w-11 rounded-2xl bg-blue-50 flex items-center
+                                                    justify-center flex-shrink-0 group-hover:bg-blue-100 transition">
+                                        <Home className="h-5 w-5 text-blue-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-blue-600">
+                                            Properties Pending
+                                        </p>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Awaiting admin verification
+                                        </p>
+                                    </div>
+                                    {/* Same count already fetched on dashboard */}
+                                    <span className="text-2xl font-bold text-blue-500">
+                                        {pendingPropertiesCount}
+                                    </span>
+                                </div>
+                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
+                                                items-center bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">No data change</span>
+                                    <span className="text-xs text-blue-500 font-semibold
+                                                     group-hover:underline">
+                                        Go to Property Approval →
+                                    </span>
+                                </div>
+                            </Link>
+
+                            <Link href="/dashboard/admin/tickets"
+                                className="bg-white rounded-2xl border border-slate-100 hover:border-violet-200
+                                           hover:shadow-md transition-all group overflow-hidden">
+                                <div className="flex items-center gap-4 p-5">
+                                    <div className="h-11 w-11 rounded-2xl bg-violet-50 flex items-center
+                                                    justify-center flex-shrink-0 group-hover:bg-violet-100 transition">
+                                        <Ticket className="h-5 w-5 text-violet-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-violet-600">
+                                            Support Tickets
+                                        </p>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Open tickets from owners and tenants
+                                        </p>
+                                    </div>
+                                    {/* Same count already fetched on dashboard */}
+                                    <span className="text-2xl font-bold text-violet-500">
+                                        {supportTicketsCount}
+                                    </span>
+                                </div>
+                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
+                                                items-center bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">No data change</span>
+                                    <span className="text-xs text-violet-500 font-semibold
+                                                     group-hover:underline">
+                                        Go to Support Tickets →
+                                    </span>
+                                </div>
+                            </Link>
+
+                        </div>
+
+                        {/* All clear state */}
+                        {openDisputesCount === 0 &&
+                         fraudAlertsCount === 0 &&
+                         pendingPropertiesCount === 0 &&
+                         supportTicketsCount === 0 && (
+                            <div className="mt-4 flex items-center gap-3 bg-emerald-50 border
+                                            border-emerald-100 rounded-2xl px-5 py-4">
+                                <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-emerald-700">
+                                        All clear right now
+                                    </p>
+                                    <p className="text-xs text-emerald-600 mt-0.5">
+                                        No pending items. Full activity history is in Security Audit Log.
+                                    </p>
+                                </div>
+                                <Link href="/dashboard/admin/audit-log"
+                                    className="text-xs text-violet-600 font-semibold hover:underline
+                                               whitespace-nowrap">
+                                    Security Audit Log →
+                                </Link>
+                            </div>
+                        )}
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>

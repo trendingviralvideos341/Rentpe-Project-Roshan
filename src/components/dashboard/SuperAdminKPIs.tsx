@@ -278,61 +278,6 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardContent>
                 </Card>
-
-                {/* Activity Feed */}
-                <Card className="lg:col-span-3 border-none shadow-xl bg-white overflow-hidden">
-                    <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-purple-50 p-5">
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-xl bg-indigo-100 flex items-center justify-center">
-                                <Clock className="h-4 w-4 text-indigo-600" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-sm font-black text-slate-800">Platform Activity Feed</CardTitle>
-                                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent events across the platform</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {recentActivity.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                                <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
-                                    <Activity className="h-6 w-6 text-slate-300" />
-                                </div>
-                                <p className="text-sm font-black text-slate-500">No Activity Yet</p>
-                                <p className="text-xs text-slate-400 mt-1">Platform events will appear here as they happen — bookings, registrations, approvals, and more.</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-slate-50 max-h-[320px] overflow-y-auto">
-                                {recentActivity.map((item: any) => {
-                                    const meta = getActionMeta(item.actionType);
-                                    const Icon = meta.icon;
-                                    return (
-                                        <div key={item.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50/60 transition-colors">
-                                            <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
-                                                item.actorRole === 'ADMIN' || item.actorRole === 'SUPER_ADMIN' ? 'bg-violet-100 text-violet-700' :
-                                                item.actorRole === 'OWNER' ? 'bg-teal-100 text-teal-700' :
-                                                'bg-slate-100 text-slate-500'
-                                            }`}>
-                                                {item.actorName ? item.actorName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) : 'U'}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-black text-slate-800 truncate">{item.description || meta.label}</p>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span className="text-[10px] text-slate-400 font-bold">{item.actorName}</span>
-                                                    <span className="text-[10px] text-slate-300">·</span>
-                                                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${meta.bg} ${meta.color}`}>{item.actorRole}</span>
-                                                </div>
-                                            </div>
-                                            <span className="text-[9px] text-slate-400 font-bold shrink-0 mt-1">
-                                                {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
             </div>
 
             {/* ── Visual Analytics Row 1: Revenue + Inventory ── */}
