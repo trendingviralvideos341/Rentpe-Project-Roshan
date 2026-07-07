@@ -130,6 +130,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
             bg: 'bg-amber-50 border-amber-100',
             icon: FileWarning,
             urgent: safe(snapshot.disputes?.open) > 0,
+            dotColor: 'bg-red-500',
         },
         {
             label: 'Fraud Alerts',
@@ -138,6 +139,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
             bg: 'bg-red-50 border-red-100',
             icon: Shield,
             urgent: safe(snapshot.fraud?.open) > 0,
+            dotColor: 'bg-orange-500',
         },
         {
             label: 'Properties Pending',
@@ -146,6 +148,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
             bg: 'bg-indigo-50 border-indigo-100',
             icon: Building2,
             urgent: false,
+            dotColor: 'bg-blue-500',
         },
         {
             label: 'Support Tickets',
@@ -154,6 +157,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
             bg: 'bg-purple-50 border-purple-100',
             icon: BellRing,
             urgent: false,
+            dotColor: 'bg-violet-600',
         },
     ];
 
@@ -161,7 +165,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
         <div className="space-y-8 pb-12">
             {/* ── Strategic KPI Top Row ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-violet-600 to-violet-800 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all"></div>
                     <CardHeader className="pb-2 relative z-10">
                         <div className="flex items-center gap-2">
@@ -179,7 +183,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-teal-600 to-teal-700 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all"></div>
                     <CardHeader className="pb-2 relative z-10">
                         <div className="flex items-center gap-2">
@@ -198,7 +202,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
+                <Card className="border-none shadow-xl bg-gradient-to-br from-blue-700 to-blue-800 text-white relative overflow-hidden group hover:scale-[1.02] transition-all duration-500">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/10 transition-all"></div>
                     <CardHeader className="pb-2 relative z-10">
                         <div className="flex items-center gap-2">
@@ -217,7 +221,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-lg bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+                <Card className="border-none shadow-lg bg-gradient-to-br from-amber-600 to-amber-700 text-white">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-amber-100">Pending Disputes</CardTitle>
                     </CardHeader>
@@ -246,7 +250,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                         </div>
                     </CardHeader>
                     <CardContent className="p-5 space-y-3">
-                        {pendingActions.map(({ label, count, color, bg, icon: Icon, urgent }) => (
+                        {pendingActions.map(({ label, count, color, bg, icon: Icon, urgent, dotColor }) => (
                             <div key={label} className={`flex items-center justify-between p-3 rounded-xl border ${bg} transition-all hover:scale-[1.01]`}>
                                 <div className="flex items-center gap-3">
                                     <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${bg}`}>
@@ -255,8 +259,8 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                     <span className="text-sm font-bold text-slate-700">{label}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {urgent && count > 0 && (
-                                        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    {count > 0 && (
+                                        <span className={`h-2 w-2 rounded-full ${dotColor} ${urgent ? "animate-pulse" : ""}`}></span>
                                     )}
                                     <span className={`text-xl font-black ${color}`}>{count}</span>
                                 </div>
@@ -304,8 +308,12 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                     const Icon = meta.icon;
                                     return (
                                         <div key={item.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50/60 transition-colors">
-                                            <div className={`mt-0.5 h-7 w-7 rounded-lg ${meta.bg} flex items-center justify-center shrink-0`}>
-                                                <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                                            <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
+                                                item.actorRole === 'ADMIN' || item.actorRole === 'SUPER_ADMIN' ? 'bg-violet-100 text-violet-700' :
+                                                item.actorRole === 'OWNER' ? 'bg-teal-100 text-teal-700' :
+                                                'bg-slate-100 text-slate-500'
+                                            }`}>
+                                                {item.actorName ? item.actorName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) : 'U'}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-black text-slate-800 truncate">{item.description || meta.label}</p>
@@ -521,7 +529,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
 
             {/* ── Platform Governance Grid ── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="border-none shadow-lg bg-white group hover:shadow-indigo-100 transition-all duration-500">
+                <Card className="border-none shadow-lg bg-purple-50 border-purple-200 group hover:shadow-indigo-100 transition-all duration-500">
                     <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
                             <Shield className="h-4 w-4 text-indigo-500" />
@@ -531,7 +539,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-2xl font-black text-slate-800">{safe(snapshot.fraud?.open)}</div>
+                                <div className="text-2xl font-black text-violet-600">{safe(snapshot.fraud?.open)}</div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Open Fraud Alerts</p>
                             </div>
                             <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-indigo-600 hover:bg-indigo-50">Audit Details</Button>
@@ -539,7 +547,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-lg bg-white group hover:shadow-emerald-100 transition-all duration-500">
+                <Card className="border-none shadow-lg bg-teal-50 border-teal-200 group hover:shadow-emerald-100 transition-all duration-500">
                     <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -549,7 +557,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-2xl font-black text-slate-800">{safe(snapshot.properties?.live)}</div>
+                                <div className="text-2xl font-black text-teal-600">{safe(snapshot.properties?.live)}</div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Live Listings</p>
                             </div>
                             <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-emerald-600 hover:bg-emerald-50">View Registry</Button>
@@ -557,7 +565,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-lg bg-white group hover:shadow-amber-100 transition-all duration-500">
+                <Card className="border-none shadow-lg bg-blue-50 border-blue-200 group hover:shadow-amber-100 transition-all duration-500">
                     <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
                             <ArrowUpRight className="h-4 w-4 text-amber-500" />
@@ -567,7 +575,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                     <CardContent>
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-2xl font-black text-slate-800">{safe(snapshot.users?.total).toLocaleString()}</div>
+                                <div className="text-2xl font-black text-blue-700">{safe(snapshot.users?.total).toLocaleString()}</div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Total Registered</p>
                             </div>
                             <div className="text-right space-y-1">
@@ -585,7 +593,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
             ══════════════════════════════════════════════════════════════════════════ */}
             <Card className="border-none shadow-2xl bg-white overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-700 p-6 relative overflow-hidden">
+                <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-6 relative overflow-hidden">
                     <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
