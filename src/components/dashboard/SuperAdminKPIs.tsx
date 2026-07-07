@@ -42,7 +42,7 @@ const PROPERTY_TYPE_OPTIONS = [
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-    PG: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    PG: 'bg-violet-100 text-violet-600 border-transparent',
     HOSTEL: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     FLAT: 'bg-amber-100 text-amber-700 border-amber-200',
     APARTMENT: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -608,7 +608,7 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                             </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                            <span className="px-4 py-2 bg-white/20 backdrop-blur rounded-xl text-white text-sm font-black border border-white/30">
+                            <span className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition">
                                 {onboardedProperties.length} Properties Live
                             </span>
                         </div>
@@ -627,10 +627,10 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                 <button
                                     key={opt.value}
                                     onClick={() => handleTypeFilter(opt.value)}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-black border transition-all duration-200 ${
+                                    className={`transition-all duration-200 ${
                                         typeFilter === opt.value
-                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200'
-                                            : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                                            ? 'bg-white text-violet-600 font-bold text-xs px-3 py-1.5 rounded-xl'
+                                            : 'bg-white/20 text-violet-100 text-xs px-3 py-1.5 rounded-xl hover:bg-white/30 transition'
                                     }`}
                                 >
                                     {opt.label}
@@ -680,11 +680,11 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <h3 className="text-xl font-black text-slate-900">{selectedProperty.name}</h3>
                                                     {selectedProperty.isVerified && (
-                                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full border border-emerald-200">
-                                                            <BadgeCheck className="h-3 w-3" /> Verified
+                                                        <span className="flex items-center gap-0.5 bg-emerald-100 text-emerald-600 text-xs font-semibold px-2 py-0.5 rounded-lg">
+                                                            <BadgeCheck className="h-3.5 w-3.5 mr-0.5" /> Verified
                                                         </span>
                                                     )}
-                                                    <span className={`px-2 py-0.5 text-[10px] font-black rounded-full border ${TYPE_COLORS[selectedProperty.propertyType] || TYPE_COLORS.PG}`}>
+                                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-lg border ${TYPE_COLORS[selectedProperty.propertyType] || TYPE_COLORS.PG}`}>
                                                         {selectedProperty.propertyType || 'PG'}
                                                     </span>
                                                     <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-black rounded-full border border-slate-200">
@@ -848,30 +848,34 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0">
-                                                        <span className={`px-2 py-0.5 text-[10px] font-black rounded-full border ${TYPE_COLORS[prop.propertyType] || TYPE_COLORS.PG}`}>
+                                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-lg border ${TYPE_COLORS[prop.propertyType] || TYPE_COLORS.PG}`}>
                                                             {prop.propertyType || 'PG'}
                                                         </span>
                                                         {prop.isVerified && (
-                                                            <span className="flex items-center gap-0.5 text-[9px] font-black text-emerald-600">
-                                                                <BadgeCheck className="h-3 w-3" /> Verified
+                                                            <span className="flex items-center gap-0.5 bg-emerald-100 text-emerald-600 text-xs font-semibold px-2 py-0.5 rounded-lg">
+                                                                <BadgeCheck className="h-3.5 w-3.5 mr-0.5" /> Verified
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
 
                                                 {/* Metrics grid */}
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    <div className="text-center bg-indigo-50 rounded-xl py-2">
-                                                        <div className="text-lg font-black text-indigo-600">{prop.totalBeds}</div>
-                                                        <div className="text-[9px] font-bold text-indigo-400 uppercase">Beds</div>
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    <div className="text-center bg-violet-50 rounded-xl py-2">
+                                                        <div className="text-lg font-black text-violet-600">{prop.totalBeds}</div>
+                                                        <div className="text-[9px] font-bold text-violet-400 uppercase">Beds</div>
                                                     </div>
-                                                    <div className="text-center bg-emerald-50 rounded-xl py-2">
-                                                        <div className="text-lg font-black text-emerald-600">{prop.activeTenants}</div>
-                                                        <div className="text-[9px] font-bold text-emerald-400 uppercase">Tenants</div>
+                                                    <div className="text-center bg-teal-50 rounded-xl py-2">
+                                                        <div className="text-lg font-black text-teal-600">{prop.activeTenants}</div>
+                                                        <div className="text-[9px] font-bold text-teal-400 uppercase">Tenants</div>
                                                     </div>
-                                                    <div className="text-center bg-amber-50 rounded-xl py-2">
-                                                        <div className="text-lg font-black text-amber-600">{prop.availableBeds}</div>
-                                                        <div className="text-[9px] font-bold text-amber-400 uppercase">Vacant</div>
+                                                    <div className="text-center bg-green-50 rounded-xl py-2">
+                                                        <div className="text-lg font-black text-green-600">{prop.availableBeds}</div>
+                                                        <div className="text-[9px] font-bold text-green-400 uppercase">Vacant</div>
+                                                    </div>
+                                                    <div className="text-center bg-orange-50 rounded-xl py-2">
+                                                        <div className="text-lg font-black text-orange-500">{prop.totalBeds > 0 ? Math.round((prop.activeTenants / prop.totalBeds) * 100) : 0}%</div>
+                                                        <div className="text-[9px] font-bold text-orange-400 uppercase">Occ%</div>
                                                     </div>
                                                 </div>
 

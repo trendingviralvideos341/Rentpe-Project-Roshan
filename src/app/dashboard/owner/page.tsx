@@ -122,25 +122,25 @@ export default function OwnerDashboard() {
                 <TabsList className="flex flex-wrap h-auto w-full max-w-2xl mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
                     <TabsTrigger
                         value="overview"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
                     >
                         <TrendingUp className="h-4 w-4 mr-2 hidden sm:inline-block" /> Overview
                     </TabsTrigger>
                     <TabsTrigger
                         value="inventory"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
                     >
                         <Bed className="h-4 w-4 mr-2 hidden sm:inline-block" /> Bed Management
                     </TabsTrigger>
                     <TabsTrigger
                         value="ops"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
                     >
                         <Activity className="h-4 w-4 mr-2 hidden sm:inline-block" /> Operations
                     </TabsTrigger>
                     <TabsTrigger
                         value="profile"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
+                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
                     >
                         <User className="h-4 w-4 mr-2 hidden sm:inline-block" /> Profile
                     </TabsTrigger>
@@ -149,88 +149,88 @@ export default function OwnerDashboard() {
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {/* ── KPI Cards ── */}
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                        <Card className="xl:col-span-1 border-l-4 border-l-emerald-500 hover:shadow-lg transition-shadow">
+                        <Card className="xl:col-span-1 bg-gradient-to-br from-violet-600 to-violet-800 border-l-4 border-l-violet-300 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Total Revenue</CardTitle>
-                                <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <IndianRupee className="h-4 w-4 text-emerald-600" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Total Revenue</CardTitle>
+                                <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
+                                    <IndianRupee className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-slate-900">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
-                                <p className="text-xs mt-1 flex items-center gap-1 text-emerald-600 font-bold">
+                                <div className="text-2xl font-black text-white">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
+                                <p className="text-xs mt-1 flex items-center gap-1 text-white/70 font-bold">
                                     <TrendingUp className="h-3 w-3" /> Rent only · Excl. deposits
                                 </p>
                             </CardContent>
                         </Card>
 
                         {/* ── Deposits Held — Liability (CA/GST Compliant) ── */}
-                        <Card className="xl:col-span-1 border-l-4 border-l-orange-400 hover:shadow-lg transition-shadow bg-orange-50/20">
+                        <Card className="xl:col-span-1 bg-gradient-to-br from-orange-600 to-orange-800 border-l-4 border-l-orange-300 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Deposits Held</CardTitle>
-                                <div className="h-8 w-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <Lock className="h-4 w-4 text-orange-500" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Deposits Held</CardTitle>
+                                <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
+                                    <Lock className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-orange-700">₹{(stats.totalDepositsHeld ?? 0).toLocaleString('en-IN')}</div>
-                                <p className="text-xs mt-1 text-orange-500 font-bold flex items-center gap-1">
+                                <div className="text-2xl font-black text-white">₹{(stats.totalDepositsHeld ?? 0).toLocaleString('en-IN')}</div>
+                                <p className="text-xs mt-1 text-white/70 font-bold flex items-center gap-1">
                                     <Shield className="h-3 w-3" /> Refundable liability
                                 </p>
                             </CardContent>
                         </Card>
 
-                        <Card className="xl:col-span-1 border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+                        <Card className="xl:col-span-1 bg-gradient-to-br from-teal-600 to-teal-700 border-l-4 border-l-teal-300 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Active Tenants</CardTitle>
-                                <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <Users className="h-4 w-4 text-blue-600" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Active Tenants</CardTitle>
+                                <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
+                                    <Users className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-slate-900">{stats.tenantCount ?? 0}</div>
-                                <p className="text-xs mt-1 text-slate-500 font-bold">Across all properties</p>
+                                <div className="text-2xl font-black text-white">{stats.tenantCount ?? 0}</div>
+                                <p className="text-xs mt-1 text-white/70 font-bold">Across all properties</p>
                             </CardContent>
                         </Card>
 
-                        <Card className="xl:col-span-1 border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+                        <Card className="xl:col-span-1 bg-gradient-to-br from-violet-600 to-indigo-700 border-l-4 border-l-violet-300 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Properties</CardTitle>
-                                <div className="h-8 w-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <Building className="h-4 w-4 text-purple-600" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Properties</CardTitle>
+                                <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
+                                    <Building className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-slate-900">{stats.propertyCount ?? 0}</div>
-                                <p className="text-xs mt-1 text-slate-500 font-bold">Active listings</p>
+                                <div className="text-2xl font-black text-white">{stats.propertyCount ?? 0}</div>
+                                <p className="text-xs mt-1 text-white/70 font-bold">Active listings</p>
                             </CardContent>
                         </Card>
 
-                        <Card className="xl:col-span-1 border-l-4 border-l-teal-500 hover:shadow-lg transition-shadow">
+                        <Card className="xl:col-span-1 bg-gradient-to-br from-blue-600 to-blue-800 border-l-4 border-l-blue-300 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Vacant Beds</CardTitle>
-                                <div className="h-8 w-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                                    <DoorOpen className="h-4 w-4 text-teal-600" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Vacant Beds</CardTitle>
+                                <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
+                                    <DoorOpen className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-black text-slate-900">{stats.availableBeds ?? 0}</div>
-                                <p className="text-xs mt-1 text-slate-500 font-bold">of {stats.totalBeds ?? 0} total beds</p>
+                                <div className="text-2xl font-black text-white">{stats.availableBeds ?? 0}</div>
+                                <p className="text-xs mt-1 text-white/70 font-bold">of {stats.totalBeds ?? 0} total beds</p>
                             </CardContent>
                         </Card>
 
-                        <Card className={`xl:col-span-1 border-l-4 hover:shadow-lg transition-shadow ${ (stats.pendingBookingCount ?? 0) > 0 ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-slate-300' }`}>
+                        <Card className="xl:col-span-1 bg-gradient-to-br from-slate-600 to-slate-700 border-l-4 border-l-slate-400 text-white">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Pending</CardTitle>
-                                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${ (stats.pendingBookingCount ?? 0) > 0 ? 'bg-amber-100' : 'bg-slate-100' }`}>
-                                    <AlertCircle className={`h-4 w-4 ${ (stats.pendingBookingCount ?? 0) > 0 ? 'text-amber-600' : 'text-slate-400' }`} />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest text-white/70">Pending</CardTitle>
+                                <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
+                                    <AlertCircle className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className={`text-2xl font-black ${ (stats.pendingBookingCount ?? 0) > 0 ? 'text-amber-700' : 'text-slate-900' }`}>
+                                <div className="text-2xl font-black text-white">
                                     {stats.pendingBookingCount ?? 0}
                                 </div>
-                                <p className="text-xs mt-1 text-slate-500 font-bold">Booking requests</p>
+                                <p className="text-xs mt-1 text-white/70 font-bold">Booking requests</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -258,9 +258,9 @@ export default function OwnerDashboard() {
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={stats.revenueHistory ?? []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                                 <defs>
-                                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    <linearGradient id="tealGradient" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0}/>
                                                     </linearGradient>
                                                 </defs>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
@@ -270,7 +270,7 @@ export default function OwnerDashboard() {
                                                     formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Revenue']}
                                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', fontWeight: 700 }}
                                                 />
-                                                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+                                                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#tealGradient)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -323,7 +323,7 @@ export default function OwnerDashboard() {
                                         </ResponsiveContainer>
                                         {/* Center label */}
                                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 36 }}>
-                                            <span className="text-2xl font-black text-indigo-600">
+                                            <span className="text-2xl font-bold text-violet-600">
                                                 {stats.totalBeds > 0 ? Math.round(((stats.occupiedBeds ?? 0) / stats.totalBeds) * 100) : 0}%
                                             </span>
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Occupied</span>

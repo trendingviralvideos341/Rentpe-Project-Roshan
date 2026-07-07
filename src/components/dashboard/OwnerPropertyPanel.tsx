@@ -96,7 +96,7 @@ export function OwnerPropertyPanel({ userRole = 'OWNER' }: OwnerPropertyPanelPro
     if (loading) {
         return (
             <Card className="border-none shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 p-6">
+                <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-6">
                     <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center border border-white/30">
                             <Building2 className="h-5 w-5 text-white" />
@@ -115,7 +115,7 @@ export function OwnerPropertyPanel({ userRole = 'OWNER' }: OwnerPropertyPanelPro
     return (
         <Card className="border-none shadow-2xl bg-white overflow-hidden">
             {/* ── Header ── */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 p-6 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-6 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -437,21 +437,21 @@ export function OwnerPropertyPanel({ userRole = 'OWNER' }: OwnerPropertyPanelPro
 
                                             {/* Metrics */}
                                             <div className="grid grid-cols-4 gap-2">
-                                                <div className="text-center bg-indigo-50 rounded-xl py-2">
-                                                    <div className="text-lg font-black text-indigo-600">{prop.totalBeds}</div>
-                                                    <div className="text-[8px] font-bold text-indigo-400 uppercase">Beds</div>
+                                                <div className="text-center bg-violet-50 rounded-xl py-2">
+                                                    <div className="text-lg font-black text-violet-600">{prop.totalBeds}</div>
+                                                    <div className="text-[8px] font-bold text-violet-600/70 uppercase">Beds</div>
                                                 </div>
                                                 <div className="text-center bg-blue-50 rounded-xl py-2">
                                                     <div className="text-lg font-black text-blue-600">{prop.occupiedBeds}</div>
-                                                    <div className="text-[8px] font-bold text-blue-400 uppercase">Filled</div>
+                                                    <div className="text-[8px] font-bold text-blue-600/70 uppercase">Filled</div>
                                                 </div>
-                                                <div className="text-center bg-emerald-50 rounded-xl py-2">
-                                                    <div className="text-lg font-black text-emerald-600">{prop.availableBeds}</div>
-                                                    <div className="text-[8px] font-bold text-emerald-400 uppercase">Vacant</div>
+                                                <div className="text-center bg-green-50 rounded-xl py-2">
+                                                    <div className="text-lg font-black text-green-600">{prop.availableBeds}</div>
+                                                    <div className="text-[8px] font-bold text-green-600/70 uppercase">Vacant</div>
                                                 </div>
-                                                <div className="text-center bg-purple-50 rounded-xl py-2">
-                                                    <div className="text-lg font-black text-purple-600">{prop.occupancyRate}%</div>
-                                                    <div className="text-[8px] font-bold text-purple-400 uppercase">Occ.</div>
+                                                <div className="text-center bg-orange-50 rounded-xl py-2">
+                                                    <div className="text-lg font-black text-orange-600">{prop.occupancyRate}%</div>
+                                                    <div className="text-[8px] font-bold text-orange-600/70 uppercase">Occ.</div>
                                                 </div>
                                             </div>
 
