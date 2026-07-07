@@ -207,7 +207,7 @@ export default function AdminDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex overflow-x-auto whitespace-nowrap h-auto w-full max-w-4xl mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
+                <TabsList className="flex h-auto w-full mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
                     <TabsTrigger
                         value="overview"
                         className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
@@ -240,7 +240,7 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger
                         value="attention"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap flex-shrink-0"
+                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
                     >
                         <Bell className="h-4 w-4 mr-2" /> Requires Attention
                         {attentionCount > 0 && (
