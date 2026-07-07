@@ -121,45 +121,6 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
     const hasUserGrowthData = (userGrowth ?? []).length > 0;
     const hasConversionData = (conversionAnalytics ?? []).length > 0;
 
-    // Pending actions derived from snapshot
-    const pendingActions = [
-        {
-            label: 'Open Disputes',
-            count: safe(snapshot.disputes?.open),
-            color: 'text-amber-600',
-            bg: 'bg-amber-50 border-amber-100',
-            icon: FileWarning,
-            urgent: safe(snapshot.disputes?.open) > 0,
-            dotColor: 'bg-red-500',
-        },
-        {
-            label: 'Fraud Alerts',
-            count: safe(snapshot.fraud?.open),
-            color: 'text-red-600',
-            bg: 'bg-red-50 border-red-100',
-            icon: Shield,
-            urgent: safe(snapshot.fraud?.open) > 0,
-            dotColor: 'bg-orange-500',
-        },
-        {
-            label: 'Properties Pending',
-            count: Math.max(0, safe(snapshot.properties?.total) - safe(snapshot.properties?.live)),
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-50 border-indigo-100',
-            icon: Building2,
-            urgent: false,
-            dotColor: 'bg-blue-500',
-        },
-        {
-            label: 'Support Tickets',
-            count: safe(snapshot.support?.tickets),
-            color: 'text-purple-600',
-            bg: 'bg-purple-50 border-purple-100',
-            icon: BellRing,
-            urgent: false,
-            dotColor: 'bg-violet-600',
-        },
-    ];
 
     return (
         <div className="space-y-8 pb-12">
@@ -234,51 +195,6 @@ export function SuperAdminKPIs({ snapshot, revenueTrends, userGrowth, conversion
                 </Card>
             </div>
 
-            {/* ── Pending Actions + Activity Feed ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Pending Actions Panel */}
-                <Card className="lg:col-span-2 border-none shadow-xl bg-white overflow-hidden">
-                    <CardHeader className="border-b bg-gradient-to-r from-rose-50 to-amber-50 p-5">
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center">
-                                <Zap className="h-4 w-4 text-rose-600" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-sm font-black text-slate-800">Requires Your Attention</CardTitle>
-                                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Open action items</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-5 space-y-3">
-                        {pendingActions.map(({ label, count, color, bg, icon: Icon, urgent, dotColor }) => (
-                            <div key={label} className={`flex items-center justify-between p-3 rounded-xl border ${bg} transition-all hover:scale-[1.01]`}>
-                                <div className="flex items-center gap-3">
-                                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${bg}`}>
-                                        <Icon className={`h-4 w-4 ${color}`} />
-                                    </div>
-                                    <span className="text-sm font-bold text-slate-700">{label}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {count > 0 && (
-                                        <span className={`h-2 w-2 rounded-full ${dotColor} ${urgent ? "animate-pulse" : ""}`}></span>
-                                    )}
-                                    <span className={`text-xl font-black ${color}`}>{count}</span>
-                                </div>
-                            </div>
-                        ))}
-                        <div className="pt-2 border-t border-slate-100">
-                            <div className="flex items-center justify-between text-xs text-slate-400">
-                                <span className="font-bold uppercase tracking-widest">Total Users</span>
-                                <span className="font-black text-slate-700">{safe(snapshot.users?.total).toLocaleString()}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
-                                <span className="font-bold uppercase tracking-widest">Attendance Today</span>
-                                <span className="font-black text-slate-700">{safe(snapshot.support?.attendanceToday)}</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
 
             {/* ── Visual Analytics Row 1: Revenue + Inventory ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
