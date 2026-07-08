@@ -533,7 +533,7 @@ function OwnerOnboardingFeesContent() {
                                 type="text"
                                 defaultValue={searchQuery}
                                 onChange={e => {
-                                    clearTimeout(searchTimer.current);
+                                    if (searchTimer.current) clearTimeout(searchTimer.current);
                                     searchTimer.current = setTimeout(() => updateFilter("search", e.target.value), 400);
                                 }}
                                 placeholder="Property name, RP-P-..., Razorpay ID..."
