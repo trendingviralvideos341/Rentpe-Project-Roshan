@@ -88,6 +88,8 @@ const ID_CONFIG: Record<string, {
     'REFUND':   { prefix: 'RP-RFND', track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
     // CREDIT_NOTE uses forward-slash separator for GSTR compliance — CN/26-27/0001
     'CREDIT_NOTE': { prefix: 'CN',   track: 'SEQUENTIAL', pad: 4, resetPerFY: true,  separator: '/', auditLog: true  },
+    // AGREEMENT resets per FY — RP-AGR-26-27-000001 (Leave & License Agreements)
+    'AGREEMENT': { prefix: 'RP-AGR', track: 'SEQUENTIAL', pad: 6, resetPerFY: true,  auditLog: true  },
 };
 
 // ─── Financial Year (Indian: April → March) ───────────────────────────────────

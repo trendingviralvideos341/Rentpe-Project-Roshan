@@ -719,6 +719,14 @@ export async function markBookingPaid(id: string, method: string, paymentId?: st
     // Determine if this is final joining payment (MOVE_IN_SCHEDULED or BOOKING_CONFIRMED) â†’ auto-activate
     const isFinalPayment = existingB.status === 'MOVE_IN_SCHEDULED' || existingB.status === 'BOOKING_CONFIRMED';
 
+    // -- AGREEMENT GUARD: block final payment if digital agreement incomplete --
+    if (isFinalPayment) {
+        const digitalAgreement = await (prisma as any).agreement.findUnique({ where: { bookingId: id }, select: { status: true } }).catch(() => null);
+        if (digitalAgreement && digitalAgreement.status !== 'AGREEMENT_COMPLETED') {
+            throw new Error("The Leave & License Agreement must be fully completed before final payment. Please complete the agreement signing process first.");
+        }
+    }
+    // --------------------------------------------------------------------------
     const booking = await prisma.booking.update({
         where: { id },
         data: {
@@ -949,6 +957,19 @@ export async function checkInBooking(id: string) {
     if ((isLegacyPost || isLegacyFinal) && !booking.agreementSigned) {
         throw new Error("Agreement must be signed by the student before physical check-in.");
     }
+
+    // ── AGREEMENT SYSTEM GUARD ────────────────────────────────────────────────
+    // If a digital agreement exists for this booking via the Agreement model,
+    // it must be fully completed (AGREEMENT_COMPLETED) before check-in proceeds.
+    const digitalAgreement = await (prisma as any).agreement.findUnique({
+        where: { bookingId: id },
+        select: { status: true }
+    }).catch(() => null);
+    if (digitalAgreement && digitalAgreement.status !== 'AGREEMENT_COMPLETED') {
+        throw new Error("Digital Leave & License Agreement must be completed before physical check-in. Please complete the agreement signing process first.");
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
 
     // â”€â”€ Determine next status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // NEW:    ROOM_RESERVED  â†’ PHYSICAL_VERIFIED  (then student signs agreement)

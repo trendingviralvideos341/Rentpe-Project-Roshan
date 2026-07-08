@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays, MapPin, AlertTriangle, Send, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Building, Users, Calendar, Utensils, Ticket, Settings, CreditCard, UserPlus, Shield, ClipboardList, FileCheck, Trash2, FileText, Percent, ClipboardCheck, UserCheck, Menu, X, User, PowerOff, ArrowUpCircle, Wrench, Bell, RefreshCw, IndianRupee, Receipt, BarChart3, Download, MessageCircle, CalendarDays, MapPin, AlertTriangle, Send, FileSpreadsheet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { getPendingBookingsCount, getStudentPendingActionsCount, getAdminAlertCounts } from "@/actions/bookings";
@@ -14,6 +14,7 @@ import { getPendingUpgradeCount } from "@/actions/roleUpgrade";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 import { getStudentFoodStatus } from "@/actions/food";
 import { getPendingOwnerTicketsCount, getPendingAdminTicketsCount } from "@/actions/ops";
+import { getPendingAgreementCountForOwner, getStudentPendingAgreementCount } from "@/actions/agreements";
 
 interface SidebarLink {
     href: string;
@@ -53,6 +54,8 @@ export default function DashboardSidebar(props: SidebarProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [pendingOwnerTicketsCount, setPendingOwnerTicketsCount] = useState(0);
     const [pendingAdminTicketsCount, setPendingAdminTicketsCount] = useState(0);
+    const [pendingOwnerAgreements, setPendingOwnerAgreements] = useState(0);
+    const [pendingStudentAgreements, setPendingStudentAgreements] = useState(0);
 
     useEffect(() => {
         if (role === "owner" || role === "staff") {
@@ -67,6 +70,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setPendingNoticesCount(noticesCount);
                 const ticketsCount = await getPendingOwnerTicketsCount();
                 setPendingOwnerTicketsCount(ticketsCount);
+                const agreementsCount = await getPendingAgreementCountForOwner().catch(() => 0);
+                setPendingOwnerAgreements(agreementsCount);
             };
             checkOwner();
             const interval = setInterval(checkOwner, 30000);
@@ -95,6 +100,8 @@ export default function DashboardSidebar(props: SidebarProps) {
                 setStudentAlertCount(count);
                 const food = await getStudentFoodStatus();
                 setFoodStatus(food);
+                const agreeCount = await getStudentPendingAgreementCount().catch(() => 0);
+                setPendingStudentAgreements(agreeCount);
             };
             checkStudent();
             const interval = setInterval(checkStudent, 30000);
@@ -127,6 +134,7 @@ export default function DashboardSidebar(props: SidebarProps) {
             links: [
                 { href: "/dashboard/owner/bookings", label: "Bookings & Onboarding", icon: ClipboardCheck, badge: pendingCount, reqPerm: ["view_bookings", "approve_bookings"] },
                 { href: "/dashboard/owner/verifications", label: "KYC & Doc Verifications", icon: FileCheck, badge: pendingDocCount, reqPerm: ["manage_tenants"] },
+                { href: "/dashboard/owner/agreements", label: "Agreements (L&L)", icon: FileSpreadsheet, badge: pendingOwnerAgreements, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/tenants", label: "Active Tenants", icon: Calendar, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/notices", label: "Vacating Notices", icon: Bell, badge: pendingNoticesCount, reqPerm: ["manage_tenants"] },
                 { href: "/dashboard/owner/room-changes", label: "Room Change Requests", icon: RefreshCw, reqPerm: ["manage_tenants"] },
@@ -180,6 +188,7 @@ export default function DashboardSidebar(props: SidebarProps) {
                 { href: "/dashboard/admin/properties", label: "Property Approval Queue", icon: Building, badge: pendingPropCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/deactivation-requests", label: "Deactivation Requests", icon: PowerOff, badge: deactivationCount, reqPerm: ["super_admin", "properties"] },
                 { href: "/dashboard/admin/bookings", label: "Customer Bookings", icon: Calendar, badge: adminAlerts.bookings, reqPerm: ["super_admin", "bookings"] },
+                { href: "/dashboard/admin/agreements", label: "Agreements (L&L)", icon: FileSpreadsheet, reqPerm: ["super_admin", "operations"] },
                 { href: "/dashboard/admin/tenants", label: "Active Tenants", icon: Users, reqPerm: ["super_admin", "operations"] },
                 { href: "/dashboard/admin/cities", label: "City / Area Management", icon: MapPin, reqPerm: ["super_admin", "operations"] },
             ]
@@ -219,6 +228,7 @@ export default function DashboardSidebar(props: SidebarProps) {
         { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
         { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
         { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
+        { href: "/dashboard/student/agreements", label: "My Agreement", icon: FileSpreadsheet, badge: pendingStudentAgreements },
         { href: "/dashboard/student/payments", label: "Payment History", icon: CreditCard },
         { href: "/dashboard/student/food-menu", label: "Food Menu", icon: Utensils },
         { href: "/dashboard/student/notice", label: "Vacating Notice", icon: Bell },

@@ -106,6 +106,9 @@ model User {
   staffProfile           OwnerStaffMember?    @relation("UserAsStaffMember")
   uploadSessions         UploadSession[]
   fingerprints           UserFingerprint[]
+  // Agreement relations
+  tenantAgreements       Agreement[]          @relation("TenantAgreements")
+  ownerAgreements        Agreement[]          @relation("OwnerAgreements")
 
   @@index([status])
   @@index([phone])  // SECURITY FIX [H-2]: Efficient lookup when checking phone uniqueness
@@ -214,6 +217,7 @@ model Property {
   foodPreferences            FoodPreference[]
   vacatingNotices            VacatingNotice[]
   maintenanceRequests        MaintenanceRequest[]
+  agreements                 Agreement[]
   minimumNoticeDays          Int                          @default(30)
 
   @@index([status])
@@ -353,6 +357,7 @@ model Booking {
   vacatingNotices             VacatingNotice[]
   roomChangeRequests          RoomChangeRequest[]
   maintenanceRequests         MaintenanceRequest[]
+  agreement                   Agreement?
 
   @@index([status])
   @@index([onboardingDate])
@@ -1182,14 +1187,16 @@ model OwnerStaffMember {
   state             String?
   postOffice        String?
   address           String?
-  invitationToken   String?                   @unique
-  invitationExpires DateTime?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  userId            String?                   @unique
-  assignments       StaffPropertyAssignment[]
-  owner             User                      @relation("OwnerStaffMembers", fields: [ownerId], references: [id])
-  user              User?                     @relation("UserAsStaffMember", fields: [userId], references: [id])
+  invitationToken      String?                   @unique
+  invitationExpires    DateTime?
+  // Permission: Manager-level staff can execute agreements on behalf of the owner
+  canExecuteAgreements Boolean                   @default(false)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  userId               String?                   @unique
+  assignments          StaffPropertyAssignment[]
+  owner                User                      @relation("OwnerStaffMembers", fields: [ownerId], references: [id])
+  user                 User?                     @relation("UserAsStaffMember", fields: [userId], references: [id])
 
   @@map("owner_staff_members")
 }
@@ -1519,3 +1526,115 @@ model CommissionConfig {
   @@map("commission_configs")
 }
 
+// ─────────────────────────────────────────────────────────
+// TENANCY AGREEMENT SYSTEM
+// Legal basis: Indian Easements Act 1882 · Indian Contract Act 1872
+// IT Act 2000 · Model Tenancy Act 2021 · Indian Evidence Act S.65B
+// ─────────────────────────────────────────────────────────
+
+model Agreement {
+  id           String   @id @default(cuid())
+  displayId    String   @unique  // RP-AGR-26-27-000001
+
+  // Relations
+  bookingId    String   @unique
+  tenancyId    String?
+  propertyId   String
+  roomId       String?
+  bedId        String?
+  tenantId     String
+  ownerId      String
+  signerUserId String?  // userId of owner or manager who signed
+
+  // Status lifecycle:
+  // PENDING_TENANT_VERIFICATION → TENANT_VERIFIED →
+  // PENDING_COUNTER_SIGN → SIGNER_VERIFIED →
+  // AGREEMENT_READY_FOR_DOWNLOAD → PENDING_SIGNED_UPLOAD →
+  // AGREEMENT_COMPLETED | TERMINATED
+  status       String   @default("PENDING_TENANT_VERIFICATION")
+
+  // Tenant digital verification
+  tenantVerified       Boolean   @default(false)
+  tenantVerifiedAt     DateTime?
+  tenantVerifiedEmail  String?
+  tenantVerifiedIp     String?
+  tenantVerifiedDevice String?
+
+  // Signer (owner or manager)
+  signerType           String?   // OWNER | MANAGER
+  signerName           String?
+  signerDesignation    String?
+  signerEmail          String?
+  signerVerified       Boolean   @default(false)
+  signerVerifiedAt     DateTime?
+  signerVerifiedIp     String?
+  signerVerifiedDevice String?
+
+  // Financial terms — snapshot at agreement creation time
+  monthlyRent                Float
+  securityDeposit            Float
+  maintenanceCharges         Float     @default(0)
+  electricityType            String?   // ACTUAL_BILL | FLAT_RATE
+  electricityFlat            Float?
+  foodCharges                Float     @default(0)
+  wifiIncluded               Boolean   @default(false)
+  lockInDays                 Int       @default(30)
+  noticePeriodDays           Int       @default(30)
+  rentDueDay                 Int       @default(7)
+  lateFeePerDay              Float     @default(0)
+  gracePeriodDays            Int       @default(5)
+  overstayPenaltyMultiplier  Float     @default(2)
+
+  // Generated PDF (stored as Cloudinary raw resource, private)
+  agreementPdfUrl         String?
+  agreementPdfGeneratedAt DateTime?
+  downloadedAt            DateTime?
+
+  // Physically signed PDF (uploaded by owner/manager)
+  signedPdfUrl         String?
+  signedPdfUploadedAt  DateTime?
+  signedPdfUploadedBy  String?
+
+  // Move-in context
+  moveInNotes       String?
+  inventorySnapshot String?   // JSON string
+
+  // Police verification
+  policeVerificationDone  Boolean  @default(false)
+  policeVerificationNotes String?
+
+  // Termination
+  terminatedAt      DateTime?
+  terminatedBy      String?
+  terminationReason String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  booking   Booking          @relation(fields: [bookingId], references: [id])
+  property  Property         @relation(fields: [propertyId], references: [id])
+  tenant    User             @relation("TenantAgreements", fields: [tenantId], references: [id])
+  owner     User             @relation("OwnerAgreements", fields: [ownerId], references: [id])
+  messages  AgreementMessage[]
+
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("agreements")
+}
+
+model AgreementMessage {
+  id          String   @id @default(cuid())
+  agreementId String
+  senderId    String
+  senderRole  String   // TENANT | OWNER | MANAGER | ADMIN
+  message     String
+  createdAt   DateTime @default(now())
+
+  agreement Agreement @relation(fields: [agreementId], references: [id])
+
+  @@index([agreementId])
+  @@map("agreement_messages")
+}
