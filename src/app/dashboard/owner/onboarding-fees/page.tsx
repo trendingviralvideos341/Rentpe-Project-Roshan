@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { format } from "date-fns";
 import {
     Building2, CheckCircle2, Clock, Download, IndianRupee,
@@ -398,6 +398,18 @@ function OnboardingReceiptModal({
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function OwnerOnboardingFeesPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            </div>
+        }>
+            <OwnerOnboardingFeesContent />
+        </Suspense>
+    );
+}
+
+function OwnerOnboardingFeesContent() {
     const [data, setData] = useState<PageData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedProperty, setSelectedProperty] = useState<PropertyFeeEntry | null>(null);
@@ -437,7 +449,7 @@ export default function OwnerOnboardingFeesPage() {
         router.push(`?${params.toString()}`, { scroll: false });
     }
 
-    const searchTimer = useRef<NodeJS.Timeout>();
+    const searchTimer = useRef<NodeJS.Timeout | null>(null);
 
     const fees = data?.properties || [];
     const properties = data?.properties || [];
