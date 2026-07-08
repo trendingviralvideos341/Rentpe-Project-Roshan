@@ -513,7 +513,7 @@ export default function DepositsPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 pt-10 pb-20 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 relative overflow-hidden px-6 pt-10 pb-6">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 <div className="absolute -left-10 bottom-0 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl" />
                 <div className="max-w-5xl mx-auto relative z-10">
@@ -524,7 +524,7 @@ export default function DepositsPage() {
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
+            <div className="max-w-5xl mx-auto px-4 mt-4 mb-4 relative z-10 space-y-6">
 
                 {/* ⚠️ Overdue Warning Banner — Component 3 */}
                 {overdueInfo.count > 0 && (
@@ -551,47 +551,145 @@ export default function DepositsPage() {
                 )}
 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-3 gap-3">
-                    {/* Card 1 — Total Deposits Held → filters to HELD */}
-                    <div
-                        onClick={() => updateFilter("status", "HELD")}
-                        className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
-                            statusFilter === "HELD" ? "border-l-violet-600 bg-violet-50/20 ring-2 ring-violet-500/25 shadow-md" : "border-l-violet-500"
-                        }`}
-                    >
-                        <div className="text-2xl font-bold text-violet-600">{fmt(summary.totalHeld)}</div>
-                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Total Deposits Held</div>
-                        <div className="text-[9px] text-violet-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
+                <div className="grid grid-cols-3 gap-4">
+                    {/* Card 1 — violet */}
+                    <div onClick={() => updateFilter("status", "HELD")}
+                        className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-4
+                                   cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-200
+                                   transition-all group">
+                        <div className="text-xs font-bold uppercase tracking-widest text-violet-200 mb-2">
+                            Total Deposits Held
+                        </div>
+                        <div className="text-3xl font-extrabold text-white">{fmt(summary.totalHeld)}</div>
+                        <div className="text-xs text-violet-300 mt-1">{deposits.filter((d: any) => d.status === 'PAID').length} active</div>
+                        <div className="text-[9px] text-violet-200 mt-2 opacity-0 group-hover:opacity-100 transition font-semibold">
+                            Click to filter →
+                        </div>
                     </div>
 
-                    {/* Card 2 — Pending Refund → filters to REFUND_PENDING */}
-                    <div
-                        onClick={() => updateFilter("status", "REFUND_PENDING")}
-                        className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
-                            statusFilter === "REFUND_PENDING" ? "border-l-amber-600 bg-amber-50/20 ring-2 ring-amber-500/25 shadow-md" : "border-l-amber-500"
-                        }`}
-                    >
-                        <div className="text-2xl font-bold text-amber-500">{summary.refundPending}</div>
-                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Pending Refund</div>
-                        <div className="text-[9px] text-amber-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
+                    {/* Card 2 — amber */}
+                    <div onClick={() => updateFilter("status", "REFUND_PENDING")}
+                        className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4
+                                   cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-200
+                                   transition-all group">
+                        <div className="text-xs font-bold uppercase tracking-widest text-amber-100 mb-2">
+                            Pending Refund
+                        </div>
+                        <div className="text-3xl font-extrabold text-white">{summary.refundPending}</div>
+                        <div className="text-xs text-amber-200 mt-1">Need processing</div>
+                        <div className="text-[9px] text-amber-100 mt-2 opacity-0 group-hover:opacity-100 transition font-semibold">
+                            Click to filter →
+                        </div>
                     </div>
 
-                    {/* Card 3 — Refunded This Month → filters to REFUNDED */}
-                    <div
-                        onClick={() => updateFilter("status", "REFUNDED")}
-                        className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
-                            statusFilter === "REFUNDED" ? "border-l-emerald-600 bg-emerald-50/20 ring-2 ring-emerald-500/25 shadow-md" : "border-l-emerald-500"
-                        }`}
-                    >
-                        <div className="text-2xl font-bold text-emerald-600">{fmt(summary.refundedThisMonth)}</div>
-                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Refunded This Month</div>
-                        <div className="text-[9px] text-emerald-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
+                    {/* Card 3 — emerald */}
+                    <div onClick={() => updateFilter("status", "REFUNDED")}
+                        className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4
+                                   cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-200
+                                   transition-all group">
+                        <div className="text-xs font-bold uppercase tracking-widest text-emerald-100 mb-2">
+                            Refunded This Month
+                        </div>
+                        <div className="text-3xl font-extrabold text-white">{fmt(summary.refundedThisMonth)}</div>
+                        <div className="text-xs text-emerald-200 mt-1">Processed</div>
+                        <div className="text-[9px] text-emerald-100 mt-2 opacity-0 group-hover:opacity-100 transition font-semibold">
+                            Click to filter →
+                        </div>
+                    </div>
+                </div>
+
+                {/* FILTER BAR — standalone, not inside table */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-4 space-y-3">
+                    {/* Search */}
+                    <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Search</span>
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <input
+                                placeholder="Tenant name, phone, RP-TN-..., RP-B-..."
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-violet-400 focus:bg-white transition"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Property + Year + Month */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Filter</span>
+                        <select
+                            value={propertyFilter}
+                            onChange={(e) => updateFilter('property', e.target.value)}
+                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400"
+                        >
+                            <option value="ALL">All Properties</option>
+                            {properties.map((p: any) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={yearFilter}
+                            onChange={(e) => updateFilter('year', e.target.value)}
+                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400"
+                        >
+                            <option value="">Current FY (Default)</option>
+                            <option value="ALL">All Years</option>
+                            <option value={new Date().getFullYear().toString()}>This Year</option>
+                            <option value={(new Date().getFullYear() - 1).toString()}>Last Year</option>
+                        </select>
+                        <select
+                            value={monthFilter}
+                            onChange={(e) => updateFilter('month', e.target.value)}
+                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400"
+                        >
+                            <option value="ALL">All Months</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+
+                    {/* Status pills */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Status</span>
+                        <div className="flex gap-2 flex-wrap">
+                            {[
+                                { label: "All",            value: "ALL",            cls: "bg-violet-600 text-white border-violet-600" },
+                                { label: "Held",           value: "HELD",           cls: "bg-blue-600 text-white border-blue-600" },
+                                { label: "Refund Pending", value: "REFUND_PENDING", cls: "bg-amber-500 text-white border-amber-500" },
+                                { label: "Refunded",       value: "REFUNDED",       cls: "bg-emerald-600 text-white border-emerald-600" },
+                                { label: "Forfeited",      value: "FORFEITED",      cls: "bg-red-600 text-white border-red-600" },
+                            ].map(({ label, value, cls }) => (
+                                <button key={value}
+                                    onClick={() => updateFilter("status", value)}
+                                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
+                                        statusFilter === value
+                                            ? cls
+                                            : "bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-600"
+                                    }`}
+                                >
+                                    {label}
+                                    <span className="ml-1 text-[9px] opacity-60">
+                                        ({statusFilter === "ALL" && value !== "ALL" ? deposits.filter((d: any) => d.status === value || (value === 'HELD' && d.status === 'PAID') || (value === 'REFUND_PENDING' && (d.status === 'REFUND_PENDING' || d.status === 'REFUND_OVERDUE')) || (value === 'REFUNDED' && ['REFUNDED', 'PARTIALLY_REFUNDED', 'REFUNDED_VIA_WITHHOLDING'].includes(d.status))).length : deposits.filter((d: any) => value === "ALL" || d.status === value || (value === 'HELD' && d.status === 'PAID') || (value === 'REFUND_PENDING' && (d.status === 'REFUND_PENDING' || d.status === 'REFUND_OVERDUE')) || (value === 'REFUNDED' && ['REFUNDED', 'PARTIALLY_REFUNDED', 'REFUNDED_VIA_WITHHOLDING'].includes(d.status))).length})
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* Deposits Table */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                    <div className="p-5 border-b border-slate-100 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <h2 className="font-black text-slate-900">Security Deposits</h2>
                             <span className="text-xs text-slate-400 font-medium bg-slate-50 px-2 py-1 rounded-md">{totalCount} total</span>
@@ -603,41 +701,6 @@ export default function DepositsPage() {
                                     ✕ Clear filter
                                 </button>
                             )}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="relative">
-                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Search tenant..." 
-                                    value={searchInput}
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full sm:w-64 font-medium placeholder-slate-400"
-                                />
-                            </div>
-
-                            <select
-                                value={propertyFilter}
-                                onChange={(e) => updateFilter('property', e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-indigo-500 text-slate-600 font-medium"
-                            >
-                                <option value="ALL">All Properties</option>
-                                {properties.map((p: any) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={yearFilter}
-                                onChange={(e) => updateFilter('year', e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-indigo-500 text-slate-600 font-medium"
-                            >
-                                <option value="">Current FY (Default)</option>
-                                <option value="ALL">All Time</option>
-                                <option value={new Date().getFullYear().toString()}>This Year</option>
-                                <option value={(new Date().getFullYear() - 1).toString()}>Last Year</option>
-                            </select>
                         </div>
                     </div>
 
