@@ -186,6 +186,24 @@ export default function AdminDashboard() {
     const supportTicketsCount = snapshot?.support?.tickets ?? 0;
     const attentionCount = openDisputesCount + fraudAlertsCount + pendingPropertiesCount + supportTicketsCount;
 
+    const TABS = [
+        { id: "overview", label: "Dashboard", icon: <Activity className="h-5 w-5" /> },
+        { id: "property-dashboard", label: "Property Dashboard", icon: <Building2 className="h-5 w-5" /> },
+        { id: "profile", label: "My Profile", icon: <User className="h-5 w-5" /> },
+        { 
+            id: "reviews", 
+            label: "Moderation", 
+            icon: <MessageSquareWarning className="h-5 w-5" />,
+            badge: flaggedReviews.length > 0 && (
+                <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full leading-none">
+                    {flaggedReviews.length}
+                </span>
+            )
+        },
+        { id: "security", label: "Security Log", icon: <Shield className="h-5 w-5" /> },
+        { id: "attention", label: "Requires Attention", icon: <Bell className="h-5 w-5" /> }
+    ];
+
     return (
         <div className="space-y-8 pb-8">
             <div className="flex justify-between items-center">
@@ -207,35 +225,18 @@ export default function AdminDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <div className="flex gap-1.5 mt-4 bg-slate-100 p-1.5 rounded-2xl w-full">
-                    {[
-                        { id: "overview", label: "Dashboard", icon: <Activity className="h-4 w-4" /> },
-                        { id: "property-dashboard", label: "Property Dashboard", icon: <Building2 className="h-4 w-4" /> },
-                        { id: "profile", label: "My Profile", icon: <User className="h-4 w-4" /> },
-                        { 
-                            id: "reviews", 
-                            label: "Moderation", 
-                            icon: <MessageSquareWarning className="h-4 w-4" />,
-                            badge: flaggedReviews.length > 0 && (
-                                <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full leading-none">
-                                    {flaggedReviews.length}
-                                </span>
-                            )
-                        },
-                        { id: "security", label: "Security Log", icon: <Shield className="h-4 w-4" /> },
-                        { id: "attention", label: "Requires Attention", icon: <Bell className="h-4 w-4" /> }
-                    ].map(({ id, label, icon, badge }) => (
+                <div className="flex gap-0 bg-slate-100 p-1.5 rounded-2xl w-full mt-4">
+                    {TABS.map(({ id, label, icon, badge }) => (
                         <button
                             key={id}
                             type="button"
                             onClick={() => handleTabChange(id)}
-                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 
-                                        text-xs font-medium rounded-xl transition-all whitespace-nowrap
+                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-3
+                                        text-sm font-semibold rounded-xl transition-all whitespace-nowrap
+                                        relative
                                         ${activeTab === id
-                                          ? id === "attention"
-                                            ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md shadow-red-200 font-semibold"
-                                            : "bg-violet-600 text-white shadow-md shadow-violet-200 font-semibold"
-                                          : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                                          ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200"
+                                          : "text-slate-600 hover:bg-slate-200 hover:text-slate-800"
                                         }`}
                         >
                             {icon}
@@ -246,6 +247,9 @@ export default function AdminDashboard() {
                                                px-1.5 py-0.5 rounded-full leading-none">
                                 {attentionCount}
                               </span>
+                            )}
+                            {activeTab !== id && id !== TABS[TABS.length - 1].id && (
+                              <span className="absolute right-0 top-[20%] h-[60%] w-px bg-slate-300" />
                             )}
                         </button>
                     ))}
