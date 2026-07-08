@@ -430,7 +430,9 @@ export default function OwnerOnboardingFeesPage() {
     return (
         <div className="-mx-4 -mt-4 md:-mx-8 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-5 pb-8 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 px-4 pt-5 pb-8 relative overflow-hidden">
+                <div className="absolute w-64 h-64 rounded-full bg-white/10 -right-10 -top-10 pointer-events-none" />
+                <div className="absolute w-32 h-32 rounded-full bg-white/10 left-10 -bottom-8 pointer-events-none" />
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="max-w-5xl mx-auto relative z-10">
                     <Link href="/dashboard/owner"
@@ -451,7 +453,7 @@ export default function OwnerOnboardingFeesPage() {
 
             <div className="max-w-5xl mx-auto px-4 mt-5 space-y-5">
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 -mt-5 relative z-10">
                     <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
                         <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center mb-3">
                             <IndianRupee className="w-4 h-4 text-emerald-600" />
