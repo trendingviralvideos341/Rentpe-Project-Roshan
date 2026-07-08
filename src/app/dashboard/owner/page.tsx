@@ -12,7 +12,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 import { getOwnerDashboardStats, getOwnerInventory } from "@/actions/dashboard";
 import { getOwnerStaff } from "@/actions/staff";
@@ -23,6 +23,13 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const COLORS = ['#8b5cf6', '#e2e8f0'];
 const PIE_COLORS = ['#6366f1', '#e2e8f0', '#f59e0b'];
+
+const TABS = [
+    { id: "overview", label: "Overview", icon: TrendingUp },
+    { id: "inventory", label: "Bed Management", icon: Bed },
+    { id: "ops", label: "Operations", icon: Activity },
+    { id: "profile", label: "Profile", icon: User }
+];
 
 export default function OwnerDashboard() {
     const [stats, setStats] = useState<any>(null);
@@ -119,32 +126,27 @@ export default function OwnerDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex flex-wrap h-auto w-full max-w-2xl mb-8 p-1.5 bg-slate-100/80 rounded-2xl border shadow-inner">
-                    <TabsTrigger
-                        value="overview"
-                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
-                    >
-                        <TrendingUp className="h-4 w-4 mr-2 hidden sm:inline-block" /> Overview
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="inventory"
-                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
-                    >
-                        <Bed className="h-4 w-4 mr-2 hidden sm:inline-block" /> Bed Management
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="ops"
-                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
-                    >
-                        <Activity className="h-4 w-4 mr-2 hidden sm:inline-block" /> Operations
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="profile"
-                        className="flex-1 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-violet-600 hover:bg-transparent hover:shadow-none hover:scale-100 hover:translate-y-0 after:hidden data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:rounded-lg data-[state=active]:font-semibold data-[state=active]:shadow-none whitespace-nowrap"
-                    >
-                        <User className="h-4 w-4 mr-2 hidden sm:inline-block" /> Profile
-                    </TabsTrigger>
-                </TabsList>
+                <div className="flex gap-0 bg-slate-100 p-1.5 rounded-2xl w-full mt-4 mb-8">
+                    {TABS.map(({ id, label, icon: Icon }) => (
+                        <button
+                            key={id}
+                            onClick={() => handleTabChange(id)}
+                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-2.5
+                                text-xs font-medium rounded-xl transition-all whitespace-nowrap
+                                relative
+                                ${activeTab === id
+                                  ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200 font-semibold"
+                                  : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                                }`}
+                        >
+                            <Icon className="h-4 w-4 mr-2 hidden sm:inline-block" /> {label}
+                            {/* Separator line — hide on active and last tab */}
+                            {id !== activeTab && id !== TABS[TABS.length - 1].id && (
+                              <span className="absolute right-0 top-[20%] h-[60%] w-px bg-slate-300" />
+                            )}
+                        </button>
+                    ))}
+                </div>
 
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {/* ── KPI Cards ── */}
