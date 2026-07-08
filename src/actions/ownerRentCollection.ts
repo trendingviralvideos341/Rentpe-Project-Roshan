@@ -483,108 +483,197 @@ export async function getTenantMovementLog(propertyId?: string, month?: string) 
 // TASK 3 — SECURITY DEPOSIT TRACKER
 // ────────────────────────────────────────────────────────
 
-export async function getOwnerDeposits() {
+export async function getOwnerDeposits(filters?: {
+    status?: string;
+    propertyId?: string;
+    year?: string;
+    month?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}) {
     const { properties } = await getOwnerSession();
     const propertyIds = properties.map((p: any) => p.id);
 
-    const profiles = await prisma.billingProfile.findMany({
-        where: { propertyId: { in: propertyIds } },
-        include: {
-            deposit: {
-                include: {
-                    payments: { orderBy: { date: 'desc' }, take: 1 }
-                }
-            },
-            tenant: {
-                select: {
-                    displayId: true, name: true, phone: true, email: true,
-                    roomNumber: true, roomType: true, rent: true,
-                    booking: {
-                        select: {
-                            displayId: true,
-                            id: true,
-                            paymentMethod: true,
-                            roomAssigned: true,
-                            payments: {
-                                where: { status: 'VERIFIED' }
-                            }
-                        }
-                    }
-                }
-            }
+    const status = filters?.status;
+    const propertyId = filters?.propertyId;
+    const year = filters?.year;
+    const month = filters?.month;
+    const search = filters?.search;
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 25;
+    const skip = (page - 1) * limit;
+
+    // Calculate global summary (unfiltered by time or property except owner)
+    // We fetch just what we need to calculate totalHeld, refundPending, refundedThisMonth
+    const allOwnerDeposits = await prisma.securityDeposit.findMany({
+        where: {
+            billingProfile: { propertyId: { in: propertyIds } }
+        },
+        select: {
+            amount: true,
+            status: true,
+            refundAmount: true,
+            paidAt: true
         }
     });
 
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const deposits = profiles
-        .filter((p: any) => p.deposit)
-        .map((p: any) => {
-            const dep = p.deposit;
-            const lastPayment = dep.payments?.[0];
-            const bookingPayments = (p.tenant as any)?.booking?.payments || [];
-            
-            // Find deposit payment
-            const depositPayment = lastPayment;
-            // Fallback: joining payment (no invoiceId, no depositId)
-            const joiningPayment = depositPayment || bookingPayments.find(
-                (pay: any) => !pay.invoiceId && !pay.depositId && (pay.status === 'VERIFIED' || pay.status === 'SUCCESS')
-            );
-            // Fallback: any verified payment on the booking
-            const anyVerifiedPayment = joiningPayment || bookingPayments.find(
-                (pay: any) => pay.status === 'VERIFIED' || pay.status === 'SUCCESS'
-            );
-
-            const rawMethod = lastPayment?.method || anyVerifiedPayment?.method || (p.tenant as any)?.booking?.paymentMethod || null;
-            const paymentMode = rawMethod === 'CASH' ? 'Cash'
-                : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
-                : rawMethod ? rawMethod
-                : null;
-
-            return {
-                id: dep.id,
-                tenantId: p.tenantId,
-                tenantDisplayId: p.tenant?.displayId || '',
-                tenantName: p.tenant?.name || 'Unknown',
-                tenantPhone: p.tenant?.phone || '',
-                tenantEmail: p.tenant?.email || '',
-                propertyId: p.propertyId,
-                roomNumber: p.tenant?.roomNumber || '',
-                roomType: p.tenant?.roomType || '',
-                monthlyRent: p.monthlyRent,
-                bookingDisplayId: (p.tenant as any)?.booking?.displayId || '',
-                bookingId: (p.tenant as any)?.booking?.id || '',
-                roomAssigned: (p.tenant as any)?.booking?.roomAssigned || '',
-                amount: dep.amount,
-                collectedOn: dep.paidAt,
-                createdAt: dep.createdAt,
-                status: dep.status || 'PENDING',
-                refundAmount: dep.refundAmount,
-                deductionAmount: dep.deductionAmount,
-                deductionReason: dep.deductionReason,
-                paymentMethod: paymentMode,
-                razorpayId: anyVerifiedPayment?.razorpayId || anyVerifiedPayment?.razorpayOrderId || null,
-            };
-        })
-        // ── Latest deposit first (by createdAt desc) ──
-        .sort((a: any, b: any) => {
-            const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return db - da;
-        });
-
-    const totalHeld = deposits.filter(d => d.status === 'PAID').reduce((s: number, d: any) => s + d.amount, 0);
-    const refundedThisMonth = deposits.filter(d =>
+    
+    const totalHeld = allOwnerDeposits.filter(d => d.status === 'PAID').reduce((s: number, d: any) => s + d.amount, 0);
+    const refundPending = allOwnerDeposits.filter(d => d.status === 'REFUND_PENDING').length;
+    const refundedThisMonth = allOwnerDeposits.filter(d =>
         (d.status === 'REFUNDED' || d.status === 'PARTIALLY_REFUNDED') &&
-        d.collectedOn >= monthStart
+        d.paidAt && d.paidAt >= monthStart
     ).reduce((s: number, d: any) => s + (d.refundAmount || 0), 0);
+
+    // Build the query for paginated results
+    const whereClause: any = {
+        billingProfile: {
+            propertyId: propertyId && propertyId !== 'ALL' ? propertyId : { in: propertyIds }
+        }
+    };
+
+    if (status && status !== 'ALL') {
+        if (status === 'HELD') {
+            whereClause.status = 'PAID';
+        } else if (status === 'REFUND_PENDING') {
+            whereClause.status = { in: ['REFUND_PENDING', 'REFUND_OVERDUE'] };
+        } else if (status === 'REFUNDED') {
+            whereClause.status = { in: ['REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED', 'REFUNDED_VIA_WITHHOLDING'] };
+        } else {
+            whereClause.status = status;
+        }
+    }
+
+    if (search) {
+        whereClause.billingProfile = {
+            ...whereClause.billingProfile,
+            tenant: {
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { phone: { contains: search } },
+                    { displayId: { contains: search, mode: 'insensitive' } },
+                    { booking: { displayId: { contains: search, mode: 'insensitive' } } }
+                ]
+            }
+        };
+    }
+
+    // Default to current FY unless year filter is explicitly passed (either a specific year or 'ALL')
+    if (year !== 'ALL') {
+        if (year) {
+            const y = parseInt(year);
+            let start: Date;
+            let end: Date;
+            if (month && month !== 'ALL') {
+                const m = parseInt(month);
+                start = new Date(y, m - 1, 1);
+                end = new Date(y, m, 1);
+            } else {
+                start = new Date(y, 0, 1);
+                end = new Date(y + 1, 0, 1);
+            }
+            whereClause.createdAt = { gte: start, lt: end };
+        } else {
+            // Default current FY logic
+            const currentFYStart = new Date(
+                new Date().getMonth() >= 3
+                    ? new Date().getFullYear()
+                    : new Date().getFullYear() - 1,
+                3, 1
+            );
+            whereClause.createdAt = { gte: currentFYStart };
+        }
+    }
+
+    const [totalCount, rawDeposits] = await Promise.all([
+        prisma.securityDeposit.count({ where: whereClause }),
+        prisma.securityDeposit.findMany({
+            where: whereClause,
+            include: {
+                billingProfile: {
+                    include: {
+                        tenant: {
+                            select: {
+                                displayId: true, name: true, phone: true, email: true,
+                                roomNumber: true, roomType: true, rent: true,
+                                booking: {
+                                    select: {
+                                        displayId: true,
+                                        id: true,
+                                        paymentMethod: true,
+                                        roomAssigned: true,
+                                        payments: {
+                                            where: { status: 'VERIFIED' }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                payments: { orderBy: { date: 'desc' }, take: 1 }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: skip
+        })
+    ]);
+
+    const deposits = rawDeposits.map((dep: any) => {
+        const p = dep.billingProfile;
+        const lastPayment = dep.payments?.[0];
+        const bookingPayments = (p.tenant as any)?.booking?.payments || [];
+        
+        const depositPayment = lastPayment;
+        const joiningPayment = depositPayment || bookingPayments.find(
+            (pay: any) => !pay.invoiceId && !pay.depositId && (pay.status === 'VERIFIED' || pay.status === 'SUCCESS')
+        );
+        const anyVerifiedPayment = joiningPayment || bookingPayments.find(
+            (pay: any) => pay.status === 'VERIFIED' || pay.status === 'SUCCESS'
+        );
+
+        const rawMethod = lastPayment?.method || anyVerifiedPayment?.method || (p.tenant as any)?.booking?.paymentMethod || null;
+        const paymentMode = rawMethod === 'CASH' ? 'Cash'
+            : rawMethod === 'ONLINE' ? 'Online (Razorpay)'
+            : rawMethod ? rawMethod
+            : null;
+
+        return {
+            id: dep.id,
+            tenantId: p.tenantId,
+            tenantDisplayId: p.tenant?.displayId || '',
+            tenantName: p.tenant?.name || 'Unknown',
+            tenantPhone: p.tenant?.phone || '',
+            tenantEmail: p.tenant?.email || '',
+            propertyId: p.propertyId,
+            roomNumber: p.tenant?.roomNumber || '',
+            roomType: p.tenant?.roomType || '',
+            monthlyRent: p.monthlyRent,
+            bookingDisplayId: (p.tenant as any)?.booking?.displayId || '',
+            bookingId: (p.tenant as any)?.booking?.id || '',
+            roomAssigned: (p.tenant as any)?.booking?.roomAssigned || '',
+            amount: dep.amount,
+            collectedOn: dep.paidAt,
+            createdAt: dep.createdAt,
+            status: dep.status || 'PENDING',
+            refundAmount: dep.refundAmount,
+            deductionAmount: dep.deductionAmount,
+            deductionReason: dep.deductionReason,
+            paymentMethod: paymentMode,
+            razorpayId: anyVerifiedPayment?.razorpayId || anyVerifiedPayment?.razorpayOrderId || null,
+        };
+    });
 
     return {
         deposits,
+        totalCount,
+        properties,
         summary: {
             totalHeld,
-            refundPending: deposits.filter(d => d.status === 'REFUND_PENDING').length,
+            refundPending,
             refundedThisMonth,
         }
     };

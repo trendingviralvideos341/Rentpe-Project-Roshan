@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     getOwnerDeposits,
     getOwnerOverdueDepositCount,
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import {
     Shield, Loader2, X, AlertCircle, Receipt, Printer,
     CheckCircle2, Clock, AlertTriangle, ChevronRight,
-    Home, Zap, FileText, DollarSign, Check, Info
+    Home, Zap, FileText, DollarSign, Check, Info, Search
 } from 'lucide-react';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
@@ -432,17 +433,57 @@ function SettlementWizard({ dep, onClose, onSuccess }: { dep: any; onClose: () =
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DepositsPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const statusFilter = searchParams.get('status') ?? 'ALL';
+    const propertyFilter = searchParams.get('property') ?? 'ALL';
+    const yearFilter = searchParams.get('year') ?? ''; // Empty default lets API handle Current FY
+    const monthFilter = searchParams.get('month') ?? 'ALL';
+    const searchVal = searchParams.get('search') ?? '';
+    const page = parseInt(searchParams.get('page') ?? '1', 10);
+    const limit = 25;
+
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [receiptDep, setReceiptDep] = useState<any>(null);
     const [settleDep, setSettleDep] = useState<any>(null);
     const [overdueInfo, setOverdueInfo] = useState<{ count: number; totalAmount: number; deposits: any[] }>({ count: 0, totalAmount: 0, deposits: [] });
-    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [searchInput, setSearchInput] = useState(searchVal);
+
+    // Debounce search input
+    useEffect(() => {
+        const t = setTimeout(() => {
+            if (searchInput !== searchVal) {
+                updateFilter('search', searchInput || null);
+            }
+        }, 400);
+        return () => clearTimeout(t);
+    }, [searchInput, searchVal]);
+
+    const updateFilter = (key: string, value: string | null) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value && value !== 'ALL') {
+            params.set(key, value);
+        } else {
+            params.delete(key);
+        }
+        if (key !== 'page') params.delete('page'); // Reset page to 1 on any filter change
+        router.push(`?${params.toString()}`);
+    };
 
     const reload = () => {
         setLoading(true);
         Promise.all([
-            getOwnerDeposits(),
+            getOwnerDeposits({
+                status: statusFilter,
+                propertyId: propertyFilter,
+                year: yearFilter,
+                month: monthFilter,
+                search: searchVal,
+                page,
+                limit
+            }),
             getOwnerOverdueDepositCount(),
         ]).then(([depositsData, overdueData]) => {
             setData(depositsData);
@@ -451,25 +492,22 @@ export default function DepositsPage() {
         });
     };
 
-    useEffect(() => { reload(); }, []);
+    useEffect(() => { reload(); }, [searchParams]);
 
-    if (loading) return (
+    if (loading && !data) return (
         <div className="min-h-screen flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
         </div>
     );
 
-    const { deposits, summary } = data;
-    const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+    const deposits = data?.deposits || [];
+    const summary = data?.summary || { totalHeld: 0, refundPending: 0, refundedThisMonth: 0 };
+    const totalCount = data?.totalCount || 0;
+    const properties = data?.properties || [];
+    const totalPages = Math.ceil(totalCount / limit);
+    const filteredDeposits = deposits;
 
-    const filteredDeposits = statusFilter === 'ALL'
-        ? deposits
-        : deposits.filter((d: any) => {
-            if (statusFilter === 'HELD') return d.status === 'PAID';
-            if (statusFilter === 'REFUND_PENDING') return d.status === 'REFUND_PENDING' || d.status === 'REFUND_OVERDUE';
-            if (statusFilter === 'REFUNDED') return ['REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED', 'REFUNDED_VIA_WITHHOLDING'].includes(d.status);
-            return false;
-        });
+    const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
@@ -516,59 +554,91 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-3 gap-3">
                     {/* Card 1 — Total Deposits Held → filters to HELD */}
                     <div
-                        onClick={() => setStatusFilter("HELD")}
+                        onClick={() => updateFilter("status", "HELD")}
                         className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
                             statusFilter === "HELD" ? "border-l-violet-600 bg-violet-50/20 ring-2 ring-violet-500/25 shadow-md" : "border-l-violet-500"
                         }`}
                     >
                         <div className="text-2xl font-bold text-violet-600">{fmt(summary.totalHeld)}</div>
                         <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Total Deposits Held</div>
-                        <div className="text-[9px] text-slate-400 mt-1">{deposits.filter((d: any) => d.status === 'PAID').length} active</div>
                         <div className="text-[9px] text-violet-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
                     </div>
 
                     {/* Card 2 — Pending Refund → filters to REFUND_PENDING */}
                     <div
-                        onClick={() => setStatusFilter("REFUND_PENDING")}
+                        onClick={() => updateFilter("status", "REFUND_PENDING")}
                         className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
                             statusFilter === "REFUND_PENDING" ? "border-l-amber-600 bg-amber-50/20 ring-2 ring-amber-500/25 shadow-md" : "border-l-amber-500"
                         }`}
                     >
                         <div className="text-2xl font-bold text-amber-500">{summary.refundPending}</div>
                         <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Pending Refund</div>
-                        <div className="text-[9px] text-slate-400 mt-1">Need processing</div>
                         <div className="text-[9px] text-amber-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
                     </div>
 
                     {/* Card 3 — Refunded This Month → filters to REFUNDED */}
                     <div
-                        onClick={() => setStatusFilter("REFUNDED")}
+                        onClick={() => updateFilter("status", "REFUNDED")}
                         className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
                             statusFilter === "REFUNDED" ? "border-l-emerald-600 bg-emerald-50/20 ring-2 ring-emerald-500/25 shadow-md" : "border-l-emerald-500"
                         }`}
                     >
                         <div className="text-2xl font-bold text-emerald-600">{fmt(summary.refundedThisMonth)}</div>
                         <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Refunded This Month</div>
-                        <div className="text-[9px] text-slate-400 mt-1">Processed</div>
                         <div className="text-[9px] text-emerald-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
                     </div>
                 </div>
 
                 {/* Deposits Table */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center">
-                            <h2 className="font-black text-slate-900">All Security Deposits</h2>
+                    <div className="p-5 border-b border-slate-100 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <h2 className="font-black text-slate-900">Security Deposits</h2>
+                            <span className="text-xs text-slate-400 font-medium bg-slate-50 px-2 py-1 rounded-md">{totalCount} total</span>
                             {statusFilter !== "ALL" && (
                                 <button
-                                    onClick={() => setStatusFilter("ALL")}
-                                    className="text-[9px] text-violet-600 font-bold hover:underline ml-2"
+                                    onClick={() => updateFilter("status", "ALL")}
+                                    className="text-[9px] text-violet-600 font-bold hover:underline"
                                 >
                                     ✕ Clear filter
                                 </button>
                             )}
                         </div>
-                        <span className="text-xs text-slate-400 font-medium">Newest first</span>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search tenant..." 
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full sm:w-64 font-medium placeholder-slate-400"
+                                />
+                            </div>
+
+                            <select
+                                value={propertyFilter}
+                                onChange={(e) => updateFilter('property', e.target.value)}
+                                className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-indigo-500 text-slate-600 font-medium"
+                            >
+                                <option value="ALL">All Properties</option>
+                                {properties.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={yearFilter}
+                                onChange={(e) => updateFilter('year', e.target.value)}
+                                className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:border-indigo-500 text-slate-600 font-medium"
+                            >
+                                <option value="">Current FY (Default)</option>
+                                <option value="ALL">All Time</option>
+                                <option value={new Date().getFullYear().toString()}>This Year</option>
+                                <option value={(new Date().getFullYear() - 1).toString()}>Last Year</option>
+                            </select>
+                        </div>
                     </div>
 
                     {filteredDeposits.length === 0 ? (
@@ -685,6 +755,31 @@ export default function DepositsPage() {
                                     );
                                 })}
                             </div>
+                            
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                    <p className="text-xs text-slate-500 font-medium">
+                                        Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalCount)} of {totalCount}
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => updateFilter('page', (page - 1).toString())}
+                                            disabled={page === 1}
+                                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-all shadow-sm"
+                                        >
+                                            Previous
+                                        </button>
+                                        <button 
+                                            onClick={() => updateFilter('page', (page + 1).toString())}
+                                            disabled={page === totalPages}
+                                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-all shadow-sm"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
