@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import {
     Building2, CheckCircle2, Clock, Download, IndianRupee,
-    ArrowLeft, CreditCard, AlertTriangle, Loader2, X, Shield
+    ArrowLeft, CreditCard, AlertTriangle, Loader2, X, Shield, Search
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     createOnboardingFeeOrder,
     verifyOnboardingFeePayment,
@@ -419,6 +420,47 @@ export default function OwnerOnboardingFeesPage() {
     const pendingCount = data?.properties.filter(p => !p.isPaid).length || 0;
     const totalPaid    = paidCount * (data?.feeAmount || 0);
 
+    const router       = useRouter();
+    const searchParams = useSearchParams();
+
+    const statusFilter   = searchParams.get("status")   ?? "ALL";
+    const yearFilter     = searchParams.get("year")     ?? new Date().getFullYear().toString();
+    const monthFilter    = searchParams.get("month")    ?? "ALL";
+    const searchQuery    = searchParams.get("search")   ?? "";
+    const propertyFilter = searchParams.get("property") ?? "ALL";
+
+    function updateFilter(key: string, value: string) {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value === "ALL" || value === "") params.delete(key);
+        else params.set(key, value);
+        params.delete("page");
+        router.push(`?${params.toString()}`, { scroll: false });
+    }
+
+    const searchTimer = useRef<NodeJS.Timeout>();
+
+    const fees = data?.properties || [];
+    const properties = data?.properties || [];
+    const stats = {
+        totalPaid: "₹" + totalPaid.toLocaleString("en-IN"),
+        totalOnboarded: paidCount,
+        pendingPayment: pendingCount
+    };
+
+    const filteredFees = fees.filter(f => {
+        const feeDate = f.onboardingPaidAt ? new Date(f.onboardingPaidAt) : null;
+        const matchStatus   = statusFilter === "ALL" || (statusFilter === "PAID" ? f.isPaid : !f.isPaid);
+        const matchProperty = propertyFilter === "ALL" || f.id === propertyFilter;
+        const matchYear     = yearFilter === "ALL" || feeDate?.getFullYear().toString() === yearFilter;
+        const matchMonth    = monthFilter === "ALL" || (feeDate && (feeDate.getMonth() + 1).toString() === monthFilter);
+        const matchSearch   = searchQuery === "" ||
+            f.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            f.displayId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            f.onboardingRazorpayId?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchStatus && matchProperty && matchYear && matchMonth && matchSearch;
+    });
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 flex items-center justify-center">
@@ -429,51 +471,131 @@ export default function OwnerOnboardingFeesPage() {
 
     return (
         <div className="-mx-4 -mt-4 md:-mx-8 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 px-4 pt-5 pb-8 relative overflow-hidden">
-                <div className="absolute w-64 h-64 rounded-full bg-white/10 -right-10 -top-10 pointer-events-none" />
+            {/* ── HEADER ── */}
+            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 relative overflow-hidden px-6 py-5 pb-12">
+                <div className="absolute w-56 h-56 rounded-full bg-white/10 -right-10 -top-10 pointer-events-none" />
                 <div className="absolute w-32 h-32 rounded-full bg-white/10 left-10 -bottom-8 pointer-events-none" />
-                <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="max-w-5xl mx-auto relative z-10">
-                    <Link href="/dashboard/owner"
-                        className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 transition-all border border-white/30 backdrop-blur-sm">
-                        <ArrowLeft className="w-3 h-3" /> Back
-                    </Link>
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <Building2 className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black text-white">Property Onboarding Fees</h1>
-                            <p className="text-indigo-200 text-xs font-medium mt-0.5">One-time fee per property listing on RentPe</p>
-                        </div>
+                <button onClick={() => router.back()} className="inline-flex items-center gap-2 bg-white/20 border border-white/25 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 hover:bg-white/30 transition">
+                    ← Back
+                </button>
+                <div className="flex items-center gap-3 relative z-10">
+                    <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">🏢</div>
+                    <div>
+                        <h1 className="text-xl font-extrabold text-white">Property Onboarding Fees</h1>
+                        <p className="text-xs text-white/70 mt-0.5">One-time fee per property listing on RentPe</p>
                     </div>
                 </div>
             </div>
 
             <div className="max-w-5xl mx-auto px-4 mt-5 space-y-5">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 -mt-5 relative z-10">
-                    <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
-                        <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center mb-3">
-                            <IndianRupee className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Paid</p>
-                        <p className="text-xl font-black text-slate-900 mt-0.5">₹{totalPaid.toLocaleString("en-IN")}</p>
+                {/* ── SUMMARY CARDS — clickable ── */}
+                <div className="grid grid-cols-3 gap-4 -mt-5 relative z-10 px-6 mb-5">
+                    <div onClick={() => updateFilter("status", "PAID")} className="bg-white rounded-2xl border border-slate-100 border-l-4 border-l-emerald-500 p-4 shadow-md cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all group">
+                        <div className="h-8 w-8 bg-emerald-50 rounded-xl flex items-center justify-center text-base mb-2">💰</div>
+                        <div className="text-2xl font-extrabold text-emerald-600">{stats.totalPaid}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Total Paid</div>
+                        <div className="text-[9px] text-emerald-400 mt-1.5 opacity-0 group-hover:opacity-100 transition">Click to filter paid →</div>
                     </div>
-                    <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
-                        <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center mb-3">
-                            <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                        </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Properties Onboarded</p>
-                        <p className="text-xl font-black text-slate-900 mt-0.5">{paidCount}</p>
+                    <div onClick={() => updateFilter("status", "ALL")} className="bg-white rounded-2xl border border-slate-100 border-l-4 border-l-violet-500 p-4 shadow-md cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all group">
+                        <div className="h-8 w-8 bg-violet-50 rounded-xl flex items-center justify-center text-base mb-2">✅</div>
+                        <div className="text-2xl font-extrabold text-violet-600">{stats.totalOnboarded}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Properties Onboarded</div>
+                        <div className="text-[9px] text-violet-400 mt-1.5 opacity-0 group-hover:opacity-100 transition">Click to view all →</div>
                     </div>
-                    <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100 col-span-2 md:col-span-1">
-                        <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
-                            <Clock className="w-4 h-4 text-amber-600" />
+                    <div onClick={() => updateFilter("status", "PENDING")} className="bg-white rounded-2xl border border-slate-100 border-l-4 border-l-amber-500 p-4 shadow-md cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all group">
+                        <div className="h-8 w-8 bg-amber-50 rounded-xl flex items-center justify-center text-base mb-2">⏳</div>
+                        <div className="text-2xl font-extrabold text-amber-600">{stats.pendingPayment}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Pending Payment</div>
+                        <div className="text-[9px] text-amber-400 mt-1.5 opacity-0 group-hover:opacity-100 transition">Click to filter pending →</div>
+                    </div>
+                </div>
+
+                {/* ── FILTER BAR ── */}
+                <div className="mx-6 bg-white rounded-2xl border border-slate-100 p-4 mb-4 space-y-3">
+                    {/* Row 1 — Search */}
+                    <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Search</span>
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <input
+                                type="text"
+                                defaultValue={searchQuery}
+                                onChange={e => {
+                                    clearTimeout(searchTimer.current);
+                                    searchTimer.current = setTimeout(() => updateFilter("search", e.target.value), 400);
+                                }}
+                                placeholder="Property name, RP-P-..., Razorpay ID..."
+                                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-violet-400 focus:bg-white transition"
+                            />
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pending Payment</p>
-                        <p className="text-xl font-black text-slate-900 mt-0.5">{pendingCount}</p>
+                    </div>
+                    {/* Row 2 — Property + Year + Month */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Filter</span>
+                        {/* Property */}
+                        <select
+                            value={propertyFilter}
+                            onChange={e => updateFilter("property", e.target.value)}
+                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400 transition"
+                        >
+                            <option value="ALL">All Properties</option>
+                            {properties.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                        {/* Year */}
+                        <select
+                            value={yearFilter}
+                            onChange={e => { updateFilter("year", e.target.value); updateFilter("month", "ALL"); }}
+                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400 transition"
+                        >
+                            <option value="ALL">All Years</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                        {/* Month — only when year selected */}
+                        {yearFilter !== "ALL" && (
+                            <select
+                                value={monthFilter}
+                                onChange={e => updateFilter("month", e.target.value)}
+                                className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400 transition"
+                            >
+                                <option value="ALL">All Months</option>
+                                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
+                                    <option key={i+1} value={String(i+1)}>{m}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    {/* Row 3 — Status pills */}
+                    <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Status</span>
+                        <div className="flex gap-2 flex-wrap">
+                            {[
+                                { label: "All", value: "ALL", count: fees.length, active: "bg-violet-600 text-white border-violet-600" },
+                                { label: "✓ Paid", value: "PAID", count: fees.filter(f => f.isPaid).length, active: "bg-emerald-600 text-white border-emerald-600" },
+                                { label: "⏳ Pending", value: "PENDING", count: fees.filter(f => !f.isPaid).length, active: "bg-amber-500 text-white border-amber-500" },
+                            ].map(({ label, value, count, active }) => (
+                                <button
+                                    key={value}
+                                    onClick={() => updateFilter("status", value)}
+                                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${statusFilter === value ? active : "bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-600"}`}
+                                >
+                                    {label}
+                                    <span className={`ml-1.5 text-[9px] ${statusFilter === value ? "opacity-70" : "text-slate-400"}`}>({count})</span>
+                                </button>
+                            ))}
+                        </div>
+                        {/* Clear all filters */}
+                        {(statusFilter !== "ALL" || propertyFilter !== "ALL" || yearFilter !== new Date().getFullYear().toString() || monthFilter !== "ALL" || searchQuery !== "") && (
+                            <button
+                                onClick={() => router.push(window.location.pathname)}
+                                className="text-[10px] text-red-400 font-bold hover:text-red-600 ml-auto"
+                            >
+                                ✕ Clear all
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -483,10 +605,10 @@ export default function OwnerOnboardingFeesPage() {
                         <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-indigo-600" /> Your Properties
                         </h2>
-                        <span className="text-xs text-slate-400 font-bold">{data?.properties.length || 0} properties</span>
+                        <span className="text-xs text-slate-400 font-bold">{filteredFees.length} properties</span>
                     </div>
 
-                    {!data?.properties.length ? (
+                    {!filteredFees.length ? (
                         <div className="py-16 text-center">
                             <Building2 className="w-10 h-10 text-slate-200 mx-auto mb-3" />
                             <p className="text-sm font-bold text-slate-400">No properties found</p>
@@ -504,7 +626,7 @@ export default function OwnerOnboardingFeesPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data?.properties.map(p => (
+                                        {filteredFees.map(p => (
                                             <tr key={p.id} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors">
                                                 <td className="px-5 py-4 font-bold text-slate-800 text-xs">{p.name}</td>
                                                 <td className="px-5 py-4 text-xs font-mono text-indigo-600 font-bold">{p.displayId || "—"}</td>
@@ -544,7 +666,7 @@ export default function OwnerOnboardingFeesPage() {
 
                             {/* Mobile Cards */}
                             <div className="md:hidden divide-y divide-slate-50">
-                                {data?.properties.map(p => (
+                                {filteredFees.map(p => (
                                     <div key={p.id} className="p-4 space-y-3">
                                         <div className="flex items-start justify-between gap-2">
                                             <div>
