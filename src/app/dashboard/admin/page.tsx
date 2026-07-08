@@ -207,49 +207,49 @@ export default function AdminDashboard() {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="flex h-auto w-full mb-8 p-1.5 bg-white/40 backdrop-blur-md rounded-2xl border border-white/40 shadow-xl shadow-indigo-900/5">
-                    <TabsTrigger
-                        value="overview"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
-                    >
-                        <Activity className="h-4 w-4 mr-2" /> Dashboard
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="property-dashboard"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
-                    >
-                        <Building2 className="h-4 w-4 mr-2" /> Property Dashboard
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="profile"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
-                    >
-                        <User className="h-4 w-4 mr-2" /> My Profile
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="reviews"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
-                    >
-                        <MessageSquareWarning className="h-4 w-4 mr-2" /> Moderation {flaggedReviews.length > 0 && <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">{flaggedReviews.length}</span>}
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="security"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
-                    >
-                        <Shield className="h-4 w-4 mr-2" /> Security Log
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="attention"
-                        className="flex-1 font-bold py-3 text-sm whitespace-nowrap"
-                    >
-                        <Bell className="h-4 w-4 mr-2" /> Requires Attention
-                        {attentionCount > 0 && (
-                            <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                <div className="flex gap-1.5 mt-4 bg-slate-100 p-1.5 rounded-2xl w-full">
+                    {[
+                        { id: "overview", label: "Dashboard", icon: <Activity className="h-4 w-4" /> },
+                        { id: "property-dashboard", label: "Property Dashboard", icon: <Building2 className="h-4 w-4" /> },
+                        { id: "profile", label: "My Profile", icon: <User className="h-4 w-4" /> },
+                        { 
+                            id: "reviews", 
+                            label: "Moderation", 
+                            icon: <MessageSquareWarning className="h-4 w-4" />,
+                            badge: flaggedReviews.length > 0 && (
+                                <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full leading-none">
+                                    {flaggedReviews.length}
+                                </span>
+                            )
+                        },
+                        { id: "security", label: "Security Log", icon: <Shield className="h-4 w-4" /> },
+                        { id: "attention", label: "Requires Attention", icon: <Bell className="h-4 w-4" /> }
+                    ].map(({ id, label, icon, badge }) => (
+                        <button
+                            key={id}
+                            type="button"
+                            onClick={() => handleTabChange(id)}
+                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 
+                                        text-xs font-medium rounded-xl transition-all whitespace-nowrap
+                                        ${activeTab === id
+                                          ? id === "attention"
+                                            ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md shadow-red-200 font-semibold"
+                                            : "bg-violet-600 text-white shadow-md shadow-violet-200 font-semibold"
+                                          : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                                        }`}
+                        >
+                            {icon}
+                            <span>{label}</span>
+                            {badge}
+                            {id === "attention" && attentionCount > 0 && (
+                              <span className="bg-white/25 text-white text-[9px] font-bold
+                                               px-1.5 py-0.5 rounded-full leading-none">
                                 {attentionCount}
-                            </span>
-                        )}
-                    </TabsTrigger>
-                </TabsList>
+                              </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
 
                 <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <SuperAdminKPIs
@@ -509,157 +509,137 @@ export default function AdminDashboard() {
                 <TabsContent value="attention" className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
                     <div className="px-6 py-6 max-w-screen-xl mx-auto">
                         <div className="mb-5">
-                            <h2 className="text-base font-semibold text-slate-800">
-                                Action Items
-                            </h2>
-                            <p className="text-sm text-slate-400 mt-1">
-                                Click any card to go directly to that section. No data changes here.
+                            <h2 className="text-base font-bold text-slate-800">Action Items</h2>
+                            <p className="text-xs text-slate-400 mt-1">
+                                Click any card to navigate directly. No data changes here.
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
+                            {/* Open Disputes */}
                             <Link href="/dashboard/admin/disputes"
-                                className="bg-white rounded-2xl border border-slate-100 hover:border-red-200
-                                           hover:shadow-md transition-all group overflow-hidden">
-                                <div className="flex items-center gap-4 p-5">
-                                    <div className="h-11 w-11 rounded-2xl bg-red-50 flex items-center
-                                                    justify-center flex-shrink-0 group-hover:bg-red-100 transition">
-                                        <XCircle className="h-5 w-5 text-red-500" />
+                                className="rounded-2xl border-[1.5px] border-red-200 bg-gradient-to-br
+                                           from-red-50 to-rose-50 overflow-hidden hover:-translate-y-1
+                                           hover:shadow-lg hover:shadow-red-100 transition-all group">
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="h-11 w-11 rounded-2xl bg-red-100 flex items-center
+                                                        justify-center text-xl">🚨</div>
+                                        <span className="text-4xl font-extrabold text-red-600 leading-none">
+                                            {openDisputesCount}
+                                        </span>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-red-600">Open Disputes</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">
-                                            Active disputes requiring admin resolution
-                                        </p>
-                                    </div>
-                                    {/* Same data already fetched on dashboard */}
-                                    <span className="text-2xl font-bold text-red-500">
-                                        {openDisputesCount}
-                                    </span>
+                                    <p className="text-sm font-bold text-red-900">Open Disputes</p>
+                                    <p className="text-xs text-red-400 mt-1">
+                                        Active disputes requiring admin resolution
+                                    </p>
                                 </div>
-                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
-                                                items-center bg-slate-50/50">
-                                    <span className="text-xs text-slate-400">No data change</span>
-                                    <span className="text-xs text-red-500 font-semibold
-                                                     group-hover:underline">
-                                        Go to Disputes →
-                                    </span>
+                                <div className="flex items-center justify-between px-5 py-2.5
+                                                border-t border-red-100 bg-red-50/50">
+                                    <span className="text-xs text-red-300 font-medium">✓ No pending disputes</span>
+                                    <span className="text-xs font-bold text-red-500
+                                                     group-hover:underline">Go to Disputes →</span>
                                 </div>
                             </Link>
 
+                            {/* Fraud Alerts */}
                             <Link href="/dashboard/admin/fraud"
-                                className="bg-white rounded-2xl border border-slate-100 hover:border-orange-200
-                                           hover:shadow-md transition-all group overflow-hidden">
-                                <div className="flex items-center gap-4 p-5">
-                                    <div className="h-11 w-11 rounded-2xl bg-orange-50 flex items-center
-                                                    justify-center flex-shrink-0 group-hover:bg-orange-100 transition">
-                                        <AlertTriangle className="h-5 w-5 text-orange-500" />
+                                className="rounded-2xl border-[1.5px] border-orange-200 bg-gradient-to-br
+                                           from-orange-50 to-amber-50 overflow-hidden hover:-translate-y-1
+                                           hover:shadow-lg hover:shadow-orange-100 transition-all group">
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="h-11 w-11 rounded-2xl bg-orange-100 flex items-center
+                                                        justify-center text-xl">⚠️</div>
+                                        <span className="text-4xl font-extrabold text-orange-600 leading-none">
+                                            {fraudAlertsCount}
+                                        </span>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-orange-600">Fraud Alerts</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">
-                                            Flagged accounts and suspicious activity
-                                        </p>
-                                    </div>
-                                    {/* Same count already fetched on dashboard */}
-                                    <span className="text-2xl font-bold text-orange-500">
-                                        {fraudAlertsCount}
-                                    </span>
+                                    <p className="text-sm font-bold text-orange-900">Fraud Alerts</p>
+                                    <p className="text-xs text-orange-400 mt-1">
+                                        Flagged accounts and suspicious activity
+                                    </p>
                                 </div>
-                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
-                                                items-center bg-slate-50/50">
-                                    <span className="text-xs text-slate-400">No data change</span>
-                                    <span className="text-xs text-orange-500 font-semibold
-                                                     group-hover:underline">
-                                        Go to Fraud Management →
-                                    </span>
+                                <div className="flex items-center justify-between px-5 py-2.5
+                                                border-t border-orange-100 bg-orange-50/50">
+                                    <span className="text-xs text-orange-300 font-medium">✓ No active alerts</span>
+                                    <span className="text-xs font-bold text-orange-500
+                                                     group-hover:underline">Go to Fraud →</span>
                                 </div>
                             </Link>
 
+                            {/* Properties Pending */}
                             <Link href="/dashboard/admin/properties?status=pending"
-                                className="bg-white rounded-2xl border border-slate-100 hover:border-blue-200
-                                           hover:shadow-md transition-all group overflow-hidden">
-                                <div className="flex items-center gap-4 p-5">
-                                    <div className="h-11 w-11 rounded-2xl bg-blue-50 flex items-center
-                                                    justify-center flex-shrink-0 group-hover:bg-blue-100 transition">
-                                        <Home className="h-5 w-5 text-blue-500" />
+                                className="rounded-2xl border-[1.5px] border-blue-200 bg-gradient-to-br
+                                           from-blue-50 to-sky-50 overflow-hidden hover:-translate-y-1
+                                           hover:shadow-lg hover:shadow-blue-100 transition-all group">
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="h-11 w-11 rounded-2xl bg-blue-100 flex items-center
+                                                        justify-center text-xl">🏠</div>
+                                        <span className="text-4xl font-extrabold text-blue-600 leading-none">
+                                            {pendingPropertiesCount}
+                                        </span>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-blue-600">
-                                            Properties Pending
-                                        </p>
-                                        <p className="text-xs text-slate-400 mt-0.5">
-                                            Awaiting admin verification
-                                        </p>
-                                    </div>
-                                    {/* Same count already fetched on dashboard */}
-                                    <span className="text-2xl font-bold text-blue-500">
-                                        {pendingPropertiesCount}
-                                    </span>
+                                    <p className="text-sm font-bold text-blue-900">Properties Pending</p>
+                                    <p className="text-xs text-blue-400 mt-1">
+                                        Awaiting admin verification and approval
+                                    </p>
                                 </div>
-                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
-                                                items-center bg-slate-50/50">
-                                    <span className="text-xs text-slate-400">No data change</span>
-                                    <span className="text-xs text-blue-500 font-semibold
-                                                     group-hover:underline">
-                                        Go to Property Approval →
-                                    </span>
+                                <div className="flex items-center justify-between px-5 py-2.5
+                                                border-t border-blue-100 bg-blue-50/50">
+                                    <span className="text-xs text-blue-300 font-medium">✓ All verified</span>
+                                    <span className="text-xs font-bold text-blue-500
+                                                     group-hover:underline">Go to Approvals →</span>
                                 </div>
                             </Link>
 
+                            {/* Support Tickets */}
                             <Link href="/dashboard/admin/tickets"
-                                className="bg-white rounded-2xl border border-slate-100 hover:border-violet-200
-                                           hover:shadow-md transition-all group overflow-hidden">
-                                <div className="flex items-center gap-4 p-5">
-                                    <div className="h-11 w-11 rounded-2xl bg-violet-50 flex items-center
-                                                    justify-center flex-shrink-0 group-hover:bg-violet-100 transition">
-                                        <Ticket className="h-5 w-5 text-violet-500" />
+                                className="rounded-2xl border-[1.5px] border-violet-200 bg-gradient-to-br
+                                           from-violet-50 to-purple-50 overflow-hidden hover:-translate-y-1
+                                           hover:shadow-lg hover:shadow-violet-100 transition-all group">
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="h-11 w-11 rounded-2xl bg-violet-100 flex items-center
+                                                        justify-center text-xl">🎫</div>
+                                        <span className="text-4xl font-extrabold text-violet-600 leading-none">
+                                            {supportTicketsCount}
+                                        </span>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-violet-600">
-                                            Support Tickets
-                                        </p>
-                                        <p className="text-xs text-slate-400 mt-0.5">
-                                            Open tickets from owners and tenants
-                                        </p>
-                                    </div>
-                                    {/* Same count already fetched on dashboard */}
-                                    <span className="text-2xl font-bold text-violet-500">
-                                        {supportTicketsCount}
-                                    </span>
+                                    <p className="text-sm font-bold text-violet-900">Support Tickets</p>
+                                    <p className="text-xs text-violet-400 mt-1">
+                                        Open tickets from owners and tenants
+                                    </p>
                                 </div>
-                                <div className="px-5 py-2.5 border-t border-slate-50 flex justify-between
-                                                items-center bg-slate-50/50">
-                                    <span className="text-xs text-slate-400">No data change</span>
-                                    <span className="text-xs text-violet-500 font-semibold
-                                                     group-hover:underline">
-                                        Go to Support Tickets →
-                                    </span>
+                                <div className="flex items-center justify-between px-5 py-2.5
+                                                border-t border-violet-100 bg-violet-50/50">
+                                    <span className="text-xs text-violet-300 font-medium">✓ No open tickets</span>
+                                    <span className="text-xs font-bold text-violet-500
+                                                     group-hover:underline">Go to Tickets →</span>
                                 </div>
                             </Link>
 
                         </div>
 
-                        {/* All clear state */}
-                        {openDisputesCount === 0 &&
-                         fraudAlertsCount === 0 &&
-                         pendingPropertiesCount === 0 &&
-                         supportTicketsCount === 0 && (
-                            <div className="mt-4 flex items-center gap-3 bg-emerald-50 border
-                                            border-emerald-100 rounded-2xl px-5 py-4">
-                                <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                        {/* All clear banner */}
+                        {attentionCount === 0 && (
+                            <div className="flex items-center gap-4 bg-gradient-to-r from-emerald-50
+                                            to-teal-50 border-[1.5px] border-emerald-200 rounded-2xl
+                                            px-5 py-4">
+                                <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center
+                                                justify-center text-base flex-shrink-0">✅</div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-semibold text-emerald-700">
-                                        All clear right now
-                                    </p>
+                                    <p className="text-sm font-bold text-emerald-800">All clear right now</p>
                                     <p className="text-xs text-emerald-600 mt-0.5">
-                                        No pending items. Full activity history is in Security Audit Log.
+                                        No pending items. Full activity history in Security Audit Log.
                                     </p>
                                 </div>
                                 <Link href="/dashboard/admin/audit-log"
-                                    className="text-xs text-violet-600 font-semibold hover:underline
-                                               whitespace-nowrap">
+                                    className="text-xs font-bold text-violet-600 bg-white border
+                                               border-violet-100 px-3 py-2 rounded-xl hover:bg-violet-50
+                                               transition whitespace-nowrap">
                                     Security Audit Log →
                                 </Link>
                             </div>
