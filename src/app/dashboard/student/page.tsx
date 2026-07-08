@@ -1157,14 +1157,14 @@ export default function StudentDashboardPage() {
 
             {/* Main Tabs Segment */}
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="grid grid-cols-3 w-full p-1 bg-slate-100 rounded-2xl border shadow-inner h-auto">
-                    <TabsTrigger value="active-stay" className="font-bold py-3 text-xs md:text-sm whitespace-nowrap">
+                <TabsList className="flex w-full mb-4 p-1.5 bg-slate-100 rounded-2xl h-auto gap-0">
+                    <TabsTrigger value="active-stay" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl relative data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200 data-[state=inactive]:after:content-[''] data-[state=inactive]:after:absolute data-[state=inactive]:after:right-0 data-[state=inactive]:after:top-[20%] data-[state=inactive]:after:h-[60%] data-[state=inactive]:after:w-px data-[state=inactive]:after:bg-slate-300">
                         <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
                     </TabsTrigger>
-                    <TabsTrigger value="bookings" className="font-bold py-3 text-xs md:text-sm whitespace-nowrap">
+                    <TabsTrigger value="bookings" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl relative data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200 data-[state=inactive]:after:content-[''] data-[state=inactive]:after:absolute data-[state=inactive]:after:right-0 data-[state=inactive]:after:top-[20%] data-[state=inactive]:after:h-[60%] data-[state=inactive]:after:w-px data-[state=inactive]:after:bg-slate-300">
                         <Calendar className="h-4 w-4 mr-2 hidden sm:block" /> Bookings & Status
                     </TabsTrigger>
-                    <TabsTrigger value="profile" className="font-bold py-3 text-xs md:text-sm whitespace-nowrap">
+                    <TabsTrigger value="profile" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200">
                         <User className="h-4 w-4 mr-2 hidden sm:block" /> My Profile
                     </TabsTrigger>
                 </TabsList>
@@ -1291,13 +1291,13 @@ export default function StudentDashboardPage() {
                 </TabsContent>
 
                 {/* ── Profile Tab Content ── */}
-                <TabsContent value="profile" className="space-y-6 pt-4">
+                <TabsContent value="profile" className="space-y-6 pt-0">
                     {(() => {
                         const isProfileLocked = !!profile?.dateOfBirth;
                         return (
                             isEditingProfile ? (
-                                <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl">
-                                    <CardHeader className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-5 md:p-6 relative shadow-md">
+                                <Card className="border-2 border-slate-100 shadow-sm bg-white overflow-hidden rounded-3xl rounded-t-none">
+                                    <CardHeader className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-5 md:p-6 relative shadow-md rounded-t-none">
                                         <div className="flex items-center gap-4">
                                             <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-inner shadow-white/20">
                                                 <User className="h-8 w-8 md:h-10 md:w-10" />
@@ -1477,7 +1477,7 @@ export default function StudentDashboardPage() {
                             ) : (
                                 <div className="space-y-4">
                                     {/* Hero row */}
-                                    <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-5 flex items-center gap-4 relative">
+                                    <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-b-2xl rounded-t-none p-5 flex items-center gap-4 relative">
                                         <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
                                             <User className="h-8 w-8 text-white" />
                                         </div>
