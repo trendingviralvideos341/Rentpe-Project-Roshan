@@ -437,6 +437,7 @@ export default function DepositsPage() {
     const [receiptDep, setReceiptDep] = useState<any>(null);
     const [settleDep, setSettleDep] = useState<any>(null);
     const [overdueInfo, setOverdueInfo] = useState<{ count: number; totalAmount: number; deposits: any[] }>({ count: 0, totalAmount: 0, deposits: [] });
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
     const reload = () => {
         setLoading(true);
@@ -460,6 +461,15 @@ export default function DepositsPage() {
 
     const { deposits, summary } = data;
     const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+
+    const filteredDeposits = statusFilter === 'ALL'
+        ? deposits
+        : deposits.filter((d: any) => {
+            if (statusFilter === 'HELD') return d.status === 'PAID';
+            if (statusFilter === 'REFUND_PENDING') return d.status === 'REFUND_PENDING' || d.status === 'REFUND_OVERDUE';
+            if (statusFilter === 'REFUNDED') return ['REFUNDED', 'PARTIALLY_REFUNDED', 'FORFEITED', 'REFUNDED_VIA_WITHHOLDING'].includes(d.status);
+            return false;
+        });
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
@@ -504,31 +514,69 @@ export default function DepositsPage() {
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-3 gap-3">
-                    {[
-                        { label: 'Total Deposits Held', val: fmt(summary.totalHeld), sub: `${deposits.filter((d: any) => d.status === 'PAID').length} active`, color: 'from-blue-500 to-indigo-600' },
-                        { label: 'Pending Refund', val: `${summary.refundPending}`, sub: 'need processing', color: 'from-amber-500 to-orange-500' },
-                        { label: 'Refunded This Month', val: fmt(summary.refundedThisMonth), sub: 'processed', color: 'from-emerald-500 to-teal-600' },
-                    ].map(card => (
-                        <div key={card.label} className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 overflow-hidden relative">
-                            <div className={`absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-br ${card.color} rounded-full opacity-10`} />
-                            <p className="text-xl md:text-2xl font-black text-slate-900">{card.val}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{card.label}</p>
-                            <p className="text-xs text-slate-300 mt-0.5">{card.sub}</p>
-                        </div>
-                    ))}
+                    {/* Card 1 — Total Deposits Held → filters to HELD */}
+                    <div
+                        onClick={() => setStatusFilter("HELD")}
+                        className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
+                            statusFilter === "HELD" ? "border-l-violet-600 bg-violet-50/20 ring-2 ring-violet-500/25 shadow-md" : "border-l-violet-500"
+                        }`}
+                    >
+                        <div className="text-2xl font-bold text-violet-600">{fmt(summary.totalHeld)}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Total Deposits Held</div>
+                        <div className="text-[9px] text-slate-400 mt-1">{deposits.filter((d: any) => d.status === 'PAID').length} active</div>
+                        <div className="text-[9px] text-violet-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
+                    </div>
+
+                    {/* Card 2 — Pending Refund → filters to REFUND_PENDING */}
+                    <div
+                        onClick={() => setStatusFilter("REFUND_PENDING")}
+                        className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
+                            statusFilter === "REFUND_PENDING" ? "border-l-amber-600 bg-amber-50/20 ring-2 ring-amber-500/25 shadow-md" : "border-l-amber-500"
+                        }`}
+                    >
+                        <div className="text-2xl font-bold text-amber-500">{summary.refundPending}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Pending Refund</div>
+                        <div className="text-[9px] text-slate-400 mt-1">Need processing</div>
+                        <div className="text-[9px] text-amber-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
+                    </div>
+
+                    {/* Card 3 — Refunded This Month → filters to REFUNDED */}
+                    <div
+                        onClick={() => setStatusFilter("REFUNDED")}
+                        className={`bg-white rounded-2xl border border-slate-100 border-l-4 p-4 cursor-pointer hover:shadow-md transition-all group ${
+                            statusFilter === "REFUNDED" ? "border-l-emerald-600 bg-emerald-50/20 ring-2 ring-emerald-500/25 shadow-md" : "border-l-emerald-500"
+                        }`}
+                    >
+                        <div className="text-2xl font-bold text-emerald-600">{fmt(summary.refundedThisMonth)}</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">Refunded This Month</div>
+                        <div className="text-[9px] text-slate-400 mt-1">Processed</div>
+                        <div className="text-[9px] text-emerald-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to filter →</div>
+                    </div>
                 </div>
 
                 {/* Deposits Table */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                     <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                        <h2 className="font-black text-slate-900">All Security Deposits</h2>
+                        <div className="flex items-center">
+                            <h2 className="font-black text-slate-900">All Security Deposits</h2>
+                            {statusFilter !== "ALL" && (
+                                <button
+                                    onClick={() => setStatusFilter("ALL")}
+                                    className="text-[9px] text-violet-600 font-bold hover:underline ml-2"
+                                >
+                                    ✕ Clear filter
+                                </button>
+                            )}
+                        </div>
                         <span className="text-xs text-slate-400 font-medium">Newest first</span>
                     </div>
 
-                    {deposits.length === 0 ? (
+                    {filteredDeposits.length === 0 ? (
                         <div className="py-16 text-center">
                             <Shield className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                            <p className="font-black text-slate-400">No security deposits found</p>
+                            <p className="font-black text-slate-400">
+                                {statusFilter === "ALL" ? "No security deposits found" : "No matching deposits found"}
+                            </p>
                         </div>
                     ) : (
                         <>
@@ -543,14 +591,14 @@ export default function DepositsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {deposits.map((dep: any, idx: number) => {
+                                        {filteredDeposits.map((dep: any, idx: number) => {
                                             const sc = STATUS_CONFIG[dep.status] || STATUS_CONFIG.PENDING;
                                             const collDate = dep.collectedOn
                                                 ? new Date(dep.collectedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                                                 : '—';
                                             return (
                                                 <tr key={dep.id} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-4 py-4 text-xs font-black text-slate-300">#{deposits.length - idx}</td>
+                                                    <td className="px-4 py-4 text-xs font-black text-slate-300">#{deposits.length - deposits.findIndex((d: any) => d.id === dep.id)}</td>
                                                     <td className="px-4 py-4">
                                                         <p className="font-black text-slate-900 text-sm">{dep.tenantName}</p>
                                                         <p className="text-xs text-slate-400">{dep.tenantPhone}</p>
@@ -607,7 +655,7 @@ export default function DepositsPage() {
 
                             {/* Mobile Cards */}
                             <div className="md:hidden divide-y divide-slate-100">
-                                {deposits.map((dep: any, idx: number) => {
+                                {filteredDeposits.map((dep: any, idx: number) => {
                                     const sc = STATUS_CONFIG[dep.status] || STATUS_CONFIG.PENDING;
                                     const collDate = dep.collectedOn
                                         ? new Date(dep.collectedOn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
