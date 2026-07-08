@@ -161,29 +161,41 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
 
             {/* Portfolio Stats Banner */}
             {!loading && properties.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    {/* Total Registered Property */}
                     <div className="bg-linear-to-br from-indigo-500 to-indigo-700 rounded-2xl p-5 text-white shadow-xl shadow-indigo-200 border border-indigo-400 relative overflow-hidden group">
                         <div className="relative z-10">
-                            <p className="text-indigo-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><Building className="h-3.5 w-3.5" /> Total Properties</p>
-                            <h3 className="text-4xl font-black">{properties.length}</h3>
+                            <p className="text-indigo-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><Building className="h-3.5 w-3.5" /> Total Registered Property</p>
+                            <h3 className="text-4xl font-black">{properties.filter(p => p.isVerified || p.status === 'LIVE' || p.status === 'APPROVED').length}</h3>
                         </div>
-                        <Activity className="absolute -right-4 -bottom-4 h-24 w-24 text-indigo-400/30 group-hover:scale-110 transition-transform duration-500" />
+                        <Building className="absolute -right-4 -bottom-4 h-24 w-24 text-indigo-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     
+                    {/* Live Property */}
                     <div className="bg-linear-to-br from-emerald-500 to-emerald-700 rounded-2xl p-5 text-white shadow-xl shadow-emerald-200 border border-emerald-400 relative overflow-hidden group">
                         <div className="relative z-10">
-                            <p className="text-emerald-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5" /> Live & Approved</p>
-                            <h3 className="text-4xl font-black">{properties.filter(p => p.status === 'LIVE' || p.status === 'APPROVED').length}</h3>
+                            <p className="text-emerald-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5" /> Live Property</p>
+                            <h3 className="text-4xl font-black">{properties.filter(p => p.status === 'LIVE').length}</h3>
                         </div>
                         <CheckCircle className="absolute -right-4 -bottom-4 h-24 w-24 text-emerald-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
-                    
-                    <div className="bg-linear-to-br from-purple-500 to-purple-700 rounded-2xl p-5 text-white shadow-xl shadow-purple-200 border border-purple-400 relative overflow-hidden group">
+
+                    {/* Pending Verification Property */}
+                    <div className="bg-linear-to-br from-amber-500 to-amber-700 rounded-2xl p-5 text-white shadow-xl shadow-amber-200 border border-amber-400 relative overflow-hidden group">
                         <div className="relative z-10">
-                            <p className="text-purple-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5" /> Total Rooms</p>
-                            <h3 className="text-4xl font-black">{properties.reduce((sum, p) => sum + (p.rooms?.length || 0), 0)}</h3>
+                            <p className="text-amber-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Pending Verification Property</p>
+                            <h3 className="text-4xl font-black">{properties.filter(p => !p.isVerified && !['LIVE', 'APPROVED', 'SUSPENDED', 'REJECTED', 'CANCELLED', 'DEACTIVATED'].includes(p.status)).length}</h3>
                         </div>
-                        <BedDouble className="absolute -right-4 -bottom-4 h-24 w-24 text-purple-400/30 group-hover:scale-110 transition-transform duration-500" />
+                        <AlertCircle className="absolute -right-4 -bottom-4 h-24 w-24 text-amber-400/30 group-hover:scale-110 transition-transform duration-500" />
+                    </div>
+                    
+                    {/* Suspended / Blocked Property */}
+                    <div className="bg-linear-to-br from-rose-500 to-rose-700 rounded-2xl p-5 text-white shadow-xl shadow-rose-200 border border-rose-400 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <p className="text-rose-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Suspended / Blocked Property</p>
+                            <h3 className="text-4xl font-black">{properties.filter(p => p.status === 'SUSPENDED' || p.status === 'REJECTED').length}</h3>
+                        </div>
+                        <AlertTriangle className="absolute -right-4 -bottom-4 h-24 w-24 text-rose-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                 </div>
             )}
