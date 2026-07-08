@@ -168,7 +168,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                             <p className="text-indigo-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><Building className="h-3.5 w-3.5" /> Total Registered Property</p>
                             <h3 className="text-4xl font-black">{properties.filter(p => p.isVerified || p.status === 'LIVE' || p.status === 'APPROVED').length}</h3>
                         </div>
-                        <Building className="absolute -right-4 -bottom-4 h-24 w-24 text-indigo-400/30 group-hover:scale-110 transition-transform duration-500" />
+                        <Building className="absolute -right-2 -bottom-2 h-16 w-16 text-indigo-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     
                     {/* Live Property */}
@@ -177,16 +177,16 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                             <p className="text-emerald-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5" /> Live Property</p>
                             <h3 className="text-4xl font-black">{properties.filter(p => p.status === 'LIVE').length}</h3>
                         </div>
-                        <CheckCircle className="absolute -right-4 -bottom-4 h-24 w-24 text-emerald-400/30 group-hover:scale-110 transition-transform duration-500" />
+                        <CheckCircle className="absolute -right-2 -bottom-2 h-16 w-16 text-emerald-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
 
                     {/* Pending Verification Property */}
-                    <div className="bg-linear-to-br from-amber-500 to-amber-700 rounded-2xl p-5 text-white shadow-xl shadow-amber-200 border border-amber-400 relative overflow-hidden group">
+                    <div className="bg-linear-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-xl shadow-orange-100 border border-orange-400 relative overflow-hidden group">
                         <div className="relative z-10">
-                            <p className="text-amber-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Pending Verification Property</p>
+                            <p className="text-orange-50 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Pending Verification Property</p>
                             <h3 className="text-4xl font-black">{properties.filter(p => !p.isVerified && !['LIVE', 'APPROVED', 'SUSPENDED', 'REJECTED', 'CANCELLED', 'DEACTIVATED'].includes(p.status)).length}</h3>
                         </div>
-                        <AlertCircle className="absolute -right-4 -bottom-4 h-24 w-24 text-amber-400/30 group-hover:scale-110 transition-transform duration-500" />
+                        <AlertCircle className="absolute -right-2 -bottom-2 h-16 w-16 text-orange-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     
                     {/* Suspended / Blocked Property */}
@@ -195,7 +195,7 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                             <p className="text-rose-100 font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Suspended / Blocked Property</p>
                             <h3 className="text-4xl font-black">{properties.filter(p => p.status === 'SUSPENDED' || p.status === 'REJECTED').length}</h3>
                         </div>
-                        <AlertTriangle className="absolute -right-4 -bottom-4 h-24 w-24 text-rose-400/30 group-hover:scale-110 transition-transform duration-500" />
+                        <AlertTriangle className="absolute -right-2 -bottom-2 h-16 w-16 text-rose-400/30 group-hover:scale-110 transition-transform duration-500" />
                     </div>
                 </div>
             )}
