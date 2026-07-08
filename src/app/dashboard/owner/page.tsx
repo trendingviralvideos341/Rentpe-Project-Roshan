@@ -131,17 +131,17 @@ export default function OwnerDashboard() {
                         <button
                             key={id}
                             onClick={() => handleTabChange(id)}
-                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-2.5
-                                text-xs font-medium rounded-xl transition-all whitespace-nowrap
+                            className={`flex flex-1 items-center justify-center gap-2 px-4 py-3.5
+                                text-sm font-bold rounded-xl transition-all whitespace-nowrap
                                 relative
                                 ${activeTab === id
-                                  ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200 font-semibold"
-                                  : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                                  ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-200 scale-[1.02]"
+                                  : "text-slate-600 hover:bg-slate-200 hover:text-slate-800"
                                 }`}
                         >
-                            <Icon className="h-4 w-4 mr-2 hidden sm:inline-block" /> {label}
+                            <Icon className="h-5 w-5 mr-2 hidden sm:inline-block" /> {label}
                             {/* Separator line — hide on active and last tab */}
-                            {id !== activeTab && id !== TABS[TABS.length - 1].id && (
+                            {activeTab !== id && id !== TABS[TABS.length - 1].id && (
                               <span className="absolute right-0 top-[20%] h-[60%] w-px bg-slate-300" />
                             )}
                         </button>
