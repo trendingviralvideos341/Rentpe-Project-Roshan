@@ -1,5 +1,23 @@
 'use server';
 
+/*
+ * ──────────────────────────────────────────────────────────────────────────────
+ * PHASE 1 — NATIVE FUZZY SEARCH (pg_trgm)
+ * ──────────────────────────────────────────────────────────────────────────────
+ * To enable full trigram fuzzy search on Supabase:
+ *   1. Go to Supabase Dashboard → SQL Editor
+ *   2. Run: CREATE EXTENSION IF NOT EXISTS pg_trgm;
+ *   3. Optionally add a GIN index for performance:
+ *      CREATE INDEX IF NOT EXISTS idx_property_name_trgm ON "Property" USING GIN (name gin_trgm_ops);
+ *      CREATE INDEX IF NOT EXISTS idx_property_city_trgm ON "Property" USING GIN (city gin_trgm_ops);
+ *      CREATE INDEX IF NOT EXISTS idx_property_addr_trgm ON "Property" USING GIN (address gin_trgm_ops);
+ *
+ * The searchPropertiesFuzzy function below attempts trigram similarity first
+ * and automatically falls back to ILIKE if pg_trgm is not installed.
+ * ILIKE alone works on any PostgreSQL/SQLite database without migrations.
+ * ──────────────────────────────────────────────────────────────────────────────
+ */
+
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
@@ -1647,3 +1665,115 @@ export async function assignPropertyToVerifier(propertyId: string, verifierId: s
 }
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 1 — NATIVE FUZZY SEARCH
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fuzzy property search result shape returned by searchPropertiesFuzzy.
+ */
+export interface FuzzyPropertyResult {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    price: number | null;
+    status: string;
+    similarity?: number;
+}
+
+/**
+ * searchPropertiesFuzzy — Phase 1 Native Fuzzy Search
+ *
+ * Primary strategy: PostgreSQL pg_trgm similarity() function.
+ * Fallback strategy: ILIKE pattern matching (works without any extension).
+ *
+ * @param query - The search term entered by the student.
+ * @returns An array of up to 20 live properties matching the query.
+ */
+export async function searchPropertiesFuzzy(
+    query: string
+): Promise<FuzzyPropertyResult[]> {
+    if (!query?.trim()) return [];
+
+    const pattern = `%${query.trim()}%`;
+
+    // ── Strategy 1: pg_trgm similarity search ─────────────────────────────────
+    // Uses similarity() which requires the pg_trgm extension.
+    // Threshold 0.1 is intentionally low to support partial / short queries.
+    try {
+        const results = await prisma.$queryRaw<FuzzyPropertyResult[]>`
+            SELECT
+                id,
+                name,
+                address,
+                city,
+                NULL::numeric           AS price,
+                status,
+                GREATEST(
+                    similarity(name,    ${query}),
+                    similarity(address, ${query}),
+                    similarity(city,    ${query})
+                ) AS similarity
+            FROM "Property"
+            WHERE status = 'LIVE'
+              AND (
+                    similarity(name,    ${query}) > 0.1
+                 OR similarity(address, ${query}) > 0.1
+                 OR similarity(city,    ${query}) > 0.1
+                 OR name    ILIKE ${pattern}
+                 OR address ILIKE ${pattern}
+                 OR city    ILIKE ${pattern}
+              )
+            ORDER BY similarity DESC
+            LIMIT 20;
+        `;
+
+        console.log(
+            `[FUZZY_SEARCH] pg_trgm strategy returned ${results.length} results for "${query}"`
+        );
+        return results;
+    } catch (trgmError: any) {
+        // pg_trgm not available — fall through to ILIKE fallback.
+        const isTrgmMissing =
+            trgmError?.message?.includes('function similarity') ||
+            trgmError?.message?.includes('pg_trgm') ||
+            trgmError?.code === '42883'; // undefined_function in PostgreSQL
+
+        if (!isTrgmMissing) {
+            // Unexpected error — rethrow so it isn't silently swallowed.
+            console.error('[FUZZY_SEARCH] Unexpected error in pg_trgm path:', trgmError);
+            throw trgmError;
+        }
+
+        console.warn(
+            '[FUZZY_SEARCH] pg_trgm not available — falling back to ILIKE. ' +
+            'Enable the extension in Supabase SQL Editor: CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+        );
+    }
+
+    // ── Strategy 2: ILIKE fallback ────────────────────────────────────────────
+    // Safe on every PostgreSQL / SQLite version with zero configuration.
+    const results = await prisma.$queryRaw<FuzzyPropertyResult[]>`
+        SELECT
+            id,
+            name,
+            address,
+            city,
+            NULL::numeric AS price,
+            status
+        FROM "Property"
+        WHERE status = 'LIVE'
+          AND (
+                name    ILIKE ${pattern}
+             OR address ILIKE ${pattern}
+             OR city    ILIKE ${pattern}
+          )
+        LIMIT 20;
+    `;
+
+    console.log(
+        `[FUZZY_SEARCH] ILIKE fallback returned ${results.length} results for "${query}"`
+    );
+    return results;
+}

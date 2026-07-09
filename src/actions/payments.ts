@@ -6,6 +6,8 @@ import { razorpay } from "@/lib/razorpay";
 import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
+import { sendSlackNotification } from "@/lib/slack";
+import { appendToSheet } from "@/lib/sheets";
 
 
 export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string, isToken?: boolean }) {
@@ -273,6 +275,50 @@ export async function verifyPayment(data: {
                 description: `Payment of ₹${payment.amount} verified. Razorpay ID: ${data.razorpay_payment_id}. Booking ID: ${payment.bookingId}.`,
                 newValue: { status: 'VERIFIED', razorpayId: data.razorpay_payment_id, amount: payment.amount },
             }).catch(err => console.error('Failed to log audit event:', err));
+
+            // 4. Slack Notification — Payment confirmed
+            try {
+                const bookingForNotif = await prisma.booking.findUnique({
+                    where: { id: payment.bookingId },
+                    select: { displayId: true, propertyName: true }
+                });
+                const paymentType = payment.invoiceId ? 'Rent Invoice' : payment.depositId ? 'Security Deposit' : 'Joining Payment';
+                sendSlackNotification('💰 Payment Confirmed', {
+                    'Booking ID': bookingForNotif?.displayId || payment.bookingId,
+                    'Amount': `₹${Number(payment.amount).toLocaleString('en-IN')}`,
+                    'Property': bookingForNotif?.propertyName || '—',
+                    'Student': user?.name || '—',
+                    'Type': paymentType,
+                    'Razorpay ID': data.razorpay_payment_id,
+                }).catch(err => console.error('[Slack] Payment notification failed:', err));
+            } catch (slackErr) {
+                console.error('[Slack] Error building payment notification:', slackErr);
+            }
+
+            // 5. Google Sheets — Append payment row
+            // Columns: [Date, BookingID, StudentName, PropertyName, Amount, Type]
+            try {
+                const bookingForSheet = await prisma.booking.findUnique({
+                    where: { id: payment.bookingId },
+                    select: { displayId: true, propertyName: true }
+                });
+                const paymentTypeSheet = payment.invoiceId ? 'Rent Invoice' : payment.depositId ? 'Security Deposit' : 'Joining Payment';
+                const dateStr = new Date().toLocaleString('en-IN', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true,
+                    timeZone: 'Asia/Kolkata',
+                });
+                appendToSheet([
+                    dateStr,
+                    bookingForSheet?.displayId || payment.bookingId,
+                    user?.name || '—',
+                    bookingForSheet?.propertyName || '—',
+                    String(Number(payment.amount)),
+                    paymentTypeSheet,
+                ]).catch(err => console.error('[Sheets] Payment row append failed:', err));
+            } catch (sheetsErr) {
+                console.error('[Sheets] Error building payment row:', sheetsErr);
+            }
         } catch (sideErr) {
             console.error('[SIDE EFFECTS] Error:', sideErr);
         }

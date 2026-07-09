@@ -2,8 +2,13 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { runOnDemandExpiry } from "@/actions/expiry";
 
 export async function getOwnerDashboardStats() {
+    // Opportunistically expire stale bookings on every dashboard load.
+    // Wrapped in its own try/catch inside runOnDemandExpiry — never throws.
+    await runOnDemandExpiry();
+
     try {
         const session = await getSession();
         if (!session || session.role !== 'OWNER') {

@@ -7,8 +7,10 @@ import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { stripImmutableFields } from "@/lib/sanitize";
 import { decryptIfPresent } from '@/lib/crypto';
+import { runOnDemandExpiry } from "@/actions/expiry";
 
 export async function getAdminStats() {
+    await runOnDemandExpiry();
     try {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");

@@ -3,10 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Search, MapPin, Star, Building, X, RefreshCcw } from "lucide-react";
+import { Search, MapPin, Star, Building, X, RefreshCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { searchProperties } from "@/actions/search";
+import { searchPropertiesFuzzy } from "@/actions/properties";
 import { getCurrentUser } from "@/actions/auth";
 import { ImageCarousel } from "@/components/ImageCarousel";
 
@@ -19,6 +20,7 @@ export default function SearchPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [activeCity, setActiveCity] = useState("");
     const [sortBy, setSortBy] = useState("recommended");
+    const [fuzzyMode, setFuzzyMode] = useState(false);
     const [filters, setFilters] = useState({
         minPrice: "",
         maxPrice: "",
@@ -29,18 +31,45 @@ export default function SearchPage() {
         getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
     }, []);
 
-    const handleSearch = async (forceQuery?: string, forceCity?: string) => {
+    const handleSearch = async (forceQuery?: string, forceCity?: string, forceFuzzy?: boolean) => {
         setLoading(true);
         try {
             const q = forceQuery !== undefined ? forceQuery : query;
             const city = forceCity !== undefined ? forceCity : activeCity;
-            const results = await searchProperties(q || city, {
-                city: city || undefined,
-                minPrice: filters.minPrice ? parseInt(filters.minPrice) : undefined,
-                maxPrice: filters.maxPrice ? parseInt(filters.maxPrice) : undefined,
-                type: filters.type || undefined,
-            });
-            setProperties(results);
+            const isFuzzy = forceFuzzy !== undefined ? forceFuzzy : fuzzyMode;
+
+            if (isFuzzy && q.trim()) {
+                // ── Fuzzy path: use pg_trgm / ILIKE raw SQL action ─────────────
+                const fuzzyResults = await searchPropertiesFuzzy(q.trim());
+                // Map the lean fuzzy result to the shape the card grid expects
+                const mapped = fuzzyResults.map(r => ({
+                    ...r,
+                    minPrice: r.price ?? 0,
+                    maxPrice: r.price ?? 0,
+                    totalAvailableBeds: null,
+                    isFull: false,
+                    amenities: [],
+                    buildingPhotos: [],
+                    commonAreaPhotos: [],
+                    allPhotos: [],
+                    image: '',
+                    isVerified: false,
+                    genderType: 'COED',
+                    propertyType: 'PG',
+                    rating: 0,
+                    _fuzzy: true,
+                }));
+                setProperties(mapped);
+            } else {
+                // ── Standard path: Prisma ILIKE / full enriched search ─────────
+                const results = await searchProperties(q || city, {
+                    city: city || undefined,
+                    minPrice: filters.minPrice ? parseInt(filters.minPrice) : undefined,
+                    maxPrice: filters.maxPrice ? parseInt(filters.maxPrice) : undefined,
+                    type: filters.type || undefined,
+                });
+                setProperties(results);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -108,6 +137,23 @@ export default function SearchPage() {
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 rounded-xl shrink-0 h-10">
                             <Search className="h-4 w-4 mr-2" /> Search
                         </Button>
+                    </div>
+
+                    {/* Fuzzy Search Toggle */}
+                    <div className="flex justify-center items-center gap-2 pt-2">
+                        <label className="flex items-center gap-2 text-white/80 text-sm font-medium cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={fuzzyMode}
+                                onChange={(e) => {
+                                    setFuzzyMode(e.target.checked);
+                                    handleSearch(query, activeCity, e.target.checked);
+                                }}
+                                className="rounded text-indigo-600 focus:ring-indigo-500 bg-white/10 border-white/20"
+                            />
+                            <Sparkles className="h-4 w-4 text-amber-300" />
+                            Enable Fuzzy Search (Smart Match)
+                        </label>
                     </div>
 
                     {/* City Pills */}

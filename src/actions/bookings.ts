@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
+import { sendSlackNotification } from "@/lib/slack";
 
 
 
@@ -181,6 +182,18 @@ export async function createBooking(data: {
     } catch (e) { 
         console.error("Booking Notification Error:", e);
     }
+
+    // Slack: Notify team of new booking request
+    sendSlackNotification('🏠 New Booking Request', {
+        'Booking ID': booking.displayId || booking.id,
+        'Property': data.propertyName,
+        'Student': guestName,
+        'Email': guestEmail || '—',
+        'Phone': guestPhone || '—',
+        'Move-in Date': data.moveInDate,
+        'Monthly Rent': `₹${Number(data.amount).toLocaleString('en-IN')}`,
+        'Occupancy': data.occupancy,
+    }).catch(err => console.error('[Slack] Booking request notification failed:', err));
 
     revalidatePath('/dashboard/student');
     revalidatePath('/dashboard/owner/bookings');
