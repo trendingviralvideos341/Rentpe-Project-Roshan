@@ -236,6 +236,13 @@ function OtpModal({ agreement, onClose, onSuccess }: OtpModalProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   const otpString = otp.join('');
   const isComplete = otpString.length === 6;
@@ -246,6 +253,7 @@ function OtpModal({ agreement, onClose, onSuccess }: OtpModalProps) {
       const result = await sendTenantAgreementOTP(agreement.id);
       setMaskedEmail(result.maskedEmail);
       setOtpSent(true);
+      setCountdown(30);
       toast.success('OTP sent to your registered email!');
     } catch (e: any) {
       toast.error(e.message || 'Failed to send OTP. Please try again.');
@@ -351,9 +359,10 @@ function OtpModal({ agreement, onClose, onSuccess }: OtpModalProps) {
 
               <button
                 onClick={() => { setOtpSent(false); setOtp(Array(6).fill('')); }}
-                className="w-full text-sm text-slate-500 hover:text-purple-600 font-medium transition-colors"
+                disabled={countdown > 0}
+                className="w-full text-sm text-slate-500 hover:text-purple-600 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Didn't receive OTP? Resend
+                {countdown > 0 ? `Resend OTP in ${countdown}s` : "Didn't receive OTP? Resend"}
               </button>
             </div>
           )}

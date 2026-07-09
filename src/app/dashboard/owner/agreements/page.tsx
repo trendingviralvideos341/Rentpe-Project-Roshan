@@ -7,6 +7,7 @@ import {
   verifySignerAgreementOTP,
   uploadSignedAgreement,
   getAgreementDownloadUrl,
+  terminateAgreement,
 } from '@/actions/agreements';
 import type { AgreementRecord, AgreementStatus } from '@/actions/agreements';
 import { toast } from 'sonner';
@@ -478,9 +479,10 @@ function UploadSignedModal({ agreement, onClose, onSuccess }: UploadModalProps) 
 interface AgreementRowProps {
   agreement: AgreementRecord;
   onActionComplete: () => void;
+  onTerminate: (id: string) => void;
 }
 
-function AgreementRow({ agreement, onActionComplete }: AgreementRowProps) {
+function AgreementRow({ agreement, onActionComplete, onTerminate }: AgreementRowProps) {
   const [showCounterSign, setShowCounterSign] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -546,6 +548,15 @@ function AgreementRow({ agreement, onActionComplete }: AgreementRowProps) {
         >
           {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
           📄 View Agreement
+        </button>
+      )}
+
+      {!['AGREEMENT_COMPLETED', 'TERMINATED'].includes(agreement.status) && (
+        <button
+          onClick={() => onTerminate(agreement.id)}
+          className="px-3 py-1.5 border border-red-200 text-red-600 text-xs font-black rounded-lg hover:bg-red-50 transition-all"
+        >
+          Terminate
         </button>
       )}
     </div>
@@ -664,6 +675,9 @@ export default function OwnerAgreementsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [terminateTarget, setTerminateTarget] = useState<string | null>(null);
+  const [terminateReason, setTerminateReason] = useState('');
+  const [isTerminating, setIsTerminating] = useState(false);
 
   const loadAgreements = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -773,6 +787,7 @@ export default function OwnerAgreementsPage() {
                       key={agreement.id}
                       agreement={agreement}
                       onActionComplete={() => loadAgreements(true)}
+                      onTerminate={(id) => setTerminateTarget(id)}
                     />
                   ))}
                 </div>
@@ -806,6 +821,7 @@ export default function OwnerAgreementsPage() {
                             key={agreement.id}
                             agreement={agreement}
                             onActionComplete={() => loadAgreements(true)}
+                            onTerminate={(id) => setTerminateTarget(id)}
                           />
                         ))}
                       </tbody>
@@ -817,6 +833,59 @@ export default function OwnerAgreementsPage() {
           </>
         )}
       </div>
+
+      {terminateTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5">
+              <h2 className="font-black text-white text-lg">Terminate Agreement</h2>
+              <p className="text-red-100 text-xs mt-0.5">This action cannot be undone</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-black text-slate-700 mb-2">Reason for termination *</label>
+                <textarea
+                  value={terminateReason}
+                  onChange={e => setTerminateReason(e.target.value)}
+                  placeholder="Please provide a reason (minimum 10 characters)"
+                  rows={3}
+                  className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 resize-none"
+                />
+                <p className="text-xs text-slate-400 mt-1">{terminateReason.length}/500 characters</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setTerminateTarget(null); setTerminateReason(''); }}
+                  className="flex-1 py-3 border-2 border-slate-200 text-slate-700 font-black rounded-2xl hover:bg-slate-50 transition-all text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (terminateReason.trim().length < 10) { toast.error('Please provide a reason (at least 10 characters).'); return; }
+                    setIsTerminating(true);
+                    try {
+                      await terminateAgreement(terminateTarget, terminateReason.trim());
+                      toast.success('Agreement terminated.');
+                      setTerminateTarget(null);
+                      setTerminateReason('');
+                      loadAgreements();
+                    } catch (e: any) {
+                      toast.error(e.message || 'Failed to terminate.');
+                    } finally {
+                      setIsTerminating(false);
+                    }
+                  }}
+                  disabled={isTerminating || terminateReason.trim().length < 10}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2"
+                >
+                  {isTerminating ? <><span className="animate-spin">⏳</span> Terminating...</> : 'Confirm Terminate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

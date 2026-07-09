@@ -224,6 +224,40 @@ export default function AdminAgreementsPage() {
     }
   };
 
+  const handleExport = () => {
+    const rows = filtered.map((a: any) => ({
+      'Agreement ID': a.displayId,
+      'Booking ID': a.bookingDisplayId || a.booking?.displayId || '',
+      'Tenant Name': a.tenantName || a.tenant?.name || '',
+      'Tenant Email': a.tenant?.email || '',
+      'Tenant Phone': a.tenant?.phone || '',
+      'Owner Name': a.ownerName || a.owner?.name || '',
+      'Property': a.propertyName || a.property?.name || '',
+      'City': a.property?.city || '',
+      'Monthly Rent (Rs.)': a.monthlyRent,
+      'Security Deposit (Rs.)': a.securityDeposit,
+      'Status': a.status,
+      'Created Date': new Date(a.createdAt).toLocaleDateString('en-IN'),
+      'Tenant Verified': a.tenantVerified ? 'Yes' : 'No',
+      'Signer Verified': a.signerVerified ? 'Yes' : 'No',
+      'Signer Type': a.signerType || '',
+      'PDF Generated': a.agreementPdfUrl ? 'Yes' : 'No',
+      'Signed PDF Uploaded': a.signedPdfUrl ? 'Yes' : 'No',
+      'Completed': a.status === 'AGREEMENT_COMPLETED' ? 'Yes' : 'No',
+    }));
+    if (rows.length === 0) { toast.error('No agreements to export.'); return; }
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${String((r as any)[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `RentPe-Agreements-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} agreements to CSV.`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
       {/* ── Header ── */}
@@ -325,6 +359,14 @@ export default function AdminAgreementsPage() {
                     ))}
                   </select>
                 </div>
+
+                {/* Export Button */}
+                <button
+                  onClick={handleExport}
+                  className="px-4 py-2.5 bg-gradient-to-r from-[#3b5bdb] to-[#7048e8] text-white font-black rounded-xl text-sm hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-purple-200"
+                >
+                  📊 Export CSV
+                </button>
               </div>
 
               {/* Result count */}
