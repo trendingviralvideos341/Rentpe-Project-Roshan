@@ -240,13 +240,7 @@ const ownerGuides: Record<string, GuideItem> = {
         howItWorks: "Interacts with the SecurityDeposit table, tracking refund due timelines.",
         whoUsesIt: "Owners to audit holding escrows."
     },
-    "/dashboard/owner/onboarding-fees": {
-        title: "Listing Onboarding Fees",
-        description: "Onboarding payment tracker.",
-        whatItDoes: "Monitors onboarding status and payment records for your properties.",
-        howItWorks: "Checks listing payment confirmations.",
-        whoUsesIt: "Owners to track onboarding compliance."
-    },
+
     "/dashboard/owner/invoices/generate": {
         title: "Bulk Rent Invoice Generator",
         description: "Automated monthly billing module.",
