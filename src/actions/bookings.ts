@@ -1134,6 +1134,64 @@ export async function checkInBooking(id: string) {
         });
     }
 
+    // ── AUTO-CREATE AGREEMENT (New Flow: after physical KYC) ─────────────────
+    // When owner physically verifies tenant and booking moves to PHYSICAL_VERIFIED,
+    // automatically create the digital Leave & License Agreement so the tenant
+    // can immediately verify + sign without the owner having to create it manually.
+    if (isNewFlow) {
+        ;(async () => {
+            try {
+                // Check if agreement already exists to avoid duplicates
+                const existingAgr = await (prisma as any).agreement.findUnique({
+                    where: { bookingId: id },
+                    select: { id: true },
+                }).catch(() => null);
+                if (!existingAgr) {
+                    const agrProperty = await prisma.property.findUnique({ where: { id: booking.propertyId || '' }, select: { ownerId: true, noticePeriod: true, amenities: true } });
+                    if (agrProperty) {
+                        let wifiIncluded = false;
+                        try { const arr = JSON.parse(agrProperty.amenities || '[]'); wifiIncluded = Array.isArray(arr) && arr.some((a: any) => String(a).toLowerCase().includes('wifi')); } catch {}
+                        const agrDisplayId = await generateSequentialId('AGREEMENT');
+                        await (prisma as any).agreement.create({
+                            data: {
+                                displayId: agrDisplayId,
+                                bookingId: id,
+                                propertyId: booking.propertyId || '',
+                                roomId: booking.roomId || null,
+                                bedId: (booking as any).bedId || null,
+                                tenantId: booking.userId,
+                                ownerId: agrProperty.ownerId,
+                                status: 'PENDING_TENANT_VERIFICATION',
+                                monthlyRent: booking.amount,
+                                securityDeposit: (booking as any).depositAmount || 0,
+                                maintenanceCharges: 0,
+                                foodCharges: (booking as any).foodPriceApplied || 0,
+                                wifiIncluded,
+                                lockInDays: agrProperty.noticePeriod || 30,
+                                noticePeriodDays: agrProperty.noticePeriod || 30,
+                                rentDueDay: 7,
+                                lateFeePerDay: 0,
+                                gracePeriodDays: 5,
+                                overstayPenaltyMultiplier: 2,
+                            },
+                        });
+                        console.log(`[AGREEMENT] Auto-created ${agrDisplayId} for booking ${id} after physical KYC.`);
+                        // Notify tenant
+                        await NotificationService.trigger({
+                            bookingId: id, userId: booking.userId, type: 'BOOKING', category: 'AGREEMENT_CREATED',
+                            message: '📄 Your Leave & License Agreement is ready. Please verify your identity to sign.',
+                            targetRole: 'USER', actionUrl: '/dashboard/student/agreements', actionLabel: 'View Agreement', isPersistent: true,
+                        } as any).catch(() => {});
+                    }
+                }
+            } catch (agrErr) {
+                console.error('[AGREEMENT] Auto-create failed (non-fatal):', agrErr);
+            }
+        })();
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
+
     revalidatePath('/dashboard/owner/bookings');
     revalidatePath('/dashboard/owner/tenants');
     revalidatePath('/dashboard/student');
