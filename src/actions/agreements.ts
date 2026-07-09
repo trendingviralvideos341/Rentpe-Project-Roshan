@@ -600,7 +600,7 @@ function addPageFooter(
 }
 
 // ── Main PDF generator ───────────────────────────────────────────────────────
-export async function generateAgreementPDF(agreementId: string): Promise<void> {
+async function generateAgreementPDF(agreementId: string): Promise<void> {
   // Fetch agreement with all needed relations
   const agreement = await (prisma as any).agreement.findUnique({
     where: { id: agreementId },
