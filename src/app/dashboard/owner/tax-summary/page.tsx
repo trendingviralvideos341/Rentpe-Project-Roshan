@@ -79,7 +79,14 @@ export default function TaxSummaryPage() {
     const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
     const [bulkDownloading, setBulkDownloading] = useState(false);
     const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'monthly' | 'transactions'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'monthly' | 'transactions' | 'onboarding'>('overview');
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('tab') === 'onboarding') {
+            setActiveTab('onboarding');
+        }
+    }, []);
 
     // Search and filters
     const [search, setSearch] = useState('');
@@ -311,6 +318,7 @@ export default function TaxSummaryPage() {
                             { id: 'overview', label: 'Financial Overview', icon: TrendingUp },
                             { id: 'monthly', label: 'Monthly Statements', icon: Receipt },
                             { id: 'transactions', label: 'Payout Ledger', icon: Search },
+                            { id: 'onboarding', label: 'Onboarding Fees', icon: Building2 },
                         ].map(tab => {
                             const Icon = tab.icon;
                             return (
@@ -715,7 +723,7 @@ export default function TaxSummaryPage() {
                                                     <td className="px-3 py-2.5 font-bold text-rose-600">
                                                         {s?.tdsExempt ? <span className="text-emerald-600">₹0</span> : fmtShort(r.tdsDeducted)}
                                                     </td>
-                                                    <td className="px-3 py-2.5 font-black text-emerald-600">{fmtShort(r.ownerNetPayout)}</td>
+                                                    <td className={`px-3 py-2.5 font-black ${r.ownerNetPayout < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmtShort(r.ownerNetPayout)}</td>
                                                     <td className="px-3 py-2.5">
                                                         <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
                                                             r.type === 'PROPERTY_ONBOARDING'
@@ -739,6 +747,61 @@ export default function TaxSummaryPage() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ── Tab 4: Onboarding Fees ── */}
+                {activeTab === 'onboarding' && (
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-xs text-blue-700 font-medium flex items-center gap-2">
+                            <Building2 className="w-5 h-5 flex-shrink-0" />
+                            <span>One-time property setup fees and GST invoices. This is a B2B expense and you can claim the 18% GST as Input Tax Credit (ITC).</span>
+                        </div>
+                        
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-black text-slate-900 text-lg">Property Onboarding History</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Track all properties you have onboarded onto RentPe</p>
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-100">
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Property</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Base Fee</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">CGST (9%)</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">SGST (9%)</th>
+                                            <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Total Paid</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').map((r: any, i: number) => {
+                                            const feeAmount = Math.abs(r.ownerNetPayout || 99);
+                                            const gst = r.gstCharged || 15.10;
+                                            const base = feeAmount - gst;
+                                            return (
+                                                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-slate-700">{new Date(r.date).toLocaleDateString('en-IN')}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-900">{r.property}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-600">{fmtShort(base)}</td>
+                                                    <td className="px-4 py-3 font-bold text-violet-600">{fmtShort(gst / 2)}</td>
+                                                    <td className="px-4 py-3 font-bold text-violet-600">{fmtShort(gst / 2)}</td>
+                                                    <td className="px-4 py-3 font-black text-rose-600">{fmtShort(feeAmount)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {filteredRows.filter((r: any) => r.type === 'PROPERTY_ONBOARDING').length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="px-4 py-8 text-center text-slate-400 text-sm font-bold">No onboarding fees found for this period.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

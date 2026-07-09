@@ -145,7 +145,7 @@ export default function DashboardSidebar(props: SidebarProps) {
             links: [
                 { href: "/dashboard/owner/payments", label: "Rent & Payments", icon: IndianRupee, reqPerm: ["view_payments", "mark_rent"] },
                 { href: "/dashboard/owner/deposits", label: "Security Deposits", icon: Shield, reqPerm: ["view_payments"] },
-                { href: "/dashboard/owner/onboarding-fees", label: "Property Onboarding Fees", icon: Building, reqPerm: ["view_payments"] },
+                { href: "/dashboard/owner/tax-summary?tab=onboarding", label: "Property Onboarding Fees", icon: Building, reqPerm: ["view_payments"] },
                 { href: "/dashboard/owner/invoices/generate", label: "Bulk Invoice Generator", icon: Receipt, reqPerm: ["view_payments", "mark_rent"] },
                 { href: "/dashboard/owner/analytics", label: "Analytics", icon: BarChart3, reqPerm: ["view_payments"] },
                 { href: "/dashboard/owner/tax-summary", label: "Tax Summary & Ledger", icon: Download, reqPerm: ["view_payments"] },

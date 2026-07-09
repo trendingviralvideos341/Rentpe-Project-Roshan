@@ -960,7 +960,7 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
         totalCgst: combinedRows.reduce((s: number, r: any) => s + r.cgst, 0),
         totalSgst: combinedRows.reduce((s: number, r: any) => s + r.sgst, 0),
         totalTdsWithheld: combinedRows.reduce((s: number, r: any) => s + r.tdsDeducted, 0),
-        totalOwnerPayouts: combinedRows.reduce((s: number, r: any) => s + r.ownerNetPayout, 0),
+        totalOwnerPayouts: combinedRows.filter((r: any) => r.type !== 'PROPERTY_ONBOARDING').reduce((s: number, r: any) => s + (r.ownerNetPayout || 0), 0),
         transactionCount: combinedRows.length,
         totalOnboardingEarned: onboardingRows.reduce((s: number, r: any) => s + r.platformFeeOwner, 0),
         totalOnboardingGst: onboardingRows.reduce((s: number, r: any) => s + r.gstOnOwnerFee, 0),

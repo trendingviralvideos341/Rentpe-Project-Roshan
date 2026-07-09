@@ -643,7 +643,8 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
         }
         monthlyMap[key].onboardingFees += 99;
         monthlyMap[key].onboardingGst += 15.10;
-        monthlyMap[key].netPayout -= 99;
+        // Onboarding fees are paid separately, not deducted from net payouts
+
     }
 
     return Object.values(monthlyMap).sort((a: any, b: any) => a.key.localeCompare(b.key));
