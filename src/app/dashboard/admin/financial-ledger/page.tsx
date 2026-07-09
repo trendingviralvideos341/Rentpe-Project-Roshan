@@ -227,12 +227,14 @@ export default function AdminFinancialLedgerPage() {
 
             const headers = [
                 'RentPe Payment ID', 'RentPe Booking ID',
-                'Razorpay Order ID', 'Razorpay Payment ID', 'Razorpay Transfer ID',
+                'Razorpay Order ID', 'Razorpay Payment ID', 'Transfer ID / Manual Payout UTR',
                 'Student Name', 'Student Email', 'Student ID',
                 'Property Name', 'City', 'Room Type',
                 'Owner Name', 'Owner ID', 'Owner Email',
                 'Gross Amount', 'Convenience Fee (Student)', 'Platform Commission (Owner)',
-                'GST on Student Fee', 'GST on Owner Fee', 'CGST', 'SGST',
+                'GST on Student Fee', 'GST on Owner Fee', 
+                'CGST (Student)', 'SGST (Student)', 
+                'CGST (Owner)', 'SGST (Owner)',
                 'TDS Deducted', 'Owner Net Payout', 'Total Charged',
                 'Platform Earned', 'SAC Code', 'Payment Method', 'Status', 'Date'
             ];
@@ -243,7 +245,9 @@ export default function AdminFinancialLedgerPage() {
                 r.propertyName, r.propertyCity, r.roomType,
                 r.ownerName, r.ownerId, r.ownerEmail,
                 r.grossAmount, r.platformFeeStudent, r.platformFeeOwner,
-                r.gstOnStudentFee, r.gstOnOwnerFee, r.cgst, r.sgst,
+                r.gstOnStudentFee, r.gstOnOwnerFee, 
+                r.cgstStudent, r.sgstStudent, 
+                r.cgstOwner, r.sgstOwner,
                 r.tdsDeducted, r.ownerNetPayout, r.totalCharged,
                 r.platformEarned, r.sacCode, r.paymentMethod, r.status,
                 new Date(r.date).toLocaleString('en-IN')
