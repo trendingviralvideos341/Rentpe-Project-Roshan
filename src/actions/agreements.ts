@@ -47,6 +47,8 @@ export interface AgreementRecord {
   tenantVerifiedEmail: string | null;
   tenantVerifiedIp: string | null;
   tenantVerifiedDevice: string | null;
+  tenantFinalAccepted: boolean;
+  tenantFinalAcceptedAt: Date | null;
   signerType: string | null;
   signerName: string | null;
   signerDesignation: string | null;
@@ -1269,6 +1271,16 @@ export async function uploadSignedAgreement(
     throw new Error('Invalid file type. Only PDF files are accepted for the signed agreement upload.');
   }
 
+  // Calculate approximate file size from base64 string
+  // Base64 string length * (3/4) gives the size in bytes
+  const base64Data = fileBase64.split(',')[1] || fileBase64;
+  const approximateSizeBytes = (base64Data.length * 3) / 4;
+  const maxSizeBytes = 5 * 1024 * 1024; // 5 MB
+
+  if (approximateSizeBytes > maxSizeBytes) {
+    throw new Error('File size exceeds the 5MB limit. Please upload a smaller PDF file.');
+  }
+
   let signedPdfUrl: string;
 
   const isPlaceholder = process.env.CLOUDINARY_API_KEY?.includes('your_api_key');
@@ -1293,15 +1305,6 @@ export async function uploadSignedAgreement(
       signedPdfUploadedBy: session.userId,
       status: 'AGREEMENT_COMPLETED',
     },
-  });
-
-  // Update booking: mark agreement signed
-  await prisma.booking.update({
-    where: { id: agreement.bookingId },
-    data: {
-      agreementSigned: true,
-      agreementSignedAt: new Date(),
-    } as any,
   });
 
   // Notify tenant
@@ -1342,6 +1345,57 @@ export async function uploadSignedAgreement(
   revalidatePath('/dashboard/student');
   revalidatePath('/dashboard/owner/agreements');
   revalidatePath('/dashboard/admin/agreements');
+
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8b. VERIFY UPLOADED AGREEMENT (TENANT ONLY)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function verifyUploadedAgreement(agreementId: string): Promise<{ success: boolean }> {
+  const session = await requireSession();
+  const agreement = await getAgreementOrThrow(agreementId);
+
+  if (session.userId !== agreement.tenantId) {
+    throw new Error('Only the tenant can verify the uploaded agreement.');
+  }
+
+  if (agreement.status !== 'AGREEMENT_COMPLETED' || !agreement.signedPdfUrl) {
+    throw new Error('Agreement is not in the correct state for verification.');
+  }
+
+  // Update agreement
+  await (prisma as any).agreement.update({
+    where: { id: agreementId },
+    data: {
+      tenantFinalAccepted: true,
+      tenantFinalAcceptedAt: new Date(),
+    },
+  });
+
+  // Update booking: mark agreement signed now that tenant verified it
+  await prisma.booking.update({
+    where: { id: agreement.bookingId },
+    data: {
+      agreementSigned: true,
+      agreementSignedAt: new Date(),
+    } as any,
+  });
+
+  logAuditEvent({
+    actorId: session.userId,
+    actorRole: session.role as string,
+    actorName: session.name || 'Student',
+    actionType: 'UPDATE',
+    entityType: 'AGREEMENT',
+    entityId: agreement.id,
+    description: `Student verified the uploaded physical agreement for ${agreement.displayId}.`,
+    newValue: { tenantFinalAccepted: true },
+  });
+
+  revalidatePath('/dashboard/student');
+  revalidatePath('/dashboard/student/agreements');
 
   return { success: true };
 }

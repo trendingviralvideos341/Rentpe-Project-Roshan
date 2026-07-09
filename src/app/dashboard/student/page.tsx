@@ -27,7 +27,7 @@ import { getStudentProfile, updateStudentProfile } from "@/actions/student";
 import { Badge } from "@/components/ui/badge";
 import { MyDepositSection } from "@/components/deposit/MyDepositSection";
 import { requestSelfServiceOTP, verifyAndUpdateSelfService } from "@/actions/tenants";
-import { Edit2 } from "lucide-react";
+import { Edit2, AlertCircle } from "lucide-react";
 
 const TYPE_LABELS: Record<string, any> = {
     ID_PROOF: "ID Proof",
@@ -586,9 +586,24 @@ function BookingCard({
                                         <span>💰 Balance Due</span>
                                         <span className="text-lg text-indigo-700">₹{balance.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <Button className="w-full mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black h-12 rounded-2xl text-base shadow-lg shadow-indigo-200/50 transition-all active:scale-[0.99]" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>
-                                        💳 Pay ₹{balance.toLocaleString('en-IN')} Now
-                                    </Button>
+                                    {booking.agreementSigned ? (
+                                        <Button className="w-full mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black h-12 rounded-2xl text-base shadow-lg shadow-indigo-200/50 transition-all active:scale-[0.99]" onClick={() => router.push(`/secure/payment?id=${booking.id}`)}>
+                                            💳 Pay ₹{balance.toLocaleString('en-IN')} Now
+                                        </Button>
+                                    ) : (
+                                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+                                            <p className="text-xs font-bold text-amber-800 flex items-start gap-1">
+                                                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                                                <span>Mandatory: Please review and verify the final physically signed agreement uploaded by the property management before making this payment.</span>
+                                            </p>
+                                            <Button 
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-10 rounded-xl text-sm"
+                                                onClick={() => router.push('/dashboard/student/agreements')}
+                                            >
+                                                Verify Uploaded Agreement
+                                            </Button>
+                                        </div>
+                                    )}
                                     <p className="text-[10px] text-center text-slate-400 pt-1.5">⚠️ Visit {booking.propertyName} in person to complete check-in</p>
                                 </div>
                             );

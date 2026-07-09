@@ -6,6 +6,7 @@ import {
   sendTenantAgreementOTP,
   verifyTenantAgreementOTP,
   getAgreementDownloadUrl,
+  verifyUploadedAgreement,
 } from '@/actions/agreements';
 import type { AgreementRecord, AgreementStatus } from '@/actions/agreements';
 import { toast } from 'sonner';
@@ -389,6 +390,8 @@ interface AgreementCardProps {
 function AgreementCard({ agreement, onActionComplete }: AgreementCardProps) {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [verifyChecked, setVerifyChecked] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [, startTransition] = useTransition();
 
   const badge = getStatusBadge(agreement.status);
@@ -473,35 +476,93 @@ function AgreementCard({ agreement, onActionComplete }: AgreementCardProps) {
             )}
 
             {agreement.status === 'AGREEMENT_READY_FOR_DOWNLOAD' && (
-              <button
-                onClick={handleDownload}
-                disabled={isDownloading}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-black rounded-2xl transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
-              >
-                {isDownloading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Opening...</>
-                ) : (
-                  <><Download className="w-4 h-4" /> 📥 Download Agreement PDF</>
-                )}
-              </button>
+              <div className="space-y-3">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800">
+                  <p className="font-bold flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> Physical Signing Required</p>
+                  <p className="mt-1">Please download the agreement and sign it physically, or ask the property management to print and sign it with you. Once both parties have signed, the property management must upload the final copy.</p>
+                </div>
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-black rounded-2xl transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                >
+                  {isDownloading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Opening...</>
+                  ) : (
+                    <><Download className="w-4 h-4" /> 📥 Download Agreement PDF</>
+                  )}
+                </button>
+              </div>
             )}
 
-            {agreement.status === 'AGREEMENT_COMPLETED' && (
-              <div className="flex gap-2.5">
-                <button
-                  onClick={handleDownload}
-                  disabled={isDownloading}
-                  className="flex-1 py-3 border-2 border-purple-200 text-purple-700 font-black rounded-2xl hover:bg-purple-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
-                >
-                  <Eye className="w-4 h-4" /> View Signed Agreement
-                </button>
-                <button
-                  onClick={handleDownload}
-                  disabled={isDownloading}
-                  className="flex-1 py-3 border-2 border-slate-200 text-slate-700 font-black rounded-2xl hover:bg-slate-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
-                >
-                  <Download className="w-4 h-4" /> Download PDF
-                </button>
+            {agreement.status === 'AGREEMENT_COMPLETED' && !agreement.tenantFinalAccepted && (
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <h4 className="font-black text-amber-800 flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-5 h-5" /> Action Required: Verify Uploaded Agreement
+                  </h4>
+                  <p className="text-sm text-amber-700 mb-4">
+                    The property management has uploaded the physically signed agreement. Please download and verify that it is correct.
+                  </p>
+                  
+                  <div className="flex gap-2.5 mb-4">
+                    <button onClick={handleDownload} disabled={isDownloading} className="flex-1 py-2.5 border-2 border-purple-200 text-purple-700 font-black rounded-xl hover:bg-purple-50 transition-all text-sm flex justify-center items-center gap-2">
+                      <Eye className="w-4 h-4" /> View Document
+                    </button>
+                  </div>
+
+                  <label className="flex items-start gap-3 p-3 bg-white rounded-lg border border-amber-100 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="mt-1 w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500" 
+                      checked={verifyChecked}
+                      onChange={(e) => setVerifyChecked(e.target.checked)}
+                    />
+                    <span className="text-sm font-medium text-slate-700 leading-snug">
+                      I have read and verified the uploaded documents and confirm they are correct.
+                    </span>
+                  </label>
+                  
+                  <button
+                    onClick={async () => {
+                      if (!verifyChecked) return toast.error("Please check the verification box to continue");
+                      setIsVerifying(true);
+                      try {
+                        const res = await verifyUploadedAgreement(agreement.id);
+                        if (res.success) {
+                          toast.success("Agreement verified successfully!");
+                          onActionComplete();
+                        }
+                      } catch (e: any) {
+                        toast.error(e.message || "Failed to verify");
+                      } finally {
+                        setIsVerifying(false);
+                      }
+                    }}
+                    disabled={!verifyChecked || isVerifying}
+                    className="w-full mt-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Confirm &amp; Continue Onboarding
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {agreement.status === 'AGREEMENT_COMPLETED' && agreement.tenantFinalAccepted && (
+              <div className="space-y-4">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                  <div>
+                    <h4 className="font-black text-emerald-800">Agreement Fully Executed</h4>
+                    <p className="text-sm text-emerald-600 mt-0.5">You have verified the physical agreement. You can now proceed to complete your onboarding.</p>
+                  </div>
+                </div>
+                <div className="flex gap-2.5">
+                  <button onClick={handleDownload} disabled={isDownloading} className="flex-1 py-3 border-2 border-purple-200 text-purple-700 font-black rounded-2xl hover:bg-purple-50 transition-all flex items-center justify-center gap-2 text-sm">
+                    <Eye className="w-4 h-4" /> View Signed Agreement
+                  </button>
+                </div>
               </div>
             )}
 

@@ -1594,6 +1594,8 @@ model Agreement {
   signedPdfUrl         String?
   signedPdfUploadedAt  DateTime?
   signedPdfUploadedBy  String?
+  tenantFinalAccepted  Boolean   @default(false)
+  tenantFinalAcceptedAt DateTime?
 
   // Move-in context
   moveInNotes       String?

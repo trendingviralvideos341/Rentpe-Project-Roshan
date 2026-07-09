@@ -296,7 +296,7 @@ function UploadSignedModal({ agreement, onClose, onSuccess }: UploadModalProps) 
   const [fileError, setFileError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError('');
@@ -307,7 +307,7 @@ function UploadSignedModal({ agreement, onClose, onSuccess }: UploadModalProps) 
       return;
     }
     if (file.size > MAX_SIZE) {
-      setFileError('File size must be under 10MB.');
+      setFileError('File size must be under 5MB.');
       return;
     }
     setSelectedFile(file);
@@ -513,22 +513,28 @@ function AgreementRow({ agreement, onActionComplete, onTerminate }: AgreementRow
       )}
 
       {agreement.status === 'AGREEMENT_READY_FOR_DOWNLOAD' && (
-        <>
-          <button
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="flex-1 py-2.5 px-3 border-2 border-indigo-200 text-indigo-700 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 hover:bg-indigo-50 transition-all disabled:opacity-60"
-          >
-            {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            📥 Download PDF
-          </button>
-          <button
-            onClick={() => setShowUpload(true)}
-            className="flex-1 py-2.5 px-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md shadow-emerald-200"
-          >
-            <Upload className="w-3.5 h-3.5" /> 📤 Upload Signed Copy
-          </button>
-        </>
+        <div className="flex flex-col gap-3 w-full mt-2">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 text-left">
+            <p className="font-bold flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Mandatory Physical Signing</p>
+            <p className="mt-1 leading-relaxed">Kindly download the agreement, print it, and sign it physically with the tenant. Verify all legal documents, sign both parties, and then upload the same agreement below to continue the onboarding process of the customer.</p>
+          </div>
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="flex-1 py-2.5 px-3 border-2 border-indigo-200 text-indigo-700 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 hover:bg-indigo-50 transition-all disabled:opacity-60"
+            >
+              {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              📥 Download PDF
+            </button>
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex-1 py-2.5 px-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md shadow-emerald-200"
+            >
+              <Upload className="w-3.5 h-3.5" /> 📤 Upload Signed Copy
+            </button>
+          </div>
+        </div>
       )}
 
       {agreement.status === 'PENDING_SIGNED_UPLOAD' && (
