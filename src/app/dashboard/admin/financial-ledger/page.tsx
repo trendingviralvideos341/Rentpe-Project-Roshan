@@ -107,6 +107,7 @@ export default function AdminFinancialLedgerPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
+    const [exportMonth, setExportMonth] = useState('ALL');
     const [typeFilter, setTypeFilter] = useState('ALL');
     const [selectedProperty, setSelectedProperty] = useState('ALL');
     const [selectedOwner, setSelectedOwner] = useState('ALL');
@@ -183,11 +184,29 @@ export default function AdminFinancialLedgerPage() {
         .filter((r: any) => r.paymentMethod?.toUpperCase() !== 'CASH' && r.type !== 'PROPERTY_ONBOARDING')
         .reduce((sum: number, r: any) => sum + (r.grossAmount || 0), 0);
 
+    const getExportDateRange = () => {
+        if (exportMonth === 'ALL') return { from: selectedFY.from, to: selectedFY.to };
+        const m = parseInt(exportMonth);
+        const year = m < 3 ? selectedFY.to.getFullYear() : selectedFY.from.getFullYear();
+        const from = new Date(year, m, 1);
+        const to = new Date(year, m + 1, 0);
+        to.setHours(23, 59, 59, 999);
+        return { from, to };
+    };
+
+    const getExportFilename = (ext: string) => {
+        if (exportMonth === 'ALL') return `RentPe-FinancialLedger-${selectedFY.label.replace(/\s/g, '-')}.${ext}`;
+        const range = getExportDateRange();
+        const monthName = range.from.toLocaleString('default', { month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+        return `RentPe-FinancialLedger-${monthName}.${ext}`;
+    };
+
     const handleExportCSV = async () => {
         setExporting('csv');
         try {
-            toast.loading('Fetching full ledger for export...', { id: 'export-csv' });
-            const fullLedger = await getAdminFinancialLedger(selectedFY.from, selectedFY.to);
+            const range = getExportDateRange();
+            toast.loading(`Fetching ledger for ${exportMonth === 'ALL' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-csv' });
+            const fullLedger = await getAdminFinancialLedger(range.from, range.to);
             const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
                 const q = search.toLowerCase();
                 if (q) {
@@ -259,7 +278,7 @@ export default function AdminFinancialLedgerPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `RentPe-FinancialLedger-${selectedFY.label.replace(/\s/g, '-')}.csv`;
+            a.download = getExportFilename('csv');
             a.click();
             URL.revokeObjectURL(url);
             toast.success('CSV exported with all transaction details!', { id: 'export-csv' });
@@ -273,8 +292,9 @@ export default function AdminFinancialLedgerPage() {
     const handleExportPDF = async () => {
         setExporting('pdf');
         try {
-            toast.loading('Fetching full ledger for PDF export...', { id: 'export-pdf' });
-            const fullLedger = await getAdminFinancialLedger(selectedFY.from, selectedFY.to);
+            const range = getExportDateRange();
+            toast.loading(`Fetching ledger for ${exportMonth === 'ALL' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-pdf' });
+            const fullLedger = await getAdminFinancialLedger(range.from, range.to);
             const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
                 const q = search.toLowerCase();
                 if (q) {
@@ -374,7 +394,7 @@ export default function AdminFinancialLedgerPage() {
                 alternateRowStyles: { fillColor: [248, 250, 255] },
             });
 
-            doc.save(`RentPe-FinancialLedger-${selectedFY.label.replace(/\s/g, '-')}.pdf`);
+            doc.save(getExportFilename('pdf'));
             toast.success('PDF downloaded with complete audit trail!', { id: 'export-pdf' });
         } catch (e) { 
             console.error(e); 
@@ -551,8 +571,31 @@ export default function AdminFinancialLedgerPage() {
 
                         {/* Export section */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                            <h3 className="font-black text-slate-900 text-lg mb-2">Export Full Report</h3>
-                            <p className="text-sm text-slate-500 mb-4">Download complete audit trail with all Razorpay IDs, tax breakdowns, and amounts.</p>
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                                <div>
+                                    <h3 className="font-black text-slate-900 text-lg mb-2">Export Full Report</h3>
+                                    <p className="text-sm text-slate-500">Download complete audit trail with all Razorpay IDs, tax breakdowns, and amounts.</p>
+                                </div>
+                                <select
+                                    className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[160px]"
+                                    value={exportMonth}
+                                    onChange={(e) => setExportMonth(e.target.value)}
+                                >
+                                    <option value="ALL">Entire Financial Year</option>
+                                    <option value="3">April</option>
+                                    <option value="4">May</option>
+                                    <option value="5">June</option>
+                                    <option value="6">July</option>
+                                    <option value="7">August</option>
+                                    <option value="8">September</option>
+                                    <option value="9">October</option>
+                                    <option value="10">November</option>
+                                    <option value="11">December</option>
+                                    <option value="0">January</option>
+                                    <option value="1">February</option>
+                                    <option value="2">March</option>
+                                </select>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <button onClick={handleExportPDF} disabled={exporting !== null}
                                     className="flex items-center gap-4 p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl hover:from-indigo-100 hover:to-violet-100 transition-all disabled:opacity-50 text-left">
