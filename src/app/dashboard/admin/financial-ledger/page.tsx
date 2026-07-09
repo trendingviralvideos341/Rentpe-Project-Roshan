@@ -107,7 +107,7 @@ export default function AdminFinancialLedgerPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
-    const [exportMonth, setExportMonth] = useState('ALL');
+    const [exportMonth, setExportMonth] = useState(new Date().getMonth().toString());
     const [typeFilter, setTypeFilter] = useState('ALL');
     const [selectedProperty, setSelectedProperty] = useState('ALL');
     const [selectedOwner, setSelectedOwner] = useState('ALL');
