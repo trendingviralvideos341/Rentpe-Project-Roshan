@@ -516,7 +516,7 @@ export default function DepositsPage() {
             <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 relative overflow-hidden px-6 pt-10 pb-6">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 <div className="absolute -left-10 bottom-0 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl" />
-                <div className="max-w-5xl mx-auto relative z-10">
+                <div className="px-4 relative z-10">
                     <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
                         <Shield className="w-8 h-8" /> Security Deposits
                     </h1>
@@ -524,7 +524,7 @@ export default function DepositsPage() {
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 mt-4 mb-4 relative z-10 space-y-6">
+            <div className="px-4 mt-4 mb-4 relative z-10 space-y-6">
 
                 {/* ⚠️ Overdue Warning Banner — Component 3 */}
                 {overdueInfo.count > 0 && (
