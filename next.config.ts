@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com https://*.razorpay.in; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://res.cloudinary.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://checkout.razorpay.com https://*.razorpay.com https://*.razorpay.in https:; connect-src 'self' https://api.razorpay.com https://*.razorpay.com https://*.razorpay.in https://api.postalpincode.in https://api.cloudinary.com;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com https://*.razorpay.in https://*.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://res.cloudinary.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://checkout.razorpay.com https://*.razorpay.com https://*.razorpay.in https:; connect-src 'self' https://api.razorpay.com https://*.razorpay.com https://*.razorpay.in https://api.postalpincode.in https://api.cloudinary.com https://*.sentry.io https://*.vercel-scripts.com;"
           }
         ],
       }

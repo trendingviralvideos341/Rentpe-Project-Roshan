@@ -5,8 +5,10 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { logAuditEvent } from "@/lib/audit";
 import { withSafeAction } from "@/lib/safe-action";
+import { sendEmail } from "@/lib/email";
+import { PasswordResetTemplate } from "@/lib/email-templates";
 
-// Generates a token, saves it to the user, and "sends" it (prints to console for MVP)
+// Generates a token, saves it to the user, and securely emails it
 export const requestPasswordReset = withSafeAction(async function _requestPasswordReset(email: string) {
     try {
         const user = await prisma.user.findUnique({
@@ -32,14 +34,13 @@ export const requestPasswordReset = withSafeAction(async function _requestPasswo
             }
         });
 
-        // IN A PRODUCTION ENVIRONMENT:
-        // You would use Resend, SendGrid, or AWS SES here to email `http://yourdomain.com/reset-password?token=${resetToken}`
+        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
-        // FOR THIS MVP LOCAL TESTING: We log the secure link to the Node console
-        console.log(`\n\n=========================================\n`);
-        console.log(`🔐 PASSWORD RESET REQUEST FOR: ${email}`);
-        console.log(`🔗 Link: http://localhost:3000/reset-password?token=${resetToken}`);
-        console.log(`\n=========================================\n\n`);
+        await sendEmail({
+            to: email,
+            subject: 'Reset your RentPe password',
+            html: PasswordResetTemplate(resetUrl, user.name || 'User')
+        }).catch(err => console.error("Failed to send password reset email:", err));
 
         return { message: "If an account with that email exists, we have sent a reset link." };
     } catch (error) {
