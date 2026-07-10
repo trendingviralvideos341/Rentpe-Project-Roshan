@@ -522,6 +522,17 @@ export default function AdminPropertiesPage() {
                                                 Request Correction
                                             </Button>
                                         )}
+
+                                        {/* Pending Bank Update Alert for LIVE properties */}
+                                        {prop.pendingBankName && (
+                                            <Link href={`/dashboard/admin/properties/${prop.id}?tab=bank_details`} className="w-full">
+                                                <Button 
+                                                    className="w-full h-auto py-2 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-md shadow-red-200 animate-pulse border-2 border-red-700 whitespace-normal leading-tight"
+                                                >
+                                                    Pending New Bank Details Verification <ArrowRight className="h-3 w-3 ml-1 shrink-0" />
+                                                </Button>
+                                            </Link>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>

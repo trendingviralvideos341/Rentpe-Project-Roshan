@@ -264,6 +264,11 @@ export function PropertiesContainer({ role, permissions = [] }: PropertiesContai
                                             <div className="flex items-center text-xs font-bold text-slate-600 mt-0.5">
                                                 <MapPin className="h-3 w-3 mr-1 text-slate-500" /> {property.city}
                                             </div>
+                                            {property.status === 'LIVE' && property.pendingBankName && (
+                                                <div className="mt-2 text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 border-2 border-blue-200 px-2.5 py-1 rounded-lg w-fit flex items-center gap-1.5 shadow-sm shadow-blue-100/50">
+                                                    <AlertCircle className="h-3 w-3 animate-pulse text-blue-500" /> Bank Update Pending Verification
+                                                </div>
+                                            )}
                                         </div>
                                         {property.displayId && (
                                             <Badge variant="outline" className="text-[10px] bg-white font-mono font-black text-slate-950 border-slate-950/20">
