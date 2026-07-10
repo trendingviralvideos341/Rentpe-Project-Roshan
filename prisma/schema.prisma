@@ -175,6 +175,16 @@ model Property {
   bankIfscEncrypted          String?   // Encrypted — never log
   bankName                   String?
   cancelChequeUrl            String?
+  // ── Pending Bank Update (owner edits bank details while LIVE/APPROVED) ──
+  // These fields hold the NEW bank details submitted by owner for admin review.
+  // The active/live bank details above are NOT changed until admin approves.
+  pendingBankAccountNoEncrypted String?  // Encrypted — never log
+  pendingBankIfscEncrypted      String?  // Encrypted — never log
+  pendingBankName               String?
+  pendingCancelChequeUrl        String?
+  bankUpdateRequestedAt         DateTime?  // When owner submitted the update
+  bankUpdateVerifiedAt          DateTime?  // When admin approved/rejected the update
+  bankUpdateVerifiedBy          String?    // Admin userId who processed it
   videoUrl                   String?
   isVerified                 Boolean                      @default(false)
   createdAt                  DateTime                     @default(now())

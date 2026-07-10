@@ -819,6 +819,8 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
     if (!property) return null;
 
     const propertyToReturn = { ...property } as any;
+    
+    // Decrypt active bank fields
     if (propertyToReturn.bankAccountNoEncrypted) {
         const decryptedBankAcc = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
         propertyToReturn.bankAccountNo = decryptedBankAcc ? maskBankAccount(decryptedBankAcc) : null;
@@ -831,9 +833,24 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
         propertyToReturn.bankName = maskBeneficiaryName(propertyToReturn.bankName);
     }
     
-    // Security: Remove ciphertext from payload
+    // Decrypt pending bank fields (for LIVE updates)
+    if (propertyToReturn.pendingBankAccountNoEncrypted) {
+        const decryptedPendingBankAcc = decryptIfPresent(propertyToReturn.pendingBankAccountNoEncrypted);
+        propertyToReturn.pendingBankAccountNo = decryptedPendingBankAcc ? maskBankAccount(decryptedPendingBankAcc) : null;
+    }
+    if (propertyToReturn.pendingBankIfscEncrypted) {
+        const decryptedPendingIfsc = decryptIfPresent(propertyToReturn.pendingBankIfscEncrypted);
+        propertyToReturn.pendingBankIfsc = decryptedPendingIfsc ? maskIfscCode(decryptedPendingIfsc) : null;
+    }
+    if (propertyToReturn.pendingBankName) {
+        propertyToReturn.pendingBankName = maskBeneficiaryName(propertyToReturn.pendingBankName);
+    }
+    
+    // Security: Remove all ciphertext from payload
     delete propertyToReturn.bankAccountNoEncrypted;
     delete propertyToReturn.bankIfscEncrypted;
+    delete propertyToReturn.pendingBankAccountNoEncrypted;
+    delete propertyToReturn.pendingBankIfscEncrypted;
 
     return propertyToReturn;
 }
@@ -1957,6 +1974,105 @@ async function _verifyBankDetails(propertyId: string) {
     return result;
 }
 
+async function _verifyBankUpdate(propertyId: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw new Error("Property not found");
+    if (!property.pendingBankName) throw new Error("No pending bank update found");
+
+    const result = await prisma.$transaction(async (tx) => {
+        // Move pending details to active details and clear pending fields
+        const updated = await tx.property.update({
+            where: { id: propertyId },
+            data: {
+                bankName: property.pendingBankName,
+                bankAccountNoEncrypted: property.pendingBankAccountNoEncrypted,
+                bankIfscEncrypted: property.pendingBankIfscEncrypted,
+                cancelChequeUrl: property.pendingCancelChequeUrl || property.cancelChequeUrl,
+                // Clear pending fields
+                pendingBankName: null,
+                pendingBankAccountNoEncrypted: null,
+                pendingBankIfscEncrypted: null,
+                pendingCancelChequeUrl: null,
+                bankUpdateRequestedAt: null,
+                bankUpdateVerifiedAt: new Date(),
+                bankUpdateVerifiedBy: session.userId,
+            }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "BANK_UPDATE_APPROVED",
+                message: `✅ Success! Your updated bank details for "${property.name}" have been verified and applied.`
+            }
+        });
+
+        return updated;
+    });
+
+    await logAuditEvent({
+        actorId: session.userId as string,
+        actorRole: session.role as string,
+        actorName: session.name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Admin verified and applied updated bank details for LIVE property`,
+    });
+
+    revalidatePath("/dashboard/admin/properties");
+    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    return result;
+}
+
+async function _rejectBankUpdate(propertyId: string, reason: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    const result = await prisma.$transaction(async (tx) => {
+        const property = await tx.property.update({
+            where: { id: propertyId },
+            data: {
+                // Clear pending fields (discard them)
+                pendingBankName: null,
+                pendingBankAccountNoEncrypted: null,
+                pendingBankIfscEncrypted: null,
+                pendingCancelChequeUrl: null,
+                bankUpdateRequestedAt: null,
+                bankUpdateVerifiedAt: new Date(),
+                bankUpdateVerifiedBy: session.userId,
+            }
+        });
+
+        await tx.notification.create({
+            data: {
+                userId: property.ownerId,
+                type: "BANK_UPDATE_REJECTED",
+                message: `❌ Your bank details update for "${property.name}" was rejected. Reason: ${reason}`
+            }
+        });
+
+        return property;
+    });
+
+    await logAuditEvent({
+        actorId: session.userId as string,
+        actorRole: session.role as string,
+        actorName: session.name || 'Admin',
+        actionType: 'UPDATE',
+        entityType: 'PROPERTY',
+        entityId: propertyId,
+        description: `Admin rejected updated bank details for LIVE property. Reason: ${reason}`,
+    });
+
+    revalidatePath("/dashboard/admin/properties");
+    revalidatePath(`/dashboard/admin/properties/${propertyId}`);
+    return result;
+}
+
 async function _bypassOnboardingPayment(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
@@ -2022,4 +2138,6 @@ export const adminAddRoom = withSafeAction(_adminAddRoom);
 export const logCorrectionView = withSafeAction(_logCorrectionView);
 export const requestBankCorrections = withSafeAction(_requestBankCorrections);
 export const verifyBankDetails = withSafeAction(_verifyBankDetails);
+export const verifyBankUpdate = withSafeAction(_verifyBankUpdate);
+export const rejectBankUpdate = withSafeAction(_rejectBankUpdate);
 export const bypassOnboardingPayment = withSafeAction(_bypassOnboardingPayment);

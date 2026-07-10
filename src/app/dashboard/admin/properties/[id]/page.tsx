@@ -19,6 +19,8 @@ import {
     adminUpdateProperty,
     requestBankCorrections,
     verifyBankDetails,
+    verifyBankUpdate,
+    rejectBankUpdate,
     bypassOnboardingPayment,
 } from "@/actions/admin";
 import { verifyDocument } from "@/actions/adminPhase2";
@@ -406,6 +408,8 @@ export default function AdminPropertyDetailPage() {
                 case "suspend": await suspendProperty(property.id, reason); toast.success("Property suspended"); break;
                 case "bank_correction": await requestBankCorrections(property.id, reason); toast.success("Bank details correction request sent"); break;
                 case "verify_bank": await verifyBankDetails(property.id); toast.success("Bank details verified"); break;
+                case "verify_bank_update": await verifyBankUpdate(property.id); toast.success("Pending bank update verified and applied"); break;
+                case "reject_bank_update": await rejectBankUpdate(property.id, reason); toast.success("Pending bank update rejected"); break;
             }
             setActionModal(null); setReason(""); fetchProperty();
         } catch (e: any) { toast.error(e.message || "Action failed"); }
@@ -1259,19 +1263,59 @@ export default function AdminPropertyDetailPage() {
                 {/* Bank Details Tab */}
                 {activeTab === "bank_details" && (
                     <div className="bg-white rounded-3xl border-2 border-slate-100 p-8 shadow-sm space-y-6">
-                        <SecureBankDetails
-                            propertyId={p.id}
-                            bankName={p.bankName}
-                            initialBankAccountNo={p.bankAccountNo}
-                            initialBankIfsc={p.bankIfsc}
-                            initialCancelChequeUrl={p.cancelChequeUrl}
-                            isChequeVerified={verifiedDocs.includes("bank_cheque")}
-                            onChequeViewerOpen={(url) => openViewer(url, "Bank Cheque", "bank_cheque", true)}
-                            userRole="ADMIN"
-                        />
+                        {p.pendingBankName && (
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 mb-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <AlertCircle className="w-6 h-6 text-blue-600" />
+                                    <div>
+                                        <h4 className="font-black text-blue-900 text-lg uppercase tracking-tight">Pending Bank Update</h4>
+                                        <p className="text-blue-700 text-sm font-medium">The owner has submitted updated bank details for this LIVE property. Please verify them below.</p>
+                                    </div>
+                                </div>
+                                <SecureBankDetails
+                                    propertyId={p.id}
+                                    bankName={p.pendingBankName}
+                                    initialBankAccountNo={p.pendingBankAccountNo}
+                                    initialBankIfsc={p.pendingBankIfsc}
+                                    initialCancelChequeUrl={p.pendingCancelChequeUrl}
+                                    isChequeVerified={false}
+                                    onChequeViewerOpen={(url) => openViewer(url, "Pending Bank Cheque", "bank_cheque", true)}
+                                    userRole="ADMIN"
+                                />
+                                <div className="pt-6 mt-6 border-t border-blue-200/50 flex flex-col sm:flex-row gap-4 items-center justify-end">
+                                    <Button 
+                                        variant="outline" 
+                                        className="w-full sm:w-auto h-12 border-red-200 text-red-700 bg-red-50 hover:bg-red-100 hover:text-red-800 rounded-xl font-black uppercase tracking-widest text-[11px]"
+                                        onClick={() => setActionModal({ type: "reject_bank_update" })}
+                                    >
+                                        <XCircle className="w-4 h-4 mr-2" /> Reject Update
+                                    </Button>
+                                    <Button 
+                                        className="w-full sm:w-auto h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-[11px]"
+                                        onClick={() => setActionModal({ type: "verify_bank_update" })}
+                                    >
+                                        <ShieldCheck className="w-4 h-4 mr-2" /> Verify Updated Details
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
 
-                        {/* Action Buttons */}
-                        {(p.status === "BANK_DETAILS_SUBMITTED" || p.status === "AWAITING_BANK_DETAILS" || p.status === "BANK_DETAILS_VERIFIED") && (
+                        <div className="opacity-90">
+                            <h4 className="font-black text-slate-800 text-sm uppercase tracking-wider mb-4">{p.pendingBankName ? "Current Active Bank Details" : "Bank Details"}</h4>
+                            <SecureBankDetails
+                                propertyId={p.id}
+                                bankName={p.bankName}
+                                initialBankAccountNo={p.bankAccountNo}
+                                initialBankIfsc={p.bankIfsc}
+                                initialCancelChequeUrl={p.cancelChequeUrl}
+                                isChequeVerified={verifiedDocs.includes("bank_cheque")}
+                                onChequeViewerOpen={(url) => openViewer(url, "Bank Cheque", "bank_cheque", true)}
+                                userRole="ADMIN"
+                            />
+                        </div>
+
+                        {/* Action Buttons (Only for initial onboarding, not updates) */}
+                        {!p.pendingBankName && (p.status === "BANK_DETAILS_SUBMITTED" || p.status === "AWAITING_BANK_DETAILS" || p.status === "BANK_DETAILS_VERIFIED") && (
                             <div className="pt-6 mt-6 border-t border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-end">
                                 {p.status !== "BANK_DETAILS_VERIFIED" && (
                                     <>
@@ -1619,6 +1663,8 @@ export default function AdminPropertyDetailPage() {
                     suspend:         { title: "Suspend Property", color: "bg-red-700 hover:bg-red-800", needsReason: true, placeholder: "Reason for suspension (visible to owner)?" },
                     bank_correction: { title: "Bank Details Corrections", color: "bg-orange-600 hover:bg-orange-700", needsReason: true, placeholder: "What needs correction in bank details?" },
                     verify_bank:     { title: "Verify Bank Details", color: "bg-blue-600 hover:bg-blue-700", needsReason: false, warning: "Marks the bank details as verified and enables payment request." },
+                    verify_bank_update: { title: "Verify Bank Update", color: "bg-blue-600 hover:bg-blue-700", needsReason: false, warning: "Approves the updated bank details. This will overwrite the current bank details." },
+                    reject_bank_update: { title: "Reject Bank Update", color: "bg-red-600 hover:bg-red-700", needsReason: true, placeholder: "Why is the bank details update rejected?" },
                 };
                 const c = cfg[actionModal.type];
                 return (

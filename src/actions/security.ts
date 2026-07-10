@@ -158,33 +158,37 @@ export async function requestEditBankDetails(propertyId: string, inputOtp: strin
         const isOwner = property.ownerId === session.userId || property.ownerId === (session as any).parentOwnerId;
         if (!isOwner) return { success: false, error: "Only the primary owner can edit bank details." };
 
-        if (property.status === 'AWAITING_BANK_DETAILS') {
-            return { success: false, error: "Bank details are already unlocked for editing." };
-        }
-
         // 3. Log the Request Action to AuditLog
         await prisma.auditLog.create({
             data: {
                 actorId: session.userId,
                 actorRole: session.role,
                 actorName: session.name || 'Owner',
-                actionType: 'UPDATE',
+                actionType: 'VIEW_BANK_DETAILS',
                 entityType: 'PROPERTY',
                 entityId: propertyId,
-                description: `Owner verified identity via OTP and unlocked bank details for editing (suspended payouts).`
+                description: `Owner verified identity via OTP and unlocked bank details for editing (view-only unlock — status NOT changed).`
             }
         });
 
-        // 4. Update property status to AWAITING_BANK_DETAILS to unlock form
-        await prisma.property.update({
-            where: { id: propertyId },
-            data: { 
-                status: 'AWAITING_BANK_DETAILS',
-                adminNotes: (property.adminNotes ? property.adminNotes + '\n' : '') + '[EDIT_REQUESTED] Owner unlocked details for editing.'
-            }
-        });
+        // 4. ✅ CRITICAL FIX: Do NOT change property status.
+        //    Previously this set status to AWAITING_BANK_DETAILS which caused LIVE properties
+        //    to regress if the owner cancelled without saving. Status only changes when new
+        //    bank details are actually submitted via submitBankDetails().
+        //
+        //    Return the current (decrypted) bank details so the edit form can pre-populate itself.
+        const bankAccountNo = decryptIfPresent(property.bankAccountNoEncrypted);
+        const bankIfsc = decryptIfPresent(property.bankIfscEncrypted);
 
-        return { success: true };
+        return {
+            success: true,
+            previousStatus: property.status,
+            // Return current bank details for pre-populating the edit form
+            currentBankName: property.bankName || '',
+            currentBankAccountNo: bankAccountNo || '',
+            currentBankIfsc: bankIfsc || '',
+            currentCancelChequeUrl: property.cancelChequeUrl || null,
+        };
     } catch (e: any) {
         return { success: false, error: "An unexpected error occurred during the edit request." };
     }

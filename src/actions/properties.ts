@@ -1429,50 +1429,107 @@ async function _submitBankDetails(propertyId: string, bankData: { bankAccountNo:
     
     if (!property) throw new Error('Property not found');
     if (property.ownerId !== effectiveOwnerId) throw new Error('Unauthorized');
-    if (property.status !== 'AWAITING_BANK_DETAILS') throw new Error('Property is not awaiting bank details');
-
-    return prisma.$transaction(async (tx) => {
-        await tx.property.update({
-            where: { id: propertyId },
-            data: {
-                // SECURITY FIX: Encrypt bank details with AES-256-GCM before storing
-                bankAccountNoEncrypted: encryptIfPresent(bankData.bankAccountNo),
-                bankIfscEncrypted: encryptIfPresent(bankData.bankIfsc),
-                bankName: bankData.bankName,
-                cancelChequeUrl: bankData.cancelChequeUrl,
-                status: 'BANK_DETAILS_SUBMITTED'
-            }
-        });
-
-        await tx.auditLog.create({
-            data: {
-                actorId: session.userId,
-                actorRole: 'OWNER',
-                actorName: session.name || 'Owner',
-                actionType: 'UPDATE',
-                entityType: 'PROPERTY',
-                entityId: propertyId,
-                description: `Owner submitted bank details for property "${property.name}".`,
-                newValue: { status: 'BANK_DETAILS_SUBMITTED', bankIfsc: bankData.bankIfsc },
-                ipAddress: 'internal',
-                userAgent: 'server-action'
-            }
-        });
-
-        const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
-        if (admin) {
-            await tx.notification.create({
+    
+    // ── PATH A: Initial bank details submission (not yet live) ──
+    // Property is in the normal onboarding pipeline — just awaiting bank details.
+    // Save directly and change status to BANK_DETAILS_SUBMITTED.
+    if (property.status === 'AWAITING_BANK_DETAILS') {
+        return prisma.$transaction(async (tx) => {
+            await tx.property.update({
+                where: { id: propertyId },
                 data: {
-                    userId: admin.id,
-                    type: 'PROPERTY_PENDING',
-                    message: `Bank Details Submitted: Owner has submitted bank details for "${property.name}". Please review and make property live.`,
-                    targetRole: 'ADMIN'
+                    bankAccountNoEncrypted: encryptIfPresent(bankData.bankAccountNo),
+                    bankIfscEncrypted: encryptIfPresent(bankData.bankIfsc),
+                    bankName: bankData.bankName,
+                    cancelChequeUrl: bankData.cancelChequeUrl,
+                    status: 'BANK_DETAILS_SUBMITTED'
                 }
             });
-        }
 
-        return { success: true };
-    });
+            await tx.auditLog.create({
+                data: {
+                    actorId: session.userId,
+                    actorRole: 'OWNER',
+                    actorName: session.name || 'Owner',
+                    actionType: 'UPDATE',
+                    entityType: 'PROPERTY',
+                    entityId: propertyId,
+                    description: `Owner submitted bank details for property "${property.name}".`,
+                    newValue: { status: 'BANK_DETAILS_SUBMITTED', bankIfsc: bankData.bankIfsc },
+                    ipAddress: 'internal',
+                    userAgent: 'server-action'
+                }
+            });
+
+            const admin = await tx.user.findFirst({ where: { role: 'ADMIN' } });
+            if (admin) {
+                await tx.notification.create({
+                    data: {
+                        userId: admin.id,
+                        type: 'PROPERTY_PENDING',
+                        message: `Bank Details Submitted: Owner has submitted bank details for "${property.name}". Please review and make property live.`,
+                        targetRole: 'ADMIN'
+                    }
+                });
+            }
+
+            return { success: true, flow: 'initial' };
+        });
+    }
+
+    // ── PATH B: Bank details UPDATE for an already LIVE/APPROVED property ──
+    // ✅ CRITICAL: Do NOT change property status. Save new details to pending_ fields.
+    // Admin will review and approve — only then are the live fields updated.
+    const allowedUpdateStatuses = ['LIVE', 'APPROVED', 'BANK_DETAILS_VERIFIED', 'APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED'];
+    if (allowedUpdateStatuses.includes(property.status)) {
+        return prisma.$transaction(async (tx) => {
+            await tx.property.update({
+                where: { id: propertyId },
+                data: {
+                    // Save to PENDING fields — NOT the live fields
+                    pendingBankAccountNoEncrypted: encryptIfPresent(bankData.bankAccountNo),
+                    pendingBankIfscEncrypted: encryptIfPresent(bankData.bankIfsc),
+                    pendingBankName: bankData.bankName,
+                    pendingCancelChequeUrl: bankData.cancelChequeUrl,
+                    bankUpdateRequestedAt: new Date(),
+                    // ✅ Status is NOT changed — property stays LIVE
+                }
+            });
+
+            await tx.auditLog.create({
+                data: {
+                    actorId: session.userId,
+                    actorRole: 'OWNER',
+                    actorName: session.name || 'Owner',
+                    actionType: 'UPDATE',
+                    entityType: 'PROPERTY',
+                    entityId: propertyId,
+                    description: `Owner submitted updated bank details for LIVE property "${property.name}". Pending admin review — property status unchanged.`,
+                    newValue: { pendingBankIfsc: bankData.bankIfsc, pendingBankName: bankData.bankName },
+                    ipAddress: 'internal',
+                    userAgent: 'server-action'
+                }
+            });
+
+            // Notify ALL admin users about the pending bank update
+            const admins = await tx.user.findMany({ where: { role: 'ADMIN' } });
+            for (const admin of admins) {
+                await tx.notification.create({
+                    data: {
+                        userId: admin.id,
+                        type: 'BANK_UPDATE_PENDING',
+                        message: `🏦 Bank Details Update: Owner of "${property.name}" has submitted updated bank details. Please review and verify in the Bank Details tab.`,
+                        targetRole: 'ADMIN',
+                        metadata: JSON.stringify({ propertyId, propertyName: property.name })
+                    }
+                });
+            }
+
+            return { success: true, flow: 'update_pending_review' };
+        });
+    }
+
+    throw new Error(`Cannot update bank details while property is in status: ${property.status}`);
 }
 
 export const submitBankDetails = withSafeAction(_submitBankDetails);
