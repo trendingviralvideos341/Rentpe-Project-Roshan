@@ -36,6 +36,7 @@ export default function SecureBankDetails({
     const [verifying, setVerifying] = useState(false);
 
     // Unlocked data
+    const [realBankName, setRealBankName] = useState<string | null>(null);
     const [realAccountNo, setRealAccountNo] = useState<string | null>(null);
     const [realIfsc, setRealIfsc] = useState<string | null>(null);
     const [realChequeUrl, setRealChequeUrl] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export default function SecureBankDetails({
 
             if (remaining === 0) {
                 setIsUnlocked(false);
+                setRealBankName(null);
                 setRealAccountNo(null);
                 setRealIfsc(null);
                 setRealChequeUrl(null);
@@ -72,6 +74,7 @@ export default function SecureBankDetails({
         if (isUnlocked) {
             // Manual lock
             setIsUnlocked(false);
+            setRealBankName(null);
             setRealAccountNo(null);
             setRealIfsc(null);
             setRealChequeUrl(null);
@@ -94,6 +97,7 @@ export default function SecureBankDetails({
         try {
             const res = await verifyRevealOTP(propertyId, otpInput.trim());
             if (res.success) {
+                setRealBankName(res.bankName);
                 setRealAccountNo(res.bankAccountNo);
                 setRealIfsc(res.bankIfsc);
                 setRealChequeUrl(res.cancelChequeUrl);
@@ -120,6 +124,7 @@ export default function SecureBankDetails({
     };
 
     // Derived Display values
+    const displayBankName = isUnlocked && realBankName ? realBankName : bankName;
     const displayAccountNo = isUnlocked && realAccountNo ? realAccountNo : initialBankAccountNo;
     const displayIfsc = isUnlocked && realIfsc ? realIfsc : initialBankIfsc;
 
@@ -172,9 +177,16 @@ export default function SecureBankDetails({
                 <div className="space-y-6">
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beneficiary Name</label>
-                        <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
-                            {bankName || 'Not provided'}
-                        </p>
+                        <div className="relative group">
+                            <p className={`font-bold text-lg p-4 rounded-xl border font-mono transition-all duration-300 shadow-inner flex items-center justify-between ${
+                                isUnlocked 
+                                    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                    : "bg-slate-50 border-slate-200 text-slate-900"
+                            }`}>
+                                <span>{displayBankName || 'Not provided'}</span>
+                                {isUnlocked && <LockOpen className="w-4 h-4 text-emerald-500 opacity-50" />}
+                            </p>
+                        </div>
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Number</label>
@@ -191,13 +203,16 @@ export default function SecureBankDetails({
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">IFSC Code</label>
-                        <p className={`font-bold text-lg p-4 rounded-xl border font-mono transition-all duration-300 shadow-inner flex items-center justify-between ${
-                                isUnlocked 
-                                    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                                    : "bg-slate-50 border-slate-100 text-slate-900"
-                            }`}>
-                            <span>{displayIfsc || 'Not provided'}</span>
-                        </p>
+                        <div className="relative group">
+                            <p className={`font-bold text-lg p-4 rounded-xl border font-mono transition-all duration-300 shadow-inner flex items-center justify-between ${
+                                    isUnlocked 
+                                        ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                        : "bg-slate-50 border-slate-100 text-slate-900"
+                                }`}>
+                                <span>{displayIfsc || 'Not provided'}</span>
+                                {isUnlocked && <LockOpen className="w-4 h-4 text-emerald-500 opacity-50" />}
+                            </p>
+                        </div>
                     </div>
                 </div>
 

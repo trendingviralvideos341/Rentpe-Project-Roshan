@@ -125,9 +125,59 @@ export async function verifyRevealOTP(propertyId: string, inputOtp: string) {
 
     return {
         success: true,
+        bankName: property.bankName,
         bankAccountNo,
         bankIfsc,
         cancelChequeUrl: secureChequeUrl,
         expiresAt: Date.now() + 120 * 1000 // 2 minutes from now in ms
     };
+}
+
+export async function requestEditBankDetails(propertyId: string, inputOtp: string) {
+    const session = await getSession();
+    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+
+    // 1. Check Mock OTP
+    if (inputOtp !== "123456") {
+        throw new Error("Invalid verification code");
+    }
+
+    // 2. Fetch Property to ensure access
+    const property = await prisma.property.findUnique({
+        where: { id: propertyId }
+    });
+
+    if (!property) throw new Error("Property not found");
+
+    // Ensure access control: Must be the EXACT OWNER (or parent)
+    const isOwner = property.ownerId === session.userId || property.ownerId === (session as any).parentOwnerId;
+    if (!isOwner) throw new Error("Only the primary owner can edit bank details.");
+
+    if (property.status === 'AWAITING_BANK_DETAILS') {
+        throw new Error("Bank details are already unlocked for editing.");
+    }
+
+    // 3. Log the Request Action to AuditLog
+    await prisma.auditLog.create({
+        data: {
+            actorId: session.userId,
+            actorRole: session.role,
+            actorName: session.name || 'Owner',
+            actionType: 'UPDATE',
+            entityType: 'PROPERTY',
+            entityId: propertyId,
+            description: `Owner verified identity via OTP and unlocked bank details for editing (suspended payouts).`
+        }
+    });
+
+    // 4. Update property status to AWAITING_BANK_DETAILS to unlock form
+    await prisma.property.update({
+        where: { id: propertyId },
+        data: { 
+            status: 'AWAITING_BANK_DETAILS',
+            adminNotes: (property.adminNotes ? property.adminNotes + '\n' : '') + '[EDIT_REQUESTED] Owner unlocked details for editing.'
+        }
+    });
+
+    return { success: true };
 }

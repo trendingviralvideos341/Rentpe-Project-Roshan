@@ -21,7 +21,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
-import { encryptIfPresent, decryptIfPresent, maskBankAccount } from '@/lib/crypto';
+import { encryptIfPresent, decryptIfPresent, maskBankAccount, maskBeneficiaryName, maskIfscCode } from '@/lib/crypto';
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
@@ -108,7 +108,9 @@ export async function getPropertyById(id: string) {
         const propertyToReturn = { ...property } as any;
         const decryptedAcc = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
         propertyToReturn.bankAccountNo = decryptedAcc ? maskBankAccount(decryptedAcc) : null;
-        propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        const decryptedIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        propertyToReturn.bankIfsc = decryptedIfsc ? maskIfscCode(decryptedIfsc) : null;
+        if (propertyToReturn.bankName) propertyToReturn.bankName = maskBeneficiaryName(propertyToReturn.bankName);
         
         delete propertyToReturn.bankAccountNoEncrypted;
         delete propertyToReturn.bankIfscEncrypted;
@@ -134,7 +136,9 @@ export async function getPropertyById(id: string) {
         const propertyToReturn = { ...property } as any;
         const decryptedAccOwner = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
         propertyToReturn.bankAccountNo = decryptedAccOwner ? maskBankAccount(decryptedAccOwner) : null;
-        propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        const decryptedIfscOwner = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        propertyToReturn.bankIfsc = decryptedIfscOwner ? maskIfscCode(decryptedIfscOwner) : null;
+        if (propertyToReturn.bankName) propertyToReturn.bankName = maskBeneficiaryName(propertyToReturn.bankName);
         
         delete propertyToReturn.bankAccountNoEncrypted;
         delete propertyToReturn.bankIfscEncrypted;
@@ -167,9 +171,13 @@ export async function getPropertyById(id: string) {
         roomsAndBathroomPhotos: filterPhotos(property.roomsAndBathroomPhotos, 'roomsAndBathroomPhotos'),
         parkingPhotos: filterPhotos(property.parkingPhotos, 'parkingPhotos'),
         amenitiesPhotos: filterPhotos(property.amenitiesPhotos, 'amenitiesPhotos'),
-        aadhaarProof: null, // Security: Never leakage in public view
+        aadhaarProof: null, // Security: Never leak in public view
         panProof: null,
         pgLicenceUrl: null,
+        bankName: null,
+        bankAccountNoEncrypted: undefined,
+        bankIfscEncrypted: undefined,
+        cancelChequeUrl: null,
     };
 }
 

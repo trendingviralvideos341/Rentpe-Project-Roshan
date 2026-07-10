@@ -160,3 +160,20 @@ export function maskBankAccount(accountNo: string): string {
     if (accountNo.length <= 4) return accountNo;
     return '*'.repeat(accountNo.length - 4) + accountNo.slice(-4);
 }
+
+/**
+ * Masks a beneficiary name completely with bullet points.
+ */
+export function maskBeneficiaryName(name: string): string {
+    if (!name) return '';
+    return '•'.repeat(Math.max(name.length, 12));
+}
+
+/**
+ * Masks an IFSC code completely with bullet points.
+ */
+export function maskIfscCode(ifsc: string): string {
+    if (!ifsc) return '';
+    return '•'.repeat(ifsc.length || 11);
+}
+

@@ -93,6 +93,8 @@ export default function TaxSummaryPage() {
     const [selectedProperty, setSelectedProperty] = useState('ALL');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [exportMonth, setExportMonth] = useState('ALL');
+    const [exportFYLabel, setExportFYLabel] = useState(fyOptions[fyOptions.length - 1].label);
 
     const uniqueProperties = Array.from(new Set((report?.report || []).map((r: any) => r.property))).filter(Boolean).sort() as string[];
 
@@ -163,11 +165,19 @@ export default function TaxSummaryPage() {
         reload(selectedFY);
     }, [selectedFY]);
 
+    const getExportMonthString = () => {
+        const activeFY = fyOptions.find((f: any) => f.label === exportFYLabel) || fyOptions[0];
+        if (exportMonth === 'ALL') return null;
+        const m = parseInt(exportMonth);
+        const year = m < 3 ? activeFY.to.getFullYear() : activeFY.from.getFullYear();
+        return `${year}-${String(m + 1).padStart(2, '0')}`;
+    };
+
     const handleExportPDF = async (month?: string) => {
         if (!report) return;
         setExporting('pdf');
         try {
-            const targetMonth = month || currentDownloadMonth;
+            const targetMonth = month || getExportMonthString() || currentDownloadMonth;
             const res = await fetch(`/api/receipts/owner/${targetMonth}?format=pdf`);
             if (!res.ok) throw new Error('Server error generating PDF');
             const blob = await res.blob();
@@ -190,6 +200,16 @@ export default function TaxSummaryPage() {
         if (!report) return;
         setExporting('csv');
         try {
+            const activeFY = fyOptions.find((f: any) => f.label === exportFYLabel) || fyOptions[0];
+            let rowsToExport = filteredRows;
+            if (exportMonth !== 'ALL') {
+                const m = parseInt(exportMonth);
+                const year = m < 3 ? activeFY.to.getFullYear() : activeFY.from.getFullYear();
+                rowsToExport = filteredRows.filter((r: any) => {
+                    const d = new Date(r.date);
+                    return d.getMonth() === m && d.getFullYear() === year;
+                });
+            }
             const s = report.summary;
             const headers = [
                 'Booking ID', 'Tenant ID', 'Internal Booking ID',
@@ -200,7 +220,7 @@ export default function TaxSummaryPage() {
                 'Refund Amount', 'Net Revenue',
                 'Status', 'Date'
             ];
-            const rows = filteredRows.map((r: any) => [
+            const rows = rowsToExport.map((r: any) => [
                 r.bookingId, r.tenantId, r.internalBookingId,
                 r.razorpayOrderId, r.razorpayPaymentId, r.razorpayTransferId,
                 r.tenantName, r.property, r.roomType, r.paymentMethod,
@@ -216,7 +236,8 @@ export default function TaxSummaryPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `RentPe-TaxLedger-${selectedFY.label.replace(/\s/g, '-')}.csv`;
+            const monthName = exportMonth === 'ALL' ? 'FullYear' : new Date(0, parseInt(exportMonth)).toLocaleString('default', { month: 'short' });
+            a.download = `RentPe-TaxLedger-${activeFY.label.replace(/\s/g, '-')}-${monthName}.csv`;
             a.click();
             URL.revokeObjectURL(url);
             toast.success('CSV exported with all IDs and tax columns!');
@@ -577,17 +598,51 @@ export default function TaxSummaryPage() {
 
                         {/* Export Section */}
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
-                            <h3 className="font-black text-slate-900 text-lg mb-1">Export for Your CA / Accountant</h3>
-                            <p className="text-sm text-slate-500 mb-1">
-                                Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
-                            </p>
-                            <p className="text-xs text-indigo-600 font-bold mb-5 flex items-center gap-1.5">
-                                <Info className="w-4 h-4 flex-shrink-0" />
-                                <span>📋 PDFs include individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for claiming Input Tax Credit.</span>
-                            </p>
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                                <div>
+                                    <h3 className="font-black text-slate-900 text-lg mb-1">Export for Your CA / Accountant</h3>
+                                    <p className="text-sm text-slate-500 mb-1">
+                                        Downloads include: Booking IDs, Razorpay IDs, GST breakdown (CGST+SGST), TDS deducted (Sec 194-O), and net payout.
+                                    </p>
+                                    <p className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
+                                        <Info className="w-4 h-4 flex-shrink-0" />
+                                        <span>📋 PDFs include individual GST Tax Invoices (RP/FY26-27/000001...) per transaction — perfect for claiming Input Tax Credit.</span>
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <select
+                                        className="h-10 rounded-xl border border-indigo-200 bg-indigo-50/50 px-4 text-sm font-black text-indigo-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm hover:bg-indigo-50 transition-colors"
+                                        value={exportFYLabel}
+                                        onChange={(e) => setExportFYLabel(e.target.value)}
+                                    >
+                                        {fyOptions.map((fy: any) => (
+                                            <option key={fy.label} value={fy.label}>{fy.label}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        className="h-10 rounded-xl border border-indigo-200 bg-indigo-50/50 px-4 text-sm font-black text-indigo-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[160px] shadow-sm hover:bg-indigo-50 transition-colors"
+                                        value={exportMonth}
+                                        onChange={(e) => setExportMonth(e.target.value)}
+                                    >
+                                        <option value="ALL">All Months</option>
+                                        <option value="0">January</option>
+                                        <option value="1">February</option>
+                                        <option value="2">March</option>
+                                        <option value="3">April</option>
+                                        <option value="4">May</option>
+                                        <option value="5">June</option>
+                                        <option value="6">July</option>
+                                        <option value="7">August</option>
+                                        <option value="8">September</option>
+                                        <option value="9">October</option>
+                                        <option value="10">November</option>
+                                        <option value="11">December</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <button onClick={() => handleExportPDF(currentDownloadMonth)} disabled={exporting !== null}
+                                    <button onClick={() => handleExportPDF(getExportMonthString() || currentDownloadMonth)} disabled={exporting !== null || exportMonth === 'ALL'}
                                         className="w-full flex items-center gap-4 p-5 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl hover:from-indigo-100 hover:to-violet-100 transition-all disabled:opacity-50 text-left">
                                         {exporting === 'pdf'
                                             ? <Loader2 className="w-10 h-10 text-indigo-500 animate-spin flex-shrink-0" />
@@ -596,7 +651,9 @@ export default function TaxSummaryPage() {
                                         <div>
                                             <p className="font-black text-slate-900">📄 Download Monthly PDF</p>
                                             <p className="text-xs text-slate-500 mt-0.5">Page 1: Summary · Page 2+: Individual GST Tax Invoices</p>
-                                            <p className="text-[10px] text-indigo-500 font-bold mt-0.5">Month: {currentDownloadMonth}</p>
+                                            <p className="text-[10px] text-indigo-500 font-bold mt-0.5">
+                                                {exportMonth === 'ALL' ? 'Select a specific month to download PDF' : `Month: ${getExportMonthString() || currentDownloadMonth}`}
+                                            </p>
                                         </div>
                                     </button>
                                 </div>

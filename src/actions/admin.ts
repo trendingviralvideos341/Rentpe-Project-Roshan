@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { stripImmutableFields } from "@/lib/sanitize";
-import { decryptIfPresent, maskBankAccount } from '@/lib/crypto';
+import { decryptIfPresent, maskBankAccount, maskBeneficiaryName, maskIfscCode } from '@/lib/crypto';
 import { runOnDemandExpiry } from "@/actions/expiry";
 
 export async function getAdminStats() {
@@ -823,7 +823,11 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
         propertyToReturn.bankAccountNo = decryptedBankAcc ? maskBankAccount(decryptedBankAcc) : null;
     }
     if (propertyToReturn.bankIfscEncrypted) {
-        propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        const decryptedIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        propertyToReturn.bankIfsc = decryptedIfsc ? maskIfscCode(decryptedIfsc) : null;
+    }
+    if (propertyToReturn.bankName) {
+        propertyToReturn.bankName = maskBeneficiaryName(propertyToReturn.bankName);
     }
     
     // Security: Remove ciphertext from payload

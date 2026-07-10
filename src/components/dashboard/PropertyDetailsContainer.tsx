@@ -10,13 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { getPropertyById, savePropertyDocuments, addRoomToProperty, deletePropertyDocument, requestPropertyDeactivation, requestPropertyReactivation, updatePropertyRules, requestBankDetailsCorrection, approveBankDetails } from "@/actions/properties";
+import { requestEditBankDetails } from "@/actions/security";
 import { deleteRoomByOwner, updateRoomByOwner } from "@/actions/rooms";
 import { 
     ArrowLeft, Camera, CheckCircle, FileText, ImageIcon, Landmark, 
     Mail, Phone, Plus, RefreshCcw, Trash2, User as UserIcon, Building2, Eye,
     BedDouble, Clock, Users, ParkingCircle, AlertCircle, MapPin, ArrowRight,
     Search, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, XCircle,
-    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle, Zap, Pencil
+    Home, ShieldCheck, UtensilsCrossed, PowerOff, AlertTriangle, Zap, Pencil,
+    LockOpen, Lock, Loader2
 } from 'lucide-react';
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,6 +96,9 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
 
     const [activeTab, setActiveTab] = useState("details");
     const [isBankDetailsModalOpen, setIsBankDetailsModalOpen] = useState(false);
+    const [showEditOtpModal, setShowEditOtpModal] = useState(false);
+    const [editOtpInput, setEditOtpInput] = useState("");
+    const [isRequestingEdit, setIsRequestingEdit] = useState(false);
     
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -1370,10 +1375,20 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             </div>
                         )}
                         
-                        {/* Owner Not Editable Note */}
+                        {/* Owner Not Editable Note & Request Edit Button */}
                         {role === 'owner' && property.status !== 'AWAITING_BANK_DETAILS' && (
-                            <div className="mt-8 pt-8 border-t-2 border-slate-50">
-                                <p className="text-xs text-slate-400 italic text-center font-medium">Bank details cannot be edited while under review or verified.</p>
+                            <div className="mt-8 pt-8 border-t-2 border-slate-50 flex flex-col items-center gap-4">
+                                <p className="text-xs text-slate-400 italic text-center font-medium">Bank details are currently locked for processing. Editing requires security verification.</p>
+                                <Button 
+                                    variant="outline" 
+                                    className="rounded-xl border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 hover:text-amber-800 text-xs font-black uppercase tracking-widest px-6"
+                                    onClick={() => {
+                                        setEditOtpInput("");
+                                        setShowEditOtpModal(true);
+                                    }}
+                                >
+                                    <LockOpen className="w-4 h-4 mr-2" /> Request Edit Bank Details
+                                </Button>
                             </div>
                         )}
 
@@ -2038,6 +2053,87 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                 </DialogContent>
             </Dialog>
 
+            {/* OTP Modal for Requesting Edit */}
+            {showEditOtpModal && (
+                <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-amber-500 p-6 text-white text-center relative overflow-hidden">
+                            <LockOpen className="w-12 h-12 mx-auto mb-3 text-amber-200 relative z-10" />
+                            <h3 className="text-xl font-black relative z-10">Security Verification</h3>
+                            <p className="text-amber-100 text-sm mt-1 font-medium relative z-10">Verify identity to unlock editing.</p>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-3">
+                                <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold mb-1">Warning: Payouts will be suspended.</p>
+                                    <p className="opacity-90">Unlocking bank details will require them to be re-verified by our admin team before payouts resume. Enter mock OTP <strong className="font-mono bg-amber-200 px-1 py-0.5 rounded text-amber-900">123456</strong> to proceed.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">6-Digit Code</label>
+                                <Input
+                                    type="text"
+                                    maxLength={6}
+                                    placeholder="• • • • • •"
+                                    className="h-14 text-center text-2xl font-mono tracking-[0.5em] font-bold rounded-xl border-2 border-slate-200 focus-visible:ring-amber-500 focus-visible:border-amber-500 transition-all"
+                                    value={editOtpInput}
+                                    onChange={(e) => setEditOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
+                                    onKeyDown={async (e) => {
+                                        if (e.key === 'Enter' && editOtpInput.length === 6) {
+                                            setIsRequestingEdit(true);
+                                            try {
+                                                await requestEditBankDetails(propertyId, editOtpInput.trim());
+                                                toast.success("Bank details unlocked for editing.");
+                                                setShowEditOtpModal(false);
+                                                fetchProperty(true);
+                                                setIsBankDetailsModalOpen(true); // Open edit modal
+                                            } catch (err: any) {
+                                                toast.error(err.message || "Invalid OTP.");
+                                            } finally {
+                                                setIsRequestingEdit(false);
+                                            }
+                                        }
+                                    }}
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-[10px]"
+                                    onClick={() => setShowEditOtpModal(false)}
+                                    disabled={isRequestingEdit}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    className="flex-1 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px]"
+                                    disabled={isRequestingEdit || editOtpInput.length !== 6}
+                                    onClick={async () => {
+                                        setIsRequestingEdit(true);
+                                        try {
+                                            await requestEditBankDetails(propertyId, editOtpInput.trim());
+                                            toast.success("Bank details unlocked for editing.");
+                                            setShowEditOtpModal(false);
+                                            fetchProperty(true);
+                                            setIsBankDetailsModalOpen(true); // Open edit modal
+                                        } catch (err: any) {
+                                            toast.error(err.message || "Invalid OTP.");
+                                        } finally {
+                                            setIsRequestingEdit(false);
+                                        }
+                                    }}
+                                >
+                                    {isRequestingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Unlock"}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
