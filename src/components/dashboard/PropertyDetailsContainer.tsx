@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OwnerPaymentCard } from "@/components/property/OwnerPaymentCard";
 import { PropertyPhotoCarousel } from "@/components/PropertyPhotoCarousel";
 import { BankDetailsModal } from "./BankDetailsModal";
+import SecureBankDetails from "./SecureBankDetails";
 import { toast } from "sonner";
 
 export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' | 'staff', permissions?: string[] }) {
@@ -88,7 +89,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // View Photo State
-    const [viewDialog, setViewDialog] = useState<{ isOpen: boolean; catKey: string; index?: number; isArray: boolean; label: string; desc: string } | null>(null);
+    const [viewDialog, setViewDialog] = useState<{ isOpen: boolean; catKey: string; index?: number; isArray: boolean; label: string; desc: string; overrideUrl?: string } | null>(null);
     const [previewZoom, setPreviewZoom] = useState(1);
 
     const [activeTab, setActiveTab] = useState("details");
@@ -1330,64 +1331,16 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-6">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beneficiary Name</label>
-                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100">{property.bankName || 'Not provided'}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Number</label>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">
-                                            {property.bankAccountNo ? property.bankAccountNo : 'Not provided'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">IFSC Code</label>
-                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">{property.bankIfsc ? property.bankIfsc : 'Not provided'}</p>
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cancelled Cheque / Passbook</label>
-                                {property.cancelChequeUrl ? (
-                                    <button 
-                                        onClick={() => setViewDialog({ isOpen: true, catKey: 'cancelChequeUrl', isArray: false, label: 'Cancelled Cheque', desc: 'Bank Document' })}
-                                        className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group w-full text-left"
-                                    >
-                                        <img src={property.cancelChequeUrl} className="w-full aspect-video object-cover" alt="Cancelled Cheque" />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                            <div className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
-                                                <Search className="w-4 h-4" /> View Full Image
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Status badge in corner */}
-                                        {property.verifiedDocs && property.verifiedDocs.includes("bank_cheque") ? (
-                                            <div className="absolute top-3 right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
-                                                <CheckCircle className="w-5 h-5" />
-                                            </div>
-                                        ) : property.status === 'AWAITING_BANK_DETAILS' ? (
-                                            <div className="absolute top-3 right-3 bg-red-600 animate-pulse text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Reupload Required">
-                                                <AlertCircle className="w-3 h-3 mr-1" />
-                                                <span className="text-[8px] font-bold uppercase tracking-wider">Reupload</span>
-                                            </div>
-                                        ) : (
-                                            <div className="absolute top-3 right-3 bg-amber-500 text-white px-2 py-0.5 rounded-lg shadow-md flex items-center border border-white/20" title="Pending Approval">
-                                                <AlertCircle className="w-3 h-3 mr-1" />
-                                                <span className="text-[8px] font-bold uppercase tracking-wider">Pending</span>
-                                            </div>
-                                        )}
-                                    </button>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl aspect-video text-slate-400">
-                                        <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">No Image Provided</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <SecureBankDetails
+                            propertyId={property.id}
+                            bankName={property.bankName}
+                            initialBankAccountNo={property.bankAccountNo}
+                            initialBankIfsc={property.bankIfsc}
+                            initialCancelChequeUrl={property.cancelChequeUrl}
+                            isChequeVerified={property.verifiedDocs?.includes("bank_cheque")}
+                            onChequeViewerOpen={(url) => setViewDialog({ isOpen: true, catKey: 'cancelChequeUrl', isArray: false, label: 'Cancelled Cheque', desc: 'Bank Document', overrideUrl: url })}
+                            userRole={role as "OWNER" | "STAFF" | "ADMIN"}
+                        />
 
                         {/* Note from admin */}
                         {property.adminNotes?.includes('[REUPLOAD:BANK_DETAILS]') && (
@@ -1806,7 +1759,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                     {viewDialog && (() => {
                         const photos = property[viewDialog.catKey] ? safeParse(property[viewDialog.catKey]) : [];
                         const photo = viewDialog.isArray ? photos[viewDialog.index!] : property[viewDialog.catKey];
-                        const img = typeof photo === 'string' ? photo : photo?.url;
+                        const img = viewDialog.overrideUrl || (typeof photo === 'string' ? photo : photo?.url);
                         const verified = property.verifiedDocs && safeParse(property.verifiedDocs).includes(viewDialog.isArray ? `${viewDialog.catKey}-${viewDialog.index}` : viewDialog.catKey);
                         
                         return (

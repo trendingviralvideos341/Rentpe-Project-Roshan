@@ -21,7 +21,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { uploadToCloudinary, batchUploadToCloudinary } from "@/lib/upload";
-import { encryptIfPresent, decryptIfPresent } from '@/lib/crypto';
+import { encryptIfPresent, decryptIfPresent, maskBankAccount } from '@/lib/crypto';
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
@@ -106,8 +106,13 @@ export async function getPropertyById(id: string) {
 
     if (session?.role === 'ADMIN') {
         const propertyToReturn = { ...property } as any;
-        propertyToReturn.bankAccountNo = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+        const decryptedAcc = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+        propertyToReturn.bankAccountNo = decryptedAcc ? maskBankAccount(decryptedAcc) : null;
         propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        
+        delete propertyToReturn.bankAccountNoEncrypted;
+        delete propertyToReturn.bankIfscEncrypted;
+        
         return propertyToReturn;
     }
 
@@ -127,8 +132,13 @@ export async function getPropertyById(id: string) {
         }
 
         const propertyToReturn = { ...property } as any;
-        propertyToReturn.bankAccountNo = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+        const decryptedAccOwner = decryptIfPresent(propertyToReturn.bankAccountNoEncrypted);
+        propertyToReturn.bankAccountNo = decryptedAccOwner ? maskBankAccount(decryptedAccOwner) : null;
         propertyToReturn.bankIfsc = decryptIfPresent(propertyToReturn.bankIfscEncrypted);
+        
+        delete propertyToReturn.bankAccountNoEncrypted;
+        delete propertyToReturn.bankIfscEncrypted;
+        
         return propertyToReturn;
     }
 

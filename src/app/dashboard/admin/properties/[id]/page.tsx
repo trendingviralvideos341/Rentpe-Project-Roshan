@@ -34,6 +34,7 @@ import {
     Plus, Trash2, UtensilsCrossed, Pencil, Landmark
 } from "lucide-react";
 import Link from "next/link";
+import SecureBankDetails from "@/components/dashboard/SecureBankDetails";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1258,64 +1259,16 @@ export default function AdminPropertyDetailPage() {
                 {/* Bank Details Tab */}
                 {activeTab === "bank_details" && (
                     <div className="bg-white rounded-3xl border-2 border-slate-100 p-8 shadow-sm space-y-6">
-                        <div className="flex items-center gap-4 border-b-2 border-slate-50 pb-6">
-                            <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl">
-                                <Landmark className="w-8 h-8" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black tracking-tight text-slate-900">Bank Details</h3>
-                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Payment Routing Information</p>
-                            </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-6">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Beneficiary Name</label>
-                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100">{p.bankName || 'Not provided'}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Number</label>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">
-                                            {p.bankAccountNo ? p.bankAccountNo : 'Not provided'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">IFSC Code</label>
-                                    <p className="font-bold text-slate-900 text-lg bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono flex-1">{p.bankIfsc ? p.bankIfsc : 'Not provided'}</p>
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cancelled Cheque / Passbook</label>
-                                {p.cancelChequeUrl ? (
-                                    <button 
-                                        className="relative rounded-2xl overflow-hidden border-2 border-slate-100 group w-full text-left"
-                                        onClick={() => openViewer(p.cancelChequeUrl, "Bank Cheque", "bank_cheque", true)}
-                                    >
-                                        <img src={p.cancelChequeUrl} className="w-full aspect-video object-cover" alt="Cancelled Cheque" />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                            <div className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform">
-                                                <ZoomIn className="w-4 h-4" /> View & Verify
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Status badge in corner */}
-                                        {verifiedDocs.includes("bank_cheque") && (
-                                            <div className="absolute top-3 right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
-                                                <CheckCircle className="w-5 h-5" />
-                                            </div>
-                                        )}
-                                    </button>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl aspect-video text-slate-400">
-                                        <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">No Image Provided</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <SecureBankDetails
+                            propertyId={p.id}
+                            bankName={p.bankName}
+                            initialBankAccountNo={p.bankAccountNo}
+                            initialBankIfsc={p.bankIfsc}
+                            initialCancelChequeUrl={p.cancelChequeUrl}
+                            isChequeVerified={verifiedDocs.includes("bank_cheque")}
+                            onChequeViewerOpen={(url) => openViewer(url, "Bank Cheque", "bank_cheque", true)}
+                            userRole="ADMIN"
+                        />
 
                         {/* Action Buttons */}
                         {(p.status === "BANK_DETAILS_SUBMITTED" || p.status === "AWAITING_BANK_DETAILS" || p.status === "BANK_DETAILS_VERIFIED") && (
