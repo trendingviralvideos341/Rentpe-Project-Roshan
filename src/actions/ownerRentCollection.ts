@@ -7,6 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { generateMasterId } from "@/lib/ids";
 import { sendEmail } from "@/lib/email";
 import { internalGenerateInvoice } from "@/actions/billing";
+import { withSafeAction } from "@/lib/safe-action";
 
 // ────────────────────────────────────────────────────────
 // HELPERS
@@ -243,7 +244,7 @@ export async function getOwnerRentCollection(month?: string, propertyId?: string
     return combined;
 }
 
-export async function markInvoiceAsCashPaid(invoiceId: string, note?: string) {
+async function _markInvoiceAsCashPaid(invoiceId: string, note?: string) {
     const { session, userId, user } = await getOwnerSession();
     const actorName = user?.name || 'Owner';
     const actorRole = user?.parentOwnerId ? 'STAFF' : 'OWNER';
@@ -310,8 +311,10 @@ export async function markInvoiceAsCashPaid(invoiceId: string, note?: string) {
     return { tenantName: tenant?.name, amount: invoice.amount };
 }
 
+export const markInvoiceAsCashPaid = withSafeAction(_markInvoiceAsCashPaid);
 
-export async function sendRentReminder(invoiceId: string) {
+
+async function _sendRentReminder(invoiceId: string) {
     const { user: actorUser } = await getOwnerSession();
 
     const invoice = await prisma.rentInvoice.findUnique({
@@ -399,6 +402,8 @@ export async function sendRentReminder(invoiceId: string) {
         tenantName: tenant.name,
     };
 }
+
+export const sendRentReminder = withSafeAction(_sendRentReminder);
 
 // ────────────────────────────────────────────────────────
 // TASK 2 — TENANT MOVEMENT LOG
@@ -692,7 +697,7 @@ export interface SettlementDeductions {
     notes: string;          // Owner's notes
 }
 
-export async function processDepositSettlement(
+async function _processDepositSettlement(
     depositId: string,
     action: 'REFUNDED' | 'FORFEITED' | 'PARTIALLY_REFUNDED',
     deductions: SettlementDeductions
@@ -822,11 +827,13 @@ export async function processDepositSettlement(
     return { success: true, finalStatus, refundAmount, totalDeductions };
 }
 
+export const processDepositSettlement = withSafeAction(_processDepositSettlement);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT 2 (Legacy): updateDepositStatus — wraps processDepositSettlement
 // Kept for backward compat with old Refund/Forfeit button
 // ─────────────────────────────────────────────────────────────────────────────
-export async function updateDepositStatus(
+async function _updateDepositStatus(
     depositId: string,
     action: 'REFUNDED' | 'FORFEITED' | 'PARTIALLY_REFUNDED',
     data: { refundAmount?: number; reason?: string }
@@ -843,6 +850,8 @@ export async function updateDepositStatus(
         notes: data.reason || '',
     });
 }
+
+export const updateDepositStatus = withSafeAction(_updateDepositStatus);
 
 
 
@@ -877,7 +886,7 @@ export async function getTenantsForBulkInvoice(month: string) {
         }));
 }
 
-export async function generateBulkInvoices(month: string, tenantIds: string[]) {
+async function _generateBulkInvoices(month: string, tenantIds: string[]) {
     const { userId, user: actorUser } = await getOwnerSession();
 
     const results: { tenantId: string; status: string; invoiceId?: string; reason?: string }[] = [];
@@ -958,6 +967,8 @@ export async function generateBulkInvoices(month: string, tenantIds: string[]) {
     revalidatePath('/dashboard/owner/rent-collection');
     return results;
 }
+
+export const generateBulkInvoices = withSafeAction(_generateBulkInvoices);
 
 // ────────────────────────────────────────────────────────
 // TASK 7 — ROOM AVAILABILITY CALENDAR
@@ -1108,7 +1119,7 @@ export async function getOwnerAnalytics(fromDate?: string, toDate?: string) {
  * Flags them as REFUND_OVERDUE and sends admin notification.
  * Called by: admin cron job or manual admin trigger.
  */
-export async function checkDepositRefundCompliance() {
+async function _checkDepositRefundCompliance() {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
     if ((session as any).role !== 'ADMIN') throw new Error('Forbidden: Admin only');
@@ -1161,6 +1172,8 @@ export async function checkDepositRefundCompliance() {
     revalidatePath('/dashboard/admin');
     return { processed: overdueDeposits.length, results };
 }
+
+export const checkDepositRefundCompliance = withSafeAction(_checkDepositRefundCompliance);
 
 /**
  * Get count of REFUND_OVERDUE deposits for the current owner.

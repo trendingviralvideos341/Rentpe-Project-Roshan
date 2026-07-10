@@ -12,6 +12,7 @@ import {
     checkDepositRefundCompliance
 } from '@/actions/ownerRentCollection';
 import { getAllDepositDisputes, resolveDepositDispute } from '@/actions/disputeDeposit';
+import { unwrap } from '@/lib/safe-action';
 import { toast } from 'sonner';
 import {
     Shield, Loader2, RefreshCcw, CheckCircle2, AlertTriangle,
@@ -207,7 +208,7 @@ export default function AdminDepositControlPage() {
     const runComplianceCheck = () => {
         startCompliance(async () => {
             try {
-                const result = await checkDepositRefundCompliance();
+                const result = await unwrap(checkDepositRefundCompliance());
                 toast.success(`Compliance check done! ${result.processed} deposits escalated.`);
                 load();
             } catch (e: any) {

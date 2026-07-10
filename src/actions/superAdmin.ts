@@ -1,3 +1,4 @@
+import { withSafeAction } from "@/lib/safe-action";
 'use server';
 
 /**
@@ -410,7 +411,7 @@ export async function getAdminTeamActivityReport() {
 // ─────────────────────────────────────────────────────────────────────────────
 //  PLATFORM CONFIGURATION — Super Admin configures business rules
 // ─────────────────────────────────────────────────────────────────────────────
-export async function updatePlatformConfig(config: {
+async function _updatePlatformConfig(config: {
     globalCommissionRate?: number;
     kycRequired?: boolean;
     tokenPaymentRequired?: boolean;
@@ -737,3 +738,6 @@ export async function getRecentPlatformActivity(limit: number = 25) {
         createdAt: log.createdAt.toISOString(),
     }));
 }
+
+
+export const updatePlatformConfig = withSafeAction(_updatePlatformConfig);

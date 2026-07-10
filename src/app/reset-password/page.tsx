@@ -8,6 +8,7 @@ import { Building2, Lock, Eye, EyeOff, CheckCircle2, AlertTriangle } from "lucid
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { executePasswordReset } from "@/actions/password-reset";
+import { unwrap } from "@/lib/safe-action";
 
 import { Suspense } from "react";
 
@@ -55,16 +56,12 @@ function ResetPasswordForm() {
 
         setIsLoading(true);
         try {
-            const res = await executePasswordReset(token, password);
-            if (res.success) {
-                setIsSuccess(true);
-                // Optionally redirect to login after a few seconds
-                setTimeout(() => router.push("/login"), 3000);
-            } else {
-                setError(res.error || "Failed to reset password.");
-            }
-        } catch (e) {
-            setError("An unexpected error occurred. The link might have expired.");
+            const res = await unwrap(await executePasswordReset(token, password));
+            setIsSuccess(true);
+            // Optionally redirect to login after a few seconds
+            setTimeout(() => router.push("/login"), 3000);
+        } catch (e: any) {
+            setError(e.message || "An unexpected error occurred. The link might have expired.");
         } finally {
             setIsLoading(false);
         }

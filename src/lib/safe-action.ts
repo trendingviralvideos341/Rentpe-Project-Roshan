@@ -39,3 +39,10 @@ export function withSafeAction<Args extends any[], Return>(
     }
   };
 }
+
+export async function unwrap<T>(resPromise: Promise<SafeActionResponse<T>> | SafeActionResponse<T>): Promise<T> {
+  const res = await resPromise;
+  if (!res.success) throw new Error(res.error);
+  return res.data as T;
+}
+

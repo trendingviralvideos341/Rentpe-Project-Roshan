@@ -6,11 +6,12 @@ import { generate2FASecret, generate2FAQRCode, verify2FAToken } from "@/lib/2fa"
 import { encrypt, decrypt, decryptIfPresent } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
+import { withSafeAction } from "@/lib/safe-action";
 
 /**
  * Initialize 2FA setup for the current admin
  */
-export async function setup2FA() {
+export const setup2FA = withSafeAction(async function _setup2FA() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -34,11 +35,12 @@ export async function setup2FA() {
 
     return { secret, qrCode };
 }
+);
 
 /**
  * Confirm and activate 2FA with the first token
  */
-export async function confirm2FA(token: string) {
+export const confirm2FA = withSafeAction(async function _confirm2FA(token: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -69,11 +71,12 @@ export async function confirm2FA(token: string) {
     revalidatePath('/dashboard/admin/settings');
     return { success: true };
 }
+);
 
 /**
  * Disable 2FA (requires current token for security)
  */
-export async function disable2FA(token: string) {
+export const disable2FA = withSafeAction(async function _disable2FA(token: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -103,4 +106,4 @@ export async function disable2FA(token: string) {
 
     revalidatePath('/dashboard/admin/settings');
     return { success: true };
-}
+});

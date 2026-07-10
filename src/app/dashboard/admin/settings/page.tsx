@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getPlatformSettings, updatePlatformSettings } from "@/actions/platform";
 import { getCurrentUser } from "@/actions/auth";
 import { setup2FA, confirm2FA, disable2FA } from "@/actions/2fa";
+import { unwrap } from "@/lib/safe-action";
 import { Settings, Shield, Globe, Bell, Database, CheckCircle, AlertTriangle, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -44,7 +45,7 @@ export default function AdminSettingsPage() {
         setIs2FALoading(true);
         setTwoFactorError(null);
         try {
-            const res = await setup2FA();
+            const res = await unwrap(setup2FA());
             setQrCode(res.qrCode);
             setSecret(res.secret);
             setTwoFactorStep('SETUP');
@@ -60,14 +61,10 @@ export default function AdminSettingsPage() {
         setIs2FALoading(true);
         setTwoFactorError(null);
         try {
-            const res = await confirm2FA(verificationCode);
-            if (res.error) {
-                setTwoFactorError(res.error);
-            } else {
-                setTwoFactorStep('IDLE');
-                setUser({ ...user, twoFactorEnabled: true });
-                setVerificationCode("");
-            }
+            const res = await unwrap(confirm2FA(verificationCode));
+            setTwoFactorStep('IDLE');
+            setUser({ ...user, twoFactorEnabled: true });
+            setVerificationCode("");
         } catch (e: any) {
             setTwoFactorError(e.message || "Validation failed");
         } finally {
@@ -83,14 +80,10 @@ export default function AdminSettingsPage() {
         setIs2FALoading(true);
         setTwoFactorError(null);
         try {
-            const res = await disable2FA(verificationCode);
-            if (res.error) {
-                setTwoFactorError(res.error);
-            } else {
-                setTwoFactorStep('IDLE');
-                setUser({ ...user, twoFactorEnabled: false });
-                setVerificationCode("");
-            }
+            const res = await unwrap(disable2FA(verificationCode));
+            setTwoFactorStep('IDLE');
+            setUser({ ...user, twoFactorEnabled: false });
+            setVerificationCode("");
         } catch (e: any) {
             setTwoFactorError(e.message || "Failed to disable 2FA");
         } finally {

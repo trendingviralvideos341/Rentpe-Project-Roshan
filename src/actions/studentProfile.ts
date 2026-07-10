@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
+import { withSafeAction } from "@/lib/safe-action";
 
 /** Get full student profile for the current user */
 export async function getStudentProfile() {
@@ -32,7 +33,7 @@ export async function getStudentProfile() {
 }
 
 /** Update student profile */
-export async function updateStudentProfile(data: {
+export const updateStudentProfile = withSafeAction(async function _updateStudentProfile(data: {
     name?: string;
     email?: string; // Sensitive field
     phone?: string;
@@ -84,7 +85,7 @@ export async function updateStudentProfile(data: {
 
     revalidatePath('/dashboard/student/profile');
     return { success: true };
-}
+});
 
 /** Get KYC issues (rejected docs) */
 export async function getStudentKycIssues() {
@@ -110,7 +111,7 @@ export async function getStudentKycIssues() {
 }
 
 /** Update notification preferences */
-export async function updateNotifPrefs(prefs: {
+export const updateNotifPrefs = withSafeAction(async function _updateNotifPrefs(prefs: {
     bookings?: boolean;
     kyc?: boolean;
     messages?: boolean;
@@ -130,10 +131,10 @@ export async function updateNotifPrefs(prefs: {
 
     revalidatePath('/dashboard/student/settings');
     return { success: true };
-}
+});
 
 /** Request account deactivation */
-export async function requestAccountDeactivation(reason: string) {
+export const requestAccountDeactivation = withSafeAction(async function _requestAccountDeactivation(reason: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
     if (!reason?.trim()) throw new Error("Reason is required");
@@ -172,7 +173,7 @@ export async function requestAccountDeactivation(reason: string) {
     });
 
     return { success: true, message: "Deactivation request submitted. Our team will process it within 24-48 hours." };
-}
+});
 
 /** Get student dashboard home data — single API call */
 export async function getStudentDashboardHome() {

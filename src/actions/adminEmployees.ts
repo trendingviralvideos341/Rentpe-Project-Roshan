@@ -1,3 +1,4 @@
+import { withSafeAction } from "@/lib/safe-action";
 'use server';
 
 import prisma from "@/lib/prisma";
@@ -45,7 +46,7 @@ export async function getAdminEmployees() {
     });
 }
 
-export async function createAdminEmployee(data: {
+async function _createAdminEmployee(data: {
     name: string;
     email: string;
     phone: string;
@@ -130,7 +131,7 @@ export async function createAdminEmployee(data: {
     });
 }
 
-export async function updateAdminEmployee(id: string, data: {
+async function _updateAdminEmployee(id: string, data: {
     department?: string;
     role?: string;
     permissions?: string[];
@@ -170,9 +171,14 @@ export async function updateAdminEmployee(id: string, data: {
     return employee;
 }
 
-export async function deleteAdminEmployee(id: string) {
+async function _deleteAdminEmployee(id: string) {
     const session = await ensureSuperAdmin();
     
     // We don't delete, we deactivate/suspend for audit integrity
     return await updateAdminEmployee(id, { status: 'SUSPENDED' });
 }
+
+
+export const createAdminEmployee = withSafeAction(_createAdminEmployee);
+export const updateAdminEmployee = withSafeAction(_updateAdminEmployee);
+export const deleteAdminEmployee = withSafeAction(_deleteAdminEmployee);

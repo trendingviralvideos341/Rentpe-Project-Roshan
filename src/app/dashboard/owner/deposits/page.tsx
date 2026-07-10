@@ -8,6 +8,7 @@ import {
     processDepositSettlement,
     type SettlementDeductions
 } from '@/actions/ownerRentCollection';
+import { unwrap } from '@/lib/safe-action';
 import { toast } from 'sonner';
 import {
     Shield, Loader2, X, AlertCircle, Receipt, Printer,
@@ -173,7 +174,7 @@ function SettlementWizard({ dep, onClose, onSuccess }: { dep: any; onClose: () =
         startTransition(async () => {
             try {
                 const action = totalDed === 0 ? 'REFUNDED' : refund > 0 ? 'PARTIALLY_REFUNDED' : 'FORFEITED';
-                await processDepositSettlement(dep.id, action, deductions);
+                await unwrap(processDepositSettlement(dep.id, action, deductions));
                 toast.success('Settlement processed successfully! Tenant has been notified via email.');
                 onSuccess();
                 onClose();

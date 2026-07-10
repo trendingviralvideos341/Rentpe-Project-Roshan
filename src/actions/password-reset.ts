@@ -4,9 +4,10 @@ import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { logAuditEvent } from "@/lib/audit";
+import { withSafeAction } from "@/lib/safe-action";
 
 // Generates a token, saves it to the user, and "sends" it (prints to console for MVP)
-export async function requestPasswordReset(email: string) {
+export const requestPasswordReset = withSafeAction(async function _requestPasswordReset(email: string) {
     try {
         const user = await prisma.user.findUnique({
             where: { email }
@@ -14,7 +15,7 @@ export async function requestPasswordReset(email: string) {
 
         if (!user) {
             // Return success even if not found to prevent email enumeration attacks
-            return { success: true, message: "If an account with that email exists, we have sent a reset link." };
+            return { message: "If an account with that email exists, we have sent a reset link." };
         }
 
         // Generate a random 64-character hex token
@@ -40,18 +41,18 @@ export async function requestPasswordReset(email: string) {
         console.log(`🔗 Link: http://localhost:3000/reset-password?token=${resetToken}`);
         console.log(`\n=========================================\n\n`);
 
-        return { success: true, message: "If an account with that email exists, we have sent a reset link." };
+        return { message: "If an account with that email exists, we have sent a reset link." };
     } catch (error) {
         console.error("Password reset request error:", error);
-        return { success: false, error: "An unexpected error occurred. Please try again later." };
+        throw new Error("An unexpected error occurred. Please try again later.");
     }
-}
+});
 
 // Validates the token and updates the user's password hash
-export async function executePasswordReset(token: string, newPassword: string) {
+export const executePasswordReset = withSafeAction(async function _executePasswordReset(token: string, newPassword: string) {
     try {
         if (!token || token.length < 32 || newPassword.length < 6) {
-            return { success: false, error: "Invalid token or password too short." };
+            throw new Error("Invalid token or password too short.");
         }
 
         const user = await prisma.user.findFirst({
@@ -64,7 +65,7 @@ export async function executePasswordReset(token: string, newPassword: string) {
         });
 
         if (!user) {
-            return { success: false, error: "This password reset link is invalid or has expired." };
+            throw new Error("This password reset link is invalid or has expired.");
         }
 
         // Hash the new password securely
@@ -92,10 +93,10 @@ export async function executePasswordReset(token: string, newPassword: string) {
             description: `User completed self-serve password reset via email token link.`,
         });
 
-        return { success: true, message: "Your password has been reset successfully. You can now log in." };
+        return { message: "Your password has been reset successfully. You can now log in." };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Execute reset error:", error);
-        return { success: false, error: "Failed to reset password. Please try again." };
+        throw new Error(error.message || "Failed to reset password. Please try again.");
     }
-}
+});

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { getTenantsForBulkInvoice, generateBulkInvoices } from '@/actions/ownerRentCollection';
+import { unwrap } from '@/lib/safe-action';
 import { toast } from 'sonner';
 import { Receipt, Loader2, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
 
@@ -39,7 +40,7 @@ export default function GenerateInvoicesPage() {
     const handleGenerate = () => {
         startTransition(async () => {
             try {
-                const res = await generateBulkInvoices(month, Array.from(selected));
+                const res = await unwrap(generateBulkInvoices(month, Array.from(selected)));
                 setResults(res);
                 setStep(3);
                 const created = res.filter(r => r.status === 'CREATED').length;

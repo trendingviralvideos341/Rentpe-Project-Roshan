@@ -5,8 +5,9 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 import { generateMasterId } from "@/lib/ids";
+import { withSafeAction } from "@/lib/safe-action";
 
-export async function createRoomChangeRequest(data: {
+export const createRoomChangeRequest = withSafeAction(async function _createRoomChangeRequest(data: {
     bookingId: string;
     currentRoomId: string;
     requestedRoomId?: string;
@@ -69,7 +70,7 @@ export async function createRoomChangeRequest(data: {
 
     revalidatePath('/dashboard/student/room-change');
     return request;
-}
+});
 
 export async function getMyRoomChangeRequests() {
     const session = await getSession();
@@ -116,7 +117,7 @@ export async function getOwnerRoomChangeRequests() {
     });
 }
 
-export async function updateRoomChangeStatus(
+export const updateRoomChangeStatus = withSafeAction(async function _updateRoomChangeStatus(
     requestId: string,
     status: 'APPROVED' | 'REJECTED' | 'COMPLETED',
     ownerNote?: string
@@ -162,4 +163,4 @@ export async function updateRoomChangeStatus(
 
     revalidatePath('/dashboard/owner/room-changes');
     return updated;
-}
+});

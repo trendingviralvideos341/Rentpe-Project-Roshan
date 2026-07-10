@@ -5,9 +5,10 @@ import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { logAuditEvent } from '@/lib/audit';
 import { generateSequentialId } from '@/lib/ids';
+import { withSafeAction } from '@/lib/safe-action';
 
 // ─── fileVacatingNotice ───────────────────────────────────────────────────────
-export async function fileVacatingNotice(data: {
+export const fileVacatingNotice = withSafeAction(async function _fileVacatingNotice(data: {
     bookingId: string;
     plannedMoveOut: string;
     reason: string;
@@ -81,9 +82,10 @@ export async function fileVacatingNotice(data: {
     revalidatePath('/dashboard/owner/tenants');
     return notice;
 }
+);
 
 // ─── acknowledgeVacatingNotice (Owner action) ─────────────────────────────────
-export async function acknowledgeVacatingNotice(noticeId: string, approvedMoveOutDate?: string, ownerNote?: string) {
+export const acknowledgeVacatingNotice = withSafeAction(async function _acknowledgeVacatingNotice(noticeId: string, approvedMoveOutDate?: string, ownerNote?: string) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error('Unauthorized');
 
@@ -126,9 +128,10 @@ export async function acknowledgeVacatingNotice(noticeId: string, approvedMoveOu
     revalidatePath('/dashboard/student');
     return notice;
 }
+);
 
 // ─── setPropertyNoticePeriod (Owner action) ───────────────────────────────────
-export async function setPropertyNoticePeriod(propertyId: string, noticeDays: number) {
+export const setPropertyNoticePeriod = withSafeAction(async function _setPropertyNoticePeriod(propertyId: string, noticeDays: number) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error('Unauthorized');
     if (noticeDays < 1 || noticeDays > 30) throw new Error('Notice period must be between 1 and 30 days.');
@@ -150,7 +153,7 @@ export async function setPropertyNoticePeriod(propertyId: string, noticeDays: nu
 
     revalidatePath('/dashboard/owner/settings');
     return updated;
-}
+});
 
 // ─── getVacatingNotices (Owner view) ─────────────────────────────────────────
 export async function getVacatingNotices(propertyId?: string) {

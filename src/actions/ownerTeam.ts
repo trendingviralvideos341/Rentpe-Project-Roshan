@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { createNotification } from "@/actions/notifications";
 import { logAuditEvent } from "@/lib/audit";
+import { withSafeAction } from "@/lib/safe-action";
 
 /**
  * Owner Team Management
@@ -35,7 +36,7 @@ export async function getOwnerTeam() {
     });
 }
 
-export async function createStaffMember(data: {
+async function _createStaffMember(data: {
     name: string;
     email: string;
     phone: string;
@@ -83,7 +84,9 @@ export async function createStaffMember(data: {
     return { success: true, staffId: staff.id };
 }
 
-export async function updateStaffMemberPermissions(staffId: string, permissions: string[]) {
+export const createStaffMember = withSafeAction(_createStaffMember);
+
+async function _updateStaffMemberPermissions(staffId: string, permissions: string[]) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
@@ -112,7 +115,9 @@ export async function updateStaffMemberPermissions(staffId: string, permissions:
     return { success: true };
 }
 
-export async function deleteStaffMember(staffId: string) {
+export const updateStaffMemberPermissions = withSafeAction(_updateStaffMemberPermissions);
+
+async function _deleteStaffMember(staffId: string) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
 
@@ -140,6 +145,8 @@ export async function deleteStaffMember(staffId: string) {
     revalidatePath('/dashboard/owner/team');
     return { success: true };
 }
+
+export const deleteStaffMember = withSafeAction(_deleteStaffMember);
 
 /**
  * Middleware-like check for staff permissions

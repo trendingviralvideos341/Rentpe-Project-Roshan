@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Building2, ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/actions/password-reset";
+import { unwrap } from "@/lib/safe-action";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
@@ -25,14 +26,10 @@ export default function ForgotPasswordPage() {
 
         setIsLoading(true);
         try {
-            const res = await requestPasswordReset(email);
-            if (res.success) {
-                setIsSubmitted(true);
-            } else {
-                setError(res.error || "Failed to request password reset.");
-            }
-        } catch (e) {
-            setError("An unexpected error occurred.");
+            const res = await unwrap(await requestPasswordReset(email));
+            setIsSubmitted(true);
+        } catch (e: any) {
+            setError(e.message || "An unexpected error occurred.");
         } finally {
             setIsLoading(false);
         }

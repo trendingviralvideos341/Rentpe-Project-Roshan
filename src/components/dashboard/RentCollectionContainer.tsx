@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition, useCallback } from 'react';
 import { getOwnerRentCollection, sendRentReminder, markInvoiceAsCashPaid } from '@/actions/ownerRentCollection';
 import { getInvoiceForReceipt } from '@/actions/payments';
 import { getCashPaymentEnabled } from '@/actions/platform';
+import { unwrap } from '@/lib/safe-action';
 import { toast } from 'sonner';
 import {
     IndianRupee, AlertCircle, Loader2, MessageCircle,
@@ -668,7 +669,7 @@ export function RentCollectionContainer() {
         if (!cashModal) return;
         startTransition(async () => {
             try {
-                const res = await markInvoiceAsCashPaid(cashModal.id, note);
+                const res = await unwrap(markInvoiceAsCashPaid(cashModal.id, note));
                 toast.success(`Cash payment confirmed for ${res.tenantName} — ${fmt(res.amount)}`);
                 setCashModal(null);
                 reload(month);
@@ -683,7 +684,7 @@ export function RentCollectionContainer() {
         setSendingId(inv.id);
         startTransition(async () => {
             try {
-                const res = await sendRentReminder(inv.id);
+                const res = await unwrap(sendRentReminder(inv.id));
                 if (res.whatsappUrl) window.open(res.whatsappUrl, '_blank');
                 toast.success(`Reminder sent to ${res.tenantName}`);
             } catch (e: any) {

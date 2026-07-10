@@ -1,3 +1,4 @@
+import { withSafeAction } from "@/lib/safe-action";
 'use server';
 
 import prisma from "@/lib/prisma";
@@ -143,7 +144,7 @@ export async function getUsers() {
 }
 
 
-export async function updateUserStatus(userId: string, status: string, reason: string) {
+async function _updateUserStatus(userId: string, status: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -178,7 +179,7 @@ export async function updateUserStatus(userId: string, status: string, reason: s
     return user;
 }
 
-export async function adminUpdateUserProfile(userId: string, data: { name?: string; email?: string; phone?: string; role?: string }) {
+async function _adminUpdateUserProfile(userId: string, data: { name?: string; email?: string; phone?: string; role?: string }) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -426,7 +427,7 @@ export async function getUserById(userId: string) {
 
 // ─── Admin Data Deletion ──────────────────────────────
 
-export async function adminDeleteUser(userId: string) {
+async function _adminDeleteUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -449,7 +450,7 @@ export async function adminDeleteUser(userId: string) {
     revalidatePath('/dashboard/admin/data-management');
 }
 
-export async function adminRestoreUser(userId: string) {
+async function _adminRestoreUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -471,7 +472,7 @@ export async function adminRestoreUser(userId: string) {
     revalidatePath('/dashboard/admin/data-management');
 }
 
-export async function adminPurgeUser(userId: string) {
+async function _adminPurgeUser(userId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -496,7 +497,7 @@ export async function adminPurgeUser(userId: string) {
     revalidatePath('/dashboard/admin/data-management');
 }
 
-export async function adminDeleteBooking(bookingId: string) {
+async function _adminDeleteBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -519,7 +520,7 @@ export async function adminDeleteBooking(bookingId: string) {
     revalidatePath('/dashboard/admin/data-management');
 }
 
-export async function adminRestoreBooking(bookingId: string) {
+async function _adminRestoreBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -541,7 +542,7 @@ export async function adminRestoreBooking(bookingId: string) {
     revalidatePath('/dashboard/admin/data-management');
 }
 
-export async function adminPurgeBooking(bookingId: string) {
+async function _adminPurgeBooking(bookingId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -564,7 +565,7 @@ export async function adminPurgeBooking(bookingId: string) {
     revalidatePath('/dashboard/admin/data-management');
 }
 
-export async function adminDeleteTenant(tenantId: string) {
+async function _adminDeleteTenant(tenantId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -586,7 +587,7 @@ export async function adminDeleteTenant(tenantId: string) {
     revalidatePath('/dashboard/admin');
 }
 
-export async function adminDeleteProperty(propertyId: string) {
+async function _adminDeleteProperty(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -633,7 +634,7 @@ export async function getTeamMembers() {
     return members.map((m) => ({ ...m, onboardingCount: countMap[m.id] || 0 }));
 }
 
-export async function assignRole(targetUserId: string, newRole: "ONBOARDER" | "VERIFIER" | "ADMIN") {
+async function _assignRole(targetUserId: string, newRole: "ONBOARDER" | "VERIFIER" | "ADMIN") {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -666,7 +667,7 @@ export async function assignRole(targetUserId: string, newRole: "ONBOARDER" | "V
     return updated;
 }
 
-export async function revokeRole(targetUserId: string) {
+async function _revokeRole(targetUserId: string) {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -703,7 +704,7 @@ export async function searchUserByEmail(email: string) {
 }
 
 // ── Admin: Manually Upgrade User to Owner ─────────────────────────────
-export async function upgradeUserToOwner(userId: string) {
+async function _upgradeUserToOwner(userId: string) {
     const session = await getSession();
     if (!session || (session as any).role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -837,7 +838,7 @@ export async function getPropertyByIdForAdmin(propertyId: string) {
     return propertyToReturn;
 }
 
-export async function adminAddRoomToProperty(propertyId: string, roomData: any) {
+async function _adminAddRoomToProperty(propertyId: string, roomData: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -897,7 +898,7 @@ export async function adminAddRoomToProperty(propertyId: string, roomData: any) 
     });
 }
 
-export async function adminEditRoom(roomId: string, roomData: any) {
+async function _adminEditRoom(roomId: string, roomData: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -955,7 +956,7 @@ export async function adminEditRoom(roomId: string, roomData: any) {
     });
 }
 
-export async function adminDeleteRoom(roomId: string) {
+async function _adminDeleteRoom(roomId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1066,7 +1067,7 @@ export async function getDeactivationRequests() {
 }
 
 
-export async function startPropertyVerification(propertyId: string) {
+async function _startPropertyVerification(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1120,7 +1121,7 @@ export async function startPropertyVerification(propertyId: string) {
     return result;
 }
 
-export async function verifyPropertyDocuments(propertyId: string) {
+async function _verifyPropertyDocuments(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1174,7 +1175,7 @@ export async function verifyPropertyDocuments(propertyId: string) {
     return result;
 }
 
-export async function requirePropertyPayment(propertyId: string) {
+async function _requirePropertyPayment(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1237,7 +1238,7 @@ export async function requirePropertyPayment(propertyId: string) {
     return result;
 }
 
-export async function exemptPropertyFee(propertyId: string, reason: string) {
+async function _exemptPropertyFee(propertyId: string, reason: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1335,7 +1336,7 @@ export async function exemptPropertyFee(propertyId: string, reason: string) {
     return result;
 }
 
-export async function rejectProperty(propertyId: string, notes: string) {
+async function _rejectProperty(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1397,7 +1398,7 @@ export async function rejectProperty(propertyId: string, notes: string) {
     return result;
 }
 
-export async function requestPropertyCorrections(propertyId: string, notes: string) {
+async function _requestPropertyCorrections(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1459,7 +1460,7 @@ export async function requestPropertyCorrections(propertyId: string, notes: stri
     return result;
 }
 
-export async function moveToReview(propertyId: string) {
+async function _moveToReview(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1487,7 +1488,7 @@ export async function moveToReview(propertyId: string) {
     return result;
 }
 
-export async function suspendProperty(propertyId: string, notes: string) {
+async function _suspendProperty(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1553,7 +1554,7 @@ export async function suspendProperty(propertyId: string, notes: string) {
     return result;
 }
 
-export async function activateProperty(propertyId: string, notes?: string) {
+async function _activateProperty(propertyId: string, notes?: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1639,11 +1640,11 @@ export async function activateProperty(propertyId: string, notes?: string) {
     return result;
 }
 
-export async function unsuspendProperty(propertyId: string, notes?: string) {
+async function _unsuspendProperty(propertyId: string, notes?: string) {
     return activateProperty(propertyId, notes);
 }
 
-export async function rollbackPropertyStatus(propertyId: string, notes: string) {
+async function _rollbackPropertyStatus(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1702,7 +1703,7 @@ export async function rollbackPropertyStatus(propertyId: string, notes: string) 
     revalidatePath('/dashboard/owner/properties');
     return result;
 }
-export async function adminUpdateProperty(propertyId: string, data: any) {
+async function _adminUpdateProperty(propertyId: string, data: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1734,7 +1735,7 @@ export async function adminUpdateProperty(propertyId: string, data: any) {
     revalidatePath(`/search`);
     return updated;
 }
-export async function adminUpdateRoom(roomId: string, data: any) {
+async function _adminUpdateRoom(roomId: string, data: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1804,7 +1805,7 @@ export async function adminUpdateRoom(roomId: string, data: any) {
     return result;
 }
 
-export async function adminAddRoom(propertyId: string, data: any) {
+async function _adminAddRoom(propertyId: string, data: any) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1861,7 +1862,7 @@ export async function adminAddRoom(propertyId: string, data: any) {
 }
 
 
-export async function logCorrectionView(propertyId: string) {
+async function _logCorrectionView(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
@@ -1886,7 +1887,7 @@ export async function logCorrectionView(propertyId: string) {
     return { success: true };
 }
 
-export async function requestBankCorrections(propertyId: string, notes: string) {
+async function _requestBankCorrections(propertyId: string, notes: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1921,7 +1922,7 @@ export async function requestBankCorrections(propertyId: string, notes: string) 
     return result;
 }
 
-export async function verifyBankDetails(propertyId: string) {
+async function _verifyBankDetails(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
@@ -1956,7 +1957,7 @@ export async function verifyBankDetails(propertyId: string) {
     return result;
 }
 
-export async function bypassOnboardingPayment(propertyId: string) {
+async function _bypassOnboardingPayment(propertyId: string) {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
 
@@ -1986,3 +1987,39 @@ export async function bypassOnboardingPayment(propertyId: string) {
     revalidatePath('/dashboard/admin/properties');
     return { success: true };
 }
+
+
+export const updateUserStatus = withSafeAction(_updateUserStatus);
+export const adminUpdateUserProfile = withSafeAction(_adminUpdateUserProfile);
+export const adminDeleteUser = withSafeAction(_adminDeleteUser);
+export const adminRestoreUser = withSafeAction(_adminRestoreUser);
+export const adminPurgeUser = withSafeAction(_adminPurgeUser);
+export const adminDeleteBooking = withSafeAction(_adminDeleteBooking);
+export const adminRestoreBooking = withSafeAction(_adminRestoreBooking);
+export const adminPurgeBooking = withSafeAction(_adminPurgeBooking);
+export const adminDeleteTenant = withSafeAction(_adminDeleteTenant);
+export const adminDeleteProperty = withSafeAction(_adminDeleteProperty);
+export const assignRole = withSafeAction(_assignRole);
+export const revokeRole = withSafeAction(_revokeRole);
+export const upgradeUserToOwner = withSafeAction(_upgradeUserToOwner);
+export const adminAddRoomToProperty = withSafeAction(_adminAddRoomToProperty);
+export const adminEditRoom = withSafeAction(_adminEditRoom);
+export const adminDeleteRoom = withSafeAction(_adminDeleteRoom);
+export const startPropertyVerification = withSafeAction(_startPropertyVerification);
+export const verifyPropertyDocuments = withSafeAction(_verifyPropertyDocuments);
+export const requirePropertyPayment = withSafeAction(_requirePropertyPayment);
+export const exemptPropertyFee = withSafeAction(_exemptPropertyFee);
+export const rejectProperty = withSafeAction(_rejectProperty);
+export const requestPropertyCorrections = withSafeAction(_requestPropertyCorrections);
+export const moveToReview = withSafeAction(_moveToReview);
+export const suspendProperty = withSafeAction(_suspendProperty);
+export const activateProperty = withSafeAction(_activateProperty);
+export const unsuspendProperty = withSafeAction(_unsuspendProperty);
+export const rollbackPropertyStatus = withSafeAction(_rollbackPropertyStatus);
+export const adminUpdateProperty = withSafeAction(_adminUpdateProperty);
+export const adminUpdateRoom = withSafeAction(_adminUpdateRoom);
+export const adminAddRoom = withSafeAction(_adminAddRoom);
+export const logCorrectionView = withSafeAction(_logCorrectionView);
+export const requestBankCorrections = withSafeAction(_requestBankCorrections);
+export const verifyBankDetails = withSafeAction(_verifyBankDetails);
+export const bypassOnboardingPayment = withSafeAction(_bypassOnboardingPayment);
