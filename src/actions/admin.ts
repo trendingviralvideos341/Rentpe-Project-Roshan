@@ -1,5 +1,5 @@
-import { withSafeAction } from "@/lib/safe-action";
 'use server';
+import { withSafeAction } from "@/lib/safe-action";
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
