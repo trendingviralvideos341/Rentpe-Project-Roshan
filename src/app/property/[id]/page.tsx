@@ -174,10 +174,14 @@ export default function PropertyDetailPage() {
                 occupationDetail: formData.occupationDetail,
             } as any);
 
+            if (!booking.success) {
+                throw new Error(booking.error);
+            }
+
             toast.success("Booking request sent! 🎉", {
                 description: "The owner will confirm within 24 hours."
             });
-            router.push(`/booking/requested?bookingId=${booking.displayId}`);
+            router.push(`/booking/requested?bookingId=${booking.data?.displayId}`);
         } catch (e: any) {
             const msg: string = e?.message || '';
             if (msg.includes("logged in")) {

@@ -25,6 +25,7 @@ import { encryptIfPresent, decryptIfPresent, maskBankAccount, maskBeneficiaryNam
 import { logAuditEvent } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
+import { withSafeAction } from "@/lib/safe-action";
 import { generateSequentialId } from "@/lib/ids";
 import { stripImmutableFields } from "@/lib/sanitize";
 
@@ -181,7 +182,7 @@ export async function getPropertyById(id: string) {
     };
 }
 
-export async function createProperty(data: FormData | any) {
+async function _createProperty(data: FormData | any) {
     const session = await getSession();
     if (!session || (session.role !== 'OWNER' && session.role !== 'STAFF')) throw new Error("Unauthorized");
 
@@ -395,6 +396,8 @@ export async function createProperty(data: FormData | any) {
     revalidatePath('/dashboard/owner/properties');
     return result;
 }
+
+export const createProperty = withSafeAction(_createProperty);
 
 export async function updateProperty(propertyId: string, data: any) {
     const session = await getSession();
@@ -1417,7 +1420,7 @@ export async function requestBankDetails(propertyId: string) {
     });
 }
 
-export async function submitBankDetails(propertyId: string, bankData: { bankAccountNo: string, bankIfsc: string, bankName: string, cancelChequeUrl?: string }) {
+async function _submitBankDetails(propertyId: string, bankData: { bankAccountNo: string, bankIfsc: string, bankName: string, cancelChequeUrl?: string }) {
     const session = await getSession();
     if (!session || session.role !== 'OWNER') throw new Error('Unauthorized');
 
@@ -1471,6 +1474,8 @@ export async function submitBankDetails(propertyId: string, bankData: { bankAcco
         return { success: true };
     });
 }
+
+export const submitBankDetails = withSafeAction(_submitBankDetails);
 
 export async function manualMakePropertyLive(propertyId: string) {
     const session = await getSession();

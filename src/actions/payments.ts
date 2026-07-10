@@ -8,9 +8,10 @@ import { sendEmail } from "@/lib/email";
 import { logAuditEvent } from "@/lib/audit";
 import { sendSlackNotification } from "@/lib/slack";
 import { appendToSheet } from "@/lib/sheets";
+import { withSafeAction } from "@/lib/safe-action";
 
 
-export async function createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string, isToken?: boolean }) {
+async function _createRazorpayOrder(bookingId: string, extras?: { invoiceId?: string, depositId?: string, isToken?: boolean }) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
@@ -118,8 +119,10 @@ export async function createRazorpayOrder(bookingId: string, extras?: { invoiceI
     }
 }
 
+export const createRazorpayOrder = withSafeAction(_createRazorpayOrder);
 
-export async function verifyPayment(data: {
+
+async function _verifyPayment(data: {
     razorpay_order_id: string;
     razorpay_payment_id: string;
     razorpay_signature: string;
@@ -330,6 +333,8 @@ export async function verifyPayment(data: {
         return res;
     });
 }
+
+export const verifyPayment = withSafeAction(_verifyPayment);
 
 export async function getStudentPaymentHistory() {
     try {

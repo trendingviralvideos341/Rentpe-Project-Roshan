@@ -157,7 +157,7 @@ export function BankDetailsModal({ isOpen, onClose, propertyId, propertyName, on
                 onSuccess();
                 onClose();
             } else {
-                toast.error("Failed to submit bank details.");
+                toast.error(res.error || "Failed to submit bank details.");
             }
         } catch (error: any) {
             toast.error(error.message || "An error occurred");

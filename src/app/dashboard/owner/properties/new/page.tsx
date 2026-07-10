@@ -784,17 +784,21 @@ export default function AddPropertyPage() {
 
             const res = await createProperty(submissionData);
             
-            if (res) {
+            if (res.success) {
                 toast.success("Property listing submitted!", { id: progressToast });
                 clearDraft();
                 
                 // INDUSTRY STANDARD: Trigger fresh background fetch before showing success state
                 router.refresh(); 
                 
-                setSuccessData({ displayId: res.displayId || "PENDING", name: res.name });
+                setSuccessData({ displayId: res.data?.displayId || "PENDING", name: res.data?.name || "Property" });
+            } else {
+                toast.error(res.error || "Failed to submit property registration.", { id: progressToast });
             }
-        } catch (e: any) {
-            toast.error(e.message || "Upload failed. Please try again.", { id: progressToast });
+
+        } catch (error: any) {
+            console.error("Submission error:", error);
+            toast.error(error.message || "Failed to submit property registration. Please try again.", { id: progressToast });
         } finally {
             setSaving(false);
         }

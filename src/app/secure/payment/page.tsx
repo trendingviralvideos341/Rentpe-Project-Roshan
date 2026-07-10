@@ -108,17 +108,20 @@ function PaymentPortal() {
         try {
             // ── RENT INVOICE PAYMENT ──────────────────────────────────────────
             if (isRent && invoiceId) {
-                const order = await createRazorpayOrder(booking.id, { invoiceId });
+                const orderRes = await createRazorpayOrder(booking.id, { invoiceId });
+                if (!orderRes.success) throw new Error(orderRes.error || "Failed to create order");
+                const order = orderRes.data;
 
                 if (order.isDummyRoute || !(window as any).Razorpay) {
                     // Dev / mock fallback
                     const mockPaymentId = "pay_rent_sim_" + Math.random().toString(36).slice(2);
                     setTransactionId(mockPaymentId);
-                    await verifyPayment({
+                    const res = await verifyPayment({
                         razorpay_order_id: order.id,
                         razorpay_payment_id: mockPaymentId,
                         razorpay_signature: "sim_sig",
                     });
+                    if (!res.success) throw new Error(res.error);
                     setIsPaid(true);
                     return;
                 }
@@ -134,7 +137,8 @@ function PaymentPortal() {
                     handler: async (response: any) => {
                         try {
                             setTransactionId(response.razorpay_payment_id);
-                            await verifyPayment(response);
+                            const res = await verifyPayment(response);
+                            if (!res.success) throw new Error(res.error);
                             // verifyPayment already marks invoice PAID when invoiceId is on Payment
                             setIsPaid(true);
                         } catch (err: any) {
@@ -172,7 +176,9 @@ function PaymentPortal() {
                     setIsPaid(true);
                     return;
                 }
-                const order = await createRazorpayOrder(booking.id, { isToken: true });
+                const orderRes = await createRazorpayOrder(booking.id, { isToken: true });
+                if (!orderRes.success) throw new Error(orderRes.error || "Failed to create token order");
+                const order = orderRes.data;
                 if (order.isDummyRoute || !(window as any).Razorpay) {
                     const mockPaymentId = 'pay_tok_sim_' + Math.random().toString(36).slice(2);
                     setTransactionId(mockPaymentId);
@@ -190,7 +196,8 @@ function PaymentPortal() {
                     handler: async (response: any) => {
                         try {
                             setTransactionId(response.razorpay_payment_id);
-                            await verifyPayment(response);
+                            const res = await verifyPayment(response);
+                            if (!res.success) throw new Error(res.error);
                             await payTokenAmount(booking.id, 'ONLINE', response.razorpay_payment_id);
                             setIsPaid(true);
                         } catch (err: any) {
@@ -221,17 +228,20 @@ function PaymentPortal() {
                 return;
             }
 
-            const order = await createRazorpayOrder(booking.id);
+            const orderRes = await createRazorpayOrder(booking.id);
+            if (!orderRes.success) throw new Error(orderRes.error || "Failed to create final order");
+            const order = orderRes.data;
 
             if (order.isDummyRoute || !(window as any).Razorpay) {
                 await new Promise(r => setTimeout(r, 1200));
                 const mockPaymentId = "pay_sim_" + Math.random().toString(36).slice(2);
                 setTransactionId(mockPaymentId);
-                await verifyPayment({
+                const res = await verifyPayment({
                     razorpay_order_id: order.id,
                     razorpay_payment_id: mockPaymentId,
                     razorpay_signature: "sim_sig"
                 });
+                if (!res.success) throw new Error(res.error);
                 await markBookingPaid(booking.id, "ONLINE", mockPaymentId);
                 setIsPaid(true);
                 return;
@@ -247,7 +257,8 @@ function PaymentPortal() {
                 handler: async function (response: any) {
                     try {
                         setTransactionId(response.razorpay_payment_id);
-                        await verifyPayment(response);
+                        const res = await verifyPayment(response);
+                        if (!res.success) throw new Error(res.error);
                         await markBookingPaid(booking.id, "ONLINE", response.razorpay_payment_id);
                         setIsPaid(true);
                     } catch (err: any) {

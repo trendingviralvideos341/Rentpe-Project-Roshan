@@ -9,10 +9,11 @@ import { logAuditEvent } from "@/lib/audit";
 import { generateSequentialId } from "@/lib/ids";
 import { validateBooking, recordFingerprint } from "@/lib/fraud";
 import { sendSlackNotification } from "@/lib/slack";
+import { withSafeAction } from "@/lib/safe-action";
 
 
 
-export async function createBooking(data: {
+async function _createBooking(data: {
     roomId?: string,
     propertyName: string,
     occupancy: string,
@@ -199,6 +200,8 @@ export async function createBooking(data: {
     revalidatePath('/dashboard/owner/bookings');
     return booking;
 }
+
+export const createBooking = withSafeAction(_createBooking);
 
 export async function getBookings() {
     try {
