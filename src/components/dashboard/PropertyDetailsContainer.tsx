@@ -2084,11 +2084,15 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                         if (e.key === 'Enter' && editOtpInput.length === 6) {
                                             setIsRequestingEdit(true);
                                             try {
-                                                await requestEditBankDetails(propertyId, editOtpInput.trim());
-                                                toast.success("Bank details unlocked for editing.");
-                                                setShowEditOtpModal(false);
-                                                fetchProperty(true);
-                                                setIsBankDetailsModalOpen(true); // Open edit modal
+                                                const res = await requestEditBankDetails(propertyId, editOtpInput.trim());
+                                                if (res.success) {
+                                                    toast.success("Bank details unlocked for editing.");
+                                                    setShowEditOtpModal(false);
+                                                    fetchProperty(true);
+                                                    setIsBankDetailsModalOpen(true); // Open edit modal
+                                                } else {
+                                                    toast.error(res.error || "Invalid OTP.");
+                                                }
                                             } catch (err: any) {
                                                 toast.error(err.message || "Invalid OTP.");
                                             } finally {
@@ -2115,11 +2119,15 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                     onClick={async () => {
                                         setIsRequestingEdit(true);
                                         try {
-                                            await requestEditBankDetails(propertyId, editOtpInput.trim());
-                                            toast.success("Bank details unlocked for editing.");
-                                            setShowEditOtpModal(false);
-                                            fetchProperty(true);
-                                            setIsBankDetailsModalOpen(true); // Open edit modal
+                                            const res = await requestEditBankDetails(propertyId, editOtpInput.trim());
+                                            if (res.success) {
+                                                toast.success("Bank details unlocked for editing.");
+                                                setShowEditOtpModal(false);
+                                                fetchProperty(true);
+                                                setIsBankDetailsModalOpen(true); // Open edit modal
+                                            } else {
+                                                toast.error(res.error || "Invalid OTP.");
+                                            }
                                         } catch (err: any) {
                                             toast.error(err.message || "Invalid OTP.");
                                         } finally {

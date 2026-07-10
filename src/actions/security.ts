@@ -44,140 +44,148 @@ function extractCloudinaryPublicId(url: string): string | null {
 }
 
 export async function verifyRevealOTP(propertyId: string, inputOtp: string) {
-    const session = await getSession();
-    if (!session) throw new Error("Unauthorized");
+    try {
+        const session = await getSession();
+        if (!session) return { success: false, error: "Unauthorized" };
 
-    // 1. Check Mock OTP
-    if (inputOtp !== "123456") {
-        throw new Error("Invalid verification code");
-    }
-
-    // 2. Fetch Property to ensure access and get details
-    const property = await prisma.property.findUnique({
-        where: { id: propertyId }
-    });
-
-    if (!property) throw new Error("Property not found");
-
-    // Ensure access control: Must be ADMIN, or OWNER/STAFF of this property
-    const isOwner = property.ownerId === session.userId || property.ownerId === (session as any).parentOwnerId;
-    if (session.role !== 'ADMIN' && !isOwner) {
-        // Double check staff assignment if it's a staff member
-        if (session.role === 'STAFF') {
-            const user = await prisma.user.findUnique({
-                where: { id: session.userId },
-                include: { staffProfile: true }
-            });
-            if (user?.staffProfile) {
-                const isAssigned = await prisma.staffPropertyAssignment.findUnique({
-                    where: { staffMemberId_propertyId: { staffMemberId: user.staffProfile.id, propertyId: propertyId } }
-                });
-                if (!isAssigned) throw new Error("Access denied");
-            } else {
-                throw new Error("Access denied");
-            }
-        } else {
-            throw new Error("Access denied");
+        // 1. Check Mock OTP
+        if (inputOtp !== "123456") {
+            return { success: false, error: "Invalid verification code" };
         }
-    }
 
-    // 3. Log the Reveal Action to AuditLog
-    await prisma.auditLog.create({
-        data: {
-            actorId: session.userId,
-            actorRole: session.role || 'USER',
-            actorName: session.name || 'User',
-            actionType: 'VIEW_BANK_DETAILS',
-            entityType: 'PROPERTY',
-            entityId: propertyId,
-            description: `User verified identity via OTP and unmasked bank details for property: ${property.name || propertyId}`
-        }
-    });
+        // 2. Fetch Property to ensure access and get details
+        const property = await prisma.property.findUnique({
+            where: { id: propertyId }
+        });
 
-    // 4. Generate Expiring Cloudinary URL for Cancelled Cheque (120 seconds TTL)
-    let secureChequeUrl = property.cancelChequeUrl;
-    
-    if (secureChequeUrl) {
-        const publicId = extractCloudinaryPublicId(secureChequeUrl);
-        if (publicId) {
-            // Check if it was uploaded as private
-            const isPrivate = secureChequeUrl.startsWith('private:');
-            
-            if (isPrivate) {
-                secureChequeUrl = cloudinary.utils.private_download_url(publicId, 'jpg', {
-                    expires_at: Math.floor(Date.now() / 1000) + 120, // 2 minutes
-                    attachment: false,
+        if (!property) return { success: false, error: "Property not found" };
+
+        // Ensure access control: Must be ADMIN, or OWNER/STAFF of this property
+        const isOwner = property.ownerId === session.userId || property.ownerId === (session as any).parentOwnerId;
+        if (session.role !== 'ADMIN' && !isOwner) {
+            // Double check staff assignment if it's a staff member
+            if (session.role === 'STAFF') {
+                const user = await prisma.user.findUnique({
+                    where: { id: session.userId },
+                    include: { staffProfile: true }
                 });
+                if (user?.staffProfile) {
+                    const isAssigned = await prisma.staffPropertyAssignment.findUnique({
+                        where: { staffMemberId_propertyId: { staffMemberId: user.staffProfile.id, propertyId: propertyId } }
+                    });
+                    if (!isAssigned) return { success: false, error: "Access denied" };
+                } else {
+                    return { success: false, error: "Access denied" };
+                }
             } else {
-                // For standard uploads, use sign_url
-                secureChequeUrl = cloudinary.utils.url(publicId, {
-                    secure: true,
-                    sign_url: true,
-                    expires_at: Math.floor(Date.now() / 1000) + 120 // 2 minutes
-                });
+                return { success: false, error: "Access denied" };
             }
         }
+
+        // 3. Log the Reveal Action to AuditLog
+        await prisma.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role || 'USER',
+                actorName: session.name || 'User',
+                actionType: 'VIEW_BANK_DETAILS',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `User verified identity via OTP and unmasked bank details for property: ${property.name || propertyId}`
+            }
+        });
+
+        // 4. Generate Expiring Cloudinary URL for Cancelled Cheque (120 seconds TTL)
+        let secureChequeUrl = property.cancelChequeUrl;
+        
+        if (secureChequeUrl) {
+            const publicId = extractCloudinaryPublicId(secureChequeUrl);
+            if (publicId) {
+                // Check if it was uploaded as private
+                const isPrivate = secureChequeUrl.startsWith('private:');
+                
+                if (isPrivate) {
+                    secureChequeUrl = cloudinary.utils.private_download_url(publicId, 'jpg', {
+                        expires_at: Math.floor(Date.now() / 1000) + 120, // 2 minutes
+                        attachment: false,
+                    });
+                } else {
+                    // For standard uploads, use sign_url
+                    secureChequeUrl = cloudinary.utils.url(publicId, {
+                        secure: true,
+                        sign_url: true,
+                        expires_at: Math.floor(Date.now() / 1000) + 120 // 2 minutes
+                    });
+                }
+            }
+        }
+
+        // 5. Decrypt Bank Details
+        const bankAccountNo = decryptIfPresent(property.bankAccountNoEncrypted);
+        const bankIfsc = decryptIfPresent(property.bankIfscEncrypted);
+
+        return {
+            success: true,
+            bankName: property.bankName,
+            bankAccountNo,
+            bankIfsc,
+            cancelChequeUrl: secureChequeUrl,
+            expiresAt: Date.now() + 120 * 1000 // 2 minutes from now in ms
+        };
+    } catch (e: any) {
+        return { success: false, error: "An unexpected error occurred during verification." };
     }
-
-    // 5. Decrypt Bank Details
-    const bankAccountNo = decryptIfPresent(property.bankAccountNoEncrypted);
-    const bankIfsc = decryptIfPresent(property.bankIfscEncrypted);
-
-    return {
-        success: true,
-        bankName: property.bankName,
-        bankAccountNo,
-        bankIfsc,
-        cancelChequeUrl: secureChequeUrl,
-        expiresAt: Date.now() + 120 * 1000 // 2 minutes from now in ms
-    };
 }
 
 export async function requestEditBankDetails(propertyId: string, inputOtp: string) {
-    const session = await getSession();
-    if (!session || session.role !== 'OWNER') throw new Error("Unauthorized");
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'OWNER') return { success: false, error: "Unauthorized" };
 
-    // 1. Check Mock OTP
-    if (inputOtp !== "123456") {
-        throw new Error("Invalid verification code");
-    }
-
-    // 2. Fetch Property to ensure access
-    const property = await prisma.property.findUnique({
-        where: { id: propertyId }
-    });
-
-    if (!property) throw new Error("Property not found");
-
-    // Ensure access control: Must be the EXACT OWNER (or parent)
-    const isOwner = property.ownerId === session.userId || property.ownerId === (session as any).parentOwnerId;
-    if (!isOwner) throw new Error("Only the primary owner can edit bank details.");
-
-    if (property.status === 'AWAITING_BANK_DETAILS') {
-        throw new Error("Bank details are already unlocked for editing.");
-    }
-
-    // 3. Log the Request Action to AuditLog
-    await prisma.auditLog.create({
-        data: {
-            actorId: session.userId,
-            actorRole: session.role,
-            actorName: session.name || 'Owner',
-            actionType: 'UPDATE',
-            entityType: 'PROPERTY',
-            entityId: propertyId,
-            description: `Owner verified identity via OTP and unlocked bank details for editing (suspended payouts).`
+        // 1. Check Mock OTP
+        if (inputOtp !== "123456") {
+            return { success: false, error: "Invalid verification code" };
         }
-    });
 
-    // 4. Update property status to AWAITING_BANK_DETAILS to unlock form
-    await prisma.property.update({
-        where: { id: propertyId },
-        data: { 
-            status: 'AWAITING_BANK_DETAILS',
-            adminNotes: (property.adminNotes ? property.adminNotes + '\n' : '') + '[EDIT_REQUESTED] Owner unlocked details for editing.'
+        // 2. Fetch Property to ensure access
+        const property = await prisma.property.findUnique({
+            where: { id: propertyId }
+        });
+
+        if (!property) return { success: false, error: "Property not found" };
+
+        // Ensure access control: Must be the EXACT OWNER (or parent)
+        const isOwner = property.ownerId === session.userId || property.ownerId === (session as any).parentOwnerId;
+        if (!isOwner) return { success: false, error: "Only the primary owner can edit bank details." };
+
+        if (property.status === 'AWAITING_BANK_DETAILS') {
+            return { success: false, error: "Bank details are already unlocked for editing." };
         }
-    });
 
-    return { success: true };
+        // 3. Log the Request Action to AuditLog
+        await prisma.auditLog.create({
+            data: {
+                actorId: session.userId,
+                actorRole: session.role,
+                actorName: session.name || 'Owner',
+                actionType: 'UPDATE',
+                entityType: 'PROPERTY',
+                entityId: propertyId,
+                description: `Owner verified identity via OTP and unlocked bank details for editing (suspended payouts).`
+            }
+        });
+
+        // 4. Update property status to AWAITING_BANK_DETAILS to unlock form
+        await prisma.property.update({
+            where: { id: propertyId },
+            data: { 
+                status: 'AWAITING_BANK_DETAILS',
+                adminNotes: (property.adminNotes ? property.adminNotes + '\n' : '') + '[EDIT_REQUESTED] Owner unlocked details for editing.'
+            }
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: "An unexpected error occurred during the edit request." };
+    }
 }

@@ -97,18 +97,20 @@ export default function SecureBankDetails({
         try {
             const res = await verifyRevealOTP(propertyId, otpInput.trim());
             if (res.success) {
-                setRealBankName(res.bankName);
-                setRealAccountNo(res.bankAccountNo);
-                setRealIfsc(res.bankIfsc);
-                setRealChequeUrl(res.cancelChequeUrl);
+                setRealBankName(res.bankName || null);
+                setRealAccountNo(res.bankAccountNo || null);
+                setRealIfsc(res.bankIfsc || null);
+                setRealChequeUrl(res.cancelChequeUrl || null);
                 
-                setExpiresAt(res.expiresAt);
+                setExpiresAt(res.expiresAt || null);
                 // Calculate remaining seconds right now
-                const remainingSeconds = Math.floor((res.expiresAt - Date.now()) / 1000);
+                const remainingSeconds = Math.floor(((res.expiresAt || Date.now()) - Date.now()) / 1000);
                 setTimeLeft(remainingSeconds > 0 ? remainingSeconds : 120);
                 setIsUnlocked(true);
                 setShowOtpModal(false);
                 toast.success("Bank details unlocked securely.");
+            } else {
+                toast.error(res.error || "Failed to verify OTP.");
             }
         } catch (e: any) {
             toast.error(e.message || "Failed to verify OTP.");
