@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getAuditLogs } from '@/actions/audit';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const ROLE_OPTIONS = ['ALL', 'ADMIN', 'OWNER', 'USER', 'EMPLOYEE'];
 const ENTITY_OPTIONS = ['ALL', 'USER', 'PROPERTY', 'BOOKING', 'PAYMENT', 'KYC'];
@@ -23,6 +24,9 @@ export default function AuditLogPage() {
     const [actorRole, setActorRole] = useState('ALL');
     const [entityType, setEntityType] = useState('ALL');
     const [actionType, setActionType] = useState('ALL');
+
+    const [selectedLog, setSelectedLog] = useState<any | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
@@ -208,7 +212,11 @@ export default function AuditLogPage() {
                                 </tr>
                             ) : (
                                 logs.map((log) => (
-                                    <tr key={log.id} className="hover:bg-gray-50 transition-colors group">
+                                    <tr 
+                                        key={log.id} 
+                                        onClick={() => { setSelectedLog(log); setIsDetailOpen(true); }}
+                                        className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="text-sm font-medium text-gray-900">
                                                 {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -253,7 +261,14 @@ export default function AuditLogPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200 group-hover:block hidden">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedLog(log);
+                                                    setIsDetailOpen(true);
+                                                }}
+                                                className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200 group-hover:block hidden"
+                                            >
                                                 <Eye size={16} className="text-gray-400 hover:text-blue-500" />
                                             </button>
                                         </td>
@@ -288,6 +303,77 @@ export default function AuditLogPage() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+                <DialogContent className="max-w-2xl bg-white rounded-[32px] border-2 border-slate-100 shadow-2xl p-6 overflow-hidden">
+                    <DialogHeader className="border-b-2 border-slate-50 pb-4 mb-4">
+                        <DialogTitle className="text-base font-black tracking-wider text-slate-800 uppercase">Audit Log Details</DialogTitle>
+                    </DialogHeader>
+                    {selectedLog && (
+                        <div className="space-y-5">
+                            {/* Summary row */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Timestamp</p>
+                                    <p className="text-xs font-bold text-slate-800">
+                                        {new Date(selectedLog.createdAt).toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Actor</p>
+                                    <p className="text-xs font-bold text-slate-800">{selectedLog.actorName} ({selectedLog.actorRole})</p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Action & Entity</p>
+                                    <p className="text-xs font-bold text-slate-800">
+                                        <span className="uppercase tracking-tighter mr-1.5">{selectedLog.actionType}</span> 
+                                        <span className="bg-slate-100 text-[10px] px-1.5 py-0.5 rounded font-black text-slate-500 uppercase">{selectedLog.entityType}</span>
+                                    </p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">IP Address</p>
+                                    <p className="text-xs font-mono font-bold text-slate-800">{selectedLog.ipAddress || "N/A"}</p>
+                                </div>
+                            </div>
+
+                            {/* Description block */}
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Description</p>
+                                <p className="text-xs font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap">{selectedLog.description}</p>
+                            </div>
+
+                            {/* Changes */}
+                            {(selectedLog.previousValue || selectedLog.newValue) ? (
+                                <div className="space-y-3 pt-3 border-t-2 border-slate-50">
+                                    <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600">Audit Difference (Data Changes)</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="bg-red-50/50 p-3.5 rounded-2xl border border-red-100">
+                                            <div className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1.5">Previous Data Value</div>
+                                            <pre className="text-[10px] font-mono font-medium text-red-900 whitespace-pre-wrap overflow-x-auto max-h-48 scrollbar-thin">
+                                                {JSON.stringify(selectedLog.previousValue, null, 2) || "N/A"}
+                                            </pre>
+                                        </div>
+                                        <div className="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100">
+                                            <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">New Data Value</div>
+                                            <pre className="text-[10px] font-mono font-medium text-emerald-900 whitespace-pre-wrap overflow-x-auto max-h-48 scrollbar-thin">
+                                                {JSON.stringify(selectedLog.newValue, null, 2) || "N/A"}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {/* Client agent info */}
+                            {selectedLog.userAgent && (
+                                <div className="bg-slate-50/30 p-3 rounded-2xl border border-slate-100">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">User Agent Header</p>
+                                    <p className="text-[9px] font-medium text-slate-500 font-mono leading-relaxed truncate" title={selectedLog.userAgent}>{selectedLog.userAgent}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

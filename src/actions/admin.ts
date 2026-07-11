@@ -1736,6 +1736,23 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
         }
     });
 
+    const changeSummary = Object.entries(data)
+        .map(([key, val]) => {
+            let displayKey = key;
+            if (key === 'genderType') displayKey = 'Stay Gender Type';
+            else if (key === 'foodType') displayKey = 'Food Type';
+            else if (key === 'foodPricePerMonth') displayKey = 'Food Price';
+            else if (key === 'noticePeriod') displayKey = 'Notice Period';
+            else if (key === 'licenseNumber') displayKey = 'PG License';
+            else if (key === 'reraId') displayKey = 'RERA ID';
+            else if (key === 'gstNumber') displayKey = 'GST Number';
+            else if (key === 'description') displayKey = 'Description';
+
+            const oldVal = (oldProperty as any)[key];
+            return `${displayKey}: "${oldVal ?? 'N/A'}" → "${val ?? 'N/A'}"`;
+        })
+        .join(', ');
+
     logAuditEvent({
         actorId: (session as any).userId as string,
         actorRole: session.role as string,
@@ -1743,7 +1760,7 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
         actionType: 'UPDATE',
         entityType: 'PROPERTY',
         entityId: propertyId,
-        description: `Property "${updated.name}" updated by admin. Fields: ${Object.keys(data).join(', ')}`,
+        description: `Property "${updated.name}" updated by admin. Changes: ${changeSummary}`,
         previousValue: oldProperty as any,
         newValue: data as any
     });
