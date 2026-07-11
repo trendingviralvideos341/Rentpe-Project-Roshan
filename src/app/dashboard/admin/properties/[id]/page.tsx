@@ -1035,7 +1035,21 @@ export default function AdminPropertyDetailPage() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => setIsEditingDetails(false)}
+                                                onClick={() => {
+                                                    setIsEditingDetails(false);
+                                                    if (property) {
+                                                        setDetailsForm({
+                                                            genderType: property.genderType || "COED",
+                                                            foodType: property.foodType || "NOT_AVAILABLE",
+                                                            foodPricePerMonth: property.foodPricePerMonth ? String(property.foodPricePerMonth) : "",
+                                                            noticePeriod: property.noticePeriod ? String(property.noticePeriod) : "",
+                                                            licenseNumber: property.licenseNumber || "",
+                                                            reraId: property.reraId || "",
+                                                            gstNumber: property.gstNumber || "",
+                                                            description: property.description || ""
+                                                        });
+                                                    }
+                                                }}
                                                 className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 hover:bg-slate-50 transition-all text-slate-600"
                                             >
                                                 Cancel
