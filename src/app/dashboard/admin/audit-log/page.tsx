@@ -86,15 +86,19 @@ export default function AuditLogPage() {
 
     const exportToCSV = () => {
         if (logs.length === 0) return;
-        const headers = ["Timestamp", "Actor", "Role", "Action", "Entity", "Description", "IP Address"];
+        const headers = ["Timestamp", "Actor Name", "Actor Role", "Actor Email", "Action", "Entity Type", "Entity Name", "Entity ID", "Description", "IP Address", "User Agent"];
         const rows = logs.map(l => [
             new Date(l.createdAt).toLocaleString(),
             l.actorName,
             l.actorRole,
+            l.actor?.email || "N/A",
             l.actionType,
             l.entityType,
+            l.entityName || "N/A",
+            l.entityId || "N/A",
             l.description.replace(/,/g, ';'), // Escape commas
-            l.ipAddress
+            l.ipAddress,
+            l.userAgent || "N/A"
         ]);
         
         const csvContent = "data:text/csv;charset=utf-8," 
@@ -226,24 +230,32 @@ export default function AuditLogPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
                                                     {getRoleIcon(log.actorRole)}
                                                 </div>
-                                                <div>
-                                                    <div className="text-sm font-semibold text-gray-900">{log.actorName}</div>
-                                                    <div className="text-[10px] text-gray-400 font-bold uppercase">{log.actorRole}</div>
+                                                <div className="min-w-0">
+                                                    <div className="text-sm font-semibold text-slate-800 leading-tight truncate max-w-[150px]" title={log.actorName}>{log.actorName}</div>
+                                                    <div className="text-[9px] text-slate-400 font-bold uppercase leading-none mt-0.5">{log.actorRole}</div>
+                                                    {log.actor?.email && (
+                                                        <div className="text-[10px] text-slate-500 font-mono mt-0.5 leading-none truncate max-w-[180px]" title={log.actor.email}>{log.actor.email}</div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">{getActionBadge(log.actionType)}</td>
                                         <td className="px-6 py-4">
-                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase transition-colors">
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase transition-colors">
                                                 {log.entityType}
                                             </div>
                                             {log.entityName && (
-                                                <div className="text-[11px] text-gray-400 mt-1 max-w-[120px] truncate">
+                                                <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={log.entityName}>
                                                     {log.entityName}
+                                                </div>
+                                            )}
+                                            {log.entityId && (
+                                                <div className="text-[9px] text-slate-400 font-mono mt-0.5 max-w-[140px] truncate" title={log.entityId}>
+                                                    ID: {log.entityId}
                                                 </div>
                                             )}
                                         </td>

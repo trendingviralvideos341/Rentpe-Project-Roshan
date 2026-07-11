@@ -27,7 +27,7 @@ export async function getOwnerActivityLog() {
                 take: 200,
                 include: {
                     actor: {
-                        select: { name: true, role: true, displayId: true }
+                        select: { name: true, role: true, displayId: true, email: true }
                     }
                 }
             });
@@ -39,7 +39,7 @@ export async function getOwnerActivityLog() {
                 take: 200,
                 include: {
                     actor: {
-                        select: { name: true, role: true, displayId: true }
+                        select: { name: true, role: true, displayId: true, email: true }
                     }
                 }
             });

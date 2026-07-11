@@ -233,6 +233,7 @@ function LogTable({ loading, activeLogs, expandedRows, toggleRow, showActor }: a
                                                                 <div>
                                                                     <div className="text-[9px] font-black text-slate-400 uppercase">Actor</div>
                                                                     <div className="text-[10px] font-bold text-slate-700">{log.actor?.name || "System"} ({log.actor?.displayId || "ID-N/A"})</div>
+                                                                    {log.actor?.email && <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate" title={log.actor.email}>{log.actor.email}</div>}
                                                                 </div>
                                                                 <div>
                                                                     <div className="text-[9px] font-black text-slate-400 uppercase">Action</div>
@@ -247,6 +248,27 @@ function LogTable({ loading, activeLogs, expandedRows, toggleRow, showActor }: a
                                                                     <div className="text-[10px] font-bold text-slate-700">{new Date(log.createdAt).toLocaleString()}</div>
                                                                 </div>
                                                             </div>
+
+                                                            {/* Changes */}
+                                                            {(log.previousValue || log.newValue) && (
+                                                                <div className="space-y-3 pt-4 border-t-2 border-indigo-50 mt-6">
+                                                                    <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-600">Audit Difference (Data Changes)</h4>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                        <div className="bg-red-50/50 p-3.5 rounded-2xl border border-red-100">
+                                                                            <div className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1.5">Previous Data Value</div>
+                                                                            <pre className="text-[10px] font-mono font-medium text-red-900 whitespace-pre-wrap overflow-x-auto max-h-48 scrollbar-thin">
+                                                                                {JSON.stringify(log.previousValue, null, 2) || "N/A"}
+                                                                            </pre>
+                                                                        </div>
+                                                                        <div className="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100">
+                                                                            <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">New Data Value</div>
+                                                                            <pre className="text-[10px] font-mono font-medium text-emerald-900 whitespace-pre-wrap overflow-x-auto max-h-48 scrollbar-thin">
+                                                                                {JSON.stringify(log.newValue, null, 2) || "N/A"}
+                                                                            </pre>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
