@@ -956,12 +956,13 @@ export default function AdminPropertyDetailPage() {
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     {[
-                                        ["Gender Type", p.genderType || "COED"],
+                                        ["Stay Gender Type", p.genderType || "COED"],
                                         ["Food Type", p.foodType?.replace(/_/g, " ") || "N/A"],
                                         ["Food Price", p.foodPricePerMonth ? `₹${p.foodPricePerMonth}` : "N/A"],
                                         ["Notice Period", p.noticePeriod ? `${p.noticePeriod} days` : "—"],
                                         ["PG License", p.licenseNumber || "N/A"],
                                         ["RERA ID", p.reraId || "N/A"],
+                                        ["GST Number", p.gstNumber || "N/A"],
                                     ].map(([l, v]) => (
                                         <div key={l} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{l}</p>

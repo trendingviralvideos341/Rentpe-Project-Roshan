@@ -17,6 +17,7 @@ interface SecureBankDetailsProps {
     isChequeVerified?: boolean;
     onChequeViewerOpen: (url: string) => void;
     userRole: "ADMIN" | "OWNER" | "STAFF";
+    isDisabled?: boolean;
 }
 
 export default function SecureBankDetails({
@@ -27,7 +28,8 @@ export default function SecureBankDetails({
     initialCancelChequeUrl,
     isChequeVerified = false,
     onChequeViewerOpen,
-    userRole
+    userRole,
+    isDisabled = false
 }: SecureBankDetailsProps) {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [timeLeft, setTimeLeft] = useState(0);
@@ -158,12 +160,16 @@ export default function SecureBankDetails({
                     )}
                     <Button 
                         onClick={handleRevealClick}
+                        disabled={isDisabled}
                         variant={isUnlocked ? "outline" : "default"}
                         className={`rounded-xl font-black uppercase tracking-widest text-[10px] h-10 transition-all shadow-sm ${
-                            isUnlocked 
-                                ? "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                : "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-200"
+                            isDisabled
+                                ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                                : isUnlocked 
+                                    ? "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    : "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-200"
                         }`}
+                        title={isDisabled ? "Available once RentPe verifies your details" : ""}
                     >
                         {isUnlocked ? (
                             <><Lock className="w-3.5 h-3.5 mr-2" /> Lock Now</>

@@ -769,6 +769,7 @@ export default function AddPropertyPage() {
                 amenities,
                 ownerName,
                 propertyType,
+                genderType: gender === "Boys" ? "BOYS" : gender === "Girls" ? "GIRLS" : "COED",
                 licenseNumber,
                 reraId,
                 gstNumber: hasGstNumber === "yes" ? gstNumber : "",

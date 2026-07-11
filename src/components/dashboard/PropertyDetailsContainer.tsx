@@ -684,6 +684,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
     if (!property) return null;
 
     const isLocked = ['VERIFIED_SUCCESSFULLY', 'APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED', 'APPROVED'].includes(property.status);
+    const isVerifiedDetails = ['VERIFIED_SUCCESSFULLY', 'AWAITING_BANK_DETAILS', 'BANK_DETAILS_SUBMITTED', 'BANK_DETAILS_VERIFIED', 'APPROVED_PENDING_PAYMENT', 'APPROVED_PAYMENT_VERIFIED', 'APPROVED', 'LIVE'].includes(property.status);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 border-[4px] border-slate-950 p-6 md:p-10 rounded-[48px] bg-white shadow-2xl relative overflow-hidden">
@@ -711,9 +712,9 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                     </div>
                 </div>
                 {property.displayId && (
-                    <div className="flex flex-col items-center px-4 py-3 bg-slate-900 text-white rounded-2xl shadow-xl border-4 border-white group hover:scale-105 transition-transform">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none mb-1">REGISTRATION ID</span>
-                        <span className="text-lg font-black font-mono tracking-tighter">{property.displayId}</span>
+                    <div className="flex flex-col items-center px-5 py-3.5 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white rounded-3xl shadow-xl shadow-indigo-100 border-4 border-white group hover:scale-105 hover:shadow-2xl hover:shadow-indigo-200/50 transition-all duration-300">
+                        <span className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-200 leading-none mb-1">REGISTRATION ID</span>
+                        <span className="text-lg font-extrabold font-mono tracking-normal text-white drop-shadow-sm">{property.displayId}</span>
                     </div>
                 )}
                 <Button
@@ -833,6 +834,23 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                     <div className="flex flex-wrap gap-2">
                                         {(property.amenities || '').split(',').filter(Boolean).map((a: string) => (
                                             <span key={a} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-100">{a.trim()}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="pt-4 border-t-2 border-slate-50 space-y-3">
+                                    <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">General Information</div>
+                                    <div className="grid grid-cols-2 gap-3 pt-1">
+                                        {[
+                                            ["Stay Gender Type", property.genderType || "COED"],
+                                            ["PG License", property.licenseNumber || "N/A"],
+                                            ["GST Number", property.gstNumber || "N/A"],
+                                            ["RERA ID", property.reraId || "N/A"],
+                                            ["Notice Period", property.noticePeriod ? `${property.noticePeriod} days` : "30 days"],
+                                        ].map(([label, val]) => (
+                                            <div key={label} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 transition-all hover:bg-slate-50">
+                                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>
+                                                <div className="text-xs font-bold text-slate-800 leading-snug">{val}</div>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
@@ -1345,6 +1363,7 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                             isChequeVerified={property.verifiedDocs?.includes("bank_cheque")}
                             onChequeViewerOpen={(url) => setViewDialog({ isOpen: true, catKey: 'cancelChequeUrl', isArray: false, label: 'Cancelled Cheque', desc: 'Bank Document', overrideUrl: url })}
                             userRole={role as "OWNER" | "STAFF" | "ADMIN"}
+                            isDisabled={!isVerifiedDetails}
                         />
 
                         {/* Note from admin */}
@@ -1378,17 +1397,35 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                         {/* Owner Not Editable Note & Request Edit Button */}
                         {role === 'owner' && property.status !== 'AWAITING_BANK_DETAILS' && (
                             <div className="mt-8 pt-8 border-t-2 border-slate-50 flex flex-col items-center gap-4">
-                                <p className="text-xs text-slate-400 italic text-center font-medium">Bank details are currently locked for processing. Editing requires security verification.</p>
-                                <Button 
-                                    variant="outline" 
-                                    className="rounded-xl border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 hover:text-amber-800 text-xs font-black uppercase tracking-widest px-6"
-                                    onClick={() => {
-                                        setEditOtpInput("");
-                                        setShowEditOtpModal(true);
-                                    }}
-                                >
-                                    <LockOpen className="w-4 h-4 mr-2" /> Request Edit Bank Details
-                                </Button>
+                                {isVerifiedDetails ? (
+                                    <>
+                                        <p className="text-xs text-slate-400 italic text-center font-medium">Bank details are currently locked for processing. Editing requires security verification.</p>
+                                        <Button 
+                                            variant="outline" 
+                                            className="rounded-xl border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 hover:text-amber-800 text-xs font-black uppercase tracking-widest px-6"
+                                            onClick={() => {
+                                                setEditOtpInput("");
+                                                setShowEditOtpModal(true);
+                                            }}
+                                        >
+                                            <LockOpen className="w-4 h-4 mr-2" /> Request Edit Bank Details
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-slate-400 italic text-center font-medium bg-amber-50 border border-amber-100 px-4 py-2 rounded-xl text-amber-800 font-semibold flex items-center gap-2">
+                                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                                            Bank details will be available once the RentPe team verifies your property details.
+                                        </p>
+                                        <Button 
+                                            variant="outline" 
+                                            disabled
+                                            className="rounded-xl border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed text-xs font-black uppercase tracking-widest px-6 shadow-none"
+                                        >
+                                            <Lock className="w-4 h-4 mr-2" /> Request Edit Bank Details
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         )}
 

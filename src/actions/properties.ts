@@ -207,7 +207,7 @@ async function _createProperty(data: FormData | any) {
         if (!perms.includes('register_property')) throw new Error("You do not have permission to register properties");
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 2: DATA EXTRACTION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ──────────────── PHASE 2: DATA EXTRACTION ────────────────────────────────
     const name = getVal("name");
     const address = getVal("address");
     const city = getVal("city");
@@ -216,6 +216,7 @@ async function _createProperty(data: FormData | any) {
     const ownerName = getVal("ownerName");
     const roomsSource = getVal("rooms");
     const propertyType = getVal("propertyType");
+    const genderType = getVal("genderType");
     const licenseNumber = getVal("licenseNumber");
     const reraId = getVal("reraId");
     const gstNumber = getVal("gstNumber");
@@ -252,14 +253,14 @@ async function _createProperty(data: FormData | any) {
 
     const parsedRooms: any[] = typeof roomsSource === 'string' ? JSON.parse(roomsSource) : (roomsSource || []);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ SECURITY: Hard-caps to prevent abuse & DB overload Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ──────────────── SECURITY: Hard-caps to prevent abuse & DB overload ────────────────
     const MAX_ROOMS = 50;
     const MAX_BEDS = 500;
     if (parsedRooms.length > MAX_ROOMS) throw new Error(`Maximum ${MAX_ROOMS} rooms allowed per registration.`);
     const totalBedsNeeded = parsedRooms.reduce((sum: number, r: any) => sum + (parseInt(r.availability) || 0), 0);
     if (totalBedsNeeded > MAX_BEDS) throw new Error(`Maximum ${MAX_BEDS} total beds allowed per registration.`);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 3: PARALLEL ID GENERATION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ──────────────── PHASE 3: PARALLEL ID GENERATION ────────────────────────────────
     // All 3 ID-sequence DB reads now run simultaneously and atomically.
     const [displayId, roomIdsList, bedIdsList] = await Promise.all([
         generateSequentialId('PROPERTY'),
@@ -267,8 +268,8 @@ async function _createProperty(data: FormData | any) {
         totalBedsNeeded > 0 ? Promise.all(Array(totalBedsNeeded).fill(0).map(() => generateSequentialId('BED'))) : Promise.resolve([] as string[]),
     ]);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    // randomUUID() pre-links roomsÃ¢â€ â€™beds without sequential DB reads.
+    // ──────────────── PHASE 4: BUILD ALL ROWS IN MEMORY (zero DB round-trips) ─────────
+    // randomUUID() pre-links rooms—beds without sequential DB reads.
     const roomsToCreate: any[] = [];
     const bedsToCreate: any[] = [];
     let bedIdx = 0;
@@ -302,8 +303,8 @@ async function _createProperty(data: FormData | any) {
         }
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ PHASE 5: ATOMIC TRANSACTION Ã¢â‚¬â€ 4 writes total, regardless of scale Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    // Before: O(NÃƒÆ’Ã¢â‚¬â€M) sequential writes. After: always exactly 4 bulk writes.
+    // ──────────────── PHASE 5: ATOMIC TRANSACTION — 4 writes total, regardless of scale ───
+    // Before: O(N×M) sequential writes. After: always exactly 4 bulk writes.
     const result = await prisma.$transaction(async (tx) => {
         const property = await tx.property.create({
             data: {
@@ -314,6 +315,7 @@ async function _createProperty(data: FormData | any) {
                 city,
                 description,
                 propertyType: (propertyType as any) || "PG",
+                genderType: (genderType as any) || "COED",
                 licenseNumber,
                 reraId,
                 gstNumber,
