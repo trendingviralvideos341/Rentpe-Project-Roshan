@@ -298,10 +298,14 @@ export default function AdminPropertyDetailPage() {
         noticePeriod: "",
         licenseNumber: "",
         reraId: "",
-        gstNumber: "",
-        description: ""
+        gstNumber: ""
     });
     const [savingDetails, setSavingDetails] = useState(false);
+
+    // Description Editing State
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [descriptionDraft, setDescriptionDraft] = useState("");
+    const [savingDescription, setSavingDescription] = useState(false);
 
     useEffect(() => {
         if (property) {
@@ -312,9 +316,9 @@ export default function AdminPropertyDetailPage() {
                 noticePeriod: property.noticePeriod ? String(property.noticePeriod) : "",
                 licenseNumber: property.licenseNumber || "",
                 reraId: property.reraId || "",
-                gstNumber: property.gstNumber || "",
-                description: property.description || ""
+                gstNumber: property.gstNumber || ""
             });
+            setDescriptionDraft(property.description || "");
         }
     }, [property]);
 
@@ -561,8 +565,7 @@ export default function AdminPropertyDetailPage() {
                 noticePeriod: detailsForm.noticePeriod ? parseInt(detailsForm.noticePeriod) : null,
                 licenseNumber: detailsForm.licenseNumber,
                 reraId: detailsForm.reraId,
-                gstNumber: detailsForm.gstNumber,
-                description: detailsForm.description
+                gstNumber: detailsForm.gstNumber
             };
 
             await adminUpdateProperty(property.id, payload);
@@ -573,6 +576,22 @@ export default function AdminPropertyDetailPage() {
             toast.error(`Error: ${e.message || "Failed to save details"}`, { id: toastId });
         } finally {
             setSavingDetails(false);
+        }
+    };
+
+    const handleSaveDescription = async () => {
+        if (!property) return;
+        setSavingDescription(true);
+        const toastId = toast.loading("Saving property description...");
+        try {
+            await adminUpdateProperty(property.id, { description: descriptionDraft });
+            toast.success("Property description updated successfully!", { id: toastId });
+            setIsEditingDescription(false);
+            fetchProperty();
+        } catch (e: any) {
+            toast.error(`Error: ${e.message || "Failed to save description"}`, { id: toastId });
+        } finally {
+            setSavingDescription(false);
         }
     };
 
@@ -1045,12 +1064,11 @@ export default function AdminPropertyDetailPage() {
                                                             noticePeriod: property.noticePeriod ? String(property.noticePeriod) : "",
                                                             licenseNumber: property.licenseNumber || "",
                                                             reraId: property.reraId || "",
-                                                            gstNumber: property.gstNumber || "",
-                                                            description: property.description || ""
+                                                            gstNumber: property.gstNumber || ""
                                                         });
                                                     }
                                                 }}
-                                                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 hover:bg-slate-50 transition-all text-slate-600"
+                                                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 transition-all"
                                             >
                                                 Cancel
                                             </Button>
@@ -1058,7 +1076,7 @@ export default function AdminPropertyDetailPage() {
                                                 size="sm"
                                                 onClick={handleSaveDetails}
                                                 disabled={savingDetails}
-                                                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
+                                                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md shadow-blue-100"
                                             >
                                                 {savingDetails ? "Saving..." : "Save"}
                                             </Button>
@@ -1183,18 +1201,50 @@ export default function AdminPropertyDetailPage() {
                         </Card>
 
                         <Card className="border shadow-sm rounded-3xl bg-white overflow-hidden">
-                            <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                            <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6 flex flex-row items-center justify-between">
                                 <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
+                                {!isEditingDescription ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setIsEditingDescription(true)}
+                                        className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 hover:bg-slate-50 transition-all"
+                                    >
+                                        Edit Details
+                                    </Button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setIsEditingDescription(false);
+                                                setDescriptionDraft(property?.description || "");
+                                            }}
+                                            className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 transition-all"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleSaveDescription}
+                                            disabled={savingDescription}
+                                            className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md shadow-blue-100"
+                                        >
+                                            {savingDescription ? "Saving..." : "Save"}
+                                        </Button>
+                                    </div>
+                                )}
                             </CardHeader>
                             <CardContent className="p-6">
-                                {!isEditingDetails ? (
+                                {!isEditingDescription ? (
                                     <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{p.description || "No description provided."}</p>
                                 ) : (
                                     <div className="space-y-2">
                                         <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Edit Description</label>
                                         <textarea
-                                            value={detailsForm.description}
-                                            onChange={e => setDetailsForm({ ...detailsForm, description: e.target.value })}
+                                            value={descriptionDraft}
+                                            onChange={e => setDescriptionDraft(e.target.value)}
                                             rows={4}
                                             placeholder="Enter property description..."
                                             className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
