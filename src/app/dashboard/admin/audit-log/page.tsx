@@ -55,6 +55,8 @@ const getFallbackEntityName = (log: any) => {
     if (log.entityType === 'PROPERTY' && log.description) {
         const match = log.description.match(/Property\s+"([^"]+)"/i);
         if (match && match[1]) return match[1];
+        const matchColon = log.description.match(/property:\s*([^\n\r.]+)/i);
+        if (matchColon && matchColon[1]) return matchColon[1].trim();
     }
     return "N/A";
 };
@@ -325,9 +327,9 @@ export default function AuditLogPage() {
                                             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase transition-colors">
                                                 {log.entityType}
                                             </div>
-                                            {log.entityName && (
-                                                <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={log.entityName}>
-                                                    {log.entityName}
+                                            {(log.entityName || getFallbackEntityName(log) !== "N/A") && (
+                                                <div className="text-[11px] text-slate-700 font-medium mt-1 max-w-[140px] truncate" title={log.entityName || getFallbackEntityName(log)}>
+                                                    {log.entityName || getFallbackEntityName(log)}
                                                 </div>
                                             )}
                                             {log.entityId && (

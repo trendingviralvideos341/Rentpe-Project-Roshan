@@ -91,6 +91,7 @@ export async function verifyRevealOTP(propertyId: string, inputOtp: string) {
                 actionType: 'VIEW_BANK_DETAILS',
                 entityType: 'PROPERTY',
                 entityId: propertyId,
+                entityName: property.name,
                 description: `User verified identity via OTP and unmasked bank details for property: ${property.name || propertyId}`
             }
         });
@@ -167,6 +168,7 @@ export async function requestEditBankDetails(propertyId: string, inputOtp: strin
                 actionType: 'VIEW_BANK_DETAILS',
                 entityType: 'PROPERTY',
                 entityId: propertyId,
+                entityName: property.name,
                 description: `Owner verified identity via OTP and unlocked bank details for editing (view-only unlock — status NOT changed).`
             }
         });
