@@ -1764,6 +1764,7 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
         actionType: 'UPDATE',
         entityType: 'PROPERTY',
         entityId: propertyId,
+        entityName: updated.name,
         description: `Property "${updated.name}" updated by admin. Changes: ${changeSummary}`,
         previousValue: oldProperty as any,
         newValue: data as any

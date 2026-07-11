@@ -49,6 +49,16 @@ const getFormattedDiff = (prev: any, next: any) => {
     return diffs;
 };
 
+const getFallbackEntityName = (log: any) => {
+    if (!log) return "N/A";
+    if (log.entityName) return log.entityName;
+    if (log.entityType === 'PROPERTY' && log.description) {
+        const match = log.description.match(/Property\s+"([^"]+)"/i);
+        if (match && match[1]) return match[1];
+    }
+    return "N/A";
+};
+
 const ROLE_OPTIONS = ['ALL', 'ADMIN', 'OWNER', 'USER', 'EMPLOYEE'];
 const ENTITY_OPTIONS = ['ALL', 'USER', 'PROPERTY', 'BOOKING', 'PAYMENT', 'KYC'];
 const ACTION_OPTIONS = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'IMPERSONATION'];
@@ -384,8 +394,8 @@ export default function AuditLogPage() {
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Target Entity</p>
-                                    <p className="text-xs font-bold text-slate-800 truncate" title={selectedLog.entityName || selectedLog.entityId || 'N/A'}>
-                                        {selectedLog.entityName || "N/A"}
+                                    <p className="text-xs font-bold text-slate-800 truncate" title={getFallbackEntityName(selectedLog) || selectedLog.entityId || 'N/A'}>
+                                        {getFallbackEntityName(selectedLog)}
                                     </p>
                                     <p className="text-[9px] font-mono text-slate-400 truncate" title={selectedLog.entityId || ''}>
                                         {selectedLog.entityId || "N/A"}
