@@ -355,7 +355,7 @@ export default function AuditLogPage() {
             </div>
 
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="max-w-4xl bg-white rounded-[32px] border-2 border-slate-100 shadow-2xl p-6 overflow-hidden">
+                <DialogContent className="max-w-[95vw] sm:max-w-5xl bg-white rounded-[32px] border-2 border-slate-100 shadow-2xl p-6 overflow-hidden">
                     <DialogHeader className="border-b-2 border-slate-50 pb-4 mb-4">
                         <DialogTitle className="text-base font-black tracking-wider text-slate-800 uppercase">Audit Log Details</DialogTitle>
                     </DialogHeader>
