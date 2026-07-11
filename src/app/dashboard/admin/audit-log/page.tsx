@@ -67,9 +67,11 @@ const getFilteredDiffObjects = (prev: any, next: any) => {
     const nextFiltered: any = {};
     let hasChanges = false;
 
-    const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+    // Only check the keys that were actually submitted in the new payload.
+    // This prevents dumping the entire previous database object if the payload was partial.
+    const keysToCheck = Object.keys(next);
 
-    allKeys.forEach((key) => {
+    keysToCheck.forEach((key) => {
         if (key === 'id' || key === 'createdAt' || key === 'updatedAt' || key === 'ownerId') return;
 
         const prevVal = prev[key];
