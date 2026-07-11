@@ -24,7 +24,7 @@ import {
     bypassOnboardingPayment,
 } from "@/actions/admin";
 import { verifyDocument } from "@/actions/adminPhase2";
-import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
+import { requestDocumentReupload, togglePropertyDocumentVerification, requestBankDetails } from "@/actions/properties";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -440,6 +440,7 @@ export default function AdminPropertyDetailPage() {
                 case "correction": await requestPropertyCorrections(property.id, reason); toast.success("Correction request sent"); break;
                 case "suspend": await suspendProperty(property.id, reason); toast.success("Property suspended"); break;
                 case "bank_correction": await requestBankCorrections(property.id, reason); toast.success("Bank details correction request sent"); break;
+                case "request_bank": await requestBankDetails(property.id); toast.success("Bank details requested — owner notified!"); break;
                 case "verify_bank": await verifyBankDetails(property.id); toast.success("Bank details verified"); break;
                 case "verify_bank_update": await verifyBankUpdate(property.id); toast.success("Pending bank update verified and applied"); break;
                 case "reject_bank_update": await rejectBankUpdate(property.id, reason); toast.success("Pending bank update rejected"); break;
@@ -1450,9 +1451,13 @@ export default function AdminPropertyDetailPage() {
                                 )}
                                 {p.status === "VERIFIED_SUCCESSFULLY" && (
                                     <div className="space-y-2.5">
+                                        <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
+                                            onClick={() => setActionModal({ type: "request_bank" })}>
+                                            <Landmark className="h-4 w-4 mr-2" /> Request Bank Details
+                                        </Button>
                                         <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                             onClick={() => setActionModal({ type: "request_payment" })}>
-                                            <FileText className="h-4 w-4 mr-2" /> Request Payment
+                                            <FileText className="h-4 w-4 mr-2" /> Request Payment (Legacy)
                                         </Button>
                                         <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                             onClick={() => setActionModal({ type: "approve" })}>
@@ -1930,6 +1935,7 @@ export default function AdminPropertyDetailPage() {
             {/* ── ACTION MODAL ── */}
             {actionModal && (() => {
                 const cfg: Record<string, { title: string; color: string; needsReason: boolean; placeholder?: string; warning?: string }> = {
+                    request_bank:    { title: "Request Bank Details", color: "bg-indigo-600 hover:bg-indigo-700", needsReason: false, warning: "Owner will be asked to submit their bank account details." },
                     start_review:    { title: "Start Document Review", color: "bg-blue-600 hover:bg-blue-700", needsReason: false, warning: "Moves property to Verifying Documents stage." },
                     verify_docs:     { title: "Mark Doc Verified", color: "bg-indigo-600 hover:bg-indigo-700", needsReason: false, warning: "Status → Verified Successfully." },
                     request_payment: { title: "Request Onboarding Payment", color: "bg-purple-600 hover:bg-purple-700", needsReason: false, warning: "Owner will be notified to pay the onboarding fee." },
@@ -1955,7 +1961,9 @@ export default function AdminPropertyDetailPage() {
                                 
                                 <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
                                     <p className="text-sm text-amber-800 font-medium leading-relaxed">
-                                        {actionModal.type === 'request_payment' ? (
+                                        {actionModal.type === 'request_bank' ? (
+                                            <>⚠️ You are requesting bank details for <span className="text-orange-600 font-bold">{p.name}</span> (<span className="text-orange-600 font-bold">{p.displayId}</span>). The owner will be notified to submit their bank account information. The next stage will move to <span className="text-orange-600 font-bold">Bank Details Submitted</span>.</>
+                                        ) : actionModal.type === 'request_payment' ? (
                                             <>⚠️ You are requesting for property onboarding fee, make sure all docs and details are verified of property.</>
                                         ) : actionModal.type === 'start_review' ? (
                                             <>⚠️ You are approving the application for <span className="text-orange-600 font-bold">{p.name}</span> (<span className="text-orange-600 font-bold">{p.displayId}</span>). Make sure you have verified all details. The next stage will move for <span className="text-orange-600 font-bold">Document Verification</span>.</>

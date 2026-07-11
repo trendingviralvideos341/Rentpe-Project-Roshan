@@ -196,11 +196,12 @@ export default function AdminPropertiesPage() {
             </div>
 
             {/* Quick Stats — Neubrutalist Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-4">
                 {([
                     { key: "PENDING_VERIFICATION",    label: "Applications",    color: "text-blue-600",    border: "border-blue-600",    bg: "bg-blue-50/50" },
                     { key: "VERIFYING_DOCUMENTS",     label: "Verification",    color: "text-purple-600",  border: "border-purple-600",  bg: "bg-purple-50/50" },
                     { key: "NEEDS_CORRECTION",        label: "Corrections",     color: "text-amber-600",   border: "border-amber-500",   bg: "bg-amber-50/50" },
+                    { key: "VERIFIED_SUCCESSFULLY",   label: "Docs Verified",   color: "text-teal-600",    border: "border-teal-600",    bg: "bg-teal-50/50" },
                     { key: "AWAITING_BANK_DETAILS",   label: "Awaiting Bank",   color: "text-indigo-600",  border: "border-indigo-600",  bg: "bg-indigo-50/50" },
                     { key: "BANK_DETAILS_SUBMITTED",  label: "Bank Submitted",  color: "text-violet-600",  border: "border-violet-600",  bg: "bg-violet-50/50" },
                     { key: "APPROVED_PENDING_PAYMENT",label: "Payments",        color: "text-orange-600",  border: "border-orange-500",  bg: "bg-orange-50/50" },
