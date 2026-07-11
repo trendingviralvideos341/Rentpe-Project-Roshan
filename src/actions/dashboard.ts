@@ -34,7 +34,7 @@ export async function getOwnerDashboardStats() {
             roomTotalBeds,
             depositsHeldRecords,
         ] = await Promise.all([
-            prisma.property.count({ where: { ownerId: userId } }),
+            prisma.property.count({ where: { ownerId: userId, status: { in: ['LIVE', 'APPROVED'] } } }),
             prisma.tenant.count({
                 where: {
                     property: { ownerId: userId },
@@ -43,11 +43,11 @@ export async function getOwnerDashboardStats() {
             }),
             // Real total bed count from Bed records
             prisma.bed.count({
-                where: { room: { property: { ownerId: userId } }, deletedAt: null }
+                where: { room: { property: { ownerId: userId, status: { in: ['LIVE', 'APPROVED'] } } }, deletedAt: null }
             }),
             // Real occupied bed count
             prisma.bed.count({
-                where: { status: 'OCCUPIED', room: { property: { ownerId: userId } }, deletedAt: null }
+                where: { status: 'OCCUPIED', room: { property: { ownerId: userId, status: { in: ['LIVE', 'APPROVED'] } } }, deletedAt: null }
             }),
             // Pending booking requests
             prisma.booking.count({
@@ -69,7 +69,7 @@ export async function getOwnerDashboardStats() {
             }),
             // Fallback bed count from room configuration
             prisma.room.aggregate({
-                where: { property: { ownerId: userId } },
+                where: { property: { ownerId: userId, status: { in: ['LIVE', 'APPROVED'] } } },
                 _sum: { totalBeds: true }
             }),
             // Security Deposits Held — refundable liability, NOT revenue
