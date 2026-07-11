@@ -55,6 +55,7 @@ export function PropertyStepper({ status, adminNotes }: PropertyStepperProps) {
         if (stepIndex === activeIndex) {
             if ((currentStatus === 'APPROVED' || currentStatus === 'LIVE') && stepIndex === 5) return 'completed'; // Terminal state is completed
             if (currentStatus === 'APPROVED_PAYMENT_VERIFIED' && stepIndex === 4) return 'completed';
+            if (currentStatus === 'VERIFIED_SUCCESSFULLY' && stepIndex === 2) return 'completed';
             if (currentStatus === 'SUSPENDED' || currentStatus === 'REJECTED') return 'error';
             if (currentStatus === 'NEEDS_CORRECTION' || adminNotes?.includes('[REUPLOAD')) return 'warning';
             return 'active';
