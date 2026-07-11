@@ -355,14 +355,14 @@ export default function AuditLogPage() {
             </div>
 
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="max-w-2xl bg-white rounded-[32px] border-2 border-slate-100 shadow-2xl p-6 overflow-hidden">
+                <DialogContent className="max-w-4xl bg-white rounded-[32px] border-2 border-slate-100 shadow-2xl p-6 overflow-hidden">
                     <DialogHeader className="border-b-2 border-slate-50 pb-4 mb-4">
                         <DialogTitle className="text-base font-black tracking-wider text-slate-800 uppercase">Audit Log Details</DialogTitle>
                     </DialogHeader>
                     {selectedLog && (
                         <div className="space-y-5">
                             {/* Summary row */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Timestamp</p>
                                     <p className="text-xs font-bold text-slate-800">
@@ -371,13 +371,24 @@ export default function AuditLogPage() {
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Actor</p>
-                                    <p className="text-xs font-bold text-slate-800">{selectedLog.actorName} ({selectedLog.actorRole})</p>
+                                    <p className="text-xs font-bold text-slate-800 truncate" title={`${selectedLog.actorName} (${selectedLog.actorRole})`}>
+                                        {selectedLog.actorName} ({selectedLog.actorRole})
+                                    </p>
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Action & Entity</p>
                                     <p className="text-xs font-bold text-slate-800">
                                         <span className="uppercase tracking-tighter mr-1.5">{selectedLog.actionType}</span> 
                                         <span className="bg-slate-100 text-[10px] px-1.5 py-0.5 rounded font-black text-slate-500 uppercase">{selectedLog.entityType}</span>
+                                    </p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Target Entity</p>
+                                    <p className="text-xs font-bold text-slate-800 truncate" title={selectedLog.entityName || selectedLog.entityId || 'N/A'}>
+                                        {selectedLog.entityName || "N/A"}
+                                    </p>
+                                    <p className="text-[9px] font-mono text-slate-400 truncate" title={selectedLog.entityId || ''}>
+                                        {selectedLog.entityId || "N/A"}
                                     </p>
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
@@ -389,7 +400,9 @@ export default function AuditLogPage() {
                             {/* Description block */}
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Description</p>
-                                <p className="text-xs font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap">{selectedLog.description}</p>
+                                <p className="text-xs font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap">
+                                    {selectedLog.description?.replace(/→/g, '->')}
+                                </p>
                             </div>
 
                             {/* Changes */}
