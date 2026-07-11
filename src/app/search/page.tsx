@@ -20,7 +20,7 @@ export default function SearchPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [activeCity, setActiveCity] = useState("");
     const [sortBy, setSortBy] = useState("recommended");
-    const [fuzzyMode, setFuzzyMode] = useState(false);
+    const [isShowingFuzzy, setIsShowingFuzzy] = useState(false);
     const [filters, setFilters] = useState({
         minPrice: "",
         maxPrice: "",
@@ -31,45 +31,47 @@ export default function SearchPage() {
         getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
     }, []);
 
-    const handleSearch = async (forceQuery?: string, forceCity?: string, forceFuzzy?: boolean) => {
+    const handleSearch = async (forceQuery?: string, forceCity?: string) => {
         setLoading(true);
+        setIsShowingFuzzy(false);
         try {
             const q = forceQuery !== undefined ? forceQuery : query;
             const city = forceCity !== undefined ? forceCity : activeCity;
-            const isFuzzy = forceFuzzy !== undefined ? forceFuzzy : fuzzyMode;
 
-            if (isFuzzy && q.trim()) {
-                // ── Fuzzy path: use pg_trgm / ILIKE raw SQL action ─────────────
+            // ── Standard path: Prisma ILIKE / full enriched search ─────────
+            let results = await searchProperties(q || city, {
+                city: city || undefined,
+                minPrice: filters.minPrice ? parseInt(filters.minPrice) : undefined,
+                maxPrice: filters.maxPrice ? parseInt(filters.maxPrice) : undefined,
+                type: filters.type || undefined,
+            });
+
+            // ── Automatic Fuzzy Fallback ─────────────
+            if (results.length === 0 && q.trim()) {
                 const fuzzyResults = await searchPropertiesFuzzy(q.trim());
-                // Map the lean fuzzy result to the shape the card grid expects
-                const mapped = fuzzyResults.map(r => ({
-                    ...r,
-                    minPrice: r.price ?? 0,
-                    maxPrice: r.price ?? 0,
-                    totalAvailableBeds: null,
-                    isFull: false,
-                    amenities: [],
-                    buildingPhotos: [],
-                    commonAreaPhotos: [],
-                    allPhotos: [],
-                    image: '',
-                    isVerified: false,
-                    genderType: 'COED',
-                    propertyType: 'PG',
-                    rating: 0,
-                    _fuzzy: true,
-                }));
-                setProperties(mapped);
-            } else {
-                // ── Standard path: Prisma ILIKE / full enriched search ─────────
-                const results = await searchProperties(q || city, {
-                    city: city || undefined,
-                    minPrice: filters.minPrice ? parseInt(filters.minPrice) : undefined,
-                    maxPrice: filters.maxPrice ? parseInt(filters.maxPrice) : undefined,
-                    type: filters.type || undefined,
-                });
-                setProperties(results);
+                if (fuzzyResults.length > 0) {
+                    setIsShowingFuzzy(true);
+                    results = fuzzyResults.map(r => ({
+                        ...r,
+                        minPrice: r.price ?? 0,
+                        maxPrice: r.price ?? 0,
+                        totalAvailableBeds: null,
+                        isFull: false,
+                        amenities: [],
+                        buildingPhotos: [],
+                        commonAreaPhotos: [],
+                        allPhotos: [],
+                        image: '',
+                        isVerified: false,
+                        genderType: 'COED',
+                        propertyType: 'PG',
+                        rating: 0,
+                        _fuzzy: true,
+                    }));
+                }
             }
+
+            setProperties(results);
         } catch (e) {
             console.error(e);
         } finally {
@@ -139,23 +141,6 @@ export default function SearchPage() {
                         </Button>
                     </div>
 
-                    {/* Fuzzy Search Toggle */}
-                    <div className="flex justify-center items-center gap-2 pt-2">
-                        <label className="flex items-center gap-2 text-white/80 text-sm font-medium cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={fuzzyMode}
-                                onChange={(e) => {
-                                    setFuzzyMode(e.target.checked);
-                                    handleSearch(query, activeCity, e.target.checked);
-                                }}
-                                className="rounded text-indigo-600 focus:ring-indigo-500 bg-white/10 border-white/20"
-                            />
-                            <Sparkles className="h-4 w-4 text-amber-300" />
-                            Enable Fuzzy Search (Smart Match)
-                        </label>
-                    </div>
-
                     {/* City Pills */}
                     <div className="flex gap-2 flex-wrap justify-center pt-1">
                         {CITIES.map(city => (
@@ -186,6 +171,11 @@ export default function SearchPage() {
                                 <strong className="text-slate-800">{sorted.length}</strong>
                                 {" "}propert{sorted.length !== 1 ? "ies" : "y"} found
                                 {activeCity && <span> in <strong className="text-indigo-600">{activeCity}</strong></span>}
+                                {isShowingFuzzy && (
+                                    <span className="ml-2 text-amber-600 font-medium inline-flex items-center gap-1">
+                                        <Sparkles className="h-3 w-3" /> Showing smart matches for your search.
+                                    </span>
+                                )}
                             </span>
                         )}
                     </div>
