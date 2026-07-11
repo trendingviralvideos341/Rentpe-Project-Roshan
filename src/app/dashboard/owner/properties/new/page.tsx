@@ -1659,11 +1659,11 @@ export default function AddPropertyPage() {
                                 <div className="h-px flex-1 bg-purple-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UploadCard label="Building Photos" sub="Exterior / Main Gate (Max 4)" category="buildingPhotos" slotsCount={4} isRequired={false} />
-                                <UploadCard label="Common Area" sub="Hallway / Lobby / Shared (Max 4)" category="commonAreaPhotos" slotsCount={4} isRequired={false} />
-                                <UploadCard label="Rooms & Bathroom" sub="Interior Space Checklist (Max 4)" category="roomsAndBathroomPhotos" slotsCount={4} isRequired={false} />
-                                <UploadCard label="Parking Area" sub="Dedicated Space (Max 4)" category="parkingPhotos" slotsCount={4} isRequired={false} />
-                                <UploadCard label="Other Amenities" sub="Fridge / TV / Washing (Max 4)" category="amenitiesPhotos" slotsCount={4} isRequired={false} />
+                                {UploadCard({ label: "Building Photos", sub: "Exterior / Main Gate (Max 4)", category: "buildingPhotos", slotsCount: 4, isRequired: false })}
+                                {UploadCard({ label: "Common Area", sub: "Hallway / Lobby / Shared (Max 4)", category: "commonAreaPhotos", slotsCount: 4, isRequired: false })}
+                                {UploadCard({ label: "Rooms & Bathroom", sub: "Interior Space Checklist (Max 4)", category: "roomsAndBathroomPhotos", slotsCount: 4, isRequired: false })}
+                                {UploadCard({ label: "Parking Area", sub: "Dedicated Space (Max 4)", category: "parkingPhotos", slotsCount: 4, isRequired: false })}
+                                {UploadCard({ label: "Other Amenities", sub: "Fridge / TV / Washing (Max 4)", category: "amenitiesPhotos", slotsCount: 4, isRequired: false })}
                             </div>
                         </div>
 
@@ -1674,17 +1674,17 @@ export default function AddPropertyPage() {
                                 <div className="h-px flex-1 bg-purple-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UploadCard label="Owner Aadhaar" sub="FRONT & BACK" category="aadhaarProof" slotsCount={2} isRequired={true} />
-                                <UploadCard label="Owner PAN" sub="FRONT & BACK" category="panProof" slotsCount={2} isRequired={true} />
-                                <UploadCard 
-                                    label="PG/Hostel/Flat/Apartment Licence" 
-                                    sub="and if any Others Licence applicable" 
-                                    category="pgLicenceUrl" 
-                                    slotsCount={2} 
-                                    isRequired={propertyType === "PG" || propertyType === "Hostel"} 
-                                    minRequired={1}
-                                />
-                                <UploadCard label="Current Photo" sub="Current photo of the person" category="livePhotoUrl" isMultiple={false} slotsCount={1} isRequired={true} />
+                                {UploadCard({ label: "Owner Aadhaar", sub: "FRONT & BACK", category: "aadhaarProof", slotsCount: 2, isRequired: true })}
+                                {UploadCard({ label: "Owner PAN", sub: "FRONT & BACK", category: "panProof", slotsCount: 2, isRequired: true })}
+                                {UploadCard({ 
+                                    label: "PG/Hostel/Flat/Apartment Licence", 
+                                    sub: "and if any Others Licence applicable", 
+                                    category: "pgLicenceUrl", 
+                                    slotsCount: 2, 
+                                    isRequired: propertyType === "PG" || propertyType === "Hostel", 
+                                    minRequired: 1
+                                })}
+                                {UploadCard({ label: "Current Photo", sub: "Current photo of the person", category: "livePhotoUrl", isMultiple: false, slotsCount: 1, isRequired: true })}
                             </div>
                         </div>
 
