@@ -688,8 +688,9 @@ export default function AdminPropertyDetailPage() {
                         {STAGES.map((stage, i) => {
                             const isLastStage = i === STAGES.length - 1;
                             const isPropertyLive = p.status === 'LIVE' || p.status === 'APPROVED';
-                            const done = activeIdx >= 0 && (i < activeIdx || (i === activeIdx && isLastStage && isPropertyLive));
-                            const active = i === activeIdx && !(isLastStage && isPropertyLive);
+                            const isDocsVerifiedStage = p.status === 'VERIFIED_SUCCESSFULLY' && i === 2;
+                            const done = activeIdx >= 0 && (i < activeIdx || (i === activeIdx && isLastStage && isPropertyLive) || isDocsVerifiedStage);
+                            const active = i === activeIdx && !(isLastStage && isPropertyLive) && !isDocsVerifiedStage;
                             return (
                                 <div key={i} className="flex items-center flex-1 min-w-0">
                                     <div className="flex flex-col items-center flex-shrink-0">
