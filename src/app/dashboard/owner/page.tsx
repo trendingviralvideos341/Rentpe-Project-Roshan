@@ -674,7 +674,7 @@ export default function OwnerDashboard() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                                                             <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-black tracking-widest border ${badgeCls}`}>
-                                                                {n.category || n.type}
+                                                                {n.category === 'PROPERTY_UPDATED_BY_ADMIN' ? 'RentPe Support' : (n.category || n.type)}
                                                             </span>
                                                             <span className="text-[11px] text-slate-400 font-bold flex items-center gap-1">
                                                                 <Calendar className="h-3 w-3" /> {formatTime(n.createdAt)}

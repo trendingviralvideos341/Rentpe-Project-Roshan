@@ -153,7 +153,9 @@ export default function NotificationBell({ role = 'USER' }: { role?: string }) {
                                                 <p className={`text-sm leading-snug ${textCls}`}>{n.message}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-[10px] text-muted-foreground">{formatTime(n.createdAt)}</span>
-                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${badgeCls}`}>{n.category || n.type}</span>
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${badgeCls}`}>
+                                                        {n.category === 'PROPERTY_UPDATED_BY_ADMIN' ? 'RentPe Support' : (n.category || n.type)}
+                                                    </span>
                                                 </div>
                                             </div>
                                             {!n.isRead && (
