@@ -213,9 +213,16 @@ function LogTable({ loading, activeLogs, expandedRows, toggleRow, showActor }: a
                                                         {info.icon} {info.label}
                                                     </span>
                                                 </td>
-                                                <td className="p-4">
+                                                <td className="p-4 text-left">
                                                     <div className="text-[10px] font-black uppercase text-slate-400">{log.entityType || "SYSTEM"}</div>
-                                                    <div className="font-mono text-[10px] font-bold text-indigo-600 truncate max-w-[120px]">{log.entityId || "N/A"}</div>
+                                                    {log.entityName && (
+                                                        <div className="text-xs font-semibold text-slate-700 truncate max-w-[140px] mb-0.5" title={log.entityName}>
+                                                            {log.entityName}
+                                                        </div>
+                                                    )}
+                                                    <div className="font-mono text-[9px] font-bold text-indigo-600 truncate max-w-[120px] leading-tight" title={log.entityId}>
+                                                        ID: {log.entityId || "N/A"}
+                                                    </div>
                                                 </td>
                                                 <td className="p-4">
                                                     {showActor && <div className="text-[10px] font-bold text-indigo-600 mb-1">BY: {log.actor?.displayId || log.actorId}</div>}
