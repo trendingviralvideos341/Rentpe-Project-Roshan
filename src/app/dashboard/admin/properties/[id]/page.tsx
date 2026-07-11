@@ -1957,6 +1957,8 @@ export default function AdminPropertyDetailPage() {
                                     <p className="text-sm text-amber-800 font-medium leading-relaxed">
                                         {actionModal.type === 'request_payment' ? (
                                             <>⚠️ You are requesting for property onboarding fee, make sure all docs and details are verified of property.</>
+                                        ) : actionModal.type === 'start_review' ? (
+                                            <>⚠️ You are approving the application for <span className="text-orange-600 font-bold">{p.name}</span> (<span className="text-orange-600 font-bold">{p.displayId}</span>). Make sure you have verified all details. The next stage will move for <span className="text-orange-600 font-bold">Document Verification</span>.</>
                                         ) : actionModal.type === 'activate' || actionModal.type === 'approve' ? (
                                             <>⚠️ You are making the property LIVE. Please ensure all details, images, and payments have been received (if the onboarding fee was charged). If not charged, then proceed to make the property live.</>
                                         ) : (
