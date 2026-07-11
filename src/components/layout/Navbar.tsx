@@ -233,7 +233,7 @@ const Navbar = ({ session, onlyBar = false }: { session: any, onlyBar?: boolean 
                                 <span className="text-[11px] font-medium text-muted-foreground hidden lg:inline-block whitespace-nowrap">
                                     Welcome, <strong>{session?.name || session?.user?.name || userRole}</strong>
                                 </span>
-                                <NotificationBell />
+                                <NotificationBell role={session?.role} />
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                     <Link 
                                         href={dashboardHref + "?tab=profile"}

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Bell, Check, CheckCheck } from "lucide-react";
 import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } from "@/actions/notifications";
 
-export default function NotificationBell() {
+export default function NotificationBell({ role = 'USER' }: { role?: string }) {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [open, setOpen] = useState(false);
@@ -13,8 +13,8 @@ export default function NotificationBell() {
     const fetchData = async () => {
         try {
             const [notifs, count] = await Promise.all([
-                getNotifications(),
-                getUnreadCount()
+                getNotifications(role),
+                getUnreadCount(role)
             ]);
             setNotifications(notifs.filter((n: any) => n.category !== 'TOKEN' && !n.message?.toLowerCase().includes('pay token')));
             setUnreadCount(count);

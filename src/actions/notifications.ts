@@ -38,7 +38,7 @@ export async function getPersistentNotifications() {
     });
 }
 
-export async function getUnreadCount() {
+export async function getUnreadCount(role: string = 'USER') {
     const session = await getSession();
     if (!session) return 0;
 
@@ -47,6 +47,7 @@ export async function getUnreadCount() {
     return prisma.notification.count({
         where: { 
             userId: (session as any).userId, 
+            targetRole: role,
             isRead: false,
             category: { notIn: TOKEN_CATEGORIES } as any
         },

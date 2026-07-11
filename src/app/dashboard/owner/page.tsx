@@ -53,8 +53,8 @@ export default function OwnerDashboard() {
                 getOwnerDashboardStats(),
                 getOwnerInventory(),
                 getOwnerStaff().catch(() => []),
-                getNotifications().catch(() => []),
-                getUnreadCount().catch(() => 0)
+                getNotifications('OWNER').catch(() => []),
+                getUnreadCount('OWNER').catch(() => 0)
             ]);
 
             if (!statsData || (statsData as any).error === "Unauthorized") {
