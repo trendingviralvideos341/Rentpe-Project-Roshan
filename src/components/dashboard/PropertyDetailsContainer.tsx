@@ -842,10 +842,12 @@ export function PropertyDetailsContainer({ role, permissions }: { role: 'owner' 
                                     <div className="grid grid-cols-2 gap-3 pt-1">
                                         {[
                                             ["Stay Gender Type", property.genderType || "COED"],
+                                            ["Food Type", property.foodType === "INCLUDED" ? "Included in Rent" : property.foodType === "OPTIONAL" ? "Optional (Add-on)" : "Not Available"],
+                                            ["Food Price", property.foodType === "INCLUDED" ? "Included in Rent" : property.foodPricePerMonth ? `₹${property.foodPricePerMonth}` : "N/A"],
                                             ["PG License", property.licenseNumber || "N/A"],
                                             ["GST Number", property.gstNumber || "N/A"],
                                             ["RERA ID", property.reraId || "N/A"],
-                                            ["Notice Period", property.noticePeriod ? `${property.noticePeriod} days` : "30 days"],
+                                            ["Notice Period", property.noticePeriod ? `${property.noticePeriod} days` : `${property.minimumNoticeDays || 30} days`],
                                         ].map(([label, val]) => (
                                             <div key={label} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 transition-all hover:bg-slate-50">
                                                 <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</div>

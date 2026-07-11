@@ -288,6 +288,33 @@ export default function AdminPropertyDetailPage() {
     const [adminRulesDraft, setAdminRulesDraft] = useState<string[]>([]);
     const [adminNewRuleInput, setAdminNewRuleInput] = useState('');
     const [savingAdminRules, setSavingAdminRules] = useState(false);
+    
+    // Details Editing State
+    const [isEditingDetails, setIsEditingDetails] = useState(false);
+    const [detailsForm, setDetailsForm] = useState({
+        genderType: "COED",
+        foodType: "NOT_AVAILABLE",
+        foodPricePerMonth: "",
+        noticePeriod: "",
+        licenseNumber: "",
+        reraId: "",
+        gstNumber: ""
+    });
+    const [savingDetails, setSavingDetails] = useState(false);
+
+    useEffect(() => {
+        if (property) {
+            setDetailsForm({
+                genderType: property.genderType || "COED",
+                foodType: property.foodType || "NOT_AVAILABLE",
+                foodPricePerMonth: property.foodPricePerMonth ? String(property.foodPricePerMonth) : "",
+                noticePeriod: property.noticePeriod ? String(property.noticePeriod) : "",
+                licenseNumber: property.licenseNumber || "",
+                reraId: property.reraId || "",
+                gstNumber: property.gstNumber || ""
+            });
+        }
+    }, [property]);
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
@@ -508,6 +535,42 @@ export default function AdminPropertyDetailPage() {
             toast.success('Property rules updated!');
         } catch (e: any) { toast.error(`Error: ${e.message}`); }
         finally { setSavingAdminRules(false); }
+    };
+
+    const handleSaveDetails = async () => {
+        if (!property) return;
+
+        // Validation: If foodType is OPTIONAL, foodPricePerMonth must be positive
+        if (detailsForm.foodType === 'OPTIONAL') {
+            const price = parseFloat(detailsForm.foodPricePerMonth);
+            if (isNaN(price) || price <= 0) {
+                toast.error("Valid monthly food price is required when food service is Optional.");
+                return;
+            }
+        }
+
+        setSavingDetails(true);
+        const toastId = toast.loading("Saving property details...");
+        try {
+            const payload: any = {
+                genderType: detailsForm.genderType,
+                foodType: detailsForm.foodType,
+                foodPricePerMonth: detailsForm.foodType === 'OPTIONAL' ? parseFloat(detailsForm.foodPricePerMonth) : null,
+                noticePeriod: detailsForm.noticePeriod ? parseInt(detailsForm.noticePeriod) : null,
+                licenseNumber: detailsForm.licenseNumber,
+                reraId: detailsForm.reraId,
+                gstNumber: detailsForm.gstNumber
+            };
+
+            await adminUpdateProperty(property.id, payload);
+            toast.success("Property details updated successfully!", { id: toastId });
+            setIsEditingDetails(false);
+            fetchProperty();
+        } catch (e: any) {
+            toast.error(`Error: ${e.message || "Failed to save details"}`, { id: toastId });
+        } finally {
+            setSavingDetails(false);
+        }
     };
 
     if (loading) return (
@@ -951,25 +1014,150 @@ export default function AdminPropertyDetailPage() {
                     <div className="lg:col-span-2 space-y-4">
                         <Card className="border shadow-sm rounded-3xl bg-white">
                             <CardContent className="p-6 space-y-4">
-                                <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                    <Building2 className="h-5 w-5 text-indigo-600" /> General Information
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {[
-                                        ["Stay Gender Type", p.genderType || "COED"],
-                                        ["Food Type", p.foodType?.replace(/_/g, " ") || "N/A"],
-                                        ["Food Price", p.foodPricePerMonth ? `₹${p.foodPricePerMonth}` : "N/A"],
-                                        ["Notice Period", p.noticePeriod ? `${p.noticePeriod} days` : "—"],
-                                        ["PG License", p.licenseNumber || "N/A"],
-                                        ["RERA ID", p.reraId || "N/A"],
-                                        ["GST Number", p.gstNumber || "N/A"],
-                                    ].map(([l, v]) => (
-                                        <div key={l} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{l}</p>
-                                            <p className="text-xs font-bold text-slate-800">{v as string}</p>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                        <Building2 className="h-5 w-5 text-indigo-600" /> General Information
+                                    </h3>
+                                    {!isEditingDetails ? (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsEditingDetails(true)}
+                                            className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 hover:bg-slate-50 transition-all"
+                                        >
+                                            Edit Details
+                                        </Button>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsEditingDetails(false)}
+                                                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 hover:bg-slate-50 transition-all text-slate-600"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={handleSaveDetails}
+                                                disabled={savingDetails}
+                                                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
+                                            >
+                                                {savingDetails ? "Saving..." : "Save"}
+                                            </Button>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
+
+                                {!isEditingDetails ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {[
+                                            ["Stay Gender Type", p.genderType === "BOYS" ? "Boys" : p.genderType === "GIRLS" ? "Girls" : "Co-ed"],
+                                            ["Food Type", p.foodType === "INCLUDED" ? "Included in Rent" : p.foodType === "OPTIONAL" ? "Optional (Add-on)" : "Not Available"],
+                                            ["Food Price", p.foodType === "INCLUDED" ? "Included in Rent" : p.foodPricePerMonth ? `₹${p.foodPricePerMonth}` : "N/A"],
+                                            ["Notice Period", p.noticePeriod ? `${p.noticePeriod} days` : `${p.minimumNoticeDays || 30} days`],
+                                            ["PG License", p.licenseNumber || "N/A"],
+                                            ["RERA ID", p.reraId || "N/A"],
+                                            ["GST Number", p.gstNumber || "N/A"],
+                                        ].map(([l, v]) => (
+                                            <div key={l} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{l}</p>
+                                                <p className="text-xs font-bold text-slate-800">{v as string}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-slate-50/50 p-4 rounded-3xl border border-slate-100 border-dashed">
+                                        {/* Stay Gender Type */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Stay Gender Type</label>
+                                            <select
+                                                value={detailsForm.genderType}
+                                                onChange={e => setDetailsForm({ ...detailsForm, genderType: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                            >
+                                                <option value="BOYS">Boys</option>
+                                                <option value="GIRLS">Girls</option>
+                                                <option value="COED">Co-ed</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Food Type */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Food Type</label>
+                                            <select
+                                                value={detailsForm.foodType}
+                                                onChange={e => setDetailsForm({ ...detailsForm, foodType: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                            >
+                                                <option value="NOT_AVAILABLE">Not Available</option>
+                                                <option value="INCLUDED">Included in Rent</option>
+                                                <option value="OPTIONAL">Optional (Add-on)</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Food Price */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Food Price (Monthly)</label>
+                                            <input
+                                                type="number"
+                                                disabled={detailsForm.foodType !== 'OPTIONAL'}
+                                                placeholder={detailsForm.foodType === 'INCLUDED' ? "Included in Rent" : "N/A"}
+                                                value={detailsForm.foodType === 'OPTIONAL' ? detailsForm.foodPricePerMonth : ""}
+                                                onChange={e => setDetailsForm({ ...detailsForm, foodPricePerMonth: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                            />
+                                        </div>
+
+                                        {/* Notice Period */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Notice Period (Days)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="e.g. 30"
+                                                value={detailsForm.noticePeriod}
+                                                onChange={e => setDetailsForm({ ...detailsForm, noticePeriod: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+
+                                        {/* PG License */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">PG License</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. LIC123"
+                                                value={detailsForm.licenseNumber}
+                                                onChange={e => setDetailsForm({ ...detailsForm, licenseNumber: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+
+                                        {/* RERA ID */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">RERA ID</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. RERA123"
+                                                value={detailsForm.reraId}
+                                                onChange={e => setDetailsForm({ ...detailsForm, reraId: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+
+                                        {/* GST Number */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">GST Number</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. 29AAAAA1111A1Z1"
+                                                value={detailsForm.gstNumber}
+                                                onChange={e => setDetailsForm({ ...detailsForm, gstNumber: e.target.value })}
+                                                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="bg-slate-900 rounded-2xl p-4 text-white">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Location</p>
                                     <p className="text-sm font-bold flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-400" />{p.address}, {p.city}</p>
