@@ -1445,7 +1445,7 @@ export default function AdminPropertyDetailPage() {
                                 {p.status === "VERIFYING_DOCUMENTS" && (
                                     <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
                                         onClick={() => setActionModal({ type: "verify_docs" })}>
-                                        <CheckCircle className="h-4 w-4 mr-2" /> Mark Docs Verified
+                                        <CheckCircle className="h-4 w-4 mr-2" /> Mark Doc Verified
                                     </Button>
                                 )}
                                 {p.status === "VERIFIED_SUCCESSFULLY" && (
@@ -1931,7 +1931,7 @@ export default function AdminPropertyDetailPage() {
             {actionModal && (() => {
                 const cfg: Record<string, { title: string; color: string; needsReason: boolean; placeholder?: string; warning?: string }> = {
                     start_review:    { title: "Start Document Review", color: "bg-blue-600 hover:bg-blue-700", needsReason: false, warning: "Moves property to Verifying Documents stage." },
-                    verify_docs:     { title: "Mark Documents Verified", color: "bg-indigo-600 hover:bg-indigo-700", needsReason: false, warning: "Status → Verified Successfully." },
+                    verify_docs:     { title: "Mark Doc Verified", color: "bg-indigo-600 hover:bg-indigo-700", needsReason: false, warning: "Status → Verified Successfully." },
                     request_payment: { title: "Request Onboarding Payment", color: "bg-purple-600 hover:bg-purple-700", needsReason: false, warning: "Owner will be notified to pay the onboarding fee." },
                     approve:         { title: "Exempt Fee & Make Live", color: "bg-emerald-600 hover:bg-emerald-700", needsReason: true, placeholder: "Reason for fee exemption (required)", warning: "Property goes LIVE immediately. Fee waived." },
                     activate:        { title: "Activate — Make Property Live", color: "bg-emerald-600 hover:bg-emerald-700", needsReason: false, warning: "Property will go LIVE on the platform." },
@@ -1959,6 +1959,8 @@ export default function AdminPropertyDetailPage() {
                                             <>⚠️ You are requesting for property onboarding fee, make sure all docs and details are verified of property.</>
                                         ) : actionModal.type === 'start_review' ? (
                                             <>⚠️ You are approving the application for <span className="text-orange-600 font-bold">{p.name}</span> (<span className="text-orange-600 font-bold">{p.displayId}</span>). Make sure you have verified all details. The next stage will move for <span className="text-orange-600 font-bold">Document Verification</span>.</>
+                                        ) : actionModal.type === 'verify_docs' ? (
+                                            <>⚠️ You are marking the documents verified for <span className="text-orange-600 font-bold">{p.name}</span> (<span className="text-orange-600 font-bold">{p.displayId}</span>). Make sure you have verified all documents and details correctly before confirming. The next stage will move for <span className="text-orange-600 font-bold">Request Add Bank Details</span>.</>
                                         ) : actionModal.type === 'activate' || actionModal.type === 'approve' ? (
                                             <>⚠️ You are making the property LIVE. Please ensure all details, images, and payments have been received (if the onboarding fee was charged). If not charged, then proceed to make the property live.</>
                                         ) : (

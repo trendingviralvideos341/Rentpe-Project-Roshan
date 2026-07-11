@@ -455,7 +455,7 @@ export default function AdminPropertiesPage() {
                                                     className="w-full h-9 bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-sm shadow-purple-100"
                                                     onClick={() => setActionModal({ type: "verify", prop })}
                                                 >
-                                                    Mark Verified <CheckCircle className="h-3 w-3 ml-1.5" />
+                                                    Mark Doc Verified <CheckCircle className="h-3 w-3 ml-1.5" />
                                                 </Button>
                                             </>
                                         )}
@@ -557,7 +557,7 @@ export default function AdminPropertiesPage() {
                                 {actionModal.type === 'request_bank' && <FileText className="h-6 w-6 text-purple-500" />}
                                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
                                     {actionModal.type === 'approve' ? (actionModal.prop.status === 'APPROVED_PENDING_PAYMENT' ? 'Final Activation' : 'Approve Submission') : 
-                                     actionModal.type === 'verify' ? 'Confirm Verification' :
+                                     actionModal.type === 'verify' ? 'Mark Doc Verified' :
                                      actionModal.type === 'make_live' ? 'Activate — Make Property Live' :
                                      actionModal.type === 'request_bank' ? 'Request Bank Details' :
                                      actionModal.type === 'correction' ? 'Request Correction' :
@@ -577,6 +577,8 @@ export default function AdminPropertiesPage() {
                                     <p className="text-sm text-amber-800 font-medium leading-relaxed">
                                         {actionModal.type === 'payment' ? (
                                             <>⚠️ You are requesting for property onboarding fee, make sure all docs and details are verified of property.</>
+                                        ) : actionModal.type === 'verify' ? (
+                                            <>⚠️ You are marking the documents verified for <span className="text-orange-600 font-bold">{actionModal.prop.name}</span> (<span className="text-orange-600 font-bold">{actionModal.prop.displayId}</span>). Make sure you have verified all documents and details correctly before confirming. The next stage will move for <span className="text-orange-600 font-bold">Request Add Bank Details</span>.</>
                                         ) : actionModal.type === 'approve' && actionModal.prop.status === 'PENDING_VERIFICATION' ? (
                                             <>⚠️ You are approving the application for <span className="text-orange-600 font-bold">{actionModal.prop.name}</span> (<span className="text-orange-600 font-bold">{actionModal.prop.displayId}</span>). Make sure you have verified all details. The next stage will move for <span className="text-orange-600 font-bold">Document Verification</span>.</>
                                         ) : actionModal.type === 'make_live' || actionModal.type === 'approve' ? (
