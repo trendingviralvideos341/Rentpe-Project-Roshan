@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function getNotifications(role: string = 'USER') {
     const session = await getSession();
@@ -58,10 +59,30 @@ export async function markNotificationRead(id: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
 
-    return prisma.notification.update({
+    const notification = await (prisma.notification as any).findUnique({
+        where: { id }
+    });
+    if (!notification) throw new Error("Notification not found");
+
+    const updated = await prisma.notification.update({
         where: { id },
         data: { isRead: true },
     });
+
+    await logAuditEvent({
+        actorId: (session as any).userId as string,
+        actorRole: session.role as string,
+        actorName: (session as any).name || 'User',
+        actionType: 'CONFIRM',
+        entityType: 'NOTIFICATION',
+        entityId: id,
+        entityName: notification.category || notification.type,
+        description: `Notification confirmed: "${notification.message}"`,
+        previousValue: { isRead: false },
+        newValue: { isRead: true }
+    });
+
+    return updated;
 }
 
 export async function markAllNotificationsRead() {
