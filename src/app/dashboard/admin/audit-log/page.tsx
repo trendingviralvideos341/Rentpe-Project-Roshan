@@ -11,6 +11,44 @@ import { getAuditLogs } from '@/actions/audit';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+const getFormattedDiff = (prev: any, next: any) => {
+    if (!next || typeof next !== 'object') return null;
+    const diffs: { field: string; from: string; to: string }[] = [];
+    
+    Object.keys(next).forEach((key) => {
+        const prevVal = prev ? prev[key] : undefined;
+        const nextVal = next[key];
+        
+        if (key === 'id' || key === 'createdAt' || key === 'updatedAt') return;
+
+        if (JSON.stringify(prevVal) !== JSON.stringify(nextVal)) {
+            let fieldLabel = key;
+            if (key === 'genderType') fieldLabel = 'Stay Gender Type';
+            else if (key === 'foodType') fieldLabel = 'Food Type';
+            else if (key === 'foodPricePerMonth') fieldLabel = 'Food Price';
+            else if (key === 'noticePeriod') fieldLabel = 'Notice Period';
+            else if (key === 'licenseNumber') fieldLabel = 'PG License';
+            else if (key === 'reraId') fieldLabel = 'RERA ID';
+            else if (key === 'gstNumber') fieldLabel = 'GST Number';
+            else if (key === 'description') fieldLabel = 'Description';
+
+            const formatValue = (v: any) => {
+                if (v === null || v === undefined || v === '') return 'N/A';
+                if (typeof v === 'object') return JSON.stringify(v);
+                return String(v);
+            };
+
+            diffs.push({
+                field: fieldLabel,
+                from: formatValue(prevVal),
+                to: formatValue(nextVal)
+            });
+        }
+    });
+
+    return diffs;
+};
+
 const ROLE_OPTIONS = ['ALL', 'ADMIN', 'OWNER', 'USER', 'EMPLOYEE'];
 const ENTITY_OPTIONS = ['ALL', 'USER', 'PROPERTY', 'BOOKING', 'PAYMENT', 'KYC'];
 const ACTION_OPTIONS = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'IMPERSONATION'];

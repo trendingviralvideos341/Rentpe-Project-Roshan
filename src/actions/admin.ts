@@ -9,6 +9,7 @@ import { generateSequentialId } from "@/lib/ids";
 import { stripImmutableFields } from "@/lib/sanitize";
 import { decryptIfPresent, maskBankAccount, maskBeneficiaryName, maskIfscCode } from '@/lib/crypto';
 import { runOnDemandExpiry } from "@/actions/expiry";
+import { NotificationService } from "@/lib/notifications";
 
 export async function getAdminStats() {
     await runOnDemandExpiry();
@@ -1736,8 +1737,10 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
         }
     });
 
-    const changeSummary = Object.entries(data)
-        .map(([key, val]) => {
+    const changes: string[] = [];
+    Object.entries(data).forEach(([key, val]) => {
+        const oldVal = (oldProperty as any)[key];
+        if (JSON.stringify(oldVal) !== JSON.stringify(val)) {
             let displayKey = key;
             if (key === 'genderType') displayKey = 'Stay Gender Type';
             else if (key === 'foodType') displayKey = 'Food Type';
@@ -1748,10 +1751,11 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
             else if (key === 'gstNumber') displayKey = 'GST Number';
             else if (key === 'description') displayKey = 'Description';
 
-            const oldVal = (oldProperty as any)[key];
-            return `${displayKey}: "${oldVal ?? 'N/A'}" → "${val ?? 'N/A'}"`;
-        })
-        .join(', ');
+            changes.push(`${displayKey}: "${oldVal ?? 'N/A'}" -> "${val ?? 'N/A'}"`);
+        }
+    });
+
+    const changeSummary = changes.length > 0 ? changes.join(', ') : 'None';
 
     logAuditEvent({
         actorId: (session as any).userId as string,
@@ -1764,6 +1768,18 @@ async function _adminUpdateProperty(propertyId: string, data: any) {
         previousValue: oldProperty as any,
         newValue: data as any
     });
+
+    if (changes.length > 0) {
+        await NotificationService.trigger({
+            bookingId: propertyId,
+            userId: oldProperty.ownerId,
+            type: "SYSTEM",
+            category: "PROPERTY_UPDATED_BY_ADMIN",
+            message: `Property "${updated.name}" updated by RentPe Support Team. Changes: ${changeSummary}. Contact support if incorrect.`,
+            isPersistent: true,
+            targetRole: "OWNER"
+        });
+    }
 
     revalidatePath('/dashboard/admin/property-approval');
     revalidatePath(`/search`);
