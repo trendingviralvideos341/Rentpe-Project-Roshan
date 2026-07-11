@@ -7,7 +7,7 @@ import {
     Building, Users, IndianRupee, RefreshCcw, TrendingUp, 
     User, Shield, Mail, Phone, Calendar, CheckCircle, Bed, 
     ListFilter, Activity, CreditCard, UserCheck, Lock,
-    AlertCircle, DoorOpen, BarChart3
+    AlertCircle, DoorOpen, BarChart3, Bell, Check
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 import { getOwnerDashboardStats, getOwnerInventory } from "@/actions/dashboard";
 import { getOwnerStaff } from "@/actions/staff";
+import { getNotifications, getUnreadCount, markNotificationRead } from "@/actions/notifications";
 import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
 import { TenantLifecycleManager } from "@/components/dashboard/TenantLifecycleManager";
 import { OwnerPropertyPanel } from "@/components/dashboard/OwnerPropertyPanel";
@@ -28,13 +29,16 @@ const TABS = [
     { id: "overview", label: "Overview", icon: TrendingUp },
     { id: "inventory", label: "Bed Management", icon: Bed },
     { id: "ops", label: "Operations", icon: Activity },
-    { id: "profile", label: "Profile", icon: User }
+    { id: "profile", label: "Profile", icon: User },
+    { id: "notifications", label: "Update Notifications", icon: Bell }
 ];
 
 export default function OwnerDashboard() {
     const [stats, setStats] = useState<any>(null);
     const [inventory, setInventory] = useState<any[]>([]);
     const [staffTeam, setStaffTeam] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const searchParams = useSearchParams();
@@ -45,10 +49,12 @@ export default function OwnerDashboard() {
         setLoading(true);
         setError(false);
         try {
-            const [statsData, inventoryData, staffData] = await Promise.all([
+            const [statsData, inventoryData, staffData, notifs, count] = await Promise.all([
                 getOwnerDashboardStats(),
                 getOwnerInventory(),
-                getOwnerStaff().catch(() => [])
+                getOwnerStaff().catch(() => []),
+                getNotifications().catch(() => []),
+                getUnreadCount().catch(() => 0)
             ]);
 
             if (!statsData || (statsData as any).error === "Unauthorized") {
@@ -58,6 +64,8 @@ export default function OwnerDashboard() {
             setStats(statsData);
             setInventory(inventoryData);
             setStaffTeam(staffData || []);
+            setNotifications(notifs.filter((n: any) => n.category !== 'TOKEN' && !n.message?.toLowerCase().includes('pay token')));
+            setUnreadCount(count);
         } catch (e) {
             console.error(e);
             setError(true);
@@ -69,6 +77,26 @@ export default function OwnerDashboard() {
     useEffect(() => {
         fetchStats();
     }, [fetchStats]);
+
+    const handleMarkRead = async (id: string) => {
+        try {
+            await markNotificationRead(id);
+            setUnreadCount(prev => Math.max(0, prev - 1));
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        } catch (e) { }
+    };
+
+    const formatTime = (date: string) => {
+        const d = new Date(date);
+        const now = new Date();
+        const diffMs = now.getTime() - d.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return "Just now";
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return d.toLocaleDateString();
+    };
 
     const handleTabChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -139,7 +167,15 @@ export default function OwnerDashboard() {
                                   : "text-slate-600 hover:bg-slate-200 hover:text-slate-800"
                                 }`}
                         >
-                            <Icon className="h-5 w-5 mr-2 hidden sm:inline-block" /> {label}
+                            <div className="relative flex items-center">
+                                <Icon className="h-5 w-5 mr-2 hidden sm:inline-block" /> 
+                                {label}
+                                {id === "notifications" && unreadCount > 0 && (
+                                    <span className="absolute -top-3 -right-6 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse shadow-sm shadow-red-500/50">
+                                        {unreadCount > 9 ? "9+" : unreadCount}
+                                    </span>
+                                )}
+                            </div>
                             {/* Separator line — hide on active and last tab */}
                             {activeTab !== id && id !== TABS[TABS.length - 1].id && (
                               <span className="absolute right-0 top-[20%] h-[60%] w-px bg-slate-300" />
@@ -580,6 +616,81 @@ export default function OwnerDashboard() {
                                                         <UserCheck className="h-3 w-3" /> No specific permissions assigned
                                                     </div>
                                                 )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="notifications" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <Card className="border-none shadow-xl overflow-hidden bg-white">
+                        <CardHeader className="border-b bg-slate-50/50 pb-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-xl font-black flex items-center gap-2 text-slate-800">
+                                        <Bell className="h-6 w-6 text-indigo-600" /> Notifications & Updates
+                                    </CardTitle>
+                                    <p className="text-sm text-slate-500 font-medium mt-1">
+                                        Stay updated on property changes, payments, and system alerts.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {notifications.length === 0 ? (
+                                <div className="p-16 text-center text-slate-400">
+                                    <Bell className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                                    <h3 className="text-lg font-bold text-slate-600">You're all caught up!</h3>
+                                    <p className="text-sm">No new notifications at this time.</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+                                    {notifications.map((n) => {
+                                        const isSystem = n.type === 'SYSTEM' || n.category?.includes('SYSTEM');
+                                        const isPayment = n.type === 'PAYMENT' || n.category?.includes('PAYMENT');
+                                        const rowBg = !n.isRead
+                                            ? isSystem ? 'bg-red-50 border-l-4 border-l-red-500'
+                                            : isPayment ? 'bg-green-50 border-l-4 border-l-green-500'
+                                            : 'bg-indigo-50 border-l-4 border-l-indigo-500'
+                                            : 'hover:bg-slate-50 border-l-4 border-l-transparent';
+                                        
+                                        const badgeCls = isSystem
+                                            ? 'bg-red-100 text-red-700 border-red-200'
+                                            : isPayment ? 'bg-green-100 text-green-700 border-green-200'
+                                            : 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                                            
+                                        const textCls = !n.isRead ? 'font-bold text-slate-900' : 'text-slate-600 font-medium';
+
+                                        return (
+                                            <div
+                                                key={n.id}
+                                                onClick={() => !n.isRead && handleMarkRead(n.id)}
+                                                className={`p-5 transition-all cursor-pointer ${rowBg} ${!n.isRead ? 'shadow-sm z-10 relative' : ''}`}
+                                            >
+                                                <div className="flex items-start gap-4">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-black tracking-widest border ${badgeCls}`}>
+                                                                {n.category || n.type}
+                                                            </span>
+                                                            <span className="text-[11px] text-slate-400 font-bold flex items-center gap-1">
+                                                                <Calendar className="h-3 w-3" /> {formatTime(n.createdAt)}
+                                                            </span>
+                                                        </div>
+                                                        <p className={`text-base leading-snug ${textCls}`}>{n.message}</p>
+                                                    </div>
+                                                    {!n.isRead && (
+                                                        <button 
+                                                            className="shrink-0 h-8 w-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+                                                            title="Mark as read"
+                                                        >
+                                                            <Check className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}
