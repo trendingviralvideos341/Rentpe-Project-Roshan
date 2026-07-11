@@ -773,7 +773,7 @@ export async function getAllPropertiesForAdmin(statusFilter?: string) {
         } else if (statusFilter === 'PENDING_VERIFICATION') {
             where.status = { in: ['PENDING_VERIFICATION', 'UNDER_REVIEW', 'CORRECTED'] };
         } else if (statusFilter === 'VERIFYING_DOCUMENTS') {
-            where.status = { in: ['VERIFYING_DOCUMENTS', 'VERIFIED_SUCCESSFULLY'] };
+            where.status = 'VERIFYING_DOCUMENTS';
         } else {
             where.status = statusFilter;
         }
@@ -1039,7 +1039,7 @@ export async function getAdminPropertyStatusCounts() {
         
         // Map counts for grouped tabs
         statusCounts['PENDING_VERIFICATION'] = (statusCounts['PENDING_VERIFICATION'] || 0) + (statusCounts['UNDER_REVIEW'] || 0) + (statusCounts['CORRECTED'] || 0);
-        statusCounts['VERIFYING_DOCUMENTS'] = (statusCounts['VERIFYING_DOCUMENTS'] || 0) + (statusCounts['VERIFIED_SUCCESSFULLY'] || 0);
+        // statusCounts['VERIFYING_DOCUMENTS'] = (statusCounts['VERIFYING_DOCUMENTS'] || 0) + (statusCounts['VERIFIED_SUCCESSFULLY'] || 0);
         statusCounts['APPROVED_PENDING_PAYMENT'] = (statusCounts['APPROVED_PENDING_PAYMENT'] || 0) + (statusCounts['BANK_DETAILS_VERIFIED'] || 0);
 
         return statusCounts;
