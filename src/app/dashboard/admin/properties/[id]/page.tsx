@@ -27,7 +27,7 @@ import { verifyDocument } from "@/actions/adminPhase2";
 import { requestDocumentReupload, togglePropertyDocumentVerification } from "@/actions/properties";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
     ArrowLeft, Building2, User, Phone, Mail, MapPin, RefreshCcw,
@@ -298,7 +298,8 @@ export default function AdminPropertyDetailPage() {
         noticePeriod: "",
         licenseNumber: "",
         reraId: "",
-        gstNumber: ""
+        gstNumber: "",
+        description: ""
     });
     const [savingDetails, setSavingDetails] = useState(false);
 
@@ -311,7 +312,8 @@ export default function AdminPropertyDetailPage() {
                 noticePeriod: property.noticePeriod ? String(property.noticePeriod) : "",
                 licenseNumber: property.licenseNumber || "",
                 reraId: property.reraId || "",
-                gstNumber: property.gstNumber || ""
+                gstNumber: property.gstNumber || "",
+                description: property.description || ""
             });
         }
     }, [property]);
@@ -559,7 +561,8 @@ export default function AdminPropertyDetailPage() {
                 noticePeriod: detailsForm.noticePeriod ? parseInt(detailsForm.noticePeriod) : null,
                 licenseNumber: detailsForm.licenseNumber,
                 reraId: detailsForm.reraId,
-                gstNumber: detailsForm.gstNumber
+                gstNumber: detailsForm.gstNumber,
+                description: detailsForm.description
             };
 
             await adminUpdateProperty(property.id, payload);
@@ -1162,6 +1165,28 @@ export default function AdminPropertyDetailPage() {
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Location</p>
                                     <p className="text-sm font-bold flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-400" />{p.address}, {p.city}</p>
                                 </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border shadow-sm rounded-3xl bg-white overflow-hidden">
+                            <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                                <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">Property Description</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                {!isEditingDetails ? (
+                                    <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{p.description || "No description provided."}</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Edit Description</label>
+                                        <textarea
+                                            value={detailsForm.description}
+                                            onChange={e => setDetailsForm({ ...detailsForm, description: e.target.value })}
+                                            rows={4}
+                                            placeholder="Enter property description..."
+                                            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold focus:outline-none focus:border-indigo-500"
+                                        />
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
