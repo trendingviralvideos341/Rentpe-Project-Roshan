@@ -127,11 +127,13 @@ export default function NotificationBell({ role = 'USER' }: { role?: string }) {
                                     : isPayment ? 'bg-green-500'
                                     : 'bg-primary'
                                     : 'bg-transparent';
-                                const badgeCls = isSharingChange
-                                    ? 'bg-red-100 text-red-700'
-                                    : isRoomAlloc ? 'bg-amber-100 text-amber-700'
-                                    : isPayment ? 'bg-green-100 text-green-700'
-                                    : 'bg-muted text-muted-foreground';
+                                const badgeCls = n.isRead
+                                    ? 'bg-green-100 text-green-700'
+                                    : isSharingChange
+                                        ? 'bg-red-100 text-red-700'
+                                        : isRoomAlloc ? 'bg-amber-100 text-amber-700'
+                                        : isPayment ? 'bg-green-100 text-green-700'
+                                        : 'bg-muted text-muted-foreground';
                                 const textCls = !n.isRead
                                     ? isSharingChange ? 'font-bold text-red-900'
                                     : isRoomAlloc ? 'font-bold text-amber-900'

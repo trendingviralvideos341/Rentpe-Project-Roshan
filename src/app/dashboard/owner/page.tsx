@@ -657,10 +657,12 @@ export default function OwnerDashboard() {
                                             : 'bg-indigo-50 border-l-4 border-l-indigo-500'
                                             : 'hover:bg-slate-50 border-l-4 border-l-transparent';
                                         
-                                        const badgeCls = isSystem
-                                            ? 'bg-red-100 text-red-700 border-red-200'
-                                            : isPayment ? 'bg-green-100 text-green-700 border-green-200'
-                                            : 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                                        const badgeCls = n.isRead
+                                            ? 'bg-green-100 text-green-700 border-green-200'
+                                            : isSystem
+                                                ? 'bg-red-100 text-red-700 border-red-200'
+                                                : isPayment ? 'bg-green-100 text-green-700 border-green-200'
+                                                : 'bg-indigo-100 text-indigo-700 border-indigo-200';
                                             
                                         const textCls = !n.isRead ? 'font-bold text-slate-900' : 'text-slate-600 font-medium';
 
@@ -670,7 +672,7 @@ export default function OwnerDashboard() {
                                                 onClick={() => !n.isRead && handleMarkRead(n.id)}
                                                 className={`p-5 transition-all cursor-pointer ${rowBg} ${!n.isRead ? 'shadow-sm z-10 relative' : ''}`}
                                             >
-                                                <div className="flex items-start gap-4">
+                                                <div className="flex items-center gap-4">
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                                                             <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-black tracking-widest border ${badgeCls}`}>
@@ -682,14 +684,20 @@ export default function OwnerDashboard() {
                                                         </div>
                                                         <p className={`text-base leading-snug ${textCls}`}>{n.message}</p>
                                                     </div>
-                                                    {!n.isRead && (
-                                                        <button 
-                                                            className="shrink-0 h-8 w-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
-                                                            title="Mark as read"
-                                                        >
-                                                            <Check className="h-4 w-4" />
-                                                        </button>
-                                                    )}
+                                                    <div className="shrink-0">
+                                                        {!n.isRead ? (
+                                                            <button 
+                                                                className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-black uppercase tracking-wider flex items-center gap-1 transition-all shadow-sm"
+                                                                title="Mark as read"
+                                                            >
+                                                                <Check className="h-3.5 w-3.5 stroke-[3]" /> Confirm
+                                                            </button>
+                                                        ) : (
+                                                            <span className="px-3 py-1.5 rounded-xl bg-green-50 text-green-600 border border-green-200 text-xs font-black uppercase tracking-wider flex items-center gap-1">
+                                                                <CheckCircle className="h-3.5 w-3.5 stroke-[3]" /> Readed
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
