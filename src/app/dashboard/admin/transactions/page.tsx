@@ -100,11 +100,11 @@ export default function AdminTransactionsPage() {
                                     <th className="p-4 font-bold min-w-[130px]">Flow</th>
                                     <th className="p-4 font-bold min-w-[110px]">Booking ID</th>
                                     <th className="p-4 font-bold min-w-[110px]">Tenant ID</th>
-                                    <th className="p-4 font-bold min-w-[200px]">User Details</th>
                                     <th className="p-4 font-bold min-w-[200px]">Property Details</th>
+                                    <th className="p-4 font-bold min-w-[200px]">User Details</th>
                                     <th className="p-4 font-bold min-w-[100px] text-right">Rent Amt</th>
+                                    <th className="p-4 font-bold min-w-[150px] text-right">Property Onboarding Fees</th>
                                     <th className="p-4 font-bold min-w-[110px] text-right">Plat. Fees</th>
-                                    <th className="p-4 font-bold min-w-[120px] text-right">Onboard Fees</th>
                                     <th className="p-4 font-bold min-w-[80px] text-right">GST</th>
                                     <th className="p-4 font-bold min-w-[80px] text-right">TDS</th>
                                     <th className="p-4 font-bold min-w-[120px] text-right">Total Paid</th>
@@ -121,7 +121,7 @@ export default function AdminTransactionsPage() {
                                         <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
                                             {/* Type & Date */}
                                             <td className="p-4 align-top">
-                                                <div className={`inline-flex px-2 py-0.5 rounded text-xs font-black uppercase whitespace-nowrap ${
+                                                <div className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight whitespace-nowrap ${
                                                     txn.txnType === 'TOKEN_PAYMENT' ? 'bg-teal-100 text-teal-700' :
                                                     txn.txnType === 'RENT' ? 'bg-indigo-100 text-indigo-700' :
                                                     txn.txnType === 'DEPOSIT' ? 'bg-amber-100 text-amber-700' :
@@ -159,6 +159,13 @@ export default function AdminTransactionsPage() {
                                                 <div className="font-mono text-sm font-bold text-slate-700">{txn.tenantId || '—'}</div>
                                             </td>
 
+                                            {/* Property Details */}
+                                            <td className="p-4 align-top">
+                                                <div className="font-bold text-sm text-slate-800 truncate max-w-[180px]">{txn.propertyDetails?.name || '—'}</div>
+                                                {txn.propertyDetails?.city && <div className="text-xs text-slate-500 mt-0.5">📍 {txn.propertyDetails.city}</div>}
+                                                {txn.propertyDetails?.displayId && <div className="text-xs font-mono text-purple-500 font-bold mt-1">{txn.propertyDetails.displayId}</div>}
+                                            </td>
+
                                             {/* User Details */}
                                             <td className="p-4 align-top">
                                                 <div className="font-bold text-sm text-slate-800 truncate max-w-[180px]">{txn.booking?.user?.name || '—'}</div>
@@ -167,26 +174,19 @@ export default function AdminTransactionsPage() {
                                                 {txn.booking?.user?.displayId && <div className="text-xs font-mono text-indigo-400 font-bold mt-1">{txn.booking.user.displayId}</div>}
                                             </td>
 
-                                            {/* Property Details */}
-                                            <td className="p-4 align-top">
-                                                <div className="font-bold text-sm text-slate-800 truncate max-w-[180px]">{txn.propertyDetails?.name || '—'}</div>
-                                                {txn.propertyDetails?.city && <div className="text-xs text-slate-500 mt-0.5">📍 {txn.propertyDetails.city}</div>}
-                                                {txn.propertyDetails?.displayId && <div className="text-xs font-mono text-purple-500 font-bold mt-1">{txn.propertyDetails.displayId}</div>}
-                                            </td>
-
                                             {/* Rent Amount */}
                                             <td className="p-4 align-top text-right">
                                                 <div className="text-sm font-bold text-slate-700">{txn.rentAmount ? `₹${Math.abs(Number(txn.rentAmount)).toLocaleString('en-IN')}` : '—'}</div>
                                             </td>
 
+                                            {/* Property Onboarding Fees */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className="text-sm font-medium text-slate-500">{txn.txnType === 'PROPERTY_ONBOARDING' && txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
+                                            </td>
+
                                             {/* Platform Fees */}
                                             <td className="p-4 align-top text-right">
                                                 <div className="text-sm font-medium text-slate-500">{txn.txnType !== 'PROPERTY_ONBOARDING' && txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
-                                            </td>
-
-                                            {/* Onboard Fees */}
-                                            <td className="p-4 align-top text-right">
-                                                <div className="text-sm font-medium text-slate-500">{txn.txnType === 'PROPERTY_ONBOARDING' && txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
                                             </td>
 
                                             {/* GST */}
