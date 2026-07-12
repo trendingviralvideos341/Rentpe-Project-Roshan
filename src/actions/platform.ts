@@ -5,6 +5,9 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/lib/audit";
 
+// Decimal serialization helper
+const n = (val: any) => Number(val || 0);
+
 // ── Get or create the singleton settings row ──────────
 export async function getPlatformSettings() {
     // Accessible to logged-in users to check fee rates
@@ -636,8 +639,10 @@ export async function updateOwnerRazorpayAccount(accountId: string | null) {
 
 // ── ADMIN: Get full financial ledger with all IDs and tax breakdown ──
 export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, limit?: number) {
-    const session = await getSession();
+const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const n = (val: any) => Number(val || 0);
 
     const from = fromDate || new Date(new Date().getFullYear(), 3, 1); // April 1 of current year
     const to = toDate || new Date();
@@ -704,19 +709,19 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
             ownerId: owner.displayId || '—',
             ownerEmail: owner.email || '—',
             // === Money Breakdown ===
-            grossAmount: fee.grossAmount || p.amount || 0,
-            platformFeeStudent: fee.customerFee || 0,
-            platformFeeOwner: fee.ownerFee || 0,
-            gstOnStudentFee: fee.gstOnStudentFee || 0,
-            gstOnOwnerFee: fee.gstOnOwnerFee || 0,
+            grossAmount: n(fee.grossAmount) || n(p.amount) || 0,
+            platformFeeStudent: n(fee.customerFee) || 0,
+            platformFeeOwner: n(fee.ownerFee) || 0,
+            gstOnStudentFee: n(fee.gstOnStudentFee) || 0,
+            gstOnOwnerFee: n(fee.gstOnOwnerFee) || 0,
             cgstStudent: fee.gstOnStudentFee ? Math.round(fee.gstOnStudentFee / 2 * 100) / 100 : 0,
             sgstStudent: fee.gstOnStudentFee ? Math.round(fee.gstOnStudentFee / 2 * 100) / 100 : 0,
             cgstOwner: fee.gstOnOwnerFee ? Math.round(fee.gstOnOwnerFee / 2 * 100) / 100 : 0,
             sgstOwner: fee.gstOnOwnerFee ? Math.round(fee.gstOnOwnerFee / 2 * 100) / 100 : 0,
-            tdsDeducted: fee.tdsAmount || 0,
-            ownerNetPayout: fee.ownerNet || 0,
-            totalCharged: fee.totalCharged || p.amount || 0,
-            platformEarned: fee.platformEarned || 0,
+            tdsDeducted: n(fee.tdsAmount) || 0,
+            ownerNetPayout: n(fee.ownerNet) || 0,
+            totalCharged: n(fee.totalCharged) || n(p.amount) || 0,
+            platformEarned: n(fee.platformEarned) || 0,
             sacCode: fee.sacCode || '997312',
             paymentMethod: p.method || '—',
             status: p.status,
@@ -807,7 +812,7 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
             ownerName: owner.name || '—',
             ownerId: owner.displayId || '—',
             ownerEmail: owner.email || '—',
-            grossAmount: inv.amount,
+            grossAmount: n(inv.amount),
             platformFeeStudent: 0,
             platformFeeOwner: 0,
             gstOnStudentFee: 0,
@@ -815,8 +820,8 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
             cgst: 0,
             sgst: 0,
             tdsDeducted: 0,
-            ownerNetPayout: inv.amount,
-            totalCharged: inv.amount,
+            ownerNetPayout: n(inv.amount),
+            totalCharged: n(inv.amount),
             platformEarned: 0,
             sacCode: '997312',
             paymentMethod: 'CASH',
@@ -883,7 +888,7 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
                 ownerName: owner.name || '—',
                 ownerId: owner.displayId || '—',
                 ownerEmail: owner.email || '—',
-                grossAmount: b.amount,
+                grossAmount: n(b.amount),
                 platformFeeStudent: 0,
                 platformFeeOwner: 0,
                 gstOnStudentFee: 0,
@@ -891,8 +896,8 @@ export async function getAdminFinancialLedger(fromDate?: Date, toDate?: Date, li
                 cgst: 0,
                 sgst: 0,
                 tdsDeducted: 0,
-                ownerNetPayout: b.amount,
-                totalCharged: b.amount,
+                ownerNetPayout: n(b.amount),
+                totalCharged: n(b.amount),
                 platformEarned: 0,
                 sacCode: '997312',
                 paymentMethod: 'CASH',
@@ -1006,12 +1011,12 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
         if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, gst: 0, cgst: 0, sgst: 0, tds: 0, transactions: 0, platformEarned: 0, onboardingFees: 0, onboardingGst: 0 };
-        monthlyMap[key].gst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
-        monthlyMap[key].cgst += f.gstOnStudentFee ? f.gstOnStudentFee / 2 : 0;
-        monthlyMap[key].sgst += f.gstOnStudentFee ? f.gstOnStudentFee / 2 : 0;
-        monthlyMap[key].tds += f.tdsAmount || 0;
+        monthlyMap[key].gst += n(f.gstOnStudentFee) + n(f.gstOnOwnerFee);
+        monthlyMap[key].cgst += n(f.gstOnStudentFee) ? n(f.gstOnStudentFee) / 2 : 0;
+        monthlyMap[key].sgst += n(f.gstOnStudentFee) ? n(f.gstOnStudentFee) / 2 : 0;
+        monthlyMap[key].tds += n(f.tdsAmount);
         monthlyMap[key].transactions++;
-        monthlyMap[key].platformEarned += f.platformEarned || 0;
+        monthlyMap[key].platformEarned += n(f.platformEarned);
     }
 
     for (const p of onboardingPaidProperties) {
@@ -1037,7 +1042,7 @@ export async function getAdminTaxLiability(fromDate?: Date, toDate?: Date) {
         const owner = f.booking?.room?.property?.owner;
         if (!owner) continue;
         if (!ownerTdsMap[owner.id]) ownerTdsMap[owner.id] = { ownerName: owner.name, ownerId: owner.displayId, ownerEmail: owner.email, totalTds: 0, transactions: 0 };
-        ownerTdsMap[owner.id].totalTds += f.tdsAmount || 0;
+        ownerTdsMap[owner.id].totalTds += n(f.tdsAmount);
         ownerTdsMap[owner.id].transactions++;
     }
 
@@ -1107,12 +1112,12 @@ export async function getAdminPropertyUnitEconomics(fromDate?: Date, toDate?: Da
                 students: new Set<string>(),
             };
         }
-        propMap[propId].totalGrossRent += f.grossAmount || 0;
-        propMap[propId].totalPlatformFee += (f.customerFee || 0) + (f.ownerFee || 0);
-        propMap[propId].totalGst += (f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0);
-        propMap[propId].totalTds += f.tdsAmount || 0;
-        propMap[propId].totalOwnerPayout += f.ownerNet || 0;
-        propMap[propId].platformEarned += f.platformEarned || 0;
+        propMap[propId].totalGrossRent += n(f.grossAmount);
+        propMap[propId].totalPlatformFee += n(f.customerFee) + n(f.ownerFee);
+        propMap[propId].totalGst += n(f.gstOnStudentFee) + n(f.gstOnOwnerFee);
+        propMap[propId].totalTds += n(f.tdsAmount);
+        propMap[propId].totalOwnerPayout += n(f.ownerNet);
+        propMap[propId].platformEarned += n(f.platformEarned);
         propMap[propId].transactions++;
         if (f.booking?.user?.displayId) propMap[propId].students.add(f.booking.user.displayId);
     }

@@ -274,8 +274,14 @@ export default function AdminFinancialLedgerPage() {
                 r.platformEarned, r.sacCode, r.paymentMethod, r.status,
                 new Date(r.date).toLocaleString('en-IN')
             ]);
+            const csvSafe = (val: any): string => {
+                if (val === null || val === undefined) return "";
+                const s = String(val);
+                if (["+", "-", "=", "@", "|", "%"].some(c => s.startsWith(c))) return `'${s}`;
+                return s.replace(/"/g, '""');
+            };
             const csv = [headers, ...rows].map(row =>
-                row.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')
+                row.map((c: any) => `"${csvSafe(c)}"`).join(',')
             ).join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
