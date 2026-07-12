@@ -100,28 +100,50 @@ export default function AdminFinancialLedgerPage() {
     const [mounted, setMounted] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
     const [fyOptions] = useState(buildFYOptions);
-    const [selectedFY, setSelectedFY] = useState(fyOptions[fyOptions.length - 1]);
+
+    // Dynamic defaults: Financial Year and Month based on current Date
+    const getDefaultFYLabel = () => {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const fyStartYear = today.getMonth() >= 3 ? currentYear : currentYear - 1;
+        return `FY ${fyStartYear}-${fyStartYear + 1}`;
+    };
+
+    const [selectedFYLabel, setSelectedFYLabel] = useState<string>(getDefaultFYLabel);
+    const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().getMonth().toString());
+
     const [ledger, setLedger] = useState<any>(null);
     const [taxData, setTaxData] = useState<any>(null);
     const [unitData, setUnitData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [exporting, setExporting] = useState<'pdf' | 'csv' | null>(null);
-    const [exportMonth, setExportMonth] = useState('ALL');
-    const [exportFYLabel, setExportFYLabel] = useState(fyOptions[fyOptions.length - 1].label);
     const [typeFilter, setTypeFilter] = useState('ALL');
     const [selectedProperty, setSelectedProperty] = useState('ALL');
     const [selectedOwner, setSelectedOwner] = useState('ALL');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
-    const fetchAll = useCallback(async (fy: typeof fyOptions[0]) => {
+    const getActiveDateRange = useCallback((fyLabel: string, monthVal: string) => {
+        const activeFY = fyOptions.find((f: any) => f.label === fyLabel) || fyOptions[fyOptions.length - 1];
+        if (monthVal === 'ALL') {
+            return { from: activeFY.from, to: activeFY.to };
+        }
+        const m = parseInt(monthVal);
+        const year = m < 3 ? activeFY.to.getFullYear() : activeFY.from.getFullYear();
+        const from = new Date(year, m, 1);
+        const to = new Date(year, m + 1, 0);
+        to.setHours(23, 59, 59, 999);
+        return { from, to };
+    }, [fyOptions]);
+
+    const fetchAll = useCallback(async (from: Date, to: Date) => {
         setLoading(true);
         try {
             const [l, t, u] = await Promise.all([
-                getAdminFinancialLedger(fy.from, fy.to, 100),
-                getAdminTaxLiability(fy.from, fy.to),
-                getAdminPropertyUnitEconomics(fy.from, fy.to),
+                getAdminFinancialLedger(from, to),
+                getAdminTaxLiability(from, to),
+                getAdminPropertyUnitEconomics(from, to),
             ]);
             setLedger(l);
             setTaxData(t);
@@ -140,8 +162,9 @@ export default function AdminFinancialLedgerPage() {
         setSelectedOwner('ALL');
         setStartDate('');
         setEndDate('');
-        fetchAll(selectedFY);
-    }, [selectedFY, fetchAll]);
+        const range = getActiveDateRange(selectedFYLabel, selectedMonth);
+        fetchAll(range.from, range.to);
+    }, [selectedFYLabel, selectedMonth, fetchAll, getActiveDateRange]);
 
     const uniqueProperties = Array.from(new Set((ledger?.rows || []).map((r: any) => r.propertyName))).filter(Boolean).sort() as string[];
     const uniqueOwners = Array.from(new Set((ledger?.rows || []).map((r: any) => r.ownerName))).filter(Boolean).sort() as string[];
@@ -186,19 +209,12 @@ export default function AdminFinancialLedgerPage() {
         .reduce((sum: number, r: any) => sum + (r.grossAmount || 0), 0);
 
     const getExportDateRange = () => {
-        const activeFY = fyOptions.find((f: any) => f.label === exportFYLabel) || fyOptions[0];
-        if (exportMonth === 'ALL') return { from: activeFY.from, to: activeFY.to };
-        const m = parseInt(exportMonth);
-        const year = m < 3 ? activeFY.to.getFullYear() : activeFY.from.getFullYear();
-        const from = new Date(year, m, 1);
-        const to = new Date(year, m + 1, 0);
-        to.setHours(23, 59, 59, 999);
-        return { from, to };
+        return getActiveDateRange(selectedFYLabel, selectedMonth);
     };
 
     const getExportFilename = (ext: string) => {
-        const activeFY = fyOptions.find((f: any) => f.label === exportFYLabel) || fyOptions[0];
-        if (exportMonth === 'ALL') return `RentPe-FinancialLedger-${activeFY.label.replace(/\s/g, '-')}.${ext}`;
+        const activeFY = fyOptions.find((f: any) => f.label === selectedFYLabel) || fyOptions[0];
+        if (selectedMonth === 'ALL') return `RentPe-FinancialLedger-${activeFY.label.replace(/\s/g, '-')}.${ext}`;
         const range = getExportDateRange();
         const monthName = range.from.toLocaleString('default', { month: 'short', year: 'numeric' }).replace(/\s/g, '-');
         return `RentPe-FinancialLedger-${monthName}.${ext}`;
@@ -208,7 +224,7 @@ export default function AdminFinancialLedgerPage() {
         setExporting('csv');
         try {
             const range = getExportDateRange();
-            toast.loading(`Fetching ledger for ${exportMonth === 'ALL' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-csv' });
+            toast.loading(`Fetching ledger for ${selectedMonth === 'ALL' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-csv' });
             const fullLedger = await getAdminFinancialLedger(range.from, range.to);
             const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
                 const q = search.toLowerCase();
@@ -302,7 +318,7 @@ export default function AdminFinancialLedgerPage() {
         setExporting('pdf');
         try {
             const range = getExportDateRange();
-            toast.loading(`Fetching ledger for ${exportMonth === 'ALL' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-pdf' });
+            toast.loading(`Fetching ledger for ${selectedMonth === 'ALL' ? 'Full Year' : range.from.toLocaleString('default', { month: 'long', year: 'numeric' })}...`, { id: 'export-pdf' });
             const fullLedger = await getAdminFinancialLedger(range.from, range.to);
             const rowsToExport = (fullLedger?.rows || []).filter((r: any) => {
                 const q = search.toLowerCase();
@@ -348,7 +364,7 @@ export default function AdminFinancialLedgerPage() {
             doc.text('RentPe', 14, 16);
             doc.setFontSize(10); doc.setFont('helvetica', 'normal');
             doc.text('Financial Ledger & Tax Report', 14, 23);
-            doc.text(`${selectedFY.label}  |  Generated: ${new Date().toLocaleString('en-IN')}`, 14, 30);
+            doc.text(`${selectedFYLabel}  |  Generated: ${new Date().toLocaleString('en-IN')}`, 14, 30);
 
             // Totals Summary
             doc.setFontSize(12); doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold');
@@ -441,21 +457,43 @@ export default function AdminFinancialLedgerPage() {
                             <p className="text-slate-400 text-sm font-medium mt-2">Complete audit trail — every rupee, every tax, every transaction</p>
                         </div>
                         <div className="flex items-center gap-3 flex-wrap">
-                            {/* FY Selector */}
-                            <div className="flex bg-white/10 rounded-xl p-1 gap-1">
-                                {fyOptions.map(fy => (
-                                    <button key={fy.label} onClick={() => setSelectedFY(fy)}
-                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                            selectedFY.label === fy.label
-                                                ? 'bg-indigo-500 text-white shadow-lg'
-                                                : 'text-slate-300 hover:text-white hover:bg-white/10'
-                                        }`}>
-                                        {fy.label}
-                                    </button>
+                            {/* FY Selector Dropdown */}
+                            <select
+                                className="h-10 rounded-xl border border-white/10 bg-white/10 px-4 text-sm font-bold text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-lg hover:bg-white/20 transition-all"
+                                value={selectedFYLabel}
+                                onChange={(e) => setSelectedFYLabel(e.target.value)}
+                            >
+                                {fyOptions.map((fy: any) => (
+                                    <option key={fy.label} value={fy.label} className="bg-slate-900 text-white font-bold">{fy.label}</option>
                                 ))}
-                            </div>
-                            <button onClick={() => fetchAll(selectedFY)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-all">
+                            </select>
+
+                            {/* Month Selector Dropdown */}
+                            <select
+                                className="h-10 rounded-xl border border-white/10 bg-white/10 px-4 text-sm font-bold text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[140px] shadow-lg hover:bg-white/20 transition-all"
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                            >
+                                <option value="ALL" className="bg-slate-900 text-white font-bold">All Months</option>
+                                <option value="3" className="bg-slate-900 text-white font-bold">April</option>
+                                <option value="4" className="bg-slate-900 text-white font-bold">May</option>
+                                <option value="5" className="bg-slate-900 text-white font-bold">June</option>
+                                <option value="6" className="bg-slate-900 text-white font-bold">July</option>
+                                <option value="7" className="bg-slate-900 text-white font-bold">August</option>
+                                <option value="8" className="bg-slate-900 text-white font-bold">September</option>
+                                <option value="9" className="bg-slate-900 text-white font-bold">October</option>
+                                <option value="10" className="bg-slate-900 text-white font-bold">November</option>
+                                <option value="11" className="bg-slate-900 text-white font-bold">December</option>
+                                <option value="0" className="bg-slate-900 text-white font-bold">January</option>
+                                <option value="1" className="bg-slate-900 text-white font-bold">February</option>
+                                <option value="2" className="bg-slate-900 text-white font-bold">March</option>
+                            </select>
+
+                            <button onClick={() => {
+                                const range = getActiveDateRange(selectedFYLabel, selectedMonth);
+                                fetchAll(range.from, range.to);
+                            }}
+                                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-all h-10 shadow-lg">
                                 <RefreshCcw className="w-4 h-4" /> Refresh
                             </button>
                         </div>
@@ -588,8 +626,8 @@ export default function AdminFinancialLedgerPage() {
                                 <div className="flex items-center gap-3">
                                     <select
                                         className="h-10 rounded-xl border border-indigo-200 bg-indigo-50/50 px-4 text-sm font-black text-indigo-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm hover:bg-indigo-50 transition-colors"
-                                        value={exportFYLabel}
-                                        onChange={(e) => setExportFYLabel(e.target.value)}
+                                        value={selectedFYLabel}
+                                        onChange={(e) => setSelectedFYLabel(e.target.value)}
                                     >
                                         {fyOptions.map((fy: any) => (
                                             <option key={fy.label} value={fy.label}>{fy.label}</option>
@@ -597,13 +635,10 @@ export default function AdminFinancialLedgerPage() {
                                     </select>
                                     <select
                                         className="h-10 rounded-xl border border-indigo-200 bg-indigo-50/50 px-4 text-sm font-black text-indigo-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[160px] shadow-sm hover:bg-indigo-50 transition-colors"
-                                        value={exportMonth}
-                                        onChange={(e) => setExportMonth(e.target.value)}
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
                                     >
                                         <option value="ALL">All Months</option>
-                                        <option value="0">January</option>
-                                        <option value="1">February</option>
-                                        <option value="2">March</option>
                                         <option value="3">April</option>
                                         <option value="4">May</option>
                                         <option value="5">June</option>
@@ -613,6 +648,9 @@ export default function AdminFinancialLedgerPage() {
                                         <option value="9">October</option>
                                         <option value="10">November</option>
                                         <option value="11">December</option>
+                                        <option value="0">January</option>
+                                        <option value="1">February</option>
+                                        <option value="2">March</option>
                                     </select>
                                 </div>
                             </div>
