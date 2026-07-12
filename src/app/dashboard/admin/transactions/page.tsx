@@ -62,6 +62,7 @@ export default function AdminTransactionsPage() {
                     { key: 'TOKEN_PAYMENT', label: '🔐 Token Payments', color: 'bg-teal-100 text-teal-700' },
                     { key: 'RENT', label: '📄 Rent Payments', color: 'bg-indigo-100 text-indigo-700' },
                     { key: 'DEPOSIT', label: '🔒 Deposits', color: 'bg-amber-100 text-amber-700' },
+                    { key: 'PROPERTY_ONBOARDING', label: '🏢 Onboarding Fees', color: 'bg-purple-100 text-purple-700' },
                     { key: 'REFUND', label: '🔄 Refunds', color: 'bg-rose-100 text-rose-700' },
                     { key: 'PAYMENT', label: '💳 Other', color: 'bg-slate-100 text-slate-600' },
                 ].map(f => (
@@ -115,6 +116,7 @@ export default function AdminTransactionsPage() {
                                                     txn.txnType === 'TOKEN_PAYMENT' ? 'bg-teal-100 text-teal-700' :
                                                     txn.txnType === 'RENT' ? 'bg-indigo-100 text-indigo-700' :
                                                     txn.txnType === 'DEPOSIT' ? 'bg-amber-100 text-amber-700' :
+                                                    txn.txnType === 'PROPERTY_ONBOARDING' ? 'bg-purple-100 text-purple-700' :
                                                     txn.txnType === 'REFUND' ? 'bg-rose-100 text-rose-700' :
                                                     'bg-slate-100 text-slate-600'
                                                 }`}>

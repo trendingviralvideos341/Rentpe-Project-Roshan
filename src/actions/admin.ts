@@ -269,6 +269,25 @@ export async function getTransactions() {
             take: 100
         });
 
+        // Fetch properties with paid onboarding fees
+        const onboardingFees = await prisma.property.findMany({
+            where: { onboardingPaidAt: { not: null } },
+            orderBy: { onboardingPaidAt: 'desc' },
+            take: 100,
+            select: {
+                id: true,
+                displayId: true,
+                name: true,
+                onboardingPaidAt: true,
+                onboardingPaymentMethod: true,
+                onboardingRazorpayId: true,
+                owner: { select: { id: true, name: true, email: true, displayId: true } }
+            }
+        });
+
+        const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+        const onboardingFeeAmount = settings?.ownerOnboardingFeeFlat ?? 99;
+
         // Normalise token payments into same shape as Payment records
         const tokenRows = tokenBookings.map((b: any) => ({
             id: `TOKEN-${b.id}`,
@@ -377,8 +396,31 @@ export async function getTransactions() {
             };
         }).filter(Boolean);
 
+        // Normalize onboarding fees
+        const onboardingRows = onboardingFees.map((p: any) => ({
+            id: `ONBOARD-${p.id}`,
+            bookingId: null,
+            invoiceId: null,
+            depositId: null,
+            amount: Number(onboardingFeeAmount),
+            method: p.onboardingPaymentMethod === 'ONLINE' ? 'RAZORPAY' : (p.onboardingPaymentMethod || 'RAZORPAY'),
+            status: 'VERIFIED',
+            razorpayOrderId: null,
+            razorpayId: p.onboardingRazorpayId || null,
+            verifiedBy: null,
+            date: p.onboardingPaidAt,
+            txnType: 'PROPERTY_ONBOARDING',
+            txnLabel: '🏢 Property Onboarding Fee',
+            booking: {
+                id: null,
+                displayId: p.displayId,
+                propertyName: p.name,
+                user: p.owner, // So it shows the Owner's info under User & Property
+            },
+        }));
+
         // Merge and sort by date descending
-        const allTxns = [...regularRows, ...tokenRows, ...refundRows, ...settlementRows].sort(
+        const allTxns = [...regularRows, ...tokenRows, ...refundRows, ...settlementRows, ...onboardingRows].sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
