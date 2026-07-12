@@ -25,25 +25,32 @@ export default function SearchPage() {
         minPrice: "",
         maxPrice: "",
         type: "",
+        genderType: "",
     });
 
     useEffect(() => {
         getCurrentUser().then(u => setCurrentUser(u)).catch(() => {});
     }, []);
 
-    const handleSearch = async (forceQuery?: string, forceCity?: string) => {
+    const handleSearch = async (
+        forceQuery?: string, 
+        forceCity?: string, 
+        overrideFilters?: { minPrice?: string; maxPrice?: string; type?: string; genderType?: string }
+    ) => {
         setLoading(true);
         setIsShowingFuzzy(false);
         try {
             const q = forceQuery !== undefined ? forceQuery : query;
             const city = forceCity !== undefined ? forceCity : activeCity;
+            const currentFilters = overrideFilters || filters;
 
             // ── Standard path: Prisma ILIKE / full enriched search ─────────
             let results = await searchProperties(q || city, {
                 city: city || undefined,
-                minPrice: filters.minPrice ? parseInt(filters.minPrice) : undefined,
-                maxPrice: filters.maxPrice ? parseInt(filters.maxPrice) : undefined,
-                type: filters.type || undefined,
+                minPrice: currentFilters.minPrice ? parseInt(currentFilters.minPrice) : undefined,
+                maxPrice: currentFilters.maxPrice ? parseInt(currentFilters.maxPrice) : undefined,
+                type: currentFilters.type || undefined,
+                genderType: currentFilters.genderType || undefined,
             });
 
             // ── Automatic Fuzzy Fallback ─────────────
@@ -95,8 +102,9 @@ export default function SearchPage() {
     const clearAll = () => {
         setQuery("");
         setActiveCity("");
-        setFilters({ minPrice: "", maxPrice: "", type: "" });
-        handleSearch("", "");
+        const clearedFilters = { minPrice: "", maxPrice: "", type: "", genderType: "" };
+        setFilters(clearedFilters);
+        handleSearch("", "", clearedFilters);
     };
 
     const sorted = [...properties].sort((a, b) => {
@@ -207,7 +215,11 @@ export default function SearchPage() {
                         {/* Room Type */}
                         <select
                             value={filters.type}
-                            onChange={e => { setFilters(f => ({ ...f, type: e.target.value })); handleSearch(); }}
+                            onChange={e => {
+                                const nextFilters = { ...filters, type: e.target.value };
+                                setFilters(nextFilters);
+                                handleSearch(query, activeCity, nextFilters);
+                            }}
                             className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 outline-none"
                         >
                             <option value="">All room types</option>
@@ -233,6 +245,22 @@ export default function SearchPage() {
                             className="p-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all">
                             <RefreshCcw className="h-4 w-4" />
                         </button>
+
+                        {/* Gender Filter */}
+                        <select
+                            value={filters.genderType}
+                            onChange={e => {
+                                const nextFilters = { ...filters, genderType: e.target.value };
+                                setFilters(nextFilters);
+                                handleSearch(query, activeCity, nextFilters);
+                            }}
+                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 outline-none font-bold cursor-pointer hover:border-indigo-200 focus:border-indigo-500 transition-all"
+                        >
+                            <option value="">All genders</option>
+                            <option value="BOYS">Boys</option>
+                            <option value="GIRLS">Girls</option>
+                            <option value="COED">CoLiving</option>
+                        </select>
                     </div>
                 </div>
 
@@ -326,8 +354,19 @@ export default function SearchPage() {
                                 </CardHeader>
 
                                 <CardContent className="px-4 pb-3">
-                                    {/* Amenities */}
+                                    {/* Amenities & Gender */}
                                     <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {prop.genderType && (
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                                prop.genderType === 'BOYS'
+                                                    ? 'bg-blue-50 border-blue-200 text-blue-600'
+                                                    : prop.genderType === 'GIRLS'
+                                                        ? 'bg-pink-50 border-pink-200 text-pink-600'
+                                                        : 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                            }`}>
+                                                {prop.genderType === 'BOYS' ? 'Boys' : prop.genderType === 'GIRLS' ? 'Girls' : 'CoLiving'}
+                                            </span>
+                                        )}
                                         {prop.amenities?.slice(0, 3).map((a: string) => (
                                             <span key={a}
                                                 className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">

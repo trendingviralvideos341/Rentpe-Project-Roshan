@@ -28,6 +28,7 @@ export async function searchProperties(query?: string, filters?: {
     }
 
     if (filters?.city) where.city = { contains: filters.city, mode: 'insensitive' };
+    if (filters?.genderType) where.genderType = filters.genderType;
 
     try {
         const properties = await prisma.property.findMany({
