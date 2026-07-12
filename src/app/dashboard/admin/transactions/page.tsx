@@ -103,7 +103,8 @@ export default function AdminTransactionsPage() {
                                     <th className="p-4 font-bold min-w-[200px]">User Details</th>
                                     <th className="p-4 font-bold min-w-[200px]">Property Details</th>
                                     <th className="p-4 font-bold min-w-[100px] text-right">Rent Amt</th>
-                                    <th className="p-4 font-bold min-w-[90px] text-right">Plat. Fees</th>
+                                    <th className="p-4 font-bold min-w-[110px] text-right">Plat. Fees</th>
+                                    <th className="p-4 font-bold min-w-[120px] text-right">Onboard Fees</th>
                                     <th className="p-4 font-bold min-w-[80px] text-right">GST</th>
                                     <th className="p-4 font-bold min-w-[80px] text-right">TDS</th>
                                     <th className="p-4 font-bold min-w-[120px] text-right">Total Paid</th>
@@ -112,15 +113,15 @@ export default function AdminTransactionsPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan={12} className="p-8 text-center animate-pulse">Loading transactions...</td></tr>
+                                    <tr><td colSpan={13} className="p-8 text-center animate-pulse">Loading transactions...</td></tr>
                                 ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">No transactions found.</td></tr>
+                                    <tr><td colSpan={13} className="p-8 text-center text-muted-foreground">No transactions found.</td></tr>
                                 ) : (
                                     filtered.map((txn) => (
                                         <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
                                             {/* Type & Date */}
                                             <td className="p-4 align-top">
-                                                <div className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap ${
+                                                <div className={`inline-flex px-2 py-0.5 rounded text-xs font-black uppercase whitespace-nowrap ${
                                                     txn.txnType === 'TOKEN_PAYMENT' ? 'bg-teal-100 text-teal-700' :
                                                     txn.txnType === 'RENT' ? 'bg-indigo-100 text-indigo-700' :
                                                     txn.txnType === 'DEPOSIT' ? 'bg-amber-100 text-amber-700' :
@@ -130,67 +131,72 @@ export default function AdminTransactionsPage() {
                                                 }`}>
                                                     {txn.txnLabel || txn.txnType}
                                                 </div>
-                                                <div className="text-[10px] text-slate-500 mt-2 font-medium">
+                                                <div className="text-xs text-slate-500 mt-2 font-medium">
                                                     {new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                 </div>
-                                                <div className="text-[10px] text-slate-400">
+                                                <div className="text-xs text-slate-400">
                                                     {new Date(txn.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </td>
                                             
                                             {/* Flow */}
                                             <td className="p-4 align-top">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-50 px-2 py-1 rounded w-fit">
+                                                <div className="flex items-center gap-1.5 text-xs font-bold bg-slate-50 px-2 py-1 rounded w-fit">
                                                     <span className={txn.source === 'STUDENT' ? 'text-indigo-600' : txn.source === 'OWNER' ? 'text-purple-600' : 'text-slate-600'}>{txn.source}</span>
                                                     <span className="text-slate-300">➔</span>
                                                     <span className={txn.destination === 'STUDENT' ? 'text-indigo-600' : txn.destination === 'PLATFORM' ? 'text-slate-600' : 'text-purple-600'}>{txn.destination}</span>
                                                 </div>
-                                                <div className="text-[9px] text-slate-400 font-mono mt-1.5 px-1 uppercase">{txn.method || '—'}</div>
+                                                <div className="text-xs text-slate-400 font-mono mt-1.5 px-1 uppercase">{txn.method || '—'}</div>
                                             </td>
 
                                             {/* Booking ID */}
                                             <td className="p-4 align-top">
-                                                <div className="font-mono text-xs font-bold text-slate-700">{txn.booking?.displayId || '—'}</div>
+                                                <div className="font-mono text-sm font-bold text-slate-700">{txn.booking?.displayId || '—'}</div>
                                             </td>
 
                                             {/* Tenant ID */}
                                             <td className="p-4 align-top">
-                                                <div className="font-mono text-xs font-bold text-slate-700">{txn.tenantId || '—'}</div>
+                                                <div className="font-mono text-sm font-bold text-slate-700">{txn.tenantId || '—'}</div>
                                             </td>
 
                                             {/* User Details */}
                                             <td className="p-4 align-top">
                                                 <div className="font-bold text-sm text-slate-800 truncate max-w-[180px]">{txn.booking?.user?.name || '—'}</div>
-                                                {txn.booking?.user?.email && <div className="text-[10px] text-slate-500 truncate max-w-[180px] mt-0.5">{txn.booking.user.email}</div>}
-                                                {txn.booking?.user?.phone && <div className="text-[10px] text-slate-500 mt-0.5">📞 {txn.booking.user.phone}</div>}
-                                                {txn.booking?.user?.displayId && <div className="text-[9px] font-mono text-indigo-400 font-bold mt-1">{txn.booking.user.displayId}</div>}
+                                                {txn.booking?.user?.email && <div className="text-xs text-slate-500 truncate max-w-[180px] mt-0.5">{txn.booking.user.email}</div>}
+                                                {txn.booking?.user?.phone && <div className="text-xs text-slate-500 mt-0.5">📞 {txn.booking.user.phone}</div>}
+                                                {txn.booking?.user?.displayId && <div className="text-xs font-mono text-indigo-400 font-bold mt-1">{txn.booking.user.displayId}</div>}
                                             </td>
 
                                             {/* Property Details */}
                                             <td className="p-4 align-top">
-                                                <div className="font-bold text-xs text-slate-800 truncate max-w-[180px]">{txn.propertyDetails?.name || '—'}</div>
-                                                {txn.propertyDetails?.city && <div className="text-[10px] text-slate-500 mt-0.5">📍 {txn.propertyDetails.city}</div>}
-                                                {txn.propertyDetails?.displayId && <div className="text-[9px] font-mono text-purple-500 font-bold mt-1">{txn.propertyDetails.displayId}</div>}
+                                                <div className="font-bold text-sm text-slate-800 truncate max-w-[180px]">{txn.propertyDetails?.name || '—'}</div>
+                                                {txn.propertyDetails?.city && <div className="text-xs text-slate-500 mt-0.5">📍 {txn.propertyDetails.city}</div>}
+                                                {txn.propertyDetails?.displayId && <div className="text-xs font-mono text-purple-500 font-bold mt-1">{txn.propertyDetails.displayId}</div>}
                                             </td>
 
                                             {/* Rent Amount */}
                                             <td className="p-4 align-top text-right">
-                                                <div className="text-xs font-bold text-slate-700">{txn.rentAmount ? `₹${Math.abs(Number(txn.rentAmount)).toLocaleString('en-IN')}` : '—'}</div>
+                                                <div className="text-sm font-bold text-slate-700">{txn.rentAmount ? `₹${Math.abs(Number(txn.rentAmount)).toLocaleString('en-IN')}` : '—'}</div>
                                             </td>
 
                                             {/* Platform Fees */}
                                             <td className="p-4 align-top text-right">
-                                                <div className="text-xs font-medium text-slate-500">{txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
+                                                <div className="text-sm font-medium text-slate-500">{txn.txnType !== 'PROPERTY_ONBOARDING' && txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
+                                            </td>
+
+                                            {/* Onboard Fees */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className="text-sm font-medium text-slate-500">{txn.txnType === 'PROPERTY_ONBOARDING' && txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
                                             </td>
 
                                             {/* GST */}
                                             <td className="p-4 align-top text-right">
-                                                <div className="text-xs font-medium text-slate-500">{txn.platformGst ? `₹${Number(txn.platformGst).toLocaleString('en-IN')}` : '—'}</div>
+                                                <div className="text-sm font-medium text-slate-500">{txn.platformGst ? `₹${Number(txn.platformGst).toLocaleString('en-IN')}` : '—'}</div>
                                             </td>
 
                                             {/* TDS */}
                                             <td className="p-4 align-top text-right">
-                                                <div className="text-xs font-medium text-slate-500">{txn.tdsAmount ? `₹${Number(txn.tdsAmount).toLocaleString('en-IN')}` : '—'}</div>
+                                                <div className="text-sm font-medium text-slate-500">{txn.tdsAmount ? `₹${Number(txn.tdsAmount).toLocaleString('en-IN')}` : '—'}</div>
                                             </td>
 
                                             {/* Total Paid */}
@@ -203,7 +209,7 @@ export default function AdminTransactionsPage() {
                                             {/* Ref & Status */}
                                             <td className="p-4 align-top">
                                                 <div className="flex flex-col gap-1.5 items-start">
-                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-black uppercase ${
                                                         txn.status === 'SUCCESS' || txn.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
                                                         txn.status === 'REFUNDED' ? 'bg-rose-100 text-rose-800' :
                                                         txn.status === 'DUPLICATE' ? 'bg-amber-100 text-amber-800' :
@@ -212,9 +218,9 @@ export default function AdminTransactionsPage() {
                                                     }`}>
                                                         {txn.status}
                                                     </span>
-                                                    <div className="text-[9px] text-slate-400 font-mono truncate max-w-[120px]" title={txn.id}>{txn.id}</div>
+                                                    <div className="text-xs text-slate-400 font-mono truncate max-w-[120px]" title={txn.id}>{txn.id}</div>
                                                     {(txn.razorpayId || txn.razorpayOrderId) && (
-                                                        <div className="text-[9px] text-blue-500 font-mono font-bold truncate max-w-[120px]" title={txn.razorpayId || txn.razorpayOrderId}>
+                                                        <div className="text-xs text-blue-500 font-mono font-bold truncate max-w-[120px]" title={txn.razorpayId || txn.razorpayOrderId}>
                                                             {txn.razorpayId || txn.razorpayOrderId}
                                                         </div>
                                                     )}
