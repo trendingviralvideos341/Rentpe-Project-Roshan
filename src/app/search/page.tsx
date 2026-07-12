@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Search, MapPin, Star, Building, X, RefreshCcw, Sparkles } from "lucide-react";
+import { Search, MapPin, Star, Building, X, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { searchProperties } from "@/actions/search";
@@ -240,11 +240,7 @@ export default function SearchPage() {
                             <option value="rating">Best rated</option>
                         </select>
 
-                        {/* Refresh */}
-                        <button onClick={() => handleSearch()}
-                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all">
-                            <RefreshCcw className="h-4 w-4" />
-                        </button>
+
 
                         {/* Gender Filter */}
                         <select
@@ -356,17 +352,6 @@ export default function SearchPage() {
                                 <CardContent className="px-4 pb-3">
                                     {/* Amenities & Gender */}
                                     <div className="flex flex-wrap gap-1.5 mb-3">
-                                        {prop.genderType && (
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider ${
-                                                prop.genderType === 'BOYS'
-                                                    ? 'bg-blue-50 border-blue-200 text-blue-600'
-                                                    : prop.genderType === 'GIRLS'
-                                                        ? 'bg-pink-50 border-pink-200 text-pink-600'
-                                                        : 'bg-indigo-50 border-indigo-200 text-indigo-600'
-                                            }`}>
-                                                {prop.genderType === 'BOYS' ? 'Boys' : prop.genderType === 'GIRLS' ? 'Girls' : 'CoLiving'}
-                                            </span>
-                                        )}
                                         {prop.amenities?.slice(0, 3).map((a: string) => (
                                             <span key={a}
                                                 className="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -376,6 +361,17 @@ export default function SearchPage() {
                                         {(prop.amenities?.length || 0) > 3 && (
                                             <span className="text-[10px] text-slate-400 font-bold self-center">
                                                 +{prop.amenities.length - 3} more
+                                            </span>
+                                        )}
+                                        {prop.genderType && (
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border tracking-wider ${
+                                                prop.genderType === 'BOYS'
+                                                    ? 'bg-blue-50 border-blue-200 text-blue-600'
+                                                    : prop.genderType === 'GIRLS'
+                                                        ? 'bg-pink-50 border-pink-200 text-pink-600'
+                                                        : 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                            }`}>
+                                                {prop.genderType === 'BOYS' ? 'Gender - Boys' : prop.genderType === 'GIRLS' ? 'Gender - Girls' : 'Gender - CoLiving'}
                                             </span>
                                         )}
                                     </div>
