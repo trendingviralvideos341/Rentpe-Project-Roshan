@@ -422,7 +422,7 @@ export default function AdminFinancialLedgerPage() {
             {/* Premium Header */}
             <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 pt-10 pb-24 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #6366f1 0%, transparent 50%), radial-gradient(circle at 80% 20%, #8b5cf6 0%, transparent 50%)' }} />
-                <div className="max-w-7xl mx-auto relative z-10">
+                <div className="max-w-full mx-auto relative z-10">
                     <div className="flex items-start justify-between flex-wrap gap-4">
                         <div>
                             <div className="flex items-center gap-3 mb-3">
@@ -475,7 +475,7 @@ export default function AdminFinancialLedgerPage() {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 -mt-14 relative z-10 space-y-6">
+            <div className="max-w-full mx-auto px-4 -mt-14 relative z-10 space-y-6">
 
                 {/* ── TAB 1: REVENUE OVERVIEW ── */}
                 {activeTab === 'overview' && (
