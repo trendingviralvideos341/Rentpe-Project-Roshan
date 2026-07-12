@@ -1036,24 +1036,27 @@ const TABS = [
         label: "Customer Transactions",
         emoji: "📥",
         desc: "All inflows: Rent, Deposits, Tokens, Onboarding",
-        activeClass: "border-indigo-600 text-indigo-700 bg-indigo-50",
+        activeClass: "border-indigo-600 text-indigo-700 bg-indigo-50/90 shadow-sm",
         hoverClass: "hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60",
+        activeTextClass: "text-indigo-700 font-black",
     },
     {
         id: "B",
         label: "Owner Payouts Log",
         emoji: "🏦",
         desc: "Monthly settlements paid to property owners",
-        activeClass: "border-violet-600 text-violet-700 bg-violet-50",
+        activeClass: "border-violet-600 text-violet-700 bg-violet-50/90 shadow-sm",
         hoverClass: "hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50/60",
+        activeTextClass: "text-violet-700 font-black",
     },
     {
         id: "C",
         label: "Refunds Log",
         emoji: "↩️",
         desc: "All refunds — Students & Owners, Online & Offline",
-        activeClass: "border-rose-600 text-rose-700 bg-rose-50",
+        activeClass: "border-rose-600 text-rose-700 bg-rose-50/90 shadow-sm",
         hoverClass: "hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50/60",
+        activeTextClass: "text-rose-700 font-black",
     },
 ];
 
@@ -1064,11 +1067,14 @@ export default function AdminTransactionsPage() {
     const [refunds, setRefunds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Global Year & Month selection states
+    const [selectedYear, setSelectedYear] = useState<string>("ALL");
+    const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const data = await getTransactions() as any;
-            // Support both old (array) and new ({ transactions, payouts, refunds }) return shapes
             if (Array.isArray(data)) {
                 setTransactions(data);
                 setPayouts([]);
@@ -1087,20 +1093,88 @@ export default function AdminTransactionsPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const activeTabMeta = TABS.find(t => t.id === activeTab)!;
+    // Parent-level filter by selected Year and Month
+    const filterByYearAndMonth = useCallback((items: any[]) => {
+        return items.filter(item => {
+            if (!item.date) return true;
+            const d = new Date(item.date);
+            const y = d.getFullYear().toString();
+            const m = d.getMonth().toString(); // "0" is January
+
+            if (selectedYear !== "ALL" && y !== selectedYear) return false;
+            if (selectedMonth !== "ALL" && m !== selectedMonth) return false;
+            return true;
+        });
+    }, [selectedYear, selectedMonth]);
+
+    const filteredTransactions = useMemo(() => filterByYearAndMonth(transactions), [transactions, filterByYearAndMonth]);
+    const filteredPayouts = useMemo(() => filterByYearAndMonth(payouts), [payouts, filterByYearAndMonth]);
+    const filteredRefunds = useMemo(() => filterByYearAndMonth(refunds), [refunds, filterByYearAndMonth]);
 
     return (
         <div className="space-y-6 pb-10">
-            {/* Page header */}
-            <div className="flex justify-between items-start flex-wrap gap-4">
+            {/* Page header with global controls */}
+            <div className="flex justify-between items-center flex-wrap gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900">Global Transactions</h1>
                     <p className="text-slate-500 mt-1 text-sm">Complete financial ledger — inflows, owner payouts, and refunds across the platform.</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}
-                    className="rounded-xl flex items-center gap-2">
-                    <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-                </Button>
+                
+                {/* Year & Month select inputs next to refresh */}
+                <div className="flex items-center gap-3.5 flex-wrap">
+                    {/* Year selection */}
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Year</span>
+                        <div className="relative">
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(e.target.value)}
+                                className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer min-w-[110px] h-9 text-slate-700"
+                            >
+                                <option value="ALL">All Years</option>
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                    </div>
+
+                    {/* Month selection */}
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Month</span>
+                        <div className="relative">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer min-w-[130px] h-9 text-slate-700"
+                            >
+                                <option value="ALL">All Months</option>
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <span className="h-4"></span>
+                        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}
+                            className="rounded-xl flex items-center gap-2 h-9 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs">
+                            <RefreshCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+                        </Button>
+                    </div>
+                </div>
             </div>
 
             {/* Tab switcher */}
@@ -1119,7 +1193,7 @@ export default function AdminTransactionsPage() {
                     >
                         <span className="text-xl flex-shrink-0 mt-0.5">{tab.emoji}</span>
                         <div>
-                            <div className={`text-sm font-bold ${activeTab === tab.id ? "" : "text-slate-700"}`}>
+                            <div className={`text-sm ${activeTab === tab.id ? tab.activeTextClass : "text-slate-700 font-bold"}`}>
                                 Tab {tab.id}: {tab.label}
                             </div>
                             <div className="text-[11px] text-slate-400 mt-0.5 hidden sm:block">{tab.desc}</div>
@@ -1130,9 +1204,9 @@ export default function AdminTransactionsPage() {
 
             {/* Tab content */}
             <div className="transition-all duration-200">
-                {activeTab === "A" && <TabA transactions={transactions} loading={loading} />}
-                {activeTab === "B" && <TabB payouts={payouts} loading={loading} />}
-                {activeTab === "C" && <TabC refunds={refunds} loading={loading} />}
+                {activeTab === "A" && <TabA transactions={filteredTransactions} loading={loading} />}
+                {activeTab === "B" && <TabB payouts={filteredPayouts} loading={loading} />}
+                {activeTab === "C" && <TabC refunds={filteredRefunds} loading={loading} />}
             </div>
         </div>
     );
