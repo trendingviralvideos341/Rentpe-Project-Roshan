@@ -1067,9 +1067,9 @@ export default function AdminTransactionsPage() {
     const [refunds, setRefunds] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Global Year & Month selection states
-    const [selectedYear, setSelectedYear] = useState<string>("ALL");
-    const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
+    // Global Year & Month selection states (default to current date's Year and Month)
+    const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+    const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().getMonth().toString());
 
     const fetchData = useCallback(async () => {
         setLoading(true);
