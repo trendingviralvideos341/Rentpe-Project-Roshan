@@ -222,12 +222,19 @@ export async function getTransactions() {
         const payments = await prisma.payment.findMany({
             orderBy: { date: 'desc' },
             include: {
-                booking: { include: { user: true } }
+                platformFee: true,
+                booking: { 
+                    include: { 
+                        user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                        tenant: true,
+                        property: { select: { id: true, name: true, displayId: true, city: true } }
+                    } 
+                }
             },
             take: 200
         });
 
-        // Fetch token payments from bookings (stored on Booking model, NOT in Payment table)
+        // Fetch token payments from bookings
         const tokenBookings = await prisma.booking.findMany({
             where: { tokenPaidAt: { not: null } },
             orderBy: { tokenPaidAt: 'desc' },
@@ -241,7 +248,9 @@ export async function getTransactions() {
                 paymentMethod: true,
                 propertyName: true,
                 guestName: true,
-                user: { select: { id: true, name: true, email: true, displayId: true } },
+                user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                tenant: true,
+                property: { select: { id: true, name: true, displayId: true, city: true } }
             }
         });
 
@@ -260,7 +269,8 @@ export async function getTransactions() {
                     include: {
                         booking: {
                             include: {
-                                user: { select: { id: true, name: true, email: true, displayId: true } }
+                                user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                                property: { select: { id: true, name: true, displayId: true, city: true } }
                             }
                         }
                     }
@@ -278,10 +288,11 @@ export async function getTransactions() {
                 id: true,
                 displayId: true,
                 name: true,
+                city: true,
                 onboardingPaidAt: true,
                 onboardingPaymentMethod: true,
                 onboardingRazorpayId: true,
-                owner: { select: { id: true, name: true, email: true, displayId: true } }
+                owner: { select: { id: true, name: true, email: true, displayId: true, phone: true } }
             }
         });
 
@@ -292,9 +303,18 @@ export async function getTransactions() {
         const tokenRows = tokenBookings.map((b: any) => ({
             id: `TOKEN-${b.id}`,
             bookingId: b.id,
+            tenantId: b.tenant?.displayId || null,
+            propertyDetails: b.property ? { name: b.property.name, city: b.property.city, displayId: b.property.displayId } : null,
             invoiceId: null,
             depositId: null,
             amount: Number(b.tokenAmount || 1000),
+            rentAmount: Number(b.tokenAmount || 1000),
+            platformFeeAmt: 0,
+            platformGst: 0,
+            tdsAmount: 0,
+            totalPaid: Number(b.tokenAmount || 1000),
+            source: 'STUDENT',
+            destination: 'PLATFORM',
             method: b.paymentMethod === 'CASH' ? 'CASH' : 'RAZORPAY',
             status: 'VERIFIED',
             razorpayOrderId: null,
@@ -320,8 +340,19 @@ export async function getTransactions() {
             else if (p.status === 'DUPLICATE') label = '⚠️ Duplicate Capture';
             else if (p.status === 'REFUNDED') label = '🔄 Refunded Capture';
 
+            const fee = p.platformFee;
+
             return {
                 ...p,
+                tenantId: p.booking?.tenant?.displayId || null,
+                propertyDetails: p.booking?.property ? { name: p.booking.property.name, city: p.booking.property.city, displayId: p.booking.property.displayId } : null,
+                rentAmount: fee ? fee.grossAmount : p.amount,
+                platformFeeAmt: fee ? fee.customerFee : 0,
+                platformGst: fee ? fee.gstOnStudentFee : 0,
+                tdsAmount: fee ? fee.tdsAmount : 0,
+                totalPaid: fee ? fee.totalCharged : p.amount,
+                source: 'STUDENT',
+                destination: 'PLATFORM',
                 txnType: p.invoiceId ? 'RENT' : p.depositId ? 'DEPOSIT' : 'PAYMENT',
                 txnLabel: label,
             };
@@ -332,16 +363,29 @@ export async function getTransactions() {
             const booking = r.bookingId
                 ? await prisma.booking.findUnique({
                     where: { id: r.bookingId },
-                    include: { user: { select: { id: true, name: true, email: true, displayId: true } } }
+                    include: { 
+                        user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                        tenant: true,
+                        property: { select: { id: true, name: true, displayId: true, city: true } }
+                    }
                 })
                 : null;
 
             return {
                 id: `REFUND-${r.id}`,
                 bookingId: r.bookingId,
+                tenantId: booking?.tenant?.displayId || null,
+                propertyDetails: booking?.property ? { name: booking.property.name, city: booking.property.city, displayId: booking.property.displayId } : null,
                 invoiceId: null,
                 depositId: null,
                 amount: -Number(r.amount), // negative amount
+                rentAmount: -Number(r.amount),
+                platformFeeAmt: 0,
+                platformGst: 0,
+                tdsAmount: 0,
+                totalPaid: -Number(r.amount),
+                source: 'PLATFORM',
+                destination: 'STUDENT',
                 method: 'RAZORPAY',
                 status: 'REFUNDED',
                 razorpayOrderId: null,
@@ -376,9 +420,18 @@ export async function getTransactions() {
             return {
                 id: `SETTLE-${s.id}`,
                 bookingId: booking?.id || null,
+                tenantId: s.tenant?.displayId || null,
+                propertyDetails: booking?.property ? { name: booking.property.name, city: booking.property.city, displayId: booking.property.displayId } : null,
                 invoiceId: null,
                 depositId: null,
                 amount: amount,
+                rentAmount: amount,
+                platformFeeAmt: 0,
+                platformGst: 0,
+                tdsAmount: 0,
+                totalPaid: amount,
+                source: isRefund ? 'PLATFORM' : 'STUDENT',
+                destination: isRefund ? 'STUDENT' : 'PLATFORM',
                 method: 'CASH/UPI (OFFLINE)',
                 status: 'SUCCESS',
                 razorpayOrderId: null,
@@ -396,28 +449,57 @@ export async function getTransactions() {
             };
         }).filter(Boolean);
 
+        // Adjust destination for settlements:
+        // if it's a refund, source=PLATFORM, dest=STUDENT
+        // if it's a payment, source=STUDENT, dest=PLATFORM
+        settlementRows.forEach((r: any) => {
+            if (r) {
+                if (r.amount < 0) {
+                    r.source = 'PLATFORM';
+                    r.destination = 'STUDENT';
+                } else {
+                    r.source = 'STUDENT';
+                    r.destination = 'PLATFORM';
+                }
+            }
+        });
+
         // Normalize onboarding fees
-        const onboardingRows = onboardingFees.map((p: any) => ({
-            id: `ONBOARD-${p.id}`,
-            bookingId: null,
-            invoiceId: null,
-            depositId: null,
-            amount: Number(onboardingFeeAmount),
-            method: p.onboardingPaymentMethod === 'ONLINE' ? 'RAZORPAY' : (p.onboardingPaymentMethod || 'RAZORPAY'),
-            status: 'VERIFIED',
-            razorpayOrderId: null,
-            razorpayId: p.onboardingRazorpayId || null,
-            verifiedBy: null,
-            date: p.onboardingPaidAt,
-            txnType: 'PROPERTY_ONBOARDING',
-            txnLabel: '🏢 Property Onboarding Fee',
-            booking: {
-                id: null,
-                displayId: p.displayId,
-                propertyName: p.name,
-                user: p.owner, // So it shows the Owner's info under User & Property
-            },
-        }));
+        const onboardingRows = onboardingFees.map((p: any) => {
+            const base = Number((onboardingFeeAmount / 1.18).toFixed(2));
+            const gst = Number((onboardingFeeAmount - base).toFixed(2));
+            
+            return {
+                id: `ONBOARD-${p.id}`,
+                bookingId: null,
+                tenantId: null,
+                propertyDetails: { name: p.name, city: p.city, displayId: p.displayId },
+                invoiceId: null,
+                depositId: null,
+                amount: Number(onboardingFeeAmount),
+                rentAmount: 0,
+                platformFeeAmt: base,
+                platformGst: gst,
+                tdsAmount: 0,
+                totalPaid: Number(onboardingFeeAmount),
+                source: 'OWNER',
+                destination: 'PLATFORM',
+                method: p.onboardingPaymentMethod === 'ONLINE' ? 'RAZORPAY' : (p.onboardingPaymentMethod || 'RAZORPAY'),
+                status: 'VERIFIED',
+                razorpayOrderId: null,
+                razorpayId: p.onboardingRazorpayId || null,
+                verifiedBy: null,
+                date: p.onboardingPaidAt,
+                txnType: 'PROPERTY_ONBOARDING',
+                txnLabel: '🏢 Property Onboarding Fee',
+                booking: {
+                    id: null,
+                    displayId: `ONB-${p.displayId}`,
+                    propertyName: p.name,
+                    user: p.owner, // So it shows the Owner's info under User & Property
+                },
+            };
+        });
 
         // Merge and sort by date descending
         const allTxns = [...regularRows, ...tokenRows, ...refundRows, ...settlementRows, ...onboardingRows].sort(

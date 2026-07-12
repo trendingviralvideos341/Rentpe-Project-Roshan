@@ -38,8 +38,11 @@ export default function AdminTransactionsPage() {
             txn.razorpayId?.toLowerCase().includes(q) ||
             txn.booking?.user?.name?.toLowerCase().includes(q) ||
             txn.booking?.user?.email?.toLowerCase().includes(q) ||
-            txn.booking?.propertyName?.toLowerCase().includes(q) ||
-            txn.booking?.displayId?.toLowerCase().includes(q)
+            txn.booking?.user?.phone?.toLowerCase().includes(q) ||
+            txn.propertyDetails?.name?.toLowerCase().includes(q) ||
+            txn.booking?.displayId?.toLowerCase().includes(q) ||
+            txn.tenantId?.toLowerCase().includes(q) ||
+            txn.propertyDetails?.displayId?.toLowerCase().includes(q)
         );
     });
 
@@ -83,36 +86,41 @@ export default function AdminTransactionsPage() {
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <input
                                 className="pl-10 w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Search by ID, Order ID, or User..."
+                                placeholder="Search by ID, Tenant, User, or Phone..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-muted border-b">
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full text-left min-w-[1200px]">
+                            <thead className="bg-slate-50 border-b text-xs text-slate-500 uppercase tracking-wider">
                                 <tr>
-                                    <th className="p-4 text-left font-medium">Type</th>
-                                    <th className="p-4 text-left font-medium">Transaction / Ref ID</th>
-                                    <th className="p-4 text-left font-medium">User & Property</th>
-                                    <th className="p-4 text-left font-medium">Date</th>
-                                    <th className="p-4 text-left font-medium">Method</th>
-                                    <th className="p-4 text-left font-medium">Amount</th>
-                                    <th className="p-4 text-left font-medium">Status</th>
+                                    <th className="p-4 font-bold min-w-[140px]">Type & Date</th>
+                                    <th className="p-4 font-bold min-w-[130px]">Flow</th>
+                                    <th className="p-4 font-bold min-w-[110px]">Booking ID</th>
+                                    <th className="p-4 font-bold min-w-[110px]">Tenant ID</th>
+                                    <th className="p-4 font-bold min-w-[200px]">User Details</th>
+                                    <th className="p-4 font-bold min-w-[200px]">Property Details</th>
+                                    <th className="p-4 font-bold min-w-[100px] text-right">Rent Amt</th>
+                                    <th className="p-4 font-bold min-w-[90px] text-right">Plat. Fees</th>
+                                    <th className="p-4 font-bold min-w-[80px] text-right">GST</th>
+                                    <th className="p-4 font-bold min-w-[80px] text-right">TDS</th>
+                                    <th className="p-4 font-bold min-w-[120px] text-right">Total Paid</th>
+                                    <th className="p-4 font-bold min-w-[120px]">Ref & Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y">
+                            <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan={7} className="p-8 text-center animate-pulse">Loading transactions...</td></tr>
+                                    <tr><td colSpan={12} className="p-8 text-center animate-pulse">Loading transactions...</td></tr>
                                 ) : filtered.length === 0 ? (
-                                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No transactions found.</td></tr>
+                                    <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">No transactions found.</td></tr>
                                 ) : (
                                     filtered.map((txn) => (
-                                        <tr key={txn.id} className="hover:bg-muted/5 transition-colors">
-                                            {/* Type badge */}
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase whitespace-nowrap ${
+                                        <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
+                                            {/* Type & Date */}
+                                            <td className="p-4 align-top">
+                                                <div className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap ${
                                                     txn.txnType === 'TOKEN_PAYMENT' ? 'bg-teal-100 text-teal-700' :
                                                     txn.txnType === 'RENT' ? 'bg-indigo-100 text-indigo-700' :
                                                     txn.txnType === 'DEPOSIT' ? 'bg-amber-100 text-amber-700' :
@@ -120,56 +128,97 @@ export default function AdminTransactionsPage() {
                                                     txn.txnType === 'REFUND' ? 'bg-rose-100 text-rose-700' :
                                                     'bg-slate-100 text-slate-600'
                                                 }`}>
-                                                    {txn.txnLabel || txn.txnType || 'Payment'}
-                                                </span>
+                                                    {txn.txnLabel || txn.txnType}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 mt-2 font-medium">
+                                                    {new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400">
+                                                    {new Date(txn.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
                                             </td>
-                                            {/* IDs */}
-                                            <td className="p-4">
-                                                <div className="font-mono text-xs text-muted-foreground">ID: {String(txn.id).slice(0, 12)}...</div>
-                                                {txn.booking?.displayId && (
-                                                    <div className="text-[10px] text-purple-600 font-bold">Bkg: {txn.booking.displayId}</div>
-                                                )}
-                                                {(txn.razorpayId || txn.razorpayOrderId) && (
-                                                    <div className="text-[10px] text-blue-600 font-medium truncate max-w-[140px]">
-                                                        RP: {txn.razorpayId || txn.razorpayOrderId}
-                                                    </div>
-                                                )}
+                                            
+                                            {/* Flow */}
+                                            <td className="p-4 align-top">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-50 px-2 py-1 rounded w-fit">
+                                                    <span className={txn.source === 'STUDENT' ? 'text-indigo-600' : txn.source === 'OWNER' ? 'text-purple-600' : 'text-slate-600'}>{txn.source}</span>
+                                                    <span className="text-slate-300">➔</span>
+                                                    <span className={txn.destination === 'STUDENT' ? 'text-indigo-600' : txn.destination === 'PLATFORM' ? 'text-slate-600' : 'text-purple-600'}>{txn.destination}</span>
+                                                </div>
+                                                <div className="text-[9px] text-slate-400 font-mono mt-1.5 px-1 uppercase">{txn.method || '—'}</div>
                                             </td>
-                                            {/* User & property */}
-                                            <td className="p-4">
-                                                <div className="font-medium text-sm">{txn.booking?.user?.name || '—'}</div>
-                                                <div className="text-[10px] text-muted-foreground">{txn.booking?.user?.email || ''}</div>
-                                                {txn.booking?.propertyName && (
-                                                    <div className="text-[10px] text-slate-500 font-medium mt-0.5">📍 {txn.booking.propertyName}</div>
-                                                )}
+
+                                            {/* Booking ID */}
+                                            <td className="p-4 align-top">
+                                                <div className="font-mono text-xs font-bold text-slate-700">{txn.booking?.displayId || '—'}</div>
                                             </td>
-                                            {/* Date */}
-                                            <td className="p-4 text-xs text-muted-foreground">
-                                                {new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                <div className="text-[10px]">{new Date(txn.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+
+                                            {/* Tenant ID */}
+                                            <td className="p-4 align-top">
+                                                <div className="font-mono text-xs font-bold text-slate-700">{txn.tenantId || '—'}</div>
                                             </td>
-                                            {/* Method */}
-                                            <td className="p-4">
-                                                <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded font-mono uppercase">{txn.method || '—'}</span>
+
+                                            {/* User Details */}
+                                            <td className="p-4 align-top">
+                                                <div className="font-bold text-sm text-slate-800 truncate max-w-[180px]">{txn.booking?.user?.name || '—'}</div>
+                                                {txn.booking?.user?.email && <div className="text-[10px] text-slate-500 truncate max-w-[180px] mt-0.5">{txn.booking.user.email}</div>}
+                                                {txn.booking?.user?.phone && <div className="text-[10px] text-slate-500 mt-0.5">📞 {txn.booking.user.phone}</div>}
+                                                {txn.booking?.user?.displayId && <div className="text-[9px] font-mono text-indigo-400 font-bold mt-1">{txn.booking.user.displayId}</div>}
                                             </td>
-                                            {/* Amount */}
-                                            <td className={`p-4 font-bold text-sm ${Number(txn.amount) < 0 ? 'text-rose-600' : ''}`}>
-                                                {Number(txn.amount) < 0 
-                                                    ? `- ₹${Math.abs(Number(txn.amount)).toLocaleString('en-IN')}` 
-                                                    : `₹${Number(txn.amount).toLocaleString('en-IN')}`
-                                                }
+
+                                            {/* Property Details */}
+                                            <td className="p-4 align-top">
+                                                <div className="font-bold text-xs text-slate-800 truncate max-w-[180px]">{txn.propertyDetails?.name || '—'}</div>
+                                                {txn.propertyDetails?.city && <div className="text-[10px] text-slate-500 mt-0.5">📍 {txn.propertyDetails.city}</div>}
+                                                {txn.propertyDetails?.displayId && <div className="text-[9px] font-mono text-purple-500 font-bold mt-1">{txn.propertyDetails.displayId}</div>}
                                             </td>
-                                            {/* Status */}
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                                                    txn.status === 'SUCCESS' || txn.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
-                                                    txn.status === 'REFUNDED' ? 'bg-rose-100 text-rose-800' :
-                                                    txn.status === 'DUPLICATE' ? 'bg-amber-100 text-amber-800' :
-                                                    txn.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
-                                                    'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {txn.status}
-                                                </span>
+
+                                            {/* Rent Amount */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className="text-xs font-bold text-slate-700">{txn.rentAmount ? `₹${Math.abs(Number(txn.rentAmount)).toLocaleString('en-IN')}` : '—'}</div>
+                                            </td>
+
+                                            {/* Platform Fees */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className="text-xs font-medium text-slate-500">{txn.platformFeeAmt ? `₹${Number(txn.platformFeeAmt).toLocaleString('en-IN')}` : '—'}</div>
+                                            </td>
+
+                                            {/* GST */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className="text-xs font-medium text-slate-500">{txn.platformGst ? `₹${Number(txn.platformGst).toLocaleString('en-IN')}` : '—'}</div>
+                                            </td>
+
+                                            {/* TDS */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className="text-xs font-medium text-slate-500">{txn.tdsAmount ? `₹${Number(txn.tdsAmount).toLocaleString('en-IN')}` : '—'}</div>
+                                            </td>
+
+                                            {/* Total Paid */}
+                                            <td className="p-4 align-top text-right">
+                                                <div className={`text-sm font-black ${Number(txn.totalPaid) < 0 ? 'text-rose-600' : 'text-green-700'}`}>
+                                                    {Number(txn.totalPaid) < 0 ? `- ₹${Math.abs(Number(txn.totalPaid)).toLocaleString('en-IN')}` : `₹${Number(txn.totalPaid).toLocaleString('en-IN')}`}
+                                                </div>
+                                            </td>
+
+                                            {/* Ref & Status */}
+                                            <td className="p-4 align-top">
+                                                <div className="flex flex-col gap-1.5 items-start">
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                                                        txn.status === 'SUCCESS' || txn.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                                                        txn.status === 'REFUNDED' ? 'bg-rose-100 text-rose-800' :
+                                                        txn.status === 'DUPLICATE' ? 'bg-amber-100 text-amber-800' :
+                                                        txn.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+                                                        'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {txn.status}
+                                                    </span>
+                                                    <div className="text-[9px] text-slate-400 font-mono truncate max-w-[120px]" title={txn.id}>{txn.id}</div>
+                                                    {(txn.razorpayId || txn.razorpayOrderId) && (
+                                                        <div className="text-[9px] text-blue-500 font-mono font-bold truncate max-w-[120px]" title={txn.razorpayId || txn.razorpayOrderId}>
+                                                            {txn.razorpayId || txn.razorpayOrderId}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
