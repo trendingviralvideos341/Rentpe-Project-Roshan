@@ -218,300 +218,261 @@ export async function getTransactions() {
         const session = await getSession();
         if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-        // Fetch regular Payment records (rent, deposit, final payment)
-        const payments = await prisma.payment.findMany({
-            orderBy: { date: 'desc' },
-            include: {
-                platformFee: true,
-                booking: { 
-                    include: { 
+        // ── Helpers ───────────────────────────────────────────────────────────
+        const n = (v: any): number => { const x = Number(v); return isNaN(x) ? 0 : x; };
+        const dt = (d: any): number => { const t = new Date(d).getTime(); return isNaN(t) ? 0 : t; };
+
+        // ── PARALLEL DATA FETCH ──────────────────────────────────────────────
+        const [payments, tokenBookings, processedRefunds, settlements, onboardingFees, settings, ownerPayouts] = await Promise.all([
+            prisma.payment.findMany({
+                orderBy: { date: 'desc' }, take: 200,
+                include: {
+                    platformFee: true,
+                    booking: { include: {
                         user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
-                        tenant: true,
+                        tenant: { select: { displayId: true } },
                         property: { select: { id: true, name: true, displayId: true, city: true } }
-                    } 
+                    }}
                 }
-            },
-            take: 200
-        });
-
-        // Fetch token payments from bookings
-        const tokenBookings = await prisma.booking.findMany({
-            where: { tokenPaidAt: { not: null } },
-            orderBy: { tokenPaidAt: 'desc' },
-            take: 200,
-            select: {
-                id: true,
-                displayId: true,
-                tokenAmount: true,
-                tokenPaidAt: true,
-                tokenPaymentId: true,
-                paymentMethod: true,
-                propertyName: true,
-                guestName: true,
-                user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
-                tenant: true,
-                property: { select: { id: true, name: true, displayId: true, city: true } }
-            }
-        });
-
-        // Fetch processed Refund Records (processed refunds represent negative outflows)
-        const processedRefunds = await prisma.refundRecord.findMany({
-            where: { status: 'PROCESSED' },
-            orderBy: { processedAt: 'desc' },
-            take: 100
-        });
-
-        // Fetch Settlement Records
-        const settlements = await prisma.settlementRecord.findMany({
-            orderBy: { settlementDate: 'desc' },
-            include: {
-                tenant: {
-                    include: {
-                        booking: {
-                            include: {
-                                user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
-                                property: { select: { id: true, name: true, displayId: true, city: true } }
-                            }
-                        }
-                    }
+            }),
+            prisma.booking.findMany({
+                where: { tokenPaidAt: { not: null } }, orderBy: { tokenPaidAt: 'desc' }, take: 200,
+                select: {
+                    id: true, displayId: true, tokenAmount: true, tokenPaidAt: true,
+                    tokenPaymentId: true, paymentMethod: true, propertyName: true, guestName: true,
+                    user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                    tenant: { select: { displayId: true } },
+                    property: { select: { id: true, name: true, displayId: true, city: true } }
                 }
-            },
-            take: 100
-        });
+            }),
+            prisma.refundRecord.findMany({ orderBy: { processedAt: 'desc' }, take: 150 }),
+            prisma.settlementRecord.findMany({
+                orderBy: { settlementDate: 'desc' }, take: 100,
+                include: { tenant: { include: { booking: { include: {
+                    user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                    property: { select: { id: true, name: true, displayId: true, city: true } }
+                }}}}}
+            }),
+            prisma.property.findMany({
+                where: { onboardingPaidAt: { not: null } }, orderBy: { onboardingPaidAt: 'desc' }, take: 100,
+                select: { id: true, displayId: true, name: true, city: true, onboardingPaidAt: true, onboardingPaymentMethod: true, onboardingRazorpayId: true,
+                    owner: { select: { id: true, name: true, email: true, displayId: true, phone: true } }
+                }
+            }),
+            prisma.platformSettings.findUnique({ where: { id: 'singleton' } }),
+            prisma.ownerPayout.findMany({ orderBy: { createdAt: 'desc' }, take: 200 }),
+        ]);
 
-        // Fetch properties with paid onboarding fees
-        const onboardingFees = await prisma.property.findMany({
-            where: { onboardingPaidAt: { not: null } },
-            orderBy: { onboardingPaidAt: 'desc' },
-            take: 100,
-            select: {
-                id: true,
-                displayId: true,
-                name: true,
-                city: true,
-                onboardingPaidAt: true,
-                onboardingPaymentMethod: true,
-                onboardingRazorpayId: true,
-                owner: { select: { id: true, name: true, email: true, displayId: true, phone: true } }
-            }
-        });
+        const onboardingFeeAmount = n(settings?.ownerOnboardingFeeFlat) || 99;
 
-        const settings = await prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
-        const onboardingFeeAmount = settings?.ownerOnboardingFeeFlat ?? 99;
+        // ── BATCH-FETCH bookings for refunds (fixes N+1) ─────────────────────
+        const refundBookingIds = (processedRefunds as any[]).map((r: any) => r.bookingId).filter(Boolean);
+        const refundBookingsRaw = refundBookingIds.length > 0
+            ? await prisma.booking.findMany({
+                where: { id: { in: refundBookingIds } },
+                include: {
+                    user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
+                    tenant: { select: { displayId: true } },
+                    property: { select: { id: true, name: true, displayId: true, city: true } }
+                }
+            }) : [];
+        const refundBookingMap: Record<string, any> = Object.fromEntries((refundBookingsRaw as any[]).map((b: any) => [b.id, b]));
 
-        // Normalise token payments into same shape as Payment records
-        const tokenRows = tokenBookings.map((b: any) => ({
-            id: `TOKEN-${b.id}`,
-            bookingId: b.id,
+        // ── BATCH-FETCH owners + properties for payouts ───────────────────────
+        const payoutOwnerIds = [...new Set((ownerPayouts as any[]).map((p: any) => p.ownerId))];
+        const payoutPropertyIds = [...new Set((ownerPayouts as any[]).map((p: any) => p.propertyId).filter(Boolean))];
+        const [payoutOwners, payoutProperties] = await Promise.all([
+            payoutOwnerIds.length > 0 ? prisma.user.findMany({ where: { id: { in: payoutOwnerIds } }, select: { id: true, name: true, email: true, displayId: true, phone: true } }) : [],
+            payoutPropertyIds.length > 0 ? prisma.property.findMany({ where: { id: { in: payoutPropertyIds } }, select: { id: true, name: true, displayId: true, city: true } }) : [],
+        ]);
+        const ownerMap: Record<string, any> = Object.fromEntries((payoutOwners as any[]).map((o: any) => [o.id, o]));
+        const propertyMap: Record<string, any> = Object.fromEntries((payoutProperties as any[]).map((p: any) => [p.id, p]));
+
+        // ── BATCH-FETCH PlatformFee for payout GST/TDS aggregation ───────────
+        const payoutBookingIdMap: Record<string, string[]> = {};
+        const allPayoutBookingIds: string[] = [];
+        for (const p of ownerPayouts as any[]) {
+            let ids: string[] = [];
+            try { ids = JSON.parse(p.bookingIds || '[]'); } catch { ids = []; }
+            payoutBookingIdMap[p.id] = ids;
+            allPayoutBookingIds.push(...ids);
+        }
+        const allPlatformFees = allPayoutBookingIds.length > 0
+            ? await prisma.platformFee.findMany({ where: { bookingId: { in: [...new Set(allPayoutBookingIds)] } }, select: { bookingId: true, gstOnOwnerFee: true, tdsAmount: true } })
+            : [];
+        const feeByBooking: Record<string, any> = {};
+        for (const fee of allPlatformFees as any[]) { feeByBooking[fee.bookingId] = fee; }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // TAB A — TRANSACTION ROWS
+        // ─────────────────────────────────────────────────────────────────────
+
+        const tokenRows = (tokenBookings as any[]).map((b: any) => ({
+            id: `TOKEN-${b.id}`, bookingId: b.id,
             tenantId: b.tenant?.displayId || null,
             propertyDetails: b.property ? { name: b.property.name, city: b.property.city, displayId: b.property.displayId } : null,
-            invoiceId: null,
-            depositId: null,
-            amount: Number(b.tokenAmount || 1000),
-            rentAmount: Number(b.tokenAmount || 1000),
-            platformFeeAmt: 0,
-            platformGst: 0,
-            tdsAmount: 0,
-            totalPaid: Number(b.tokenAmount || 1000),
-            source: 'STUDENT',
-            destination: 'PLATFORM',
+            invoiceId: null, depositId: null,
+            amount: n(b.tokenAmount) || 1000, rentAmount: n(b.tokenAmount) || 1000,
+            platformFeeAmt: 0, platformGst: 0, tdsAmount: 0, totalPaid: n(b.tokenAmount) || 1000,
+            source: 'STUDENT', destination: 'PLATFORM',
             method: b.paymentMethod === 'CASH' ? 'CASH' : 'RAZORPAY',
-            status: 'VERIFIED',
-            razorpayOrderId: null,
-            razorpayId: b.tokenPaymentId || null,
-            verifiedBy: null,
-            date: b.tokenPaidAt,
-            // Extra fields to display in UI
-            txnType: 'TOKEN_PAYMENT',
-            txnLabel: '🔐 Token / Room Lock',
-            booking: {
-                id: b.id,
-                displayId: b.displayId,
-                propertyName: b.propertyName,
-                user: b.user,
-            },
+            status: 'VERIFIED', razorpayOrderId: null, razorpayId: b.tokenPaymentId || null, verifiedBy: null,
+            date: b.tokenPaidAt, txnType: 'TOKEN_PAYMENT', txnLabel: '🔐 Token / Room Lock',
+            booking: { id: b.id, displayId: b.displayId, propertyName: b.propertyName, user: b.user },
         }));
 
-        // Tag regular payments
-        const regularRows = payments.map((p: any) => {
+        const regularRows = (payments as any[]).map((p: any) => {
+            const fee = p.platformFee;
             let label = '💳 Payment';
             if (p.invoiceId) label = '📄 Rent Payment';
             else if (p.depositId) label = '🔒 Security Deposit';
             else if (p.status === 'DUPLICATE') label = '⚠️ Duplicate Capture';
             else if (p.status === 'REFUNDED') label = '🔄 Refunded Capture';
-
-            const fee = p.platformFee;
-
             return {
-                ...p,
+                id: p.id, bookingId: p.bookingId, invoiceId: p.invoiceId, depositId: p.depositId,
                 tenantId: p.booking?.tenant?.displayId || null,
                 propertyDetails: p.booking?.property ? { name: p.booking.property.name, city: p.booking.property.city, displayId: p.booking.property.displayId } : null,
-                rentAmount: fee ? fee.grossAmount : p.amount,
-                platformFeeAmt: fee ? fee.customerFee : 0,
-                platformGst: fee ? fee.gstOnStudentFee : 0,
-                tdsAmount: fee ? fee.tdsAmount : 0,
-                totalPaid: fee ? fee.totalCharged : p.amount,
-                source: 'STUDENT',
-                destination: 'PLATFORM',
+                amount: n(p.amount),
+                rentAmount: fee ? n(fee.grossAmount) : n(p.amount),
+                platformFeeAmt: fee ? n(fee.customerFee) : 0,
+                platformGst: fee ? n(fee.gstOnStudentFee) : 0,
+                tdsAmount: fee ? n(fee.tdsAmount) : 0,
+                totalPaid: fee ? n(fee.totalCharged) : n(p.amount),
+                source: 'STUDENT', destination: 'PLATFORM', method: p.method, status: p.status,
+                razorpayOrderId: p.razorpayOrderId, razorpayId: p.razorpayId, verifiedBy: p.verifiedBy,
+                date: p.date,
                 txnType: p.invoiceId ? 'RENT' : p.depositId ? 'DEPOSIT' : 'PAYMENT',
                 txnLabel: label,
+                booking: p.booking ? { id: p.booking.id, displayId: p.booking.displayId, propertyName: p.booking.propertyName, user: p.booking.user } : null,
             };
         });
 
-        // Normalise processed refunds into same shape as Payment records
-        const refundRows = await Promise.all(processedRefunds.map(async (r: any) => {
-            const booking = r.bookingId
-                ? await prisma.booking.findUnique({
-                    where: { id: r.bookingId },
-                    include: { 
-                        user: { select: { id: true, name: true, email: true, displayId: true, phone: true } },
-                        tenant: true,
-                        property: { select: { id: true, name: true, displayId: true, city: true } }
-                    }
-                })
-                : null;
-
-            return {
-                id: `REFUND-${r.id}`,
-                bookingId: r.bookingId,
-                tenantId: booking?.tenant?.displayId || null,
-                propertyDetails: booking?.property ? { name: booking.property.name, city: booking.property.city, displayId: booking.property.displayId } : null,
-                invoiceId: null,
-                depositId: null,
-                amount: -Number(r.amount), // negative amount
-                rentAmount: -Number(r.amount),
-                platformFeeAmt: 0,
-                platformGst: 0,
-                tdsAmount: 0,
-                totalPaid: -Number(r.amount),
-                source: 'PLATFORM',
-                destination: 'STUDENT',
-                method: 'RAZORPAY',
-                status: 'REFUNDED',
-                razorpayOrderId: null,
-                razorpayId: r.txnReference || null,
-                verifiedBy: null,
-                date: r.processedAt || r.createdAt,
-                txnType: 'REFUND',
-                txnLabel: '🔄 Processed Refund',
-                booking: booking ? {
-                    id: booking.id,
-                    displayId: booking.displayId,
-                    propertyName: booking.propertyName,
-                    user: booking.user,
-                } : null,
-            };
-        }));
-
-        // Normalise settlements into same shape as Payment records
-        const settlementRows = settlements.map((s: any) => {
+        // Only positive settlement amounts go to Tab A (inflows = damage recovery)
+        const settlementRows = (settlements as any[]).map((s: any) => {
             const booking = s.tenant?.booking;
-            const rent = Number(s.tenant?.rent || 0);
-            const netRefund = Number(s.depositRefunded);
-            
-            // Calculate if tenant owed more than deposit
-            const netOwedByTenant = s.finalRentPending + s.damageDeductions - rent;
-            
-            const isRefund = netRefund > 0;
-            const amount = isRefund ? -netRefund : (netOwedByTenant > 0 ? netOwedByTenant : 0);
-            
-            if (amount === 0) return null; // Ignore cleared with zero net transaction
-            
+            const netOwedByTenant = n(s.finalRentPending) + n(s.damageDeductions) - n(s.tenant?.rent);
+            if (netOwedByTenant <= 0) return null;
             return {
-                id: `SETTLE-${s.id}`,
-                bookingId: booking?.id || null,
+                id: `SETTLE-${s.id}`, bookingId: booking?.id || null,
                 tenantId: s.tenant?.displayId || null,
                 propertyDetails: booking?.property ? { name: booking.property.name, city: booking.property.city, displayId: booking.property.displayId } : null,
-                invoiceId: null,
-                depositId: null,
-                amount: amount,
-                rentAmount: amount,
-                platformFeeAmt: 0,
-                platformGst: 0,
-                tdsAmount: 0,
-                totalPaid: amount,
-                source: isRefund ? 'PLATFORM' : 'STUDENT',
-                destination: isRefund ? 'STUDENT' : 'PLATFORM',
-                method: 'CASH/UPI (OFFLINE)',
-                status: 'SUCCESS',
-                razorpayOrderId: null,
-                razorpayId: null,
-                verifiedBy: 'OWNER_SETTLEMENT',
+                invoiceId: null, depositId: null,
+                amount: netOwedByTenant, rentAmount: netOwedByTenant,
+                platformFeeAmt: 0, platformGst: 0, tdsAmount: 0, totalPaid: netOwedByTenant,
+                source: 'STUDENT', destination: 'PLATFORM', method: 'OFFLINE', status: 'SUCCESS',
+                razorpayOrderId: null, razorpayId: null, verifiedBy: 'OWNER_SETTLEMENT',
                 date: s.settlementDate || s.createdAt,
-                txnType: isRefund ? 'REFUND' : 'PAYMENT',
-                txnLabel: isRefund ? '🔄 Move-out Refund' : '📥 Damage Recovery',
-                booking: booking ? {
-                    id: booking.id,
-                    displayId: booking.displayId,
-                    propertyName: s.tenant.propertyName || booking.propertyName,
-                    user: booking.user,
-                } : null,
+                txnType: 'DAMAGE_RECOVERY', txnLabel: '⚡ Damage Recovery',
+                booking: booking ? { id: booking.id, displayId: booking.displayId, propertyName: booking.propertyName, user: booking.user } : null,
             };
         }).filter(Boolean);
 
-        // Adjust destination for settlements:
-        // if it's a refund, source=PLATFORM, dest=STUDENT
-        // if it's a payment, source=STUDENT, dest=PLATFORM
-        settlementRows.forEach((r: any) => {
-            if (r) {
-                if (r.amount < 0) {
-                    r.source = 'PLATFORM';
-                    r.destination = 'STUDENT';
-                } else {
-                    r.source = 'STUDENT';
-                    r.destination = 'PLATFORM';
-                }
-            }
-        });
-
-        // Normalize onboarding fees
-        const onboardingRows = onboardingFees.map((p: any) => {
-            const base = Number((onboardingFeeAmount / 1.18).toFixed(2));
-            const gst = Number((onboardingFeeAmount - base).toFixed(2));
-            
+        const onboardingRows = (onboardingFees as any[]).map((p: any) => {
+            const base = onboardingFeeAmount > 0 ? Number((onboardingFeeAmount / 1.18).toFixed(2)) : 0;
+            const gst = onboardingFeeAmount > 0 ? Number((onboardingFeeAmount - base).toFixed(2)) : 0;
             return {
-                id: `ONBOARD-${p.id}`,
-                bookingId: null,
-                tenantId: null,
+                id: `ONBOARD-${p.id}`, bookingId: null, tenantId: null,
                 propertyDetails: { name: p.name, city: p.city, displayId: p.displayId },
-                invoiceId: null,
-                depositId: null,
-                amount: Number(onboardingFeeAmount),
-                rentAmount: 0,
-                platformFeeAmt: base,
-                platformGst: gst,
-                tdsAmount: 0,
-                totalPaid: Number(onboardingFeeAmount),
-                source: 'OWNER',
-                destination: 'PLATFORM',
+                invoiceId: null, depositId: null,
+                amount: n(onboardingFeeAmount), rentAmount: 0,
+                platformFeeAmt: base, platformGst: gst, tdsAmount: 0, totalPaid: n(onboardingFeeAmount),
+                source: 'OWNER', destination: 'PLATFORM',
                 method: p.onboardingPaymentMethod === 'ONLINE' ? 'RAZORPAY' : (p.onboardingPaymentMethod || 'RAZORPAY'),
-                status: 'VERIFIED',
-                razorpayOrderId: null,
-                razorpayId: p.onboardingRazorpayId || null,
-                verifiedBy: null,
-                date: p.onboardingPaidAt,
-                txnType: 'PROPERTY_ONBOARDING',
-                txnLabel: '🏢 Property Onboarding Fee',
-                booking: {
-                    id: null,
-                    displayId: `ONB-${p.displayId}`,
-                    propertyName: p.name,
-                    user: p.owner, // So it shows the Owner's info under User & Property
-                },
+                status: 'VERIFIED', razorpayOrderId: null, razorpayId: p.onboardingRazorpayId || null, verifiedBy: null,
+                date: p.onboardingPaidAt, txnType: 'PROPERTY_ONBOARDING', txnLabel: '🏢 Property Onboarding Fee',
+                booking: { id: null, displayId: `ONB-${p.displayId}`, propertyName: p.name, user: p.owner },
             };
         });
 
-        // Merge and sort by date descending
-        const allTxns = [...regularRows, ...tokenRows, ...refundRows, ...settlementRows, ...onboardingRows].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
+        const allTxns = [...regularRows, ...tokenRows, ...(settlementRows as any[]), ...onboardingRows]
+            .sort((a: any, b: any) => dt(b.date) - dt(a.date))
+            .slice(0, 300);
 
-        return allTxns.slice(0, 300);
+        // ─────────────────────────────────────────────────────────────────────
+        // TAB B — OWNER PAYOUTS
+        // ─────────────────────────────────────────────────────────────────────
+
+        const payoutRows = (ownerPayouts as any[]).map((p: any) => {
+            const bookingIds: string[] = payoutBookingIdMap[p.id] || [];
+            let gstOnOwnerFeeTotal = 0, tdsTotal = 0;
+            for (const bid of bookingIds) {
+                const fee = feeByBooking[bid];
+                if (fee) { gstOnOwnerFeeTotal += n(fee.gstOnOwnerFee); tdsTotal += n(fee.tdsAmount); }
+            }
+            const owner = ownerMap[p.ownerId] || null;
+            const property = p.propertyId ? propertyMap[p.propertyId] || null : null;
+            return {
+                id: p.id, displayId: p.displayId, type: 'RENT_SETTLEMENT',
+                period: p.period, status: p.status, paymentMode: p.paymentMode || null,
+                txnReference: p.txnReference || null, paidAt: p.paidAt, scheduledFor: p.scheduledFor,
+                createdAt: p.createdAt, date: p.paidAt || p.scheduledFor || p.createdAt,
+                grossAmount: n(p.grossAmount), commissionAmount: n(p.commissionAmount),
+                gstOnOwnerFee: gstOnOwnerFeeTotal, tdsAmount: tdsTotal, netAmount: n(p.netAmount),
+                bookingCount: bookingIds.length, notes: p.notes || null,
+                owner: owner ? { id: owner.id, name: owner.name, email: owner.email, displayId: owner.displayId, phone: owner.phone } : null,
+                property: property ? { id: property.id, name: property.name, displayId: property.displayId, city: property.city } : null,
+                // SECURITY: bankAccountNoEncrypted and bankIfscEncrypted intentionally excluded
+            };
+        }).sort((a: any, b: any) => dt(b.date) - dt(a.date));
+
+        // ─────────────────────────────────────────────────────────────────────
+        // TAB C — REFUNDS
+        // ─────────────────────────────────────────────────────────────────────
+
+        const refundRows = (processedRefunds as any[]).map((r: any) => {
+            const booking = refundBookingMap[r.bookingId] || null;
+            const reasonLower = (r.reason || '').toLowerCase();
+            let refundTypeDerived = 'CANCELLATION_REFUND';
+            if (reasonLower.includes('damage')) refundTypeDerived = 'DAMAGE_RECOVERY_REFUND';
+            else if (reasonLower.includes('duplicate')) refundTypeDerived = 'DUPLICATE_REFUND';
+            else if (reasonLower.includes('overcharge') || reasonLower.includes('fee')) refundTypeDerived = 'ONBOARDING_REFUND';
+            return {
+                id: r.id, displayId: r.displayId, type: refundTypeDerived, recipientType: 'STUDENT',
+                reason: r.reason, refundType: r.refundType, status: r.status,
+                date: r.processedAt || r.initiatedAt || r.createdAt,
+                initiatedAt: r.initiatedAt, processedAt: r.processedAt,
+                amount: n(r.amount), platformFeeRefunded: n(r.platformFeeRefunded), gstRefunded: n(r.gstRefunded),
+                netRefunded: n(r.amount) + n(r.platformFeeRefunded),
+                txnReference: r.txnReference || null, creditNoteId: r.creditNoteId || null,
+                method: r.txnReference ? 'RAZORPAY' : 'OFFLINE', notes: r.notes || null,
+                bookingId: r.bookingId, bookingDisplayId: booking?.displayId || null,
+                tenantId: booking?.tenant?.displayId || null,
+                recipient: booking?.user ? { name: booking.user.name, email: booking.user.email, phone: booking.user.phone, displayId: booking.user.displayId } : null,
+                property: booking?.property ? { name: booking.property.name, city: booking.property.city, displayId: booking.property.displayId } : null,
+            };
+        });
+
+        // Offline deposit settlements also go to Tab C as outflows
+        const settlementRefundRows = (settlements as any[]).filter((s: any) => n(s.depositRefunded) > 0).map((s: any) => {
+            const booking = s.tenant?.booking;
+            return {
+                id: `SETTLE-REFUND-${s.id}`, displayId: `SRF-${s.id.slice(-8)}`,
+                type: 'OFFLINE_SETTLEMENT', recipientType: 'STUDENT',
+                reason: s.notes || 'Move-out deposit settlement — owner refunded directly',
+                refundType: 'PARTIAL', status: 'PROCESSED',
+                date: s.settlementDate || s.createdAt, initiatedAt: s.createdAt, processedAt: s.settlementDate,
+                amount: n(s.depositRefunded), platformFeeRefunded: 0, gstRefunded: 0,
+                netRefunded: n(s.depositRefunded),
+                txnReference: null, creditNoteId: null, method: 'OFFLINE',
+                notes: `Deposit Refunded: ₹${n(s.depositRefunded).toLocaleString('en-IN')} | Damage Deductions: ₹${n(s.damageDeductions).toLocaleString('en-IN')} | Utility Charges: ₹${n(s.utilityCharges).toLocaleString('en-IN')}`,
+                bookingId: booking?.id || null, bookingDisplayId: booking?.displayId || null,
+                tenantId: s.tenant?.displayId || null,
+                recipient: booking?.user ? { name: booking.user.name, email: booking.user.email, phone: booking.user.phone, displayId: booking.user.displayId } : null,
+                property: booking?.property ? { name: booking.property.name, city: booking.property.city, displayId: booking.property.displayId } : null,
+            };
+        });
+
+        const allRefunds = [...refundRows, ...settlementRefundRows]
+            .sort((a: any, b: any) => dt(b.date) - dt(a.date));
+
+        return { transactions: allTxns, payouts: payoutRows, refunds: allRefunds };
+
     } catch (e) {
-        console.error("getTransactions Error:", e);
-        return [];
+        console.error('getTransactions Error:', e);
+        return { transactions: [], payouts: [], refunds: [] };
     }
 }
+
 
 export async function getUserById(userId: string) {
     try {
