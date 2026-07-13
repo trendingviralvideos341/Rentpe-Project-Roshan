@@ -233,12 +233,12 @@ export default function PropertyDetailPage() {
                             <div>
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-3xl font-bold">{property.name}</h1>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                        property.genderType === 'Boys' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                        property.genderType === 'Girls' ? 'bg-pink-100 text-pink-700 border-pink-200' :
-                                        'bg-purple-100 text-purple-700 border-purple-200'
-                                    } border`}>
-                                        Gender - {property.genderType === 'CoLiving(Boys/Girls) both' || property.genderType === 'Co-ed' || property.genderType === 'COED' ? 'Co-Living' : property.genderType}
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border tracking-wider ${
+                                        property.genderType === 'Boys' ? 'bg-blue-50 border-blue-200 text-blue-600' :
+                                        property.genderType === 'Girls' ? 'bg-pink-50 border-pink-200 text-pink-600' :
+                                        'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                    }`}>
+                                        Gender - {property.genderType === 'CoLiving(Boys/Girls) both' || property.genderType === 'Co-ed' || property.genderType === 'COED' ? 'CoLiving' : property.genderType}
                                     </span>
                                 </div>
                                 <div className="flex items-center text-muted-foreground mt-2">
@@ -574,12 +574,17 @@ export default function PropertyDetailPage() {
                                     <label className="text-sm font-medium">Stay Gender Type <span className="text-red-500">*</span></label>
                                     <select
                                         value={formData.stayGender}
+                                        disabled={property?.genderType === "Boys" || property?.genderType === "Girls"}
                                         onChange={(e) => {
                                             setFormData(p => ({ ...p, stayGender: e.target.value }));
                                             if (fieldErrors.stayGender) setFieldErrors(p => { const n = { ...p }; delete n.stayGender; return n; });
                                         }}
-                                        className={`w-full h-10 px-3 rounded-md border-2 bg-white text-sm ${
-                                            fieldErrors.stayGender ? "border-red-400 focus:border-red-500 outline-none ring-1 ring-red-200" : "border-slate-200 focus:border-blue-500 outline-none"
+                                        className={`w-full h-10 px-3 rounded-md border-2 text-sm outline-none transition-colors ${
+                                            (property?.genderType === "Boys" || property?.genderType === "Girls")
+                                                ? "bg-gray-100 cursor-not-allowed border-gray-200 text-gray-500 font-bold"
+                                                : fieldErrors.stayGender
+                                                    ? "bg-white border-red-400 focus:border-red-500 ring-1 ring-red-200"
+                                                    : "bg-white border-slate-200 focus:border-blue-500"
                                         }`}
                                     >
                                         <option value="" disabled>Select Gender Type</option>
