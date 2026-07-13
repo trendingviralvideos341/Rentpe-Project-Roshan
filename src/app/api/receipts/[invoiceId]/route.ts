@@ -350,8 +350,10 @@ export async function GET(
         // ───────────────────────────────────────────────────────────────────────
         // PAGE 1: STUDENT RENT RECEIPT (HRA-Compliant)
         // ───────────────────────────────────────────────────────────────────────
-        const isOwnerOrAdmin = (session as any).role === "OWNER" || (session as any).role === "OWNER_STAFF" || (session as any).role === "ADMIN" || (session as any).role === "ADMIN_STAFF";
-        const copyLabel = isOwnerOrAdmin ? "LANDLORD COPY" : "TENANT COPY";
+        const isActuallyOwnerOrAdmin = (session as any).role === "OWNER" || (session as any).role === "OWNER_STAFF" || (session as any).role === "ADMIN" || (session as any).role === "ADMIN_STAFF";
+        const forceTenantCopy = req.nextUrl.searchParams.get("copy") === "tenant";
+        const showOwnerCopy = isActuallyOwnerOrAdmin && !forceTenantCopy;
+        const copyLabel = showOwnerCopy ? "LANDLORD COPY" : "TENANT COPY";
         drawPageBorder(doc);
         drawHeader(doc, "RENT RECEIPT", `#${studentReceiptNo}`, "✓  PAID", [16, 185, 129], copyLabel);
 
@@ -460,7 +462,7 @@ export async function GET(
         // ═══════════════════════════════════════════════════════════════════════
         // PAGE 2: PLATFORM FEE TAX INVOICE (GST Compliance — Owner View)
         // ═══════════════════════════════════════════════════════════════════════
-        if (feesApplied) {
+        if (feesApplied && showOwnerCopy) {
             doc.addPage();
             drawPageBorder(doc);
 
