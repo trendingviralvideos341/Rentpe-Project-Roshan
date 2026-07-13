@@ -299,6 +299,7 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
     const totalGST = filtered.reduce((s, t) => s + Number(t.platformGst || 0), 0);
     const totalPlatformFees = filtered.reduce((s, t) => s + Number(t.platformFeeAmt || 0), 0);
     const totalTDS = filtered.reduce((s, t) => s + Number(t.tdsAmount || 0), 0);
+    const totalDeposits = filtered.filter(t => t.txnType === 'DEPOSIT').reduce((s, t) => s + Number(t.amount || 0), 0);
 
     const csvHeaders = [
         { key: "txnType", label: "Type" },
@@ -312,11 +313,12 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
         { key: "_userEmail", label: "User Email" },
         { key: "_userPhone", label: "User Phone" },
         { key: "_userId", label: "User ID" },
-        { key: "_rentAmt", label: "Rent Amount" },
+        { key: "_rentAmt", label: "Rent Amount (Taxable)" },
+        { key: "_depositAmt", label: "Security Deposit (Non-Taxable)" },
         { key: "_platFee", label: "Platform Fee" },
         { key: "_onbFee", label: "Onboarding Fee" },
-        { key: "_gst", label: "GST" },
-        { key: "_tds", label: "TDS" },
+        { key: "_gst", label: "GST (18%)" },
+        { key: "_tds", label: "TDS (Sec 194-O 1%)" },
         { key: "_total", label: "Total Paid" },
         { key: "method", label: "Method" },
         { key: "status", label: "Status" },
@@ -333,7 +335,8 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
         _userEmail: t.booking?.user?.email || "—",
         _userPhone: t.booking?.user?.phone || "—",
         _userId: t.booking?.user?.displayId || "—",
-        _rentAmt: Number(t.rentAmount || 0),
+        _rentAmt: t.txnType === 'DEPOSIT' ? 0 : Number(t.rentAmount || 0),
+        _depositAmt: t.txnType === 'DEPOSIT' ? Number(t.amount || 0) : 0,
         _platFee: t.txnType !== "PROPERTY_ONBOARDING" ? Number(t.platformFeeAmt || 0) : 0,
         _onbFee: t.txnType === "PROPERTY_ONBOARDING" ? Number(t.platformFeeAmt || 0) : 0,
         _gst: Number(t.platformGst || 0),
@@ -348,8 +351,8 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
             {/* Stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Total Inflows" value={fmtShort(totalInflow)} sub={`${filtered.length} records`} icon={TrendingUp} color="indigo" />
-                <StatCard label="Platform Fees" value={fmtShort(totalPlatformFees)} icon={CreditCard} color="cyan" />
-                <StatCard label="GST Collected" value={fmtShort(totalGST)} sub="18% on fees" icon={Receipt} color="amber" />
+                <StatCard label="Deposits Held" value={fmtShort(totalDeposits)} sub="Non-taxable liability" icon={AlertCircle} color="amber" />
+                <StatCard label="GST Collected" value={fmtShort(totalGST)} sub="18% on fees" icon={Receipt} color="cyan" />
                 <StatCard label="TDS Deducted" value={fmtShort(totalTDS)} sub="Sec 194-O" icon={IndianRupee} color="emerald" />
             </div>
 
@@ -422,7 +425,7 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
             <Card>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto w-full">
-                        <table className="w-full text-left min-w-[1500px]">
+                        <table className="w-full text-left min-w-[1600px]">
                             <thead className="bg-gradient-to-r from-indigo-50 to-slate-50 border-b border-indigo-100 text-[11px] text-slate-500 uppercase tracking-wider sticky top-0 z-10">
                                 <tr>
                                     <th className="p-3.5 font-bold min-w-[130px]">Type & Date</th>
@@ -431,7 +434,8 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
                                     <th className="p-3.5 font-bold min-w-[120px]">Tenant ID</th>
                                     <th className="p-3.5 font-bold min-w-[180px]">Property Details</th>
                                     <th className="p-3.5 font-bold min-w-[180px]">User Details</th>
-                                    <th className="p-3.5 font-bold min-w-[110px] text-right">Rent Amt</th>
+                                    <th className="p-3.5 font-bold min-w-[110px] text-right">Rent (Taxable)</th>
+                                    <th className="p-3.5 font-bold min-w-[130px] text-right">Deposit (Non-Tax)</th>
                                     <th className="p-3.5 font-bold min-w-[110px] text-right">Plat. Fees</th>
                                     <th className="p-3.5 font-bold min-w-[130px] text-right">Onboarding Fee</th>
                                     <th className="p-3.5 font-bold min-w-[90px] text-right">GST</th>
@@ -442,10 +446,16 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan={13} className="p-10 text-center">
-                                        <div className="flex items-center justify-center gap-3 text-slate-400">
-                                            <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                                            Loading transactions...
+                                    <tr><td colSpan={14} className="p-6">
+                                        <div className="space-y-2.5">
+                                            {[...Array(6)].map((_, i) => (
+                                                <div key={i} className="flex gap-3">
+                                                    <div className="h-8 bg-slate-100 animate-pulse rounded-lg w-24" />
+                                                    <div className="h-8 bg-slate-100 animate-pulse rounded-lg flex-1" />
+                                                    <div className="h-8 bg-slate-100 animate-pulse rounded-lg w-20" />
+                                                    <div className="h-8 bg-slate-100 animate-pulse rounded-lg w-24" />
+                                                </div>
+                                            ))}
                                         </div>
                                     </td></tr>
                                 ) : filtered.length === 0 ? (
@@ -482,26 +492,32 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
                                             {txn.booking?.user?.phone && <div className="text-[10px] text-slate-400 mt-0.5">📞 {txn.booking.user.phone}</div>}
                                             {txn.booking?.user?.displayId && <div className="text-[10px] font-mono text-indigo-400 font-bold mt-0.5">{txn.booking.user.displayId}</div>}
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
-                                            <div className="text-sm font-bold text-slate-700">{txn.rentAmount ? fmtShort(Math.abs(Number(txn.rentAmount))) : "—"}</div>
+                                        <td className="p-3.5 align-top text-right tabular-nums">
+                                            <div className="text-sm font-bold text-indigo-700">{txn.txnType !== 'DEPOSIT' && txn.rentAmount ? fmtShort(Math.abs(Number(txn.rentAmount))) : "—"}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
+                                            <div className="text-sm font-bold text-amber-700">
+                                                {txn.txnType === 'DEPOSIT' ? fmtShort(Number(txn.amount || 0)) : "—"}
+                                            </div>
+                                            {txn.txnType === 'DEPOSIT' && <div className="text-[9px] text-amber-500 font-bold mt-0.5 uppercase">Non-Taxable</div>}
+                                        </td>
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-slate-500">
                                                 {txn.txnType !== "PROPERTY_ONBOARDING" && txn.platformFeeAmt ? fmtShort(Number(txn.platformFeeAmt)) : "—"}
                                             </div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-purple-600">
                                                 {txn.txnType === "PROPERTY_ONBOARDING" && txn.platformFeeAmt ? fmtShort(Number(txn.platformFeeAmt)) : "—"}
                                             </div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-amber-600">{txn.platformGst ? fmtShort(Number(txn.platformGst)) : "—"}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-emerald-600">{txn.tdsAmount ? fmtShort(Number(txn.tdsAmount)) : "—"}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className={`text-sm font-black ${Number(txn.totalPaid) < 0 ? "text-rose-600" : "text-emerald-700"}`}>
                                                 {Number(txn.totalPaid) < 0
                                                     ? `- ${fmtShort(Math.abs(Number(txn.totalPaid)))}`
@@ -513,7 +529,7 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
                                                 <StatusBadge status={txn.status} />
                                                 <div className="text-[10px] text-slate-400 font-mono truncate max-w-[120px]" title={txn.id}>{txn.id?.slice(0, 12)}…</div>
                                                 {txn.razorpayId && (
-                                                    <div className="text-[10px] text-blue-500 font-mono font-bold truncate max-w-[120px]" title={txn.razorpayId}>{txn.razorpayId}</div>
+                                                    <button onClick={() => navigator.clipboard.writeText(txn.razorpayId)} className="text-[10px] text-blue-500 font-mono font-bold truncate max-w-[120px] hover:text-blue-700 text-left" title={`Copy: ${txn.razorpayId}`}>{txn.razorpayId?.slice(0, 16)}…</button>
                                                 )}
                                             </div>
                                         </td>
@@ -685,10 +701,16 @@ function TabB({ payouts, loading }: { payouts: any[]; loading: boolean }) {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan={13} className="p-10 text-center">
-                                        <div className="flex items-center justify-center gap-3 text-slate-400">
-                                            <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                                            Loading payouts...
+                                    <tr><td colSpan={13} className="p-6">
+                                        <div className="space-y-2.5">
+                                            {[...Array(5)].map((_, i) => (
+                                                <div key={i} className="flex gap-3">
+                                                    <div className="h-8 bg-violet-50 animate-pulse rounded-lg w-24" />
+                                                    <div className="h-8 bg-violet-50 animate-pulse rounded-lg flex-1" />
+                                                    <div className="h-8 bg-violet-50 animate-pulse rounded-lg w-20" />
+                                                    <div className="h-8 bg-violet-50 animate-pulse rounded-lg w-28" />
+                                                </div>
+                                            ))}
                                         </div>
                                     </td></tr>
                                 ) : filtered.length === 0 ? (
@@ -721,24 +743,24 @@ function TabB({ payouts, loading }: { payouts: any[]; loading: boolean }) {
                                             {p.property?.city && <div className="text-[10px] text-slate-400 mt-0.5">📍 {p.property.city}</div>}
                                             {p.property?.displayId && <div className="text-[10px] font-mono text-violet-500 font-bold mt-0.5">{p.property.displayId}</div>}
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-bold text-emerald-700">{fmt(p.grossAmount)}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-rose-600">- {fmt(p.commissionAmount)}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-amber-600">- {fmt(p.gstOnOwnerFee || 0)}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-orange-600">- {fmt(p.tdsAmount || 0)}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
-                                            <div className="text-base font-black text-rose-700">- {fmt(p.netAmount)}</div>
+                                        <td className="p-3.5 align-top text-right tabular-nums">
+                                            <div className="text-base font-black text-violet-700">{fmt(p.netAmount)}</div>
                                         </td>
                                         <td className="p-3.5 align-top">
                                             {p.txnReference
-                                                ? <div className="text-[10px] font-mono text-blue-600 font-bold break-all">{p.txnReference}</div>
+                                                ? <button onClick={() => navigator.clipboard.writeText(p.txnReference)} className="text-[10px] font-mono text-blue-600 font-bold break-all hover:text-blue-800 text-left" title={`Copy UTR: ${p.txnReference}`}>{p.txnReference}</button>
                                                 : <div className="text-[10px] text-slate-400">—</div>
                                             }
                                             {p.notes && <div className="text-[10px] text-slate-400 mt-1 line-clamp-2">{p.notes}</div>}
@@ -843,13 +865,21 @@ function TabC({ refunds, loading }: { refunds: any[]; loading: boolean }) {
 
     const hasActiveFilter = !typeFilter.includes("ALL") || !recipientFilter.includes("ALL") || !methodFilter.includes("ALL") || !statusFilter.includes("ALL") || dateFrom || dateTo;
 
+    const slaBreaches = filtered.filter(r => {
+        if (!r.initiatedAt) return false;
+        const end = r.processedAt ? new Date(r.processedAt) : new Date();
+        const start = new Date(r.initiatedAt);
+        const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        return days > 5 && r.status !== 'PROCESSED';
+    }).length;
+
     return (
         <div className="space-y-5">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Total Refunded" value={fmtShort(totalRefunded)} sub={`${filtered.length} refunds`} icon={TrendingDown} color="rose" />
                 <StatCard label="Online Refunds" value={fmtShort(totalOnline)} sub="via Razorpay" icon={CreditCard} color="indigo" />
                 <StatCard label="Offline Refunds" value={fmtShort(totalOffline)} sub="Direct / Cash" icon={ArrowDownLeft} color="amber" />
-                <StatCard label="GST Reversed" value={fmtShort(totalGSTReversed)} sub="Credit Notes" icon={Receipt} color="emerald" />
+                <StatCard label="SLA Breaches" value={String(slaBreaches)} sub="> 5 days pending" icon={AlertCircle} color="rose" />
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -938,19 +968,35 @@ function TabC({ refunds, loading }: { refunds: any[]; loading: boolean }) {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan={14} className="p-10 text-center">
-                                        <div className="flex items-center justify-center gap-3 text-slate-400">
-                                            <div className="w-6 h-6 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
-                                            Loading refunds...
+                                    <tr><td colSpan={15} className="p-6">
+                                        <div className="space-y-2.5">
+                                            {[...Array(5)].map((_, i) => (
+                                                <div key={i} className="flex gap-3">
+                                                    <div className="h-8 bg-rose-50 animate-pulse rounded-lg w-24" />
+                                                    <div className="h-8 bg-rose-50 animate-pulse rounded-lg flex-1" />
+                                                    <div className="h-8 bg-rose-50 animate-pulse rounded-lg w-20" />
+                                                    <div className="h-8 bg-rose-50 animate-pulse rounded-lg w-28" />
+                                                </div>
+                                            ))}
                                         </div>
                                     </td></tr>
                                 ) : filtered.length === 0 ? (
                                     <EmptyState message="No refunds found" />
-                                ) : filtered.map(r => (
-                                    <tr key={r.id} className="hover:bg-blue-50/40 transition-colors duration-100">
+                                ) : filtered.map(r => {
+                                    const slaDays = r.initiatedAt
+                                        ? Math.floor((new Date(r.processedAt || new Date()).getTime() - new Date(r.initiatedAt).getTime()) / (1000 * 60 * 60 * 24))
+                                        : null;
+                                    const slaBreached = slaDays !== null && slaDays > 5 && r.status !== 'PROCESSED';
+                                    return (
+                                    <tr key={r.id} className={`hover:bg-rose-50/30 transition-colors duration-100 ${slaBreached ? 'bg-red-50/40' : ''}`}>
                                         <td className="p-3.5 align-top">
                                             <div className="text-xs font-semibold text-slate-700">{fmtDate(r.date)}</div>
                                             <div className="text-[10px] text-slate-400">{fmtTime(r.date)}</div>
+                                            {slaDays !== null && (
+                                                <div className={`mt-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full w-fit ${slaBreached ? 'bg-red-100 text-red-700' : slaDays > 3 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                    {slaBreached ? `⚠️ SLA Breach: ${slaDays}d` : `✓ ${slaDays}d TAT`}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="p-3.5 align-top">
                                             <div className="font-mono text-xs font-bold text-rose-700 break-all">{r.displayId || r.id?.slice(0, 16) || "—"}</div>
@@ -980,16 +1026,16 @@ function TabC({ refunds, loading }: { refunds: any[]; loading: boolean }) {
                                             <div className="font-mono text-xs font-bold text-slate-700">{r.bookingDisplayId || "—"}</div>
                                             {r.tenantId && <div className="text-[10px] font-mono text-slate-400 mt-0.5">{r.tenantId}</div>}
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-bold text-rose-600">- {fmt(r.amount)}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-slate-500">{r.platformFeeRefunded ? `- ${fmt(r.platformFeeRefunded)}` : "—"}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-sm font-medium text-amber-600">{r.gstRefunded ? `- ${fmt(r.gstRefunded)}` : "—"}</div>
                                         </td>
-                                        <td className="p-3.5 align-top text-right">
+                                        <td className="p-3.5 align-top text-right tabular-nums">
                                             <div className="text-base font-black text-rose-700">- {fmt(r.netRefunded)}</div>
                                             {r.method === "OFFLINE" && (
                                                 <div className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase">Offline — No bank impact</div>
@@ -1002,7 +1048,7 @@ function TabC({ refunds, loading }: { refunds: any[]; loading: boolean }) {
                                         </td>
                                         <td className="p-3.5 align-top">
                                             {r.txnReference
-                                                ? <div className="text-[10px] font-mono text-blue-600 font-bold break-all">{r.txnReference}</div>
+                                                ? <button onClick={() => navigator.clipboard.writeText(r.txnReference)} className="text-[10px] font-mono text-blue-600 font-bold break-all hover:text-blue-800 text-left" title={`Copy: ${r.txnReference}`}>{r.txnReference}</button>
                                                 : <div className="text-[10px] text-slate-400">—</div>
                                             }
                                         </td>
@@ -1010,8 +1056,8 @@ function TabC({ refunds, loading }: { refunds: any[]; loading: boolean }) {
                                             <StatusBadge status={r.status || "PROCESSED"} />
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
+                                    );
+                                })}                            </tbody>
                         </table>
                     </div>
                     {!loading && filtered.length > 0 && (
