@@ -482,6 +482,7 @@ model RentInvoice {
   billingProfile   BillingProfile @relation(fields: [billingProfileId], references: [id])
   booking          Booking?       @relation("BookingInvoices", fields: [bookingId], references: [id])
   reminders        RentReminder[]
+  receiptUrl       String?
 
   @@unique([tenantId, billingMonth])
   @@index([tenantId])   // PERF FIX: Tenant invoice list filtered by tenantId

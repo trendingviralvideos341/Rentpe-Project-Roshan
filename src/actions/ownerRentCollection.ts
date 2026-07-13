@@ -1313,3 +1313,137 @@ export async function getMyDepositStatus() {
         canRaiseDispute,
     };
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// OWNER SETTLEMENTS HUB — TAB 2: Payouts & Invoices
+// Fetches only payouts belonging to this owner's properties.
+// Bank account numbers are NEVER returned (encrypted at rest, not needed here).
+// ────────────────────────────────────────────────────────────────────────────
+export async function getOwnerPayoutsForOwner() {
+    const { ownerId, properties } = await getOwnerSession();
+
+    const payouts = await (prisma as any).ownerPayout.findMany({
+        where: { ownerId },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+    });
+
+    // Enrich with property name (never exposes bank details)
+    const enriched = payouts.map((p: any) => {
+        const property = properties.find((pr: any) => pr.id === p.propertyId);
+        const gross = Number(p.grossAmount ?? 0);
+        const commission = Number(p.commissionAmount ?? 0);
+        const net = Number(p.netAmount ?? 0);
+        const gstOnComm = commission > 0
+            ? Math.round((commission * 0.18 / 1.18) * 100) / 100
+            : 0;
+        const commBase = commission > 0
+            ? Math.round((commission - gstOnComm) * 100) / 100
+            : 0;
+        const cgst = Math.round((gstOnComm / 2) * 100) / 100;
+        const sgst = Math.round((gstOnComm - cgst) * 100) / 100;
+        const tds = Number((p as any).tdsAmount ?? 0);
+
+        return {
+            id: p.id,
+            displayId: p.displayId,
+            period: p.period,
+            status: p.status,
+            paymentMode: p.paymentMode,
+            txnReference: p.txnReference,
+            notes: p.notes,
+            paidAt: p.paidAt,
+            scheduledFor: p.scheduledFor,
+            createdAt: p.createdAt,
+            propertyName: property?.name ?? '—',
+            // Financial data (no bank account returned)
+            grossAmount: gross,
+            commissionAmount: commission,
+            commissionBase: commBase,
+            gstOnCommission: gstOnComm,
+            cgst,
+            sgst,
+            tdsAmount: tds,
+            netAmount: net,
+        };
+    });
+
+    const totalGross = enriched.reduce((s: number, p: any) => s + p.grossAmount, 0);
+    const totalCommission = enriched.reduce((s: number, p: any) => s + p.commissionAmount, 0);
+    const totalNet = enriched.reduce((s: number, p: any) => s + p.netAmount, 0);
+    const pendingNet = enriched.filter((p: any) => p.status === 'PENDING').reduce((s: number, p: any) => s + p.netAmount, 0);
+
+    return { payouts: enriched, stats: { totalGross, totalCommission, totalNet, pendingNet } };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// OWNER SETTLEMENTS HUB — TAB 3: Refunds & Tenant Adjustments
+// Fetches refund records for bookings linked to this owner's properties.
+// ────────────────────────────────────────────────────────────────────────────
+export async function getOwnerRefundsForOwner() {
+    const { properties } = await getOwnerSession();
+    const propertyIds = properties.map((p: any) => p.id);
+
+    // Fetch all bookings for this owner's properties first
+    const bookings = await prisma.booking.findMany({
+        where: { propertyId: { in: propertyIds } },
+        select: { id: true, displayId: true, propertyId: true, propertyName: true },
+    });
+    const bookingIds = bookings.map((b: any) => b.id);
+
+    const refunds = await (prisma as any).refundRecord.findMany({
+        where: { bookingId: { in: bookingIds } },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+    });
+
+    const enriched = await Promise.all(refunds.map(async (r: any) => {
+        const booking = await prisma.booking.findUnique({
+            where: { id: r.bookingId },
+            include: {
+                user: { select: { name: true, email: true } },
+                room: { select: { roomNumber: true } },
+                property: { select: { name: true } },
+            },
+        });
+
+        const initiatedAt = new Date(r.initiatedAt ?? r.createdAt);
+        const resolvedAt = r.processedAt ? new Date(r.processedAt) : null;
+        const tatDays = resolvedAt
+            ? Math.ceil((resolvedAt.getTime() - initiatedAt.getTime()) / (1000 * 60 * 60 * 24))
+            : Math.ceil((Date.now() - initiatedAt.getTime()) / (1000 * 60 * 60 * 24));
+        const isSlaBreached = r.status === 'PENDING' && tatDays > 7;
+
+        return {
+            id: r.id,
+            displayId: r.displayId,
+            bookingId: r.bookingId,
+            bookingDisplayId: booking?.displayId ?? '—',
+            status: r.status,
+            refundType: r.refundType,
+            reason: r.reason,
+            notes: r.notes,
+            txnReference: r.txnReference,
+            initiatedAt: r.initiatedAt ?? r.createdAt,
+            processedAt: r.processedAt,
+            amount: Number(r.amount ?? 0),
+            platformFeeRefunded: Number(r.platformFeeRefunded ?? 0),
+            gstRefunded: Number(r.gstRefunded ?? 0),
+            ownerPenaltyApplied: Number(r.ownerPenaltyApplied ?? 0),
+            tatDays,
+            isSlaBreached,
+            tenantName: booking?.user?.name ?? '—',
+            tenantEmail: booking?.user?.email ?? '—',
+            roomNumber: booking?.room?.roomNumber ?? '—',
+            propertyName: booking?.property?.name ?? '—',
+        };
+    }));
+
+    const totalRefunded = enriched
+        .filter((r: any) => r.status === 'PROCESSED')
+        .reduce((s: number, r: any) => s + r.amount, 0);
+    const pendingCount = enriched.filter((r: any) => r.status === 'PENDING').length;
+    const breachedCount = enriched.filter((r: any) => r.isSlaBreached).length;
+
+    return { refunds: enriched, stats: { totalRefunded, pendingCount, breachedCount } };
+}

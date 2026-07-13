@@ -3,6 +3,11 @@ import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
+import {
+    uploadReceiptToStorage,
+    downloadReceiptFromStorage,
+    receiptExistsInStorage,
+} from "@/lib/supabase";
 
 // ─── Month Label Helper ──────────────────────────────────────────────────────
 // Converts DB format "2026-07" → human-readable "July 2026" for PDF display
@@ -691,13 +696,30 @@ export async function GET(
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // OUTPUT
+        // OUTPUT — Cache-on-first-request via Supabase Storage
         // ═══════════════════════════════════════════════════════════════════════
         const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
         const fileName = `RentPe-Receipt-${studentReceiptNo}.pdf`;
         const disposition = isDownload
             ? `attachment; filename="${fileName}"`
             : `inline; filename="${fileName}"`;
+
+        // ── Upload to Supabase Storage (background, non-blocking on failure) ──
+        // Failure to upload to storage must NEVER break the download for the user.
+        // The PDF is always streamed to the user from memory regardless of storage status.
+        const copyKey = showOwnerCopy ? "landlord" : "tenant";
+        const storagePath = `${invoiceId}/${copyKey}.pdf`;
+        try {
+            await uploadReceiptToStorage(invoiceId, copyKey, pdfBuffer);
+            // Save the storage path reference to the database for future cache hits
+            await prisma.rentInvoice.update({
+                where: { id: invoiceId },
+                data: { receiptUrl: storagePath },
+            });
+        } catch (storageErr: any) {
+            // Log the error but do NOT fail the request — user still gets their PDF
+            console.warn("[Storage] PDF upload to Supabase failed (non-critical):", storageErr?.message);
+        }
 
         return new NextResponse(pdfBuffer, {
             status: 200,

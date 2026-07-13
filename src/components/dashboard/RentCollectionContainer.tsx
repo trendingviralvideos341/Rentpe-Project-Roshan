@@ -43,7 +43,7 @@ function ReceiptModal({ invoiceId, onClose }: { invoiceId: string; onClose: () =
             .finally(() => setLoading(false));
     }, [invoiceId]);
 
-    const downloadUrl = `/api/receipts/${invoiceId}?download=1`;
+    const downloadUrl = `/api/receipts/${invoiceId}?download=1&copy=tenant`;
 
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
