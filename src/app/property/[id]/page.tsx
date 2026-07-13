@@ -106,6 +106,11 @@ export default function PropertyDetailPage() {
                         images: allImages
                     });
 
+                    // Auto-select gender for single-gender properties
+                    if (data.genderType === "Boys" || data.genderType === "Girls") {
+                        setFormData(prev => ({ ...prev, stayGender: data.genderType }));
+                    }
+
                     // Fetch associated reviews
                     const reviewData = await getReviewsForProperty(id);
                     setReviews(reviewData || []);
@@ -131,7 +136,7 @@ export default function PropertyDetailPage() {
             const propGender = property.genderType;
             if (propGender !== "CoLiving(Boys/Girls) both" && propGender !== "Co-ed" && propGender !== "COED") {
                 if (guest !== propGender) {
-                    errs.stayGender = `This property only has stays for ${propGender}`;
+                    errs.stayGender = `This property is strictly for ${propGender} only, opposite gender not allowed for booking`;
                 }
             }
         }
@@ -172,6 +177,7 @@ export default function PropertyDetailPage() {
                 guestPhone: `+91${formData.guestPhone}`,
                 occupationType: formData.occupationType,
                 occupationDetail: formData.occupationDetail,
+                guestGender: formData.stayGender,
             } as any);
 
             if (!booking.success) {
@@ -225,11 +231,20 @@ export default function PropertyDetailPage() {
                     <div>
                         <div className="flex justify-between items-start">
                             <div>
-                                <h1 className="text-3xl font-bold">{property.name}</h1>
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-3xl font-bold">{property.name}</h1>
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                        property.genderType === 'Boys' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                        property.genderType === 'Girls' ? 'bg-pink-100 text-pink-700 border-pink-200' :
+                                        'bg-purple-100 text-purple-700 border-purple-200'
+                                    } border`}>
+                                        Gender - {property.genderType === 'CoLiving(Boys/Girls) both' || property.genderType === 'Co-ed' || property.genderType === 'COED' ? 'Co-Living' : property.genderType}
+                                    </span>
+                                </div>
                                 <div className="flex items-center text-muted-foreground mt-2">
                                     <MapPin className="h-4 w-4 mr-1" /> {property.city}, {property.address}
                                 </div>
-                                <p className="mt-4 text-muted-foreground leading-relaxed">
+                                <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-wrap">
                                     {property.description || "No description provided for this property."}
                                 </p>
                             </div>
@@ -568,10 +583,27 @@ export default function PropertyDetailPage() {
                                         }`}
                                     >
                                         <option value="" disabled>Select Gender Type</option>
-                                        <option value="CoLiving(Boys/Girls) both">CoLiving(Boys/Girls) both</option>
-                                        <option value="Boys">Boys</option>
-                                        <option value="Girls">Girls</option>
+                                        {(property?.genderType === "CoLiving(Boys/Girls) both" || property?.genderType === "Co-ed" || property?.genderType === "COED") ? (
+                                            <>
+                                                <option value="Boys">Boys</option>
+                                                <option value="Girls">Girls</option>
+                                            </>
+                                        ) : property?.genderType === "Boys" ? (
+                                            <option value="Boys">Boys</option>
+                                        ) : property?.genderType === "Girls" ? (
+                                            <option value="Girls">Girls</option>
+                                        ) : (
+                                            <>
+                                                <option value="Boys">Boys</option>
+                                                <option value="Girls">Girls</option>
+                                            </>
+                                        )}
                                     </select>
+                                    {(property?.genderType !== "CoLiving(Boys/Girls) both" && property?.genderType !== "Co-ed" && property?.genderType !== "COED") && (
+                                        <p className="text-[11px] text-red-600 font-bold mt-1">
+                                            ⚠️ This property is strictly for {property?.genderType || "Girls/Boys"} only, opposite gender not allowed for booking
+                                        </p>
+                                    )}
                                     {fieldErrors.stayGender && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.stayGender}</p>}
                                 </div>
                             </div>

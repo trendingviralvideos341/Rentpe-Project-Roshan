@@ -22,6 +22,7 @@ async function _createBooking(data: {
     amount: number,
     guestEmail?: string,
     guestPhone?: string,
+    guestGender?: string,
     occupationType?: string,
     occupationDetail?: string,
     propertyId?: string,
@@ -132,6 +133,13 @@ async function _createBooking(data: {
     today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
         throw new Error("Move-in date cannot be in the past.");
+    }
+
+    if (data.guestGender) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { gender: data.guestGender }
+        });
     }
 
     const displayId = await generateSequentialId('BOOKING');
