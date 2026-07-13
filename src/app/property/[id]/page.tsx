@@ -107,8 +107,8 @@ export default function PropertyDetailPage() {
                     });
 
                     // Auto-select gender for single-gender properties
-                    if (data.genderType === "Boys" || data.genderType === "Girls") {
-                        setFormData(prev => ({ ...prev, stayGender: data.genderType }));
+                    if (data.genderType?.toUpperCase() === "BOYS" || data.genderType?.toUpperCase() === "GIRLS") {
+                        setFormData(prev => ({ ...prev, stayGender: data.genderType?.toUpperCase() === "BOYS" ? "Boys" : "Girls" }));
                     }
 
                     // Fetch associated reviews
@@ -134,9 +134,10 @@ export default function PropertyDetailPage() {
         if (formData.stayGender && property?.genderType) {
             const guest = formData.stayGender;
             const propGender = property.genderType;
-            if (propGender !== "CoLiving(Boys/Girls) both" && propGender !== "Co-ed" && propGender !== "COED") {
-                if (guest !== propGender) {
-                    errs.stayGender = `This property is strictly for ${propGender} only, opposite gender not allowed for booking`;
+            if (propGender?.toUpperCase() === "BOYS" || propGender?.toUpperCase() === "GIRLS") {
+                if (guest?.toUpperCase() !== propGender?.toUpperCase()) {
+                    const displayGender = propGender?.toUpperCase() === "BOYS" ? "Boys" : "Girls";
+                    errs.stayGender = `This property is strictly for ${displayGender} only, opposite gender not allowed for booking`;
                 }
             }
         }
@@ -234,11 +235,11 @@ export default function PropertyDetailPage() {
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-3xl font-bold">{property.name}</h1>
                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border tracking-wider ${
-                                        property.genderType === 'Boys' ? 'bg-blue-50 border-blue-200 text-blue-600' :
-                                        property.genderType === 'Girls' ? 'bg-pink-50 border-pink-200 text-pink-600' :
+                                        property.genderType?.toUpperCase() === 'BOYS' ? 'bg-blue-50 border-blue-200 text-blue-600' :
+                                        property.genderType?.toUpperCase() === 'GIRLS' ? 'bg-pink-50 border-pink-200 text-pink-600' :
                                         'bg-indigo-50 border-indigo-200 text-indigo-600'
                                     }`}>
-                                        Gender - {property.genderType === 'CoLiving(Boys/Girls) both' || property.genderType === 'Co-ed' || property.genderType === 'COED' ? 'CoLiving' : property.genderType}
+                                        Gender - {property.genderType?.toUpperCase() === 'BOYS' ? 'Boys' : property.genderType?.toUpperCase() === 'GIRLS' ? 'Girls' : 'CoLiving'}
                                     </span>
                                 </div>
                                 <div className="flex items-center text-muted-foreground mt-2">
@@ -574,13 +575,13 @@ export default function PropertyDetailPage() {
                                     <label className="text-sm font-medium">Stay Gender Type <span className="text-red-500">*</span></label>
                                     <select
                                         value={formData.stayGender}
-                                        disabled={property?.genderType === "Boys" || property?.genderType === "Girls"}
+                                        disabled={property?.genderType?.toUpperCase() === "BOYS" || property?.genderType?.toUpperCase() === "GIRLS"}
                                         onChange={(e) => {
                                             setFormData(p => ({ ...p, stayGender: e.target.value }));
                                             if (fieldErrors.stayGender) setFieldErrors(p => { const n = { ...p }; delete n.stayGender; return n; });
                                         }}
                                         className={`w-full h-10 px-3 rounded-md border-2 text-sm outline-none transition-colors ${
-                                            (property?.genderType === "Boys" || property?.genderType === "Girls")
+                                            (property?.genderType?.toUpperCase() === "BOYS" || property?.genderType?.toUpperCase() === "GIRLS")
                                                 ? "bg-gray-100 cursor-not-allowed border-gray-200 text-gray-500 font-bold"
                                                 : fieldErrors.stayGender
                                                     ? "bg-white border-red-400 focus:border-red-500 ring-1 ring-red-200"
@@ -588,14 +589,9 @@ export default function PropertyDetailPage() {
                                         }`}
                                     >
                                         <option value="" disabled>Select Gender Type</option>
-                                        {(property?.genderType === "CoLiving(Boys/Girls) both" || property?.genderType === "Co-ed" || property?.genderType === "COED") ? (
-                                            <>
-                                                <option value="Boys">Boys</option>
-                                                <option value="Girls">Girls</option>
-                                            </>
-                                        ) : property?.genderType === "Boys" ? (
+                                        {(property?.genderType?.toUpperCase() === "BOYS") ? (
                                             <option value="Boys">Boys</option>
-                                        ) : property?.genderType === "Girls" ? (
+                                        ) : property?.genderType?.toUpperCase() === "GIRLS" ? (
                                             <option value="Girls">Girls</option>
                                         ) : (
                                             <>
@@ -604,9 +600,9 @@ export default function PropertyDetailPage() {
                                             </>
                                         )}
                                     </select>
-                                    {(property?.genderType !== "CoLiving(Boys/Girls) both" && property?.genderType !== "Co-ed" && property?.genderType !== "COED") && (
+                                    {(property?.genderType?.toUpperCase() === "BOYS" || property?.genderType?.toUpperCase() === "GIRLS") && (
                                         <p className="text-[11px] text-red-600 font-bold mt-1">
-                                            ⚠️ This property is strictly for {property?.genderType || "Girls/Boys"} only, opposite gender not allowed for booking
+                                            ⚠️ This property is strictly for {property?.genderType?.toUpperCase() === "BOYS" ? "Boys" : "Girls"} only, opposite gender not allowed for booking
                                         </p>
                                     )}
                                     {fieldErrors.stayGender && <p className="text-[10px] text-red-600 font-bold mt-1">{fieldErrors.stayGender}</p>}
