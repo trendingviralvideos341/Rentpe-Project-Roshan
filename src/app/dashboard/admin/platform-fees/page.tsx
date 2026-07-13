@@ -292,11 +292,11 @@ export default function PlatformFeesPage() {
         return matchPG && matchSearch;
     });
 
-    const totalEarned = filteredFees.reduce((s, f) => s + (f.platformEarned || 0), 0);
-    const totalCustomerFees = filteredFees.reduce((s, f) => s + (f.customerFee || 0), 0);
-    const totalOwnerFees = filteredFees.reduce((s, f) => s + (f.ownerFee || 0), 0);
-    const totalGstCollected = filteredFees.reduce((s, f) => s + ((f.gstOnStudentFee || 0) + (f.gstOnOwnerFee || 0)), 0);
-    const totalTdsDeducted = filteredFees.reduce((s, f) => s + (f.tdsAmount || 0), 0);
+    const totalEarned = filteredFees.reduce((s, f) => s + Number(f.platformEarned || 0), 0);
+    const totalCustomerFees = filteredFees.reduce((s, f) => s + Number(f.customerFee || 0), 0);
+    const totalOwnerFees = filteredFees.reduce((s, f) => s + Number(f.ownerFee || 0), 0);
+    const totalGstCollected = filteredFees.reduce((s, f) => s + (Number(f.gstOnStudentFee || 0) + Number(f.gstOnOwnerFee || 0)), 0);
+    const totalTdsDeducted = filteredFees.reduce((s, f) => s + Number(f.tdsAmount || 0), 0);
 
     // Export URL helpers
     const now = new Date();

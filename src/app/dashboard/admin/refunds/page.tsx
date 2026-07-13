@@ -102,7 +102,7 @@ export default function AdminRefundsPage() {
 
     const pendingTotal = (data?.refunds ?? [])
         .filter((r: any) => r.status === "PENDING")
-        .reduce((sum: number, r: any) => sum + r.amount, 0);
+        .reduce((sum: number, r: any) => sum + Number(r.amount), 0);
 
     return (
         <div className="space-y-4 md:space-y-6 pb-20 md:pb-8">

@@ -12,6 +12,8 @@ import { generateSignedDocUrl } from "@/lib/upload";
 import { razorpay } from "@/lib/razorpay";
 import { generateSequentialId } from "@/lib/ids";
 
+const n = (val: any) => Number(val || 0);
+
 // ─────────────────────────────────────────────────────────
 // KYC VERIFICATION QUEUE
 // ─────────────────────────────────────────────────────────
@@ -208,7 +210,6 @@ export async function getRefundRequests(status?: string) {
         take: 200
     });
 
-    // Enrich with booking + user data
     const enriched = await Promise.all(refunds.map(async (r: any) => {
         const booking = r.bookingId
             ? await prisma.booking.findUnique({
@@ -216,7 +217,14 @@ export async function getRefundRequests(status?: string) {
                 include: { user: { select: { id: true, name: true, email: true, phone: true } } }
             })
             : null;
-        return { ...r, booking };
+        return { 
+            ...r, 
+            booking,
+            amount: n(r.amount),
+            platformFeeRefunded: n(r.platformFeeRefunded),
+            gstRefunded: n(r.gstRefunded),
+            ownerPenaltyApplied: n(r.ownerPenaltyApplied)
+        };
     }));
 
     // Summary stats
@@ -945,7 +953,15 @@ export async function getOwnerPayouts(period?: string, status?: string) {
             where: { id: p.ownerId },
             select: { id: true, name: true, email: true, phone: true }
         });
-        return { ...p, owner };
+        return { 
+            ...p, 
+            owner,
+            netAmount: n(p.netAmount),
+            grossAmount: n(p.grossAmount),
+            commissionAmount: n(p.commissionAmount),
+            gstOnCommission: n((p as any).gstOnCommission),
+            tds: n((p as any).tds)
+        };
     }));
 
     const totalThisMonth = payouts.reduce((s, p) => s + Number(p.netAmount), 0);
@@ -1001,11 +1017,11 @@ export async function processOwnerPayout(payoutId: string) {
             const { OwnerNotificationTemplate } = await import('@/lib/email-templates');
             sendEmail({
                 to: owner.email,
-                subject: `Payout Processed: Rs.  settled for  | RentPe`,
+                subject: `Payout Processed: Rs. ${Number(payout.netAmount).toFixed(2)} settled for ${payout.period} | RentPe`,
                 html: OwnerNotificationTemplate(
                     owner.name || "Owner",
                     "Payout Settlement Successful",
-                    `Dear , your payout of <strong>Rs. </strong> for the period <strong></strong> has been successfully processed and settled to your registered bank account.`,
+                    `Dear ${owner.name || "Owner"}, your payout of <strong>Rs. ${Number(payout.netAmount).toFixed(2)}</strong> for the period <strong>${payout.period}</strong> has been successfully processed and settled to your registered bank account.`,
                     "/dashboard/owner/payouts",
                     "View Payout Details"
                 )
@@ -1083,12 +1099,12 @@ export async function getPayoutDetails(payoutId: string) {
         tenantDisplayId: fee.booking.tenant?.displayId || "N/A",
         roomBed: `${fee.booking.roomAssigned || "TBD"} (${fee.booking.occupancy})`,
         propertyName: fee.booking.propertyName,
-        grossAmount: fee.grossAmount,
-        tdsAmount: fee.tdsAmount,
-        gstAmount: fee.gstOnStudentFee + fee.gstOnOwnerFee,
-        ownerFee: fee.ownerFee,
-        customerFee: fee.customerFee,
-        netAmount: fee.ownerNet
+        grossAmount: n(fee.grossAmount),
+        tdsAmount: n(fee.tdsAmount),
+        gstAmount: n(fee.gstOnStudentFee) + n(fee.gstOnOwnerFee),
+        ownerFee: n(fee.ownerFee),
+        customerFee: n(fee.customerFee),
+        netAmount: n(fee.ownerNet)
     }));
 }
 

@@ -473,7 +473,7 @@ export async function getPlatformFees() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
 
-    return await (prisma as any).platformFee.findMany({
+    const fees = await (prisma as any).platformFee.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
             booking: {
@@ -483,6 +483,17 @@ export async function getPlatformFees() {
             }
         }
     });
+
+    return fees.map((fee: any) => ({
+        ...fee,
+        grossAmount: n(fee.grossAmount),
+        customerFee: n(fee.customerFee),
+        ownerFee: n(fee.ownerFee),
+        gstOnStudentFee: n(fee.gstOnStudentFee),
+        gstOnOwnerFee: n(fee.gstOnOwnerFee),
+        tdsAmount: n(fee.tdsAmount),
+        platformEarned: n(fee.platformEarned)
+    }));
 }
 
 // ── Get platform settings change log (audit logs) ──────
