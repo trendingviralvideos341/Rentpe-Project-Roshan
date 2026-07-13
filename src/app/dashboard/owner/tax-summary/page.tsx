@@ -213,18 +213,20 @@ export default function TaxSummaryPage() {
             const s = report.summary;
             const headers = [
                 'Booking ID', 'Tenant ID', 'Internal Booking ID',
-                'Razorpay Order ID', 'Razorpay Payment ID', 'Razorpay Transfer ID',
+                'Bank UTR / Ref', 'Razorpay Order ID', 'Razorpay Payment ID',
                 'Tenant Name', 'Property', 'Room Type', 'Payment Method',
-                'Gross Amount', 'Platform Commission', 'GST Charged (18%)',
+                'Gross Amount', 'Rent Amount (Taxable)', 'Security Deposit (Non-Taxable)',
+                'Platform Commission', 'GST Charged (18%)',
                 'TDS Deducted (1%)', 'Owner Net Payout',
                 'Refund Amount', 'Net Revenue',
                 'Status', 'Date'
             ];
             const rows = rowsToExport.map((r: any) => [
                 r.bookingId, r.tenantId, r.internalBookingId,
-                r.razorpayOrderId, r.razorpayPaymentId, r.razorpayTransferId,
+                r.razorpayTransferId, r.razorpayOrderId, r.razorpayPaymentId,
                 r.tenantName, r.property, r.roomType, r.paymentMethod,
-                r.amount, r.platformFeeCharged, r.gstCharged,
+                r.amount, r.rentAmount, r.depositAmount,
+                r.platformFeeCharged, r.gstCharged,
                 s.tdsExempt ? 0 : r.tdsDeducted, r.ownerNetPayout,
                 r.refundAmount, r.netRevenue,
                 r.status, new Date(r.date).toLocaleString('en-IN'),
@@ -748,10 +750,11 @@ export default function TaxSummaryPage() {
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Date <Tip content="Date the transaction was processed" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Booking ID <Tip content="RentPe's unique reference ID for the booking" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Tenant ID <Tip content="Student's permanent tenant ID on the platform" /></th>
-                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">RP Order ID <Tip content="Razorpay order reference ID" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Bank UTR / Ref <Tip content="Bank transfer reference number for reconciliation" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Tenant Name <Tip content="Full name of the student who paid" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Property <Tip content="Name of the building where the room is allocated" /></th>
-                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Gross <Tip content="Rent amount paid before platform deductions" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Rent (Taxable) <Tip content="Rent amount paid before platform deductions" /></th>
+                                                <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Deposit <Tip content="Security deposit (Non-taxable)" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">Platform Commission <Tip content="RentPe platform commission charged on this transaction" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">GST <Tip content="18% GST on the platform commission" /></th>
                                                 <th className="text-left px-3 py-2.5 font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">TDS <Tip content="1% TDS withheld under Section 194-O" /></th>
@@ -765,7 +768,7 @@ export default function TaxSummaryPage() {
                                                     <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                                     <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.bookingId}</td>
                                                     <td className="px-3 py-2.5 font-mono text-indigo-600 font-bold">{r.tenantId}</td>
-                                                    <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[90px] truncate">{r.razorpayOrderId}</td>
+                                                    <td className="px-3 py-2.5 font-mono text-slate-400 max-w-[110px] truncate">{r.razorpayTransferId}</td>
 
                                                     <td className="px-3 py-2.5 font-bold text-slate-700">
                                                         {r.tenantName}
@@ -774,7 +777,8 @@ export default function TaxSummaryPage() {
                                                         )}
                                                     </td>
                                                     <td className="px-3 py-2.5 text-slate-600 max-w-[120px] truncate">{r.property}</td>
-                                                    <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.revenueContribution || 0)}</td>
+                                                    <td className="px-3 py-2.5 font-black text-slate-900">{fmtShort(r.rentAmount || 0)}</td>
+                                                    <td className="px-3 py-2.5 font-black text-slate-500">{fmtShort(r.depositAmount || 0)}</td>
                                                     <td className="px-3 py-2.5 font-bold text-amber-600">{fmtShort(r.platformFeeCharged)}</td>
                                                     <td className="px-3 py-2.5 font-bold text-violet-600">{fmtShort(r.gstCharged)}</td>
                                                     <td className="px-3 py-2.5 font-bold text-rose-600">

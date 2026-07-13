@@ -439,7 +439,7 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
         (prisma as any).platformFee.findMany({ where: { bookingId: { in: bookingIds } } }),
         (prisma as any).payment.findMany({
             where: { bookingId: { in: bookingIds }, status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] } },
-            select: { bookingId: true, razorpayOrderId: true, razorpayId: true, method: true }
+            select: { bookingId: true, razorpayOrderId: true, razorpayId: true, method: true, depositId: true, amount: true }
         }),
     ]);
 
@@ -457,10 +457,25 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
     const report = bookings.map((b: any) => {
         const refund = refunds.find((r: any) => r.bookingId === b.id);
         const fee = feeMap[b.id] || {};
-        const pay = payMap[b.id] || {};
-        const isRevenue = ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID'].includes(b.status);
+        
+        const bPayments = payments.filter((p: any) => p.bookingId === b.id);
+        const pay = bPayments[0] || {};
+        let depositAmount = 0;
+        let rentAmount = 0;
+        for (const p of bPayments) {
+            if (p.depositId) depositAmount += p.amount;
+            else rentAmount += p.amount;
+        }
+
+        const isRevenue = ['BOOKING_CONFIRMED', 'CHECKED_IN', 'PAID', 'CASH_PAID', 'ACTIVE'].includes(b.status);
         const gross = isRevenue ? (b.amount || 0) : 0;
         const refundAmount = refund?.status === 'PROCESSED' ? refund.amount : 0;
+        
+        // If no explicit payment found, fallback to total gross logic
+        if (rentAmount === 0 && depositAmount === 0) {
+            rentAmount = gross;
+        }
+
         return {
             bookingId: b.displayId,
             internalBookingId: b.id,
@@ -476,6 +491,8 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             razorpayTransferId: pay.razorpayTransferId || '—',
             paymentMethod: pay.method || '—',
             revenueContribution: gross,
+            rentAmount: isRevenue ? rentAmount : 0,
+            depositAmount: isRevenue ? depositAmount : 0,
             refundAmount,
             netRevenue: gross - refundAmount,
             // === Tax Breakdown (Owner commission and GST only) ===
@@ -522,6 +539,8 @@ export async function getOwnerFinancialReport(fromDate?: Date, toDate?: Date) {
             razorpayTransferId: '—',
             paymentMethod: 'Razorpay',
             revenueContribution: 0,
+            rentAmount: 0,
+            depositAmount: 0,
             refundAmount: 0,
             netRevenue: 0,
             platformFeeCharged: baseAmount,
@@ -619,12 +638,37 @@ export async function getOwnerMonthlyTaxBreakdown(fromDate?: Date, toDate?: Date
     for (const b of bookingIds) bookingDateMap[b.id] = b.createdAt;
 
     const monthlyMap: Record<string, any> = {};
+
+    // Fetch payments to resolve rent vs deposit breakdown
+    const payments = await prisma.payment.findMany({
+        where: { bookingId: { in: bookingIds.map(b => b.id) }, status: { in: ['SUCCESS', 'VERIFIED', 'CAPTURED'] } },
+        select: { bookingId: true, amount: true, depositId: true }
+    });
+    
+    const paymentMap: Record<string, any[]> = {};
+    for (const p of payments) {
+        if (!paymentMap[p.bookingId]) paymentMap[p.bookingId] = [];
+        paymentMap[p.bookingId].push(p);
+    }
+
     for (const f of fees) {
         const d = new Date(f.createdAt);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0, onboardingFees: 0, onboardingGst: 0 };
+        if (!monthlyMap[key]) monthlyMap[key] = { month: label, key, grossRent: 0, rentAmount: 0, depositAmount: 0, platformFee: 0, gst: 0, tds: 0, netPayout: 0, transactions: 0, onboardingFees: 0, onboardingGst: 0 };
+        
+        let bDeposit = 0;
+        let bRent = 0;
+        const bPayments = paymentMap[f.bookingId] || [];
+        for (const p of bPayments) {
+            if (p.depositId) bDeposit += p.amount;
+            else bRent += p.amount;
+        }
+        if (bRent === 0 && bDeposit === 0) bRent = f.grossAmount || 0; // fallback
+
         monthlyMap[key].grossRent += f.grossAmount || 0;
+        monthlyMap[key].rentAmount += bRent;
+        monthlyMap[key].depositAmount += bDeposit;
         monthlyMap[key].platformFee += f.ownerFee || 0;
         monthlyMap[key].gst += f.gstOnOwnerFee || 0;
         monthlyMap[key].tds += f.tdsAmount || 0;

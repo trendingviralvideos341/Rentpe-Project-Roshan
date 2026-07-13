@@ -273,9 +273,20 @@ export async function createRefundFromTicket(input: {
     // Validate the booking exists and belongs to the same context
     const booking = await prisma.booking.findUnique({
         where: { id: input.bookingId },
-        select: { id: true, userId: true, displayId: true }
+        select: { id: true, userId: true, displayId: true, amount: true }
     });
     if (!booking) throw new Error(`Booking not found: ${input.bookingId}`);
+
+    // SECURITY FIX: Strict Refund Amount Validation
+    const existingRefunds = await prisma.refundRecord.findMany({
+        where: { bookingId: input.bookingId, status: { in: ['PENDING', 'PROCESSED', 'PROCESSING'] } }
+    });
+    const totalRefunded = existingRefunds.reduce((sum: number, r: any) => sum + r.amount, 0);
+    const bookingAmountNum = Number(booking.amount || 0);
+
+    if (input.amount > (bookingAmountNum - totalRefunded)) {
+        throw new Error(`Refund amount exceeds the maximum allowed. Max allowed: ₹${bookingAmountNum - totalRefunded}. Existing refunds: ₹${totalRefunded}.`);
+    }
 
     // Generate the RP-RFND-26-27-XXXXXX display ID (FY-sequential, GST-compliant)
     const displayId = await generateSequentialId('REFUND');
@@ -333,6 +344,15 @@ export async function approveRefund(refundId: string, note?: string) {
 
     if (!refund) throw new Error("Refund request not found");
     if (refund.status !== 'PENDING') throw new Error("Refund is already processed or rejected");
+
+    // SECURITY FIX: Race Condition Prevention via Atomic Update (Optimistic Locking)
+    const lockedRefund = await prisma.refundRecord.updateMany({
+        where: { id: refundId, status: 'PENDING' },
+        data: { status: 'PROCESSING' }
+    });
+    if (lockedRefund.count === 0) {
+        throw new Error("Refund is currently being processed by another request. Aborting to prevent duplicate refund.");
+    }
 
     let finalTxnRef = refund.txnReference;
     let paymentId = refund.txnReference;
@@ -404,10 +424,11 @@ export async function approveRefund(refundId: string, note?: string) {
     });
 
     // ── Platform Fee Refund: Deduct from RentPe's platform wallet ───────────
-    if ((refund as any).refundPlatformFee && (refund as any).platformFeeRefunded > 0) {
+    // SECURITY FIX: Do not decrement wallet if it was a mock refund
+    if ((refund as any).refundPlatformFee && (refund as any).platformFeeRefunded > 0 && !isMockKey && !isMockPayment) {
         try {
             await (prisma as any).platformSettings.update({
-                where: { id: 1 },
+                where: { id: 'singleton' },
                 data: {
                     platformWalletBalance: { decrement: (refund as any).platformFeeRefunded }
                 }

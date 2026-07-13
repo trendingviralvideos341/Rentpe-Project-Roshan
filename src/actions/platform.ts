@@ -89,6 +89,8 @@ export async function calculateFees(amountStr: string, userId?: string, property
     cgst: number;              // CGST component (9%) e.g. ₹0.68
     sgst: number;              // SGST component (9%) e.g. ₹0.69
     sacCode: string;           // SAC 997312 — Short-term accommodation services
+    rentAmount: number;        // Taxable rent amount
+    depositAmount: number;     // Non-taxable security deposit
 }> {
     const grossAmount = parseFloat(amountStr.replace(/[^0-9.]/g, "")) || 0;
     // Security deposit is refundable capital — NOT taxable income under IT Act.
@@ -99,7 +101,7 @@ export async function calculateFees(amountStr: string, userId?: string, property
     const settings = await prisma.platformSettings.findUnique({ where: { id: "singleton" } });
 
     if (!settings || !settings.feesEnabled) {
-        return { feesEnabled: false, grossAmount, customerFee: 0, studentFeeBase: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, ownerFeeBase: 0, platformEarned: 0, commissionRate: 0, gstOnStudentFee: 0, gstOnOwnerFee: 0, tdsAmount: 0, totalGstCollected: 0, cgst: 0, sgst: 0, sacCode: '997312' };
+        return { feesEnabled: false, grossAmount, customerFee: 0, studentFeeBase: 0, totalCharged: grossAmount, ownerNet: grossAmount, ownerFee: 0, ownerFeeBase: 0, platformEarned: 0, commissionRate: 0, gstOnStudentFee: 0, gstOnOwnerFee: 0, tdsAmount: 0, totalGstCollected: 0, cgst: 0, sgst: 0, sacCode: '997312', rentAmount: rentOnlyAmt, depositAmount: depositAmt };
     }
 
     // Check exemptions
@@ -252,6 +254,8 @@ export async function calculateFees(amountStr: string, userId?: string, property
         cgst,               // ₹0.68
         sgst,               // ₹0.69
         sacCode: '997312',
+        rentAmount: rentOnlyAmt,
+        depositAmount: depositAmt,
     };
 }
 
@@ -666,6 +670,8 @@ const session = await getSession();
         orderBy: { date: 'desc' },
         ...(limit ? { take: limit } : {}),
         include: {
+            deposit: { select: { id: true, amount: true } },
+            invoice: { select: { id: true } },
             booking: {
                 select: {
                     id: true, displayId: true, propertyName: true, propertyId: true,
@@ -721,6 +727,8 @@ const session = await getSession();
             ownerEmail: owner.email || '—',
             // === Money Breakdown ===
             grossAmount: n(fee.grossAmount) || n(p.amount) || 0,
+            rentAmount: p.depositId ? 0 : (n(fee.grossAmount) || n(p.amount) || 0),
+            depositAmount: p.depositId ? (n(fee.grossAmount) || n(p.amount) || 0) : 0,
             platformFeeStudent: n(fee.customerFee) || 0,
             platformFeeOwner: n(fee.ownerFee) || 0,
             gstOnStudentFee: n(fee.gstOnStudentFee) || 0,
@@ -824,6 +832,8 @@ const session = await getSession();
             ownerId: owner.displayId || '—',
             ownerEmail: owner.email || '—',
             grossAmount: n(inv.amount),
+            rentAmount: n(inv.amount),
+            depositAmount: 0,
             platformFeeStudent: 0,
             platformFeeOwner: 0,
             gstOnStudentFee: 0,
@@ -863,8 +873,10 @@ const session = await getSession();
                 roomType: b.occupancy || b.room?.type || '—',
                 ownerName: owner.name || '—',
                 ownerId: owner.displayId || '—',
-                ownerEmail: owner.email || '—',
+                ownerEmail: owner.email || '-',
                 grossAmount: tokenAmt,
+                rentAmount: tokenAmt,
+                depositAmount: 0,
                 platformFeeStudent: 0,
                 platformFeeOwner: 0,
                 gstOnStudentFee: 0,
@@ -898,8 +910,10 @@ const session = await getSession();
                 roomType: b.occupancy || b.room?.type || '—',
                 ownerName: owner.name || '—',
                 ownerId: owner.displayId || '—',
-                ownerEmail: owner.email || '—',
+                ownerEmail: owner.email || '-',
                 grossAmount: n(b.amount),
+                rentAmount: n(b.amount),
+                depositAmount: 0,
                 platformFeeStudent: 0,
                 platformFeeOwner: 0,
                 gstOnStudentFee: 0,
@@ -948,8 +962,10 @@ const session = await getSession();
         roomType: 'Property Onboarding',
         ownerName: p.owner?.name || '—',
         ownerId: p.owner?.displayId || '—',
-        ownerEmail: p.owner?.email || '—',
+        ownerEmail: p.owner?.email || '-',
         grossAmount: 0,
+        rentAmount: 0,
+        depositAmount: 0,
         platformFeeStudent: 0,
         platformFeeOwner: baseAmount,
         gstOnStudentFee: 0,
