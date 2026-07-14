@@ -289,21 +289,9 @@ function RefundsTab() {
     return (
         <div className="space-y-6">
             {/* Stat Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatCard label="Total Refunded" value={fmtShort(stats.totalRefunded ?? 0)} sub="Processed refunds" icon={TrendingDown} gradient="from-rose-500 to-red-700" />
                 <StatCard label="Pending Refunds" value={`${stats.pendingCount ?? 0} Requests`} sub="Awaiting admin action" icon={Clock} gradient="from-amber-500 to-orange-600" />
-                <StatCard label="SLA Breached" value={`${stats.breachedCount ?? 0} Cases`} sub="Past 7-day SLA" icon={AlertTriangle} gradient="from-red-600 to-rose-800" />
-            </div>
-
-            {/* RBI Notice Banner */}
-            <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-                <div>
-                    <p className="text-xs font-black text-rose-800">RBI Refund SLA Notice</p>
-                    <p className="text-[11px] text-rose-700 mt-0.5 leading-relaxed">
-                        As per RBI Payment Aggregator Guidelines, all refunds must be processed within <strong>7 business days</strong> of initiation. Refunds beyond 7 days are flagged as SLA breaches and reported to RentPe compliance. Contact support immediately for breached cases.
-                    </p>
-                </div>
             </div>
 
             {/* Header row */}
