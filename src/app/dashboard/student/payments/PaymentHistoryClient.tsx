@@ -979,7 +979,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                                         </p>
                                                                         <p className="text-[11px] text-amber-700 leading-relaxed">
                                                                             If money was already deducted from your bank account,{' '}
-                                                                            <strong>please DO NOT try to pay again</strong>. Your bank is syncing with Razorpay — this usually resolves in 15–30 minutes.
+                                                                            <strong>please DO NOT try to pay again</strong>. Your bank is confirming the payment status with Razorpay — this usually resolves in 15–30 minutes.
                                                                             If your status does not update after 30 minutes, please raise a{' '}
                                                                             <strong>Support Ticket</strong>.
                                                                         </p>
@@ -1062,7 +1062,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                         </p>
                                                         <p className="text-[10px] text-amber-700 leading-relaxed">
                                                             If money was already deducted from your bank account,{' '}
-                                                            <strong>please DO NOT try to pay again</strong>. Your bank is syncing with Razorpay — this usually resolves in 15–30 minutes.
+                                                            <strong>please DO NOT try to pay again</strong>. Your bank is confirming the payment status with Razorpay — this usually resolves in 15–30 minutes.
                                                             If your status does not update after 30 minutes, please raise a{' '}
                                                             <strong>Support Ticket</strong>.
                                                         </p>
