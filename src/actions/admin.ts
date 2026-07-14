@@ -1,5 +1,6 @@
 'use server';
 import { withSafeAction } from "@/lib/safe-action";
+import Razorpay from 'razorpay';
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -2308,3 +2309,226 @@ export const verifyBankDetails = withSafeAction(_verifyBankDetails);
 export const verifyBankUpdate = withSafeAction(_verifyBankUpdate);
 export const rejectBankUpdate = withSafeAction(_rejectBankUpdate);
 export const bypassOnboardingPayment = withSafeAction(_bypassOnboardingPayment);
+
+// ── Admin: Manual Payment Reconciliation ─────────────────────────────
+/**
+ * reconcileSinglePayment
+ *
+ * Allows an ADMIN or SUPERADMIN to manually reconcile a single PENDING
+ * payment against the live Razorpay order status. Mirrors the logic in
+ * the automated reconciliation cron at /api/cron/reconcile-payments.
+ *
+ * Steps:
+ *  1. Auth — ADMIN or SUPERADMIN only.
+ *  2. Fetch the Payment record (with booking, invoice, deposit).
+ *  3. Guard: payment must exist and be PENDING.
+ *  4. Guard: payment must have a razorpayOrderId.
+ *  5. Initialise Razorpay client.
+ *  6. Fetch live order status from Razorpay.
+ *  7. If 'paid': verify captured amount, then run atomic Prisma transaction
+ *     to mark Payment VERIFIED, update Invoice, RentRecord, Deposit, and Booking.
+ *  8. If 'created' | 'attempted': return informational message.
+ */
+export async function reconcileSinglePayment(paymentId: string): Promise<{ success: boolean; message: string }> {
+    // ── STEP 1: Authenticate ─────────────────────────────────────────────
+    const session = await getSession();
+    const role = (session as any)?.role as string | undefined;
+    if (!session || (role !== 'ADMIN' && role !== 'SUPERADMIN')) {
+        return { success: false, message: 'Unauthorized. Only ADMIN or SUPERADMIN can perform this action.' };
+    }
+    const adminId = (session as any).userId as string;
+
+    // ── STEP 2: Fetch Payment from DB ────────────────────────────────────
+    const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        select: {
+            id: true,
+            bookingId: true,
+            invoiceId: true,
+            depositId: true,
+            razorpayOrderId: true,
+            amount: true,
+            date: true,
+            status: true,
+            booking: {
+                select: {
+                    userId: true,
+                    paymentStatus: true,
+                },
+            },
+            invoice: {
+                select: {
+                    status: true,
+                    month: true,
+                    amount: true,
+                    tenantId: true,
+                },
+            },
+        },
+    });
+
+    // ── STEP 3: Guard — payment must exist and be PENDING ────────────────
+    if (!payment) {
+        return { success: false, message: `Payment '${paymentId}' not found.` };
+    }
+    if (payment.status !== 'PENDING') {
+        return {
+            success: false,
+            message: `Payment is not PENDING (current status: ${payment.status}). No changes made.`,
+        };
+    }
+
+    // ── STEP 4: Guard — must have a Razorpay order ID ────────────────────
+    if (!payment.razorpayOrderId) {
+        return { success: false, message: 'No Razorpay order found for this payment.' };
+    }
+    const orderId = payment.razorpayOrderId;
+
+    // ── STEP 5: Initialise Razorpay client ───────────────────────────────
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        return { success: false, message: 'Razorpay credentials are not configured on the server.' };
+    }
+    const razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    // ── STEP 6: Fetch live order status from Razorpay ────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = await (razorpay.orders as any).fetch(orderId) as {
+        id: string;
+        status: 'created' | 'attempted' | 'paid';
+        amount: number;
+        amount_paid: number;
+    };
+
+    // ── STEP 7: Order is PAID ────────────────────────────────────────────
+    if (order.status === 'paid') {
+        // Fetch the individual payments for this order to find the captured one
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paymentsRes = await (razorpay.orders as any).fetchPayments(orderId) as {
+            items: Array<{ id: string; status: string; amount: number; method: string }>;
+        };
+        const captured = paymentsRes.items?.find((p) => p.status === 'captured');
+
+        if (!captured) {
+            return {
+                success: false,
+                message: 'Razorpay order is paid but no captured payment item was found. Manual review required.',
+            };
+        }
+
+        // Amount verification (fraud prevention)
+        const expectedPaise = Math.round(Number(payment.amount) * 100);
+        if (captured.amount !== expectedPaise) {
+            console.error(
+                `[AdminManualSync] ⚠️ Amount mismatch for payment ${payment.id}: ` +
+                `expected ₹${payment.amount} (${expectedPaise} paise), ` +
+                `got ${captured.amount} paise from Razorpay.`
+            );
+            await prisma.systemEvent.create({
+                data: {
+                    type: 'RECONCILE_AMOUNT_MISMATCH',
+                    severity: 'HIGH',
+                    message: `Admin manual sync: Amount mismatch detected for payment ${payment.id}`,
+                    metadata: {
+                        paymentId: payment.id,
+                        expectedPaise,
+                        receivedPaise: captured.amount,
+                        razorpayOrderId: orderId,
+                        razorpayPaymentId: captured.id,
+                        triggeredByAdmin: adminId,
+                    },
+                },
+            }).catch(() => {});
+            return { success: false, message: 'Amount mismatch detected. Manual review required.' };
+        }
+
+        // Atomic Prisma transaction — all-or-nothing update
+        await prisma.$transaction(async (tx) => {
+            // 1. Mark Payment as VERIFIED
+            await (tx as any).payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: 'VERIFIED',
+                    razorpayId: captured.id,
+                    verifiedBy: 'ADMIN_MANUAL_SYNC',
+                },
+            });
+
+            // 2. If linked to a RentInvoice, mark it PAID (idempotent)
+            if (payment.invoiceId && payment.invoice?.status !== 'PAID') {
+                await tx.rentInvoice.update({
+                    where: { id: payment.invoiceId },
+                    data: {
+                        status: 'PAID',
+                        paidAt: new Date(),
+                        paidAmount: Number(payment.invoice?.amount ?? payment.amount),
+                        paymentMethod: 'ONLINE',
+                    },
+                });
+
+                // Sync RentRecord so billing history stays consistent
+                if (payment.invoice?.tenantId && payment.invoice?.month) {
+                    const today = new Date().toLocaleDateString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                    });
+                    await tx.rentRecord.updateMany({
+                        where: {
+                            tenantId: payment.invoice.tenantId,
+                            month: payment.invoice.month,
+                            paid: false,
+                        },
+                        data: { paid: true, paidOn: today },
+                    });
+                }
+            }
+
+            // 3. If linked to a SecurityDeposit, mark it PAID
+            if (payment.depositId) {
+                await (tx as any).securityDeposit.update({
+                    where: { id: payment.depositId },
+                    data: { status: 'PAID', paidAt: new Date() },
+                });
+            }
+
+            // 4. Update Booking payment status to PAID
+            await tx.booking.update({
+                where: { id: payment.bookingId },
+                data: { paymentStatus: 'PAID', paidAt: new Date() },
+            });
+        });
+
+        // Audit trail — log after transaction so we only log on success
+        await prisma.systemEvent.create({
+            data: {
+                type: 'ADMIN_MANUAL_PAYMENT_SYNC',
+                severity: 'INFO',
+                message: `Admin ${adminId} manually synced payment ${payment.id} to VERIFIED status.`,
+                metadata: {
+                    paymentId: payment.id,
+                    razorpayOrderId: orderId,
+                    razorpayPaymentId: captured.id,
+                    amount: payment.amount,
+                    bookingId: payment.bookingId,
+                    invoiceId: payment.invoiceId,
+                    depositId: payment.depositId,
+                    triggeredByAdmin: adminId,
+                },
+            },
+        }).catch(() => {});
+
+        return { success: true, message: 'Payment successfully synced. Status updated to PAID.' };
+    }
+
+    // ── STEP 8: Order is still pending (created or attempted) ────────────
+    if (order.status === 'created' || order.status === 'attempted') {
+        return { success: false, message: 'Payment is still pending on Razorpay. No changes made.' };
+    }
+
+    // Unknown status from Razorpay
+    return {
+        success: false,
+        message: `Unexpected Razorpay order status: '${order.status}'. No changes made.`,
+    };
+}

@@ -905,39 +905,129 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                     </thead>
                                     <tbody>
                                         {ledgerRows.map(row => (
-                                            <tr key={row.id} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors">
-                                                <td className="px-5 py-4 text-slate-500 text-xs font-bold whitespace-nowrap">
-                                                    {format(row.date, 'dd MMM yyyy')}
-                                                </td>
-                                                <td className="px-5 py-4 font-semibold text-slate-700 text-xs max-w-[220px]">
-                                                    <span>{row.label}</span>
-                                                    {row.txId && (
-                                                        <span className="block text-[9px] text-slate-400 font-mono mt-0.5 truncate max-w-[200px]">
-                                                            Ref: {row.txId}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <PaymentTypeBadge type={row.type} />
-                                                </td>
-                                                <td className="px-5 py-4 text-right font-black text-slate-900">
-                                                    ₹{row.amount.toLocaleString('en-IN')}
-                                                </td>
-                                                <td className="px-5 py-4 text-center">
+                                            <>
+                                                <tr key={row.id} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors">
+                                                    <td className="px-5 py-4 text-slate-500 text-xs font-bold whitespace-nowrap">
+                                                        {format(row.date, 'dd MMM yyyy')}
+                                                    </td>
+                                                    <td className="px-5 py-4 font-semibold text-slate-700 text-xs max-w-[220px]">
+                                                        <span>{row.label}</span>
+                                                        {row.txId && (
+                                                            <span className="block text-[9px] text-slate-400 font-mono mt-0.5 truncate max-w-[200px]">
+                                                                Ref: {row.txId}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <PaymentTypeBadge type={row.type} />
+                                                    </td>
+                                                    <td className="px-5 py-4 text-right font-black text-slate-900">
+                                                        ₹{row.amount.toLocaleString('en-IN')}
+                                                    </td>
+                                                    <td className="px-5 py-4 text-center">
+                                                        <StatusBadge status={row.status} />
+                                                    </td>
+                                                    <td className="px-5 py-4 text-center">
+                                                        {/* Hide Pay Now for PENDING — never show it when payment is processing */}
+                                                        {row.status === 'PENDING' ? (
+                                                            <Minus className="w-3 h-3 text-amber-300 inline" />
+                                                        ) : row.receiptHref === 'DEPOSIT_MODAL' ? (
+                                                            <button
+                                                                onClick={() => setDepositReceiptOpen(true)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-teal-100 transition-all"
+                                                            >
+                                                                <FileText className="w-3 h-3" /> Receipt
+                                                            </button>
+                                                        ) : row.receiptHref === 'TOKEN_MODAL' ? (
+                                                            <button
+                                                                onClick={() => setTokenReceiptOpen(true)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all hover:shadow-md"
+                                                            >
+                                                                <FileText className="w-3 h-3" /> Receipt
+                                                            </button>
+                                                        ) : row.receiptHref?.startsWith('RENT_MODAL:') ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const invId = row.receiptHref?.split(':')[1];
+                                                                    const foundInv = invoices.find(i => i.id === invId);
+                                                                    if (foundInv) {
+                                                                        setSelectedRentInvoice(foundInv);
+                                                                        setRentReceiptOpen(true);
+                                                                    }
+                                                                }}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all hover:shadow-md"
+                                                            >
+                                                                <FileText className="w-3 h-3" /> Receipt
+                                                            </button>
+                                                        ) : (
+                                                            <Minus className="w-3 h-3 text-slate-200 inline" />
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                                {/* ── PENDING Payment Warning Banner (Desktop) ── */}
+                                                {row.status === 'PENDING' && (
+                                                    <tr key={`${row.id}-pending-banner`}>
+                                                        <td colSpan={6} className="px-5 pb-4 pt-0">
+                                                            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 shadow-sm shadow-amber-100/60">
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                                                                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-xs font-black text-amber-800 tracking-wide mb-1">
+                                                                            ⚠️ Payment Status: Processing
+                                                                        </p>
+                                                                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                                                                            If money was already deducted from your bank account,{' '}
+                                                                            <strong>please DO NOT try to pay again</strong>. Your bank is syncing with Razorpay — this usually resolves in 15–30 minutes.
+                                                                            If your status does not update after 30 minutes, please raise a{' '}
+                                                                            <strong>Support Ticket</strong>.
+                                                                        </p>
+                                                                        <p className="text-[10px] text-amber-600 mt-2 font-semibold">
+                                                                            If the bank transaction fails, your amount will be automatically refunded within 3–5 business days.
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile Cards */}
+                            <div className="md:hidden divide-y divide-slate-50">
+                                {ledgerRows.map(row => (
+                                    <div key={row.id}>
+                                        <div className="p-4 flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-xs font-bold text-slate-800 block mb-1">{row.label}</span>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
                                                     <StatusBadge status={row.status} />
-                                                </td>
-                                                <td className="px-5 py-4 text-center">
-                                                    {row.receiptHref === 'DEPOSIT_MODAL' ? (
+                                                    <PaymentTypeBadge type={row.type} />
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 mt-1 font-bold">
+                                                    {format(row.date, 'dd MMM yyyy')}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                <span className="text-sm font-black text-slate-900">₹{row.amount.toLocaleString('en-IN')}</span>
+                                                {/* Hide Pay Now for PENDING — never show it when payment is processing */}
+                                                {row.status !== 'PENDING' && (
+                                                    row.receiptHref === 'DEPOSIT_MODAL' ? (
                                                         <button
                                                             onClick={() => setDepositReceiptOpen(true)}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-teal-100 transition-all"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 text-teal-700 text-[10px] font-black uppercase rounded-lg border border-teal-100"
                                                         >
                                                             <FileText className="w-3 h-3" /> Receipt
                                                         </button>
                                                     ) : row.receiptHref === 'TOKEN_MODAL' ? (
                                                         <button
                                                             onClick={() => setTokenReceiptOpen(true)}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all hover:shadow-md"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-100"
                                                         >
                                                             <FileText className="w-3 h-3" /> Receipt
                                                         </button>
@@ -951,66 +1041,38 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                                                                     setRentReceiptOpen(true);
                                                                 }
                                                             }}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-indigo-100 transition-all hover:shadow-md"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-100"
                                                         >
                                                             <FileText className="w-3 h-3" /> Receipt
                                                         </button>
-                                                    ) : (
-                                                        <Minus className="w-3 h-3 text-slate-200 inline" />
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Mobile Cards */}
-                            <div className="md:hidden divide-y divide-slate-50">
-                                {ledgerRows.map(row => (
-                                    <div key={row.id} className="p-4 flex items-start justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-xs font-bold text-slate-800 block mb-1">{row.label}</span>
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                <StatusBadge status={row.status} />
-                                                <PaymentTypeBadge type={row.type} />
+                                                    ) : null
+                                                )}
                                             </div>
-                                            <p className="text-[10px] text-slate-400 mt-1 font-bold">
-                                                {format(row.date, 'dd MMM yyyy')}
-                                            </p>
                                         </div>
-                                        <div className="flex flex-col items-end gap-2 shrink-0">
-                                            <span className="text-sm font-black text-slate-900">₹{row.amount.toLocaleString('en-IN')}</span>
-                                            {row.receiptHref === 'DEPOSIT_MODAL' ? (
-                                                <button
-                                                    onClick={() => setDepositReceiptOpen(true)}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 text-teal-700 text-[10px] font-black uppercase rounded-lg border border-teal-100"
-                                                >
-                                                    <FileText className="w-3 h-3" /> Receipt
-                                                </button>
-                                            ) : row.receiptHref === 'TOKEN_MODAL' ? (
-                                                <button
-                                                    onClick={() => setTokenReceiptOpen(true)}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-100"
-                                                >
-                                                    <FileText className="w-3 h-3" /> Receipt
-                                                </button>
-                                            ) : row.receiptHref?.startsWith('RENT_MODAL:') ? (
-                                                <button
-                                                    onClick={() => {
-                                                        const invId = row.receiptHref?.split(':')[1];
-                                                        const foundInv = invoices.find(i => i.id === invId);
-                                                        if (foundInv) {
-                                                            setSelectedRentInvoice(foundInv);
-                                                            setRentReceiptOpen(true);
-                                                        }
-                                                    }}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase rounded-lg border border-indigo-100"
-                                                >
-                                                    <FileText className="w-3 h-3" /> Receipt
-                                                </button>
-                                            ) : null}
-                                        </div>
+                                        {/* ── PENDING Payment Warning Banner (Mobile) ── */}
+                                        {row.status === 'PENDING' && (
+                                            <div className="mx-4 mb-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 shadow-sm shadow-amber-100/60">
+                                                <div className="flex items-start gap-2.5">
+                                                    <div className="w-7 h-7 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[11px] font-black text-amber-800 tracking-wide mb-1">
+                                                            ⚠️ Payment Status: Processing
+                                                        </p>
+                                                        <p className="text-[10px] text-amber-700 leading-relaxed">
+                                                            If money was already deducted from your bank account,{' '}
+                                                            <strong>please DO NOT try to pay again</strong>. Your bank is syncing with Razorpay — this usually resolves in 15–30 minutes.
+                                                            If your status does not update after 30 minutes, please raise a{' '}
+                                                            <strong>Support Ticket</strong>.
+                                                        </p>
+                                                        <p className="text-[10px] text-amber-600 mt-1.5 font-semibold">
+                                                            If the bank transaction fails, your amount will be automatically refunded within 3–5 business days.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

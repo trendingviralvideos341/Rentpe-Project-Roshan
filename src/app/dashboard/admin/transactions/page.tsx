@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw, Search, Download, FileText, Filter, X, ChevronDown, TrendingUp, TrendingDown, IndianRupee, Receipt, Users, Building2, ArrowDownLeft, ArrowUpRight, CreditCard, AlertCircle } from "lucide-react";
-import { getTransactions } from "@/actions/admin";
+import { getTransactions, reconcileSinglePayment } from "@/actions/admin";
+import { toast } from "sonner";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -271,6 +272,24 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [showFilters, setShowFilters] = useState(false);
+    const [syncingMap, setSyncingMap] = useState<Record<string, boolean>>({});
+
+    const handleSync = async (paymentId: string) => {
+        setSyncingMap(prev => ({ ...prev, [paymentId]: true }));
+        try {
+            const result = await reconcileSinglePayment(paymentId);
+            if (result.success) {
+                toast.success(result.message ?? 'Payment synced successfully!');
+                window.location.reload();
+            } else {
+                toast.warning(result.message ?? 'Payment still pending on Razorpay.');
+            }
+        } catch (e: any) {
+            toast.error(e?.message ?? 'Sync failed. Please try again.');
+        } finally {
+            setSyncingMap(prev => ({ ...prev, [paymentId]: false }));
+        }
+    };
 
     const filtered = useMemo(() => {
         return transactions.filter(txn => {
@@ -527,6 +546,16 @@ function TabA({ transactions, loading }: { transactions: any[]; loading: boolean
                                         <td className="p-3.5 align-top">
                                             <div className="flex flex-col gap-1.5">
                                                 <StatusBadge status={txn.status} />
+                                                {txn.status === 'PENDING' && (
+                                                    <button
+                                                        onClick={() => handleSync(txn.id)}
+                                                        disabled={syncingMap[txn.id]}
+                                                        className="flex items-center gap-1 mt-1.5 px-2 py-1 rounded-lg text-[10px] font-black bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        <RefreshCcw className={`h-3 w-3 ${syncingMap[txn.id] ? 'animate-spin' : ''}`} />
+                                                        {syncingMap[txn.id] ? 'Syncing...' : 'Sync'}
+                                                    </button>
+                                                )}
                                                 <div className="text-[10px] text-slate-400 font-mono truncate max-w-[120px]" title={txn.id}>{txn.id?.slice(0, 12)}…</div>
                                                 {txn.razorpayId && (
                                                     <button onClick={() => navigator.clipboard.writeText(txn.razorpayId)} className="text-[10px] text-blue-500 font-mono font-bold truncate max-w-[120px] hover:text-blue-700 text-left" title={`Copy: ${txn.razorpayId}`}>{txn.razorpayId?.slice(0, 16)}…</button>
