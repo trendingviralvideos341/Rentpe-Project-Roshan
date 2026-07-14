@@ -227,7 +227,6 @@ export default function DashboardSidebar(props: SidebarProps) {
     const studentLinks: SidebarLink[] = [
         { href: "/dashboard/student", label: "My Bookings", icon: LayoutDashboard, badge: studentAlertCount },
         { href: "/dashboard/student?tab=profile", label: "My Profile", icon: User },
-        { href: "/dashboard/student/documents", label: "My Documents", icon: FileText },
         { href: "/dashboard/student/agreements", label: "My Agreement", icon: FileSpreadsheet, badge: pendingStudentAgreements },
         { href: "/dashboard/student/payments", label: "Payment History", icon: CreditCard },
         { href: "/dashboard/student/food-menu", label: "Food Menu", icon: Utensils },

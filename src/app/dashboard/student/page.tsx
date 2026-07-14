@@ -18,7 +18,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { generateInvoicePDF } from "@/utils/invoiceGenerator";
 import { BookingTimeline } from "@/components/ui/BookingTimeline";
-import { StudentKYCUploader } from "@/components/booking/StudentKYCUploader";
 import { PropertyAgreementModal } from "@/components/booking/PropertyAgreementModal";
 import { DocumentViewerModal, type DocumentViewerDoc } from "@/components/booking/DocumentViewerModal";
 import { BookingFeeBreakdown } from "@/components/booking/BookingFeeBreakdown";
