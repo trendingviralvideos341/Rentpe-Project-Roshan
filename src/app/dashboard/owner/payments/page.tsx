@@ -13,6 +13,11 @@ import {
     FileText, Loader2, Activity
 } from 'lucide-react';
 
+function getCurrentMonth() {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number) {
     return `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -113,7 +118,7 @@ function SkeletonRows({ color, cols }: { color: string; cols: number }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // TAB 2: Payouts & Invoices
 // ─────────────────────────────────────────────────────────────────────────────
-function PayoutsTab() {
+function PayoutsTab({ month }: { month: string }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -122,14 +127,14 @@ function PayoutsTab() {
         setLoading(true);
         setError('');
         try {
-            const res = await getOwnerPayoutsForOwner();
+            const res = await getOwnerPayoutsForOwner(month);
             setData(res);
         } catch (e: any) {
             setError(e.message || 'Failed to load payouts');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [month]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -263,7 +268,7 @@ function PayoutsTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 // TAB 3: Refunds & Tenant Adjustments
 // ─────────────────────────────────────────────────────────────────────────────
-function RefundsTab() {
+function RefundsTab({ month }: { month: string }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -272,14 +277,14 @@ function RefundsTab() {
         setLoading(true);
         setError('');
         try {
-            const res = await getOwnerRefundsForOwner();
+            const res = await getOwnerRefundsForOwner(month);
             setData(res);
         } catch (e: any) {
             setError(e.message || 'Failed to load refunds');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [month]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -431,6 +436,26 @@ const TABS: { key: MainTab; label: string; icon: any; activeClass: string; inact
 
 export default function OwnerPaymentsPage() {
     const [activeTab, setActiveTab] = useState<MainTab>('inflows');
+    const [month, setMonth] = useState(getCurrentMonth());
+
+    const currentYearNum = new Date().getFullYear();
+    const yearOptions = [
+        { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
+        { value: currentYearNum.toString(), label: currentYearNum.toString() },
+        { value: (currentYearNum + 1).toString(), label: (currentYearNum + 1).toString() },
+        { value: (currentYearNum + 2).toString(), label: (currentYearNum + 2).toString() }
+    ];
+
+    const monthOptions = [
+        { value: '01', label: 'January' }, { value: '02', label: 'February' },
+        { value: '03', label: 'March' }, { value: '04', label: 'April' },
+        { value: '05', label: 'May' }, { value: '06', label: 'June' },
+        { value: '07', label: 'July' }, { value: '08', label: 'August' },
+        { value: '09', label: 'September' }, { value: '10', label: 'October' },
+        { value: '11', label: 'November' }, { value: '12', label: 'December' }
+    ];
+
+    const [selectedYear, selectedMonth] = month.split('-');
 
     return (
         <div className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 p-4 md:p-8 space-y-6">
@@ -446,6 +471,30 @@ export default function OwnerPaymentsPage() {
                     <p className="text-sm text-slate-500 ml-10">
                         Rent inflows, payout reconciliation, and tenant refund history for all your properties.
                     </p>
+                </div>
+
+                {/* YYYY and MM filter */}
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex flex-col">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT YEAR</label>
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setMonth(`${e.target.value}-${selectedMonth}`)}
+                            className="bg-white border-[1.5px] border-indigo-500 rounded-full text-indigo-700 font-black text-xs px-4 py-2 outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-sm appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234F46E5%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_12px_center] bg-[length:8px_auto]"
+                        >
+                            {yearOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT MONTH</label>
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setMonth(`${selectedYear}-${e.target.value}`)}
+                            className="bg-white border-[1.5px] border-slate-200 rounded-full text-slate-700 font-black text-xs px-4 py-2 outline-none focus:border-slate-400 shadow-sm appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394A3B8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_12px_center] bg-[length:8px_auto]"
+                        >
+                            {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -471,9 +520,9 @@ export default function OwnerPaymentsPage() {
 
                 {/* Tab Content */}
                 <div className="p-5">
-                    {activeTab === 'inflows' && <RentCollectionContainer />}
-                    {activeTab === 'payouts' && <PayoutsTab />}
-                    {activeTab === 'refunds' && <RefundsTab />}
+                    {activeTab === 'inflows' && <RentCollectionContainer month={month} />}
+                    {activeTab === 'payouts' && <PayoutsTab month={month} />}
+                    {activeTab === 'refunds' && <RefundsTab month={month} />}
                 </div>
             </div>
         </div>

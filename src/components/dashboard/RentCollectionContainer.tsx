@@ -579,11 +579,10 @@ function CommissionModal({
 }
 
 // ── MAIN COMPONENT ────────────────────────────────────
-export function RentCollectionContainer() {
+export function RentCollectionContainer({ month }: { month: string }) {
     const [invoices, setInvoices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<Tab>('ALL');
-    const [month, setMonth] = useState(getCurrentMonth());
     const [search, setSearch] = useState('');
     const [methodFilter, setMethodFilter] = useState('ALL');
     const [propertyFilter, setPropertyFilter] = useState('ALL');
@@ -680,26 +679,6 @@ export function RentCollectionContainer() {
         });
     };
 
-    const currentYearNum = new Date().getFullYear();
-    const yearOptions = [
-        { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
-        { value: currentYearNum.toString(), label: currentYearNum.toString() },
-        { value: (currentYearNum + 1).toString(), label: (currentYearNum + 1).toString() },
-        { value: (currentYearNum + 2).toString(), label: (currentYearNum + 2).toString() }
-    ];
-
-    const monthOptions = [
-        { value: '01', label: 'January' }, { value: '02', label: 'February' },
-        { value: '03', label: 'March' }, { value: '04', label: 'April' },
-        { value: '05', label: 'May' }, { value: '06', label: 'June' },
-        { value: '07', label: 'July' }, { value: '08', label: 'August' },
-        { value: '09', label: 'September' }, { value: '10', label: 'October' },
-        { value: '11', label: 'November' }, { value: '12', label: 'December' }
-    ];
-
-    const [selectedYear, selectedMonth] = month.split('-');
-
-
     const handleReminder = (inv: any) => {
         setSendingId(inv.id);
         startTransition(async () => {
@@ -733,30 +712,6 @@ export function RentCollectionContainer() {
                     <p className="text-sm text-slate-500 mt-0.5">Full rent collection dashboard</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex items-center gap-3 w-fit ml-auto">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-2">SELECT YEAR</span>
-                            <select
-                                value={selectedYear}
-                                onChange={(e) => setMonth(`${e.target.value}-${selectedMonth}`)}
-                                className="appearance-none bg-white border-2 border-transparent hover:border-slate-100 focus:border-blue-500 rounded-full px-4 py-1 pr-8 text-sm font-black text-slate-700 focus:outline-none transition-all cursor-pointer relative"
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
-                            >
-                                {yearOptions.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex flex-col border-l border-slate-100 pl-3">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-2">SELECT MONTH</span>
-                            <select
-                                value={selectedMonth}
-                                onChange={(e) => setMonth(`${selectedYear}-${e.target.value}`)}
-                                className="appearance-none bg-white border-2 border-transparent hover:border-slate-100 focus:border-blue-500 rounded-full px-4 py-1 pr-8 text-sm font-black text-slate-700 focus:outline-none transition-all cursor-pointer"
-                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
-                            >
-                                {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                            </select>
-                        </div>
-                    </div>
                     <button onClick={() => reload(month)} disabled={loading}
                         className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm mt-3.5 h-11 w-11 flex items-center justify-center">
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

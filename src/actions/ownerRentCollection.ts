@@ -1319,11 +1319,23 @@ export async function getMyDepositStatus() {
 // Fetches only payouts belonging to this owner's properties.
 // Bank account numbers are NEVER returned (encrypted at rest, not needed here).
 // ────────────────────────────────────────────────────────────────────────────
-export async function getOwnerPayoutsForOwner() {
+export async function getOwnerPayoutsForOwner(month?: string) {
     const { ownerId, properties } = await getOwnerSession();
 
+    let whereClause: any = { ownerId };
+    
+    if (month) {
+        const [year, monthNum] = month.split('-');
+        if (year && monthNum) {
+            const startDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+            const endDate = new Date(parseInt(year), parseInt(monthNum), 1);
+            // Assuming we filter by createdAt or paidAt for payouts. paidAt is best, but could be null if pending. Let's use createdAt or just period matching if period exists.
+            whereClause = { ...whereClause, createdAt: { gte: startDate, lt: endDate } };
+        }
+    }
+
     const payouts = await (prisma as any).ownerPayout.findMany({
-        where: { ownerId },
+        where: whereClause,
         orderBy: { createdAt: 'desc' },
         take: 200,
     });
@@ -1380,7 +1392,7 @@ export async function getOwnerPayoutsForOwner() {
 // OWNER SETTLEMENTS HUB — TAB 3: Refunds & Tenant Adjustments
 // Fetches refund records for bookings linked to this owner's properties.
 // ────────────────────────────────────────────────────────────────────────────
-export async function getOwnerRefundsForOwner() {
+export async function getOwnerRefundsForOwner(month?: string) {
     const { properties } = await getOwnerSession();
     const propertyIds = properties.map((p: any) => p.id);
 
@@ -1391,8 +1403,19 @@ export async function getOwnerRefundsForOwner() {
     });
     const bookingIds = bookings.map((b: any) => b.id);
 
+    let whereClause: any = { bookingId: { in: bookingIds } };
+    
+    if (month) {
+        const [year, monthNum] = month.split('-');
+        if (year && monthNum) {
+            const startDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+            const endDate = new Date(parseInt(year), parseInt(monthNum), 1);
+            whereClause = { ...whereClause, createdAt: { gte: startDate, lt: endDate } };
+        }
+    }
+
     const refunds = await (prisma as any).refundRecord.findMany({
-        where: { bookingId: { in: bookingIds } },
+        where: whereClause,
         orderBy: { createdAt: 'desc' },
         take: 200,
     });
