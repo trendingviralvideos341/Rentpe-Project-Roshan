@@ -514,7 +514,7 @@ export default function DepositsPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 relative overflow-hidden px-6 pt-10 pb-6">
+            <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 relative overflow-hidden px-6 py-5">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 <div className="absolute -left-10 bottom-0 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl" />
                 <div className="px-4 relative z-10">
@@ -525,7 +525,7 @@ export default function DepositsPage() {
                 </div>
             </div>
 
-            <div className="px-4 mt-4 mb-4 relative z-10 space-y-6">
+            <div className="px-4 mt-3 mb-3 relative z-10 space-y-4">
 
                 {/* ⚠️ Overdue Warning Banner — Component 3 */}
                 {overdueInfo.count > 0 && (
@@ -555,45 +555,45 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-3 gap-4">
                     {/* Card 1 — violet */}
                     <div onClick={() => updateFilter("status", "HELD")}
-                        className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-4
+                        className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-xl p-4
                                    cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-200
-                                   transition-all group">
+                                   transition-all group relative">
                         <div className="text-xs font-bold uppercase tracking-widest text-violet-200 mb-2">
                             Total Deposits Held
                         </div>
                         <div className="text-3xl font-extrabold text-white">{fmt(summary.totalHeld)}</div>
                         <div className="text-xs text-violet-300 mt-1">{deposits.filter((d: any) => d.status === 'PAID').length} active</div>
-                        <div className="text-[9px] text-violet-200 mt-2 opacity-0 group-hover:opacity-100 transition font-semibold">
+                        <div className="text-[9px] text-violet-200 absolute bottom-2 right-4 opacity-0 group-hover:opacity-100 transition font-semibold">
                             Click to filter →
                         </div>
                     </div>
 
                     {/* Card 2 — amber */}
                     <div onClick={() => updateFilter("status", "REFUND_PENDING")}
-                        className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4
+                        className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-4
                                    cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-200
-                                   transition-all group">
+                                   transition-all group relative">
                         <div className="text-xs font-bold uppercase tracking-widest text-amber-100 mb-2">
                             Pending Refund
                         </div>
                         <div className="text-3xl font-extrabold text-white">{summary.refundPending}</div>
                         <div className="text-xs text-amber-200 mt-1">Need processing</div>
-                        <div className="text-[9px] text-amber-100 mt-2 opacity-0 group-hover:opacity-100 transition font-semibold">
+                        <div className="text-[9px] text-amber-100 absolute bottom-2 right-4 opacity-0 group-hover:opacity-100 transition font-semibold">
                             Click to filter →
                         </div>
                     </div>
 
                     {/* Card 3 — emerald */}
                     <div onClick={() => updateFilter("status", "REFUNDED")}
-                        className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4
+                        className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4
                                    cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-200
-                                   transition-all group">
+                                   transition-all group relative">
                         <div className="text-xs font-bold uppercase tracking-widest text-emerald-100 mb-2">
                             Refunded This Month
                         </div>
                         <div className="text-3xl font-extrabold text-white">{fmt(summary.refundedThisMonth)}</div>
                         <div className="text-xs text-emerald-200 mt-1">Processed</div>
-                        <div className="text-[9px] text-emerald-100 mt-2 opacity-0 group-hover:opacity-100 transition font-semibold">
+                        <div className="text-[9px] text-emerald-100 absolute bottom-2 right-4 opacity-0 group-hover:opacity-100 transition font-semibold">
                             Click to filter →
                         </div>
                     </div>
