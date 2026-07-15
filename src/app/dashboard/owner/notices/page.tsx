@@ -31,12 +31,13 @@ export default function OwnerNoticesPage() {
     const [confirmNotice, setConfirmNotice] = useState<any>(null);
     const [settlementTenant, setSettlementTenant] = useState<any>(null);
     const [fetchingTenant, setFetchingTenant] = useState(false);
-    const [noticeFilter, setNoticeFilter] = useState<'ALL' | 'VACATED'>('ALL');
+    const [noticeFilter, setNoticeFilter] = useState<'ALL' | 'PENDING' | 'THIS_MONTH' | 'VACATED'>('ALL');
     const [receiptLoading, setReceiptLoading] = useState<string | null>(null); // noticeId being loaded
     const [viewingReceipt, setViewingReceipt] = useState<any>(null); // Data for the receipt modal
 
     const [selectedYear, setSelectedYear] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>('');
+    const [selectedProperty, setSelectedProperty] = useState<string>('ALL');
 
     const handleYearChange = (year: string) => {
         setSelectedYear(year);
@@ -287,11 +288,24 @@ export default function OwnerNoticesPage() {
         return notices.filter(n => n.status !== 'WITHDRAWN' && isSameDay(new Date(n.plannedMoveOut), day));
     };
 
-    const filteredNotices = notices.filter(n => {
-        const statusMatch = noticeFilter === 'VACATED' ? n.status === 'VACATED' : n.status !== 'VACATED';
-        if (!statusMatch) return false;
+    const uniqueProperties = Array.from(new Set(notices.map(n => n.booking?.propertyName))).filter(Boolean).sort() as string[];
 
+    const filteredNotices = notices.filter(n => {
         const date = new Date(n.plannedMoveOut);
+
+        let statusMatch = true;
+        if (noticeFilter === 'VACATED') statusMatch = n.status === 'VACATED';
+        else if (noticeFilter === 'PENDING') statusMatch = n.status === 'SUBMITTED';
+        else if (noticeFilter === 'THIS_MONTH') {
+            const now = new Date();
+            statusMatch = n.status !== 'WITHDRAWN' && n.status !== 'VACATED' && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+        } else {
+            statusMatch = n.status !== 'VACATED'; // ALL behavior
+        }
+
+        if (!statusMatch) return false;
+        if (selectedProperty !== 'ALL' && n.booking?.propertyName !== selectedProperty) return false;
+
         const yearMatch = selectedYear === 'ALL' || date.getFullYear() === Number(selectedYear);
         const monthMatch = selectedMonth === 'ALL' || date.getMonth() === Number(selectedMonth);
         return yearMatch && monthMatch;
@@ -316,11 +330,24 @@ export default function OwnerNoticesPage() {
                         <div className="flex items-center gap-4 flex-wrap">
                             <div className="flex gap-4">
                                 <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Property</span>
+                                    <select
+                                        value={selectedProperty}
+                                        onChange={(e) => setSelectedProperty(e.target.value)}
+                                        className="text-xs font-black rounded-full px-4 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[130px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-8"
+                                    >
+                                        <option value="ALL">All Properties</option>
+                                        {uniqueProperties.map(p => (
+                                            <option key={p} value={p}>{p}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Year</span>
                                     <select
                                         value={selectedYear}
                                         onChange={(e) => handleYearChange(e.target.value)}
-                                        className="bg-white text-slate-800 text-xs font-black px-4 py-2.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent cursor-pointer min-w-[110px]"
+                                        className="text-xs font-black rounded-full px-4 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[110px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-8"
                                     >
                                         <option value="ALL">All Years</option>
                                         {uniqueYears.map(y => (
@@ -333,7 +360,7 @@ export default function OwnerNoticesPage() {
                                     <select
                                         value={selectedMonth}
                                         onChange={(e) => handleMonthChange(e.target.value)}
-                                        className="bg-white text-slate-800 text-xs font-black px-4 py-2.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent cursor-pointer min-w-[130px]"
+                                        className="text-xs font-black rounded-full px-4 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[130px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-8"
                                     >
                                         <option value="ALL">All Months</option>
                                         {MONTHS.map(m => (
@@ -358,14 +385,13 @@ export default function OwnerNoticesPage() {
                 </div>
             </div>
 
-            <div className="w-full px-4 -mt-12 relative z-10 space-y-6">
-                {/* Summary Cards — 5 tabs */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="w-full px-4 mt-6 relative z-10 space-y-6">
+                {/* Summary Cards — 4 tabs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
                         { label: 'Total',            val: notices.filter(n => n.status !== 'VACATED').length, filter: 'ALL'    as const, highlight: noticeFilter === 'ALL' },
-                        { label: 'Pending Action',   val: notices.filter(n => n.status === 'SUBMITTED').length,  filter: 'ALL'    as const, highlight: false },
-                        { label: 'Upcoming (30d)',   val: upcoming.filter(n => { const days = Math.ceil((new Date(n.plannedMoveOut).getTime() - Date.now()) / 86400000); return days <= 30; }).length, filter: 'ALL' as const, highlight: false },
-                        { label: 'This Month',       val: upcoming.filter(n => { const d = new Date(n.plannedMoveOut); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length, filter: 'ALL' as const, highlight: false },
+                        { label: 'Pending Action',   val: notices.filter(n => n.status === 'SUBMITTED').length,  filter: 'PENDING'    as const, highlight: noticeFilter === 'PENDING' },
+                        { label: 'This Month',       val: upcoming.filter(n => { const d = new Date(n.plannedMoveOut); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length, filter: 'THIS_MONTH' as const, highlight: noticeFilter === 'THIS_MONTH' },
                         { label: 'Vacate Completed', val: notices.filter(n => n.status === 'VACATED').length,   filter: 'VACATED' as const, highlight: noticeFilter === 'VACATED', teal: true },
                     ].map(stat => (
                         <button
@@ -376,7 +402,7 @@ export default function OwnerNoticesPage() {
                                     ? 'bg-teal-600 border-teal-500 ring-2 ring-teal-400'
                                     : stat.highlight && !('teal' in stat)
                                     ? 'bg-indigo-600 border-indigo-500 ring-2 ring-indigo-400'
-                                    : 'bg-white border-slate-100 hover:border-indigo-200'
+                                    : 'bg-white border-slate-100 hover:border-indigo-200 hover:bg-slate-50'
                             }`}>
                             <p className={`text-2xl font-black ${
                                 ((stat as any).teal && noticeFilter === 'VACATED') || stat.highlight ? 'text-white' : 'text-slate-900'
