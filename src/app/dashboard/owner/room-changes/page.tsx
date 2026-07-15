@@ -69,18 +69,18 @@ export default function OwnerRoomChangesPage() {
     uniqueYears.sort((a, b) => b - a);
 
     const MONTHS = [
-        { value: '0', label: 'Jan' },
-        { value: '1', label: 'Feb' },
-        { value: '2', label: 'Mar' },
-        { value: '3', label: 'Apr' },
+        { value: '0', label: 'January' },
+        { value: '1', label: 'February' },
+        { value: '2', label: 'March' },
+        { value: '3', label: 'April' },
         { value: '4', label: 'May' },
-        { value: '5', label: 'Jun' },
-        { value: '6', label: 'Jul' },
-        { value: '7', label: 'Aug' },
-        { value: '8', label: 'Sep' },
-        { value: '9', label: 'Oct' },
-        { value: '10', label: 'Nov' },
-        { value: '11', label: 'Dec' }
+        { value: '5', label: 'June' },
+        { value: '6', label: 'July' },
+        { value: '7', label: 'August' },
+        { value: '8', label: 'September' },
+        { value: '9', label: 'October' },
+        { value: '10', label: 'November' },
+        { value: '11', label: 'December' }
     ];
 
     const filteredRequests = requests.filter(r => {
@@ -107,28 +107,33 @@ export default function OwnerRoomChangesPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex bg-white/20 backdrop-blur-md rounded-xl p-1 gap-1 border border-white/30">
-                            <select
-                                value={selectedYear}
-                                onChange={(e) => setSelectedYear(e.target.value)}
-                                className="bg-transparent text-white text-xs font-black px-2 py-1.5 focus:outline-none cursor-pointer [&>option]:text-slate-900 border-none"
-                            >
-                                <option value="ALL">All Years</option>
-                                {uniqueYears.map(y => (
-                                    <option key={y} value={y.toString()}>{y}</option>
-                                ))}
-                            </select>
-                            <span className="w-px bg-white/30 my-1" />
-                            <select
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(e.target.value)}
-                                className="bg-transparent text-white text-xs font-black px-2 py-1.5 focus:outline-none cursor-pointer [&>option]:text-slate-900 border-none"
-                            >
-                                <option value="ALL">All Months</option>
-                                {MONTHS.map(m => (
-                                    <option key={m.value} value={m.value}>{m.label}</option>
-                                ))}
-                            </select>
+                        <div className="flex gap-4">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Year</span>
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                    className="bg-white text-slate-800 text-xs font-black px-4 py-2.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent cursor-pointer min-w-[110px]"
+                                >
+                                    <option value="ALL">All Years</option>
+                                    {uniqueYears.map(y => (
+                                        <option key={y} value={y.toString()}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Month</span>
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    className="bg-white text-slate-800 text-xs font-black px-4 py-2.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent cursor-pointer min-w-[130px]"
+                                >
+                                    <option value="ALL">All Months</option>
+                                    {MONTHS.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
