@@ -339,11 +339,11 @@ export default function TaxSummaryPage() {
     })();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20 -mx-4 md:-mx-8 -mt-4 md:-mt-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20">
             {/* Premium Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 px-6 pt-10 pb-24 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #a78bfa 0%, transparent 60%)' }} />
-                <div className="max-w-7xl mx-auto relative z-10">
+                <div className="w-full px-4 relative z-10">
                     <div className="flex items-start justify-between flex-wrap gap-4">
                         <div>
                             <div className="flex items-center gap-2 mb-3">
@@ -354,60 +354,55 @@ export default function TaxSummaryPage() {
                             <p className="text-indigo-100 text-sm font-medium mt-2">Your complete financial picture — GST, TDS, and net payouts</p>
                         </div>
                         {/* FY & Month Selector */}
-                        <div className="flex items-center gap-4 bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mt-2 sm:mt-0">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Select Year</label>
-                                <div className="relative">
-                                    <select
-                                        className="appearance-none bg-white border border-slate-200 focus:border-blue-500 rounded-full pl-4 pr-10 py-2 text-sm font-bold text-slate-800 cursor-pointer transition-all focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
-                                        value={selectedFY.label}
-                                        onChange={(e) => {
-                                            const fy = fyOptions.find(f => f.label === e.target.value);
-                                            if (fy) setSelectedFY(fy);
-                                        }}
-                                    >
-                                        {fyOptions.map(fy => (
-                                            <option key={fy.label} value={fy.label}>{fy.label}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                                    </div>
-                                </div>
+                        <div className="flex items-center gap-3 flex-wrap mt-2 sm:mt-0">
+                            {/* SELECT YEAR */}
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Year</label>
+                                <select
+                                    value={selectedFY.label}
+                                    onChange={(e) => {
+                                        const fy = fyOptions.find(f => f.label === e.target.value);
+                                        if (fy) setSelectedFY(fy);
+                                    }}
+                                    className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[120px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
+                                >
+                                    {fyOptions.map((fy: any) => (
+                                        <option key={fy.label} value={fy.label}>{fy.label}</option>
+                                    ))}
+                                </select>
                             </div>
                             
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Select Month</label>
-                                <div className="relative">
-                                    <select
-                                        className="appearance-none bg-white border border-slate-200 focus:border-blue-500 rounded-full pl-4 pr-10 py-2 text-sm font-bold text-slate-800 cursor-pointer transition-all focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
-                                        value={globalMonth}
-                                        onChange={(e) => setGlobalMonth(e.target.value)}
-                                    >
-                                        <option value="ALL">All Months</option>
-                                        <option value="0">January</option>
-                                        <option value="1">February</option>
-                                        <option value="2">March</option>
-                                        <option value="3">April</option>
-                                        <option value="4">May</option>
-                                        <option value="5">June</option>
-                                        <option value="6">July</option>
-                                        <option value="7">August</option>
-                                        <option value="8">September</option>
-                                        <option value="9">October</option>
-                                        <option value="10">November</option>
-                                        <option value="11">December</option>
-                                    </select>
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                                    </div>
-                                </div>
+                            {/* SELECT MONTH */}
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Month</label>
+                                <select
+                                    value={globalMonth}
+                                    onChange={(e) => setGlobalMonth(e.target.value)}
+                                    className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[140px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
+                                >
+                                    <option value="ALL">All Months</option>
+                                    <option value="0">January</option>
+                                    <option value="1">February</option>
+                                    <option value="2">March</option>
+                                    <option value="3">April</option>
+                                    <option value="4">May</option>
+                                    <option value="5">June</option>
+                                    <option value="6">July</option>
+                                    <option value="7">August</option>
+                                    <option value="8">September</option>
+                                    <option value="9">October</option>
+                                    <option value="10">November</option>
+                                    <option value="11">December</option>
+                                </select>
                             </div>
                         </div>
                     </div>
 
+                    {/* Divider */}
+                    <div className="w-full h-px bg-white/20 my-6" />
+
                     {/* Tab Navigation */}
-                    <div className="flex gap-1.5 mt-8 bg-white/10 rounded-2xl p-1 w-fit">
+                    <div className="flex gap-1.5 bg-white/10 rounded-2xl p-1 w-fit flex-wrap">
                         {[
                             { id: 'overview', label: 'Financial Overview', icon: TrendingUp },
                             { id: 'monthly', label: 'Monthly Statements', icon: Receipt },
@@ -431,7 +426,7 @@ export default function TaxSummaryPage() {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 -mt-14 relative z-10 space-y-6">
+            <div className="w-full px-4 md:px-8 -mt-14 relative z-10 space-y-6">
 
                 {/* TDS Exemption Banner */}
                 {s?.tdsExempt ? (
@@ -483,79 +478,7 @@ export default function TaxSummaryPage() {
                             </div>
                         )}
 
-                        {/* RentPe Commission Breakdown */}
-                        {s && s.confirmedBookings > 0 && (
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                                <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                            <Building2 className="w-5 h-5 text-white" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-black text-white text-base">💼 RentPe Commission Breakdown</h3>
-                                            <p className="text-indigo-200 text-xs mt-0.5">How your platform commission is calculated (per transaction)</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-slate-700 text-sm">Gross Rent Collected from Student</p>
-                                                <p className="text-xs text-slate-400">This is the full rent amount. Your taxable income.</p>
-                                            </div>
-                                            <span className="font-black text-slate-900 text-lg">{fmtShort(s.totalGross)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-3 border-t border-b border-dashed border-slate-200">
-                                            <div>
-                                                <p className="font-bold text-rose-600 text-sm flex items-center gap-1">
-                                                    <span>− RentPe Platform Commission</span>
-                                                    <span className="bg-rose-100 text-rose-600 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">Business Expense</span>
-                                                </p>
-                                                <div className="mt-1 ml-2 space-y-0.5 text-[11px] text-slate-400">
-                                                    <p>├─ Base Platform Commission (excl. GST): <span className="font-bold text-slate-600">₹7.63</span></p>
-                                                    <p>└─ GST 18% (SAC 997312): CGST <span className="font-bold">₹0.68</span> + SGST <span className="font-bold">₹0.69</span> = <span className="font-bold">₹1.37</span></p>
-                                                </div>
-                                            </div>
-                                            <span className="font-black text-rose-600 text-lg whitespace-nowrap">− {fmtShort(s.totalPlatformFeeCharged)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-black text-emerald-700 text-sm flex items-center gap-2">
-                                                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse inline-block" />
-                                                    ✅ Net Payout to Your Account
-                                                </p>
-                                                <p className="text-xs text-slate-400">Gross Rent − Platform Commission</p>
-                                            </div>
-                                            <span className="font-black text-emerald-700 text-2xl">{fmtShort(s.totalOwnerNetPayout)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-                                        <BadgeCheck className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                        <div className="space-y-1">
-                                            <p className="font-black text-amber-800 text-sm">CA Note: Your Taxable Rental Income</p>
-                                            <p className="text-xs text-amber-700">
-                                                ✅ For <strong>Income Tax (IT Act)</strong>: Your gross rental income is <strong>{fmtShort(s.totalGross)}</strong>.
-                                                Report this full amount to your CA when filing ITR.
-                                            </p>
-                                            <p className="text-xs text-amber-700">
-                                                ✅ The <strong>Platform Commission (₹9/transaction)</strong> is your allowable business expense
-                                                deductible under the IT Act.
-                                            </p>
-                                            <p className="text-xs text-amber-700">
-                                                ✅ RentPe issues a <strong>Tax Invoice (SAC 997312)</strong> for the platform commission. Request it from support for your records.
-                                            </p>
-                                            {!s.tdsExempt && (
-                                                <p className="text-xs text-amber-700">
-                                                    ✅ <strong>TDS (1% u/s 194-O)</strong> will be deducted when your annual earnings via RentPe exceed ₹5,00,000.
-                                                    Your Form 26AS will reflect this for ITR filing.
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+
                     </div>
                 )}
 
