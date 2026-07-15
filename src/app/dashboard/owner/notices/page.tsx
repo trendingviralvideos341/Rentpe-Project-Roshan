@@ -35,6 +35,57 @@ export default function OwnerNoticesPage() {
     const [receiptLoading, setReceiptLoading] = useState<string | null>(null); // noticeId being loaded
     const [viewingReceipt, setViewingReceipt] = useState<any>(null); // Data for the receipt modal
 
+    const [selectedYear, setSelectedYear] = useState<string>('');
+    const [selectedMonth, setSelectedMonth] = useState<string>('');
+
+    const handleYearChange = (year: string) => {
+        setSelectedYear(year);
+        if (year !== 'ALL') {
+            const newDate = new Date(currentDate);
+            newDate.setFullYear(Number(year));
+            setCurrentDate(newDate);
+        }
+    };
+
+    const handleMonthChange = (month: string) => {
+        setSelectedMonth(month);
+        if (month !== 'ALL') {
+            const newDate = new Date(currentDate);
+            newDate.setMonth(Number(month));
+            setCurrentDate(newDate);
+        }
+    };
+
+    const handleCalendarNavigate = (newDate: Date) => {
+        setCurrentDate(newDate);
+        setSelectedYear(newDate.getFullYear().toString());
+        setSelectedMonth(newDate.getMonth().toString());
+    };
+
+    const uniqueYears = Array.from(new Set(
+        notices.map(n => new Date(n.plannedMoveOut).getFullYear())
+    )).sort((a, b) => b - a);
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    if (!uniqueYears.includes(currentYear)) uniqueYears.push(currentYear);
+    if (!uniqueYears.includes(nextYear)) uniqueYears.push(nextYear);
+    uniqueYears.sort((a, b) => b - a);
+
+    const MONTHS = [
+        { value: '0', label: 'Jan' },
+        { value: '1', label: 'Feb' },
+        { value: '2', label: 'Mar' },
+        { value: '3', label: 'Apr' },
+        { value: '4', label: 'May' },
+        { value: '5', label: 'Jun' },
+        { value: '6', label: 'Jul' },
+        { value: '7', label: 'Aug' },
+        { value: '8', label: 'Sep' },
+        { value: '9', label: 'Oct' },
+        { value: '10', label: 'Nov' },
+        { value: '11', label: 'Dec' }
+    ];
+
     // Generates the complete, legally-valid official HTML for the settlement receipt
     const getReceiptHtml = (d: any) => {
         const fmt = (date: string | null) => date
@@ -187,6 +238,21 @@ export default function OwnerNoticesPage() {
         getOwnerVacatingNotices().then(data => {
             setNotices(data);
             setLoading(false);
+
+            if (data && data.length > 0) {
+                const dates = data.map((n: any) => new Date(n.plannedMoveOut));
+                const latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
+                const y = latestDate.getFullYear().toString();
+                const m = latestDate.getMonth().toString();
+                setSelectedYear(y);
+                setSelectedMonth(m);
+                setCurrentDate(latestDate);
+            } else {
+                const now = new Date();
+                setSelectedYear(now.getFullYear().toString());
+                setSelectedMonth(now.getMonth().toString());
+                setCurrentDate(now);
+            }
         });
     }, []);
 
@@ -221,6 +287,16 @@ export default function OwnerNoticesPage() {
         return notices.filter(n => n.status !== 'WITHDRAWN' && isSameDay(new Date(n.plannedMoveOut), day));
     };
 
+    const filteredNotices = notices.filter(n => {
+        const statusMatch = noticeFilter === 'VACATED' ? n.status === 'VACATED' : n.status !== 'VACATED';
+        if (!statusMatch) return false;
+
+        const date = new Date(n.plannedMoveOut);
+        const yearMatch = selectedYear === 'ALL' || date.getFullYear() === Number(selectedYear);
+        const monthMatch = selectedMonth === 'ALL' || date.getMonth() === Number(selectedMonth);
+        return yearMatch && monthMatch;
+    });
+
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
@@ -229,29 +305,55 @@ export default function OwnerNoticesPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 pt-10 pb-20 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 pt-10 pb-20 rounded-3xl relative overflow-hidden">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-                <div className="max-w-5xl mx-auto relative z-10">
+                <div className="w-full relative z-10">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Vacating Notices</h1>
                             <p className="text-indigo-200 text-sm font-medium mt-1">Manage tenant move-out notifications</p>
                         </div>
-                        <div className="flex bg-white/20 backdrop-blur-md rounded-xl p-1 gap-1 border border-white/30">
-                            <button onClick={() => setView('list')}
-                                className={`px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-indigo-700 shadow-lg' : 'text-white hover:bg-white/10'}`}>
-                                <List className="w-4 h-4" /> List
-                            </button>
-                            <button onClick={() => setView('calendar')}
-                                className={`px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-indigo-700 shadow-lg' : 'text-white hover:bg-white/10'}`}>
-                                <CalendarIcon className="w-4 h-4" /> Calendar
-                            </button>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex bg-white/20 backdrop-blur-md rounded-xl p-1 gap-1 border border-white/30">
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => handleYearChange(e.target.value)}
+                                    className="bg-transparent text-white text-xs font-black px-2 py-1.5 focus:outline-none cursor-pointer [&>option]:text-slate-900 border-none"
+                                >
+                                    <option value="ALL">All Years</option>
+                                    {uniqueYears.map(y => (
+                                        <option key={y} value={y.toString()}>{y}</option>
+                                    ))}
+                                </select>
+                                <span className="w-px bg-white/30 my-1" />
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => handleMonthChange(e.target.value)}
+                                    className="bg-transparent text-white text-xs font-black px-2 py-1.5 focus:outline-none cursor-pointer [&>option]:text-slate-900 border-none"
+                                >
+                                    <option value="ALL">All Months</option>
+                                    {MONTHS.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex bg-white/20 backdrop-blur-md rounded-xl p-1 gap-1 border border-white/30">
+                                <button onClick={() => setView('list')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 transition-all ${view === 'list' ? 'bg-white text-indigo-700 shadow-lg' : 'text-white hover:bg-white/10'}`}>
+                                    <List className="w-4 h-4" /> List
+                                </button>
+                                <button onClick={() => setView('calendar')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-black flex items-center gap-2 transition-all ${view === 'calendar' ? 'bg-white text-indigo-700 shadow-lg' : 'text-white hover:bg-white/10'}`}>
+                                    <CalendarIcon className="w-4 h-4" /> Calendar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
+            <div className="w-full px-4 -mt-12 relative z-10 space-y-6">
                 {/* Summary Cards — 5 tabs */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {[
@@ -321,14 +423,14 @@ export default function OwnerNoticesPage() {
                                 </h2>
                             </div>
 
-                            {notices.length === 0 ? (
+                            {filteredNotices.length === 0 ? (
                                 <div className="py-16 text-center">
                                     <FileText className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                                    <p className="font-black text-slate-400">No vacating notices yet</p>
+                                    <p className="font-black text-slate-400">No vacating notices found for this period</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-50">
-                                    {notices.filter(n => noticeFilter === 'VACATED' ? n.status === 'VACATED' : n.status !== 'VACATED').map(notice => {
+                                    {filteredNotices.map(notice => {
                                         const sc = STATUS_CONFIG[notice.status] || STATUS_CONFIG.SUBMITTED;
                                         const daysLeft = Math.ceil((new Date(notice.plannedMoveOut).getTime() - Date.now()) / 86400000);
                                         return (
@@ -472,13 +574,13 @@ export default function OwnerNoticesPage() {
                                 <CalendarIcon className="w-5 h-5 text-indigo-600" /> Move-out Calendar
                             </h2>
                             <div className="flex items-center gap-4">
-                                <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-2 hover:bg-slate-100 rounded-full transition-all">
+                                <button onClick={() => handleCalendarNavigate(subMonths(currentDate, 1))} className="p-2 hover:bg-slate-100 rounded-full transition-all">
                                     <ChevronLeft className="w-5 h-5 text-slate-600" />
                                 </button>
                                 <span className="text-sm font-black text-slate-900 min-w-[120px] text-center">
                                     {format(currentDate, 'MMMM yyyy')}
                                 </span>
-                                <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-2 hover:bg-slate-100 rounded-full transition-all">
+                                <button onClick={() => handleCalendarNavigate(addMonths(currentDate, 1))} className="p-2 hover:bg-slate-100 rounded-full transition-all">
                                     <ChevronRight className="w-5 h-5 text-slate-600" />
                                 </button>
                             </div>

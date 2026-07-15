@@ -19,10 +19,24 @@ export default function OwnerRoomChangesPage() {
     const [note, setNote] = useState('');
     const [isPending, startTransition] = useTransition();
 
+    const [selectedYear, setSelectedYear] = useState<string>('');
+    const [selectedMonth, setSelectedMonth] = useState<string>('');
+
     useEffect(() => {
         getOwnerRoomChangeRequests().then(data => {
             setRequests(data);
             setLoading(false);
+
+            if (data && data.length > 0) {
+                const dates = data.map((n: any) => new Date(n.createdAt));
+                const latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
+                setSelectedYear(latestDate.getFullYear().toString());
+                setSelectedMonth(latestDate.getMonth().toString());
+            } else {
+                const now = new Date();
+                setSelectedYear(now.getFullYear().toString());
+                setSelectedMonth(now.getMonth().toString());
+            }
         });
     }, []);
 
@@ -47,36 +61,92 @@ export default function OwnerRoomChangesPage() {
         </div>
     );
 
-    const pending = requests.filter(r => r.status === 'PENDING').length;
+    const uniqueYears = Array.from(new Set(
+        requests.map((r: any) => new Date(r.createdAt).getFullYear())
+    )).sort((a, b) => b - a);
+    const currentYear = new Date().getFullYear();
+    if (!uniqueYears.includes(currentYear)) uniqueYears.push(currentYear);
+    uniqueYears.sort((a, b) => b - a);
+
+    const MONTHS = [
+        { value: '0', label: 'Jan' },
+        { value: '1', label: 'Feb' },
+        { value: '2', label: 'Mar' },
+        { value: '3', label: 'Apr' },
+        { value: '4', label: 'May' },
+        { value: '5', label: 'Jun' },
+        { value: '6', label: 'Jul' },
+        { value: '7', label: 'Aug' },
+        { value: '8', label: 'Sep' },
+        { value: '9', label: 'Oct' },
+        { value: '10', label: 'Nov' },
+        { value: '11', label: 'Dec' }
+    ];
+
+    const filteredRequests = requests.filter(r => {
+        const date = new Date(r.createdAt);
+        const yearMatch = selectedYear === 'ALL' || date.getFullYear() === Number(selectedYear);
+        const monthMatch = selectedMonth === 'ALL' || date.getMonth() === Number(selectedMonth);
+        return yearMatch && monthMatch;
+    });
+
+    const pending = filteredRequests.filter(r => r.status === 'PENDING').length;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 pt-10 pb-20 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 pt-10 pb-20 rounded-3xl relative overflow-hidden">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-                <div className="max-w-4xl mx-auto relative z-10">
-                    <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Room Change Requests</h1>
-                    <p className="text-indigo-200 text-sm font-medium mt-1">Approve or reject tenant room change requests</p>
-                    {pending > 0 && (
-                        <div className="mt-3 inline-flex items-center gap-2 bg-amber-400/30 border border-amber-400/50 px-4 py-2 rounded-2xl backdrop-blur-sm">
-                            <span className="text-sm font-black text-white">{pending} pending request{pending > 1 ? 's' : ''} awaiting your action</span>
+                <div className="w-full relative z-10">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Room Change Requests</h1>
+                            <p className="text-indigo-200 text-sm font-medium mt-1">Approve or reject tenant room change requests</p>
+                            {pending > 0 && (
+                                <div className="mt-3 inline-flex items-center gap-2 bg-amber-400/30 border border-amber-400/50 px-4 py-2 rounded-2xl backdrop-blur-sm">
+                                    <span className="text-sm font-black text-white">{pending} pending request{pending > 1 ? 's' : ''} awaiting your action</span>
+                                </div>
+                            )}
                         </div>
-                    )}
+                        <div className="flex bg-white/20 backdrop-blur-md rounded-xl p-1 gap-1 border border-white/30">
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(e.target.value)}
+                                className="bg-transparent text-white text-xs font-black px-2 py-1.5 focus:outline-none cursor-pointer [&>option]:text-slate-900 border-none"
+                            >
+                                <option value="ALL">All Years</option>
+                                {uniqueYears.map(y => (
+                                    <option key={y} value={y.toString()}>{y}</option>
+                                ))}
+                            </select>
+                            <span className="w-px bg-white/30 my-1" />
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="bg-transparent text-white text-xs font-black px-2 py-1.5 focus:outline-none cursor-pointer [&>option]:text-slate-900 border-none"
+                            >
+                                <option value="ALL">All Months</option>
+                                {MONTHS.map(m => (
+                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
+            <div className="w-full px-4 -mt-12 relative z-10 space-y-6">
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {(['PENDING','APPROVED','REJECTED','COMPLETED'] as const).map(s => (
                         <div key={s} className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 text-center">
-                            <p className="text-2xl font-black text-slate-900">{requests.filter(r => r.status === s).length}</p>
+                            <p className="text-2xl font-black text-slate-900">{filteredRequests.filter(r => r.status === s).length}</p>
                             <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${STATUS_CONFIG[s].cls.split(' ')[1]}`}>{s}</p>
                         </div>
                     ))}
                 </div>
 
                 {/* Request List */}
-                {requests.length === 0 ? (
+                {filteredRequests.length === 0 ? (
                     <div className="bg-white rounded-3xl shadow-xl p-12 text-center border border-slate-100">
                         <RefreshCw className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                         <p className="font-black text-slate-500 text-lg">No room change requests yet</p>
@@ -89,7 +159,7 @@ export default function OwnerRoomChangesPage() {
                             </h2>
                         </div>
                         <div className="divide-y divide-slate-50">
-                            {requests.map(req => {
+                            {filteredRequests.map(req => {
                                 const sc = STATUS_CONFIG[req.status] || STATUS_CONFIG.PENDING;
                                 return (
                                     <div key={req.id} className="p-5 hover:bg-slate-50/50 transition-colors">
