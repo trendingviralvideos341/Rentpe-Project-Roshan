@@ -24,7 +24,9 @@ const actionLabels: Record<string, { label: string; color: string; icon: string 
 
 export function ActivityLogContainer({ role }: { role: 'owner' | 'staff' }) {
     const [logs, setLogs] = useState<any[]>([]);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [search, setSearch] = useState("");
     const [filterAction, setFilterAction] = useState("ALL");
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -33,12 +35,27 @@ export function ActivityLogContainer({ role }: { role: 'owner' | 'staff' }) {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const data = await getOwnerActivityLog();
-            setLogs(data);
+            const result = await getOwnerActivityLog();
+            setLogs(result.data);
+            setNextCursor(result.nextCursor);
         } catch (e) {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadMore = async () => {
+        if (!nextCursor || loadingMore) return;
+        setLoadingMore(true);
+        try {
+            const result = await getOwnerActivityLog(nextCursor);
+            setLogs(prev => [...prev, ...result.data]);
+            setNextCursor(result.nextCursor);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -148,6 +165,20 @@ export function ActivityLogContainer({ role }: { role: 'owner' | 'staff' }) {
                         toggleRow={toggleRow} 
                         showActor={false} 
                     />
+                </div>
+            )}
+
+            {nextCursor && (
+                <div className="flex justify-center pt-2">
+                    <Button
+                        variant="outline"
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                        className="px-8"
+                    >
+                        {loadingMore ? <RefreshCcw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        {loadingMore ? 'Loading...' : 'Load More Activity'}
+                    </Button>
                 </div>
             )}
         </div>

@@ -3,51 +3,51 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-export async function getOwnerActivityLog() {
+export async function getOwnerActivityLog(cursor?: string) {
     try {
         const session = await getSession();
-        if (!session) throw new Error("Unauthorized");
+        if (!session) throw new Error('Unauthorized');
 
         const userId = (session as any).userId;
         const role = session.role;
+        const PAGE_SIZE = 50;
+
+        const cursorCondition = cursor ? { id: { lt: cursor } } : {};
 
         if (role === 'OWNER') {
-            // Fetch staff User IDs to include their actions in the owner's log
             const staff = await prisma.user.findMany({
                 where: { parentOwnerId: userId },
                 select: { id: true }
             });
             const staffIds = staff.map((s: any) => s.id);
 
-            return await prisma.auditLog.findMany({
+            const logs = await prisma.auditLog.findMany({
                 where: {
-                    actorId: { in: [userId, ...staffIds] }
+                    actorId: { in: [userId, ...staffIds] },
+                    ...cursorCondition
                 },
                 orderBy: { createdAt: 'desc' },
-                take: 200,
+                take: PAGE_SIZE,
                 include: {
-                    actor: {
-                        select: { name: true, role: true, displayId: true, email: true }
-                    }
+                    actor: { select: { name: true, role: true, displayId: true, email: true } }
                 }
             });
+            return { data: logs, nextCursor: logs.length === PAGE_SIZE ? logs[logs.length - 1].id : null };
         } else if (role === 'STAFF') {
-            // Staff sees only their own actions
-            return await prisma.auditLog.findMany({
-                where: { actorId: userId },
+            const logs = await prisma.auditLog.findMany({
+                where: { actorId: userId, ...cursorCondition },
                 orderBy: { createdAt: 'desc' },
-                take: 200,
+                take: PAGE_SIZE,
                 include: {
-                    actor: {
-                        select: { name: true, role: true, displayId: true, email: true }
-                    }
+                    actor: { select: { name: true, role: true, displayId: true, email: true } }
                 }
             });
+            return { data: logs, nextCursor: logs.length === PAGE_SIZE ? logs[logs.length - 1].id : null };
         }
 
-        return [];
+        return { data: [], nextCursor: null };
     } catch (e) {
-        console.error("getOwnerActivityLog Error:", e);
-        return [];
+        console.error('getOwnerActivityLog Error:', e);
+        return { data: [], nextCursor: null };
     }
 }
