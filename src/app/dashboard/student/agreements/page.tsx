@@ -648,12 +648,12 @@ export default function StudentAgreementsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+    <div className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-[#3b5bdb] to-[#7048e8] px-4 pt-10 pb-20 relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -left-10 bottom-0 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-        <div className="max-w-2xl mx-auto relative z-10">
+        <div className="max-w-2xl mx-auto relative z-10 px-4 md:px-8">
           <div className="flex items-center gap-2 mb-1">
             <FileSignature className="w-5 h-5 text-purple-200" />
             <span className="text-purple-200 text-xs font-black uppercase tracking-widest">Tenancy</span>
