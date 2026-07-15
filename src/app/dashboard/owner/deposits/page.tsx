@@ -616,47 +616,56 @@ export default function DepositsPage() {
                     </div>
 
                     {/* Property + Year + Month */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 w-14 flex-shrink-0">Filter</span>
-                        <select
-                            value={propertyFilter}
-                            onChange={(e) => updateFilter('property', e.target.value)}
-                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400"
-                        >
-                            <option value="ALL">All Properties</option>
-                            {properties.map((p: any) => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={yearFilter}
-                            onChange={(e) => updateFilter('year', e.target.value)}
-                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400"
-                        >
-                            <option value="">Current FY (Default)</option>
-                            <option value="ALL">All Years</option>
-                            <option value={new Date().getFullYear().toString()}>This Year</option>
-                            <option value={(new Date().getFullYear() - 1).toString()}>Last Year</option>
-                        </select>
-                        <select
-                            value={monthFilter}
-                            onChange={(e) => updateFilter('month', e.target.value)}
-                            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 focus:outline-none focus:border-violet-400"
-                        >
-                            <option value="ALL">All Months</option>
-                            <option value="1">January</option>
-                            <option value="2">February</option>
-                            <option value="3">March</option>
-                            <option value="4">April</option>
-                            <option value="5">May</option>
-                            <option value="6">June</option>
-                            <option value="7">July</option>
-                            <option value="8">August</option>
-                            <option value="9">September</option>
-                            <option value="10">October</option>
-                            <option value="11">November</option>
-                            <option value="12">December</option>
-                        </select>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex flex-col">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Select Property</label>
+                            <select
+                                value={propertyFilter}
+                                onChange={(e) => updateFilter('property', e.target.value)}
+                                className="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-white text-slate-700 focus:outline-none focus:border-violet-400 cursor-pointer min-w-[130px]"
+                            >
+                                <option value="ALL">All Properties</option>
+                                {properties.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT YEAR</label>
+                            <select
+                                value={yearFilter}
+                                onChange={(e) => updateFilter('year', e.target.value)}
+                                className="text-xs font-semibold border border-blue-500 rounded-full px-4 py-2 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer min-w-[110px]"
+                            >
+                                <option value="">Current FY</option>
+                                <option value="ALL">All Years</option>
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                            </select>
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT MONTH</label>
+                            <select
+                                value={monthFilter}
+                                onChange={(e) => updateFilter('month', e.target.value)}
+                                className="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-white text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[120px]"
+                            >
+                                <option value="ALL">All Months</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Status pills */}
