@@ -310,6 +310,73 @@ export async function getBookings() {
     }
 }
 
+export async function getBookingsPaginated(params: {
+    limit: number;
+    offset: number;
+    search?: string;
+    filterStatus?: string;
+    filterProperty?: string;
+}) {
+    const session = await getSession();
+    if (!session) return { data: [], total: 0 };
+    const userId = session.userId;
+    const role = session.role;
+    if (!userId) return { data: [], total: 0 };
+
+    const whereClause: any = {};
+
+    if (role === 'OWNER' || role === 'STAFF') {
+        const user = await prisma.user.findUnique({ where: { id: userId }, include: { staffProfile: true } });
+        let propertyIds: string[] = [];
+        if (user?.staffProfile) {
+            const assignments = await prisma.staffPropertyAssignment.findMany({ where: { staffMemberId: user.staffProfile.id }, select: { propertyId: true } });
+            propertyIds = assignments.map(a => a.propertyId);
+        } else {
+            const ownerProperties = await prisma.property.findMany({ where: { ownerId: user?.parentOwnerId || userId }, select: { id: true } });
+            propertyIds = ownerProperties.map(p => p.id);
+        }
+        whereClause.propertyId = { in: propertyIds };
+    } else if (role === 'USER') {
+        whereClause.userId = userId;
+    }
+
+    if (params.filterStatus && params.filterStatus !== 'ALL') whereClause.status = params.filterStatus;
+    if (params.filterProperty && params.filterProperty !== 'ALL') whereClause.propertyName = { contains: params.filterProperty, mode: 'insensitive' };
+    if (params.search && params.search.trim()) {
+        whereClause.OR = [
+            { guestName: { contains: params.search.trim(), mode: 'insensitive' } },
+            { displayId: { contains: params.search.trim(), mode: 'insensitive' } },
+            { propertyName: { contains: params.search.trim(), mode: 'insensitive' } },
+        ];
+    }
+
+    const [total, bookings] = await Promise.all([
+        prisma.booking.count({ where: whereClause }),
+        prisma.booking.findMany({
+            where: whereClause,
+            orderBy: { createdAt: 'desc' },
+            skip: params.offset,
+            take: params.limit,
+            include: {
+                user: { select: { name: true, email: true } },
+                property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any },
+                tenant: { select: { id: true, displayId: true } },
+                kycVerifier: { select: { name: true, role: true } },
+            }
+        })
+    ]);
+
+    return {
+        data: bookings.map(b => ({
+            ...b,
+            tenantDisplayId: (b as any).tenant?.displayId || null,
+            userDisplayId: null,
+            propertyDisplayId: (b as any).property?.displayId || null,
+        })),
+        total
+    };
+}
+
 export async function getAdminBookings() {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -329,6 +396,37 @@ export async function getAdminBookings() {
         tenantDisplayId: (b as any).tenant?.displayId || null,
         propertyDisplayId: (b as any).property?.displayId || null,
     }));
+}
+
+export async function getAdminBookingsPaginated(params: { limit: number; offset: number; search?: string; filterStatus?: string; }) {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized');
+
+    const whereClause: any = { deletedAt: null };
+    if (params.filterStatus && params.filterStatus !== 'ALL') whereClause.status = params.filterStatus;
+    if (params.search?.trim()) {
+        whereClause.OR = [
+            { guestName: { contains: params.search.trim(), mode: 'insensitive' } },
+            { displayId: { contains: params.search.trim(), mode: 'insensitive' } },
+            { propertyName: { contains: params.search.trim(), mode: 'insensitive' } },
+        ];
+    }
+
+    const [total, bookings] = await Promise.all([
+        prisma.booking.count({ where: whereClause }),
+        prisma.booking.findMany({
+            where: whereClause,
+            include: { user: { select: { name: true, email: true, displayId: true } }, property: { select: { foodType: true, foodPricePerMonth: true, displayId: true } as any }, tenant: { select: { id: true, displayId: true } }, kycVerifier: { select: { name: true, role: true } } },
+            orderBy: { createdAt: 'desc' },
+            skip: params.offset,
+            take: params.limit
+        })
+    ]);
+
+    return {
+        data: bookings.map(b => ({ ...b, userDisplayId: (b as any).user?.displayId || null, tenantDisplayId: (b as any).tenant?.displayId || null, propertyDisplayId: (b as any).property?.displayId || null })),
+        total
+    };
 }
 
 export async function approveBooking(id: string, data: {

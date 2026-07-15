@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, RefreshCcw, FileText, ClipboardList, CheckCircle, XCircle, Eye, Search, BedDouble, ShieldCheck, CreditCard, Calendar, Shuffle, AlertTriangle, Phone, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from "react";
-import { getBookings, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate, markPhysicalKycVerified } from "@/actions/bookings";
+import { getBookingsPaginated, approveBooking, rejectBooking as rejectBookingAction, checkInBooking, markBookingPaid, cancelBooking, updateSharingType, ownerCounterSignAgreement, updateMoveInDate, markPhysicalKycVerified } from "@/actions/bookings";
 import { getCashPaymentEnabled } from "@/actions/platform";
 import { getAvailableRooms } from "@/actions/rooms";
 import { getTenantDocuments, verifyDocument } from "@/actions/documents";
@@ -293,6 +293,9 @@ export function BookingsContainer() {
     const [dateFilter, setDateFilter] = useState<"ALL" | "7D" | "30D">("7D");
     const [propertyFilter, setPropertyFilter] = useState("ALL");
     const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+    const [offset, setOffset] = useState(0);
+    const [total, setTotal] = useState(0);
+    const PAGE_SIZE = 25;
 
     // Reject modal
     const [rejectModal, setRejectModal] = useState<{ id: string } | null>(null);
@@ -333,18 +336,32 @@ export function BookingsContainer() {
         }
     };
 
-    const fetchData = async () => {
+    const fetchBookings = async (reset = false) => {
         setLoading(true);
         try {
-            const [b, cashEnabled] = await Promise.all([getBookings(), getCashPaymentEnabled()]);
-            setBookings(b);
+            const currentOffset = reset ? 0 : offset;
+            const [result, cashEnabled] = await Promise.all([
+                getBookingsPaginated({ limit: PAGE_SIZE, offset: currentOffset, search: search || undefined, filterProperty: propertyFilter !== 'ALL' ? propertyFilter : undefined }),
+                getCashPaymentEnabled()
+            ]);
+            if (reset) {
+                setBookings(result.data);
+                setOffset(PAGE_SIZE);
+            } else {
+                setBookings(prev => [...prev, ...result.data]);
+                setOffset(currentOffset + PAGE_SIZE);
+            }
+            setTotal(result.total);
             setAllowCashPayment(cashEnabled);
         }
         catch (e) { console.error("Failed to fetch bookings:", e); }
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    const fetchData = () => fetchBookings(true);
+
+    useEffect(() => { fetchBookings(true); }, [search, propertyFilter]);
+    useEffect(() => { fetchBookings(true); }, []);
 
     // ── Handlers ──────────────────────────────────────────────────
     const handleApprove = (booking: any) => {
@@ -782,6 +799,21 @@ export function BookingsContainer() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* ── Load More Button ── */}
+            {bookings.length < total && (
+                <div className="flex justify-center pt-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchBookings(false)}
+                        disabled={loading}
+                        className="h-9 px-6 text-sm font-semibold border-purple-300 text-purple-700 hover:bg-purple-50"
+                    >
+                        {loading ? 'Loading…' : `Load More (${bookings.length} / ${total})`}
+                    </Button>
+                </div>
+            )}
 
             {/* ── Room Allocation Modal ── */}
             {allocateBooking && (

@@ -350,7 +350,8 @@ export async function getStudentPaymentHistory() {
         const allPayments = await prisma.payment.findMany({
             where: { booking: { userId } },
             include: { booking: { select: { propertyName: true, displayId: true } } },
-            orderBy: { date: 'desc' }
+            orderBy: { date: 'desc' },
+            take: 50,
         });
 
         // 2. Token payments from bookings (stored directly on booking, not Payment model)
@@ -360,7 +361,8 @@ export async function getStudentPaymentHistory() {
                 id: true, displayId: true, propertyName: true,
                 tokenPaidAt: true, tokenPaymentId: true, paymentMethod: true,
                 tokenAmount: true,
-            }
+            },
+            take: 25,
         });
 
         // 3. Monthly rent records
@@ -480,66 +482,30 @@ export async function getAllStudentBookingsWithPayments() {
 
     const userId = (session as any).userId;
 
-    // All bookings for this student (newest first)
+    // All bookings for this student (newest first) — single query with all relations included
     const bookings = await prisma.booking.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        select: {
-            id: true,
-            displayId: true,
-            propertyName: true,
-            status: true,
-            createdAt: true,
-            tokenPaidAt: true,
-            tokenPaymentId: true,
-            tokenAmount: true,
-            paymentMethod: true,
-            amount: true,
-            depositAmount: true,
-            roomAssigned: true,
-            paymentStatus: true,
-            activeAt: true,
-            completedAt: true,
-            guestName: true,
-            guestEmail: true,
-            guestPhone: true,
-            agreementSigned: true,
-            agreementSignedAt: true,
-            moveInDate: true,
-            property: {
-                select: {
-                    address: true,
-                    city: true,
+        take: 25,
+        include: {
+            invoices: {
+                include: { payments: { orderBy: { date: 'desc' } } },
+                orderBy: { dueDate: 'desc' },
+            },
+            payments: { orderBy: { date: 'desc' } },
+            tenant: {
+                include: {
+                    billingProfile: {
+                        include: { deposit: true }
+                    }
                 }
-            }
+            },
+            property: { select: { address: true, city: true } },
         }
     });
 
-    // For each booking, fetch invoices + payments + deposit
-    const result = await Promise.all(bookings.map(async (b) => {
-        const invoices = await prisma.rentInvoice.findMany({
-            where: { bookingId: b.id },
-            include: {
-                payments: { orderBy: { date: 'desc' } }
-            },
-            orderBy: { dueDate: 'desc' }
-        });
-
-        // All raw Payment records for this booking
-        const rawPayments = await prisma.payment.findMany({
-            where: { bookingId: b.id },
-            orderBy: { date: 'desc' }
-        });
-
-        // Security deposit (through tenant/billingProfile)
-        const tenant = await prisma.tenant.findFirst({
-            where: { booking: { id: b.id } }
-        });
-        const depositInfo = tenant
-            ? await (prisma as any).securityDeposit.findFirst({
-                where: { billingProfile: { tenantId: tenant.id } }
-              }).catch(() => null)
-            : null;
+    const result = bookings.map((b) => {
+        const depositInfo = b.tenant?.billingProfile?.deposit ?? null;
 
         return {
             booking: {
@@ -553,7 +519,7 @@ export async function getAllStudentBookingsWithPayments() {
                 tokenAmount: Number(b.tokenAmount || 1000),
                 paymentMethod: b.paymentMethod,
                 amount: Number(b.amount),
-                depositAmount: Number((b as any).depositAmount || 0),
+                depositAmount: Number(b.depositAmount || 0),
                 roomAssigned: b.roomAssigned,
                 paymentStatus: b.paymentStatus,
                 activeAt: b.activeAt,
@@ -567,13 +533,13 @@ export async function getAllStudentBookingsWithPayments() {
                 propertyAddress: b.property?.address || '',
                 propertyCity: b.property?.city || '',
             },
-            invoices: invoices.map(inv => ({
+            invoices: b.invoices.map(inv => ({
                 id: inv.id,
-                displayId: (inv as any).displayId || `INV-${inv.id.slice(0,8).toUpperCase()}`,
-                month: (inv as any).month || '',
-                billingMonth: (inv as any).billingMonth || '',
+                displayId: inv.displayId || `INV-${inv.id.slice(0, 8).toUpperCase()}`,
+                month: inv.month || '',
+                billingMonth: inv.billingMonth || '',
                 amount: Number(inv.amount),
-                rentAmount: Number((inv as any).rentAmount || inv.amount),
+                rentAmount: Number(inv.rentAmount || inv.amount),
                 dueDate: inv.dueDate,
                 paidAt: inv.paidAt,
                 status: inv.status,
@@ -588,7 +554,7 @@ export async function getAllStudentBookingsWithPayments() {
                     date: p.date,
                 }))
             })),
-            rawPayments: rawPayments.map(p => ({
+            rawPayments: b.payments.map(p => ({
                 id: p.id,
                 amount: Number(p.amount),
                 status: p.status,
@@ -606,7 +572,7 @@ export async function getAllStudentBookingsWithPayments() {
                 paidAt: depositInfo.paidAt,
             } : null,
         };
-    }));
+    });
 
     return result;
 }
