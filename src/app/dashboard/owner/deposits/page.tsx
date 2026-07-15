@@ -439,8 +439,8 @@ export default function DepositsPage() {
 
     const statusFilter = searchParams.get('status') ?? 'ALL';
     const propertyFilter = searchParams.get('property') ?? 'ALL';
-    const yearFilter = searchParams.get('year') ?? ''; // Empty default lets API handle Current FY
-    const monthFilter = searchParams.get('month') ?? 'ALL';
+    const yearFilter = searchParams.get('year') ?? new Date().getFullYear().toString();
+    const monthFilter = searchParams.get('month') ?? (new Date().getMonth() + 1).toString();
     const searchVal = searchParams.get('search') ?? '';
     const page = parseInt(searchParams.get('page') ?? '1', 10);
     const limit = 25;
@@ -517,11 +517,67 @@ export default function DepositsPage() {
             <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 relative overflow-hidden px-6 py-5">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 <div className="absolute -left-10 bottom-0 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl" />
-                <div className="px-4 relative z-10">
-                    <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-                        <Shield className="w-8 h-8" /> Security Deposits
-                    </h1>
-                    <p className="text-indigo-200 text-sm font-medium mt-1">Manage tenant security deposits · Settle with the 3-step wizard</p>
+                <div className="px-4 relative z-10 flex items-start justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                            <Shield className="w-8 h-8" /> Security Deposits
+                        </h1>
+                        <p className="text-indigo-200 text-sm font-medium mt-1">Manage tenant security deposits · Settle with the 3-step wizard</p>
+                    </div>
+
+                    {/* NEW FILTERS HERE */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {/* Select Property */}
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Property</label>
+                            <select
+                                value={propertyFilter}
+                                onChange={(e) => updateFilter('property', e.target.value)}
+                                className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[160px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
+                            >
+                                <option value="ALL">All Properties</option>
+                                {properties.map((p: any) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* SELECT YEAR */}
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Year</label>
+                            <select
+                                value={yearFilter}
+                                onChange={(e) => updateFilter('year', e.target.value)}
+                                className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[120px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
+                            >
+                                <option value={new Date().getFullYear().toString()}>{new Date().getFullYear()}</option>
+                                <option value={(new Date().getFullYear() - 1).toString()}>{new Date().getFullYear() - 1}</option>
+                                <option value={(new Date().getFullYear() - 2).toString()}>{new Date().getFullYear() - 2}</option>
+                                <option value={(new Date().getFullYear() + 1).toString()}>{new Date().getFullYear() + 1}</option>
+                            </select>
+                        </div>
+                        {/* SELECT MONTH */}
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Select Month</label>
+                            <select
+                                value={monthFilter}
+                                onChange={(e) => updateFilter('month', e.target.value)}
+                                className="text-sm font-black rounded-full px-5 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[140px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-10"
+                            >
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -615,58 +671,7 @@ export default function DepositsPage() {
                         </div>
                     </div>
 
-                    {/* Property + Year + Month */}
-                    <div className="flex items-center gap-4 flex-wrap">
-                        <div className="flex flex-col">
-                            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Select Property</label>
-                            <select
-                                value={propertyFilter}
-                                onChange={(e) => updateFilter('property', e.target.value)}
-                                className="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-white text-slate-700 focus:outline-none focus:border-violet-400 cursor-pointer min-w-[130px]"
-                            >
-                                <option value="ALL">All Properties</option>
-                                {properties.map((p: any) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex flex-col">
-                            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT YEAR</label>
-                            <select
-                                value={yearFilter}
-                                onChange={(e) => updateFilter('year', e.target.value)}
-                                className="text-xs font-semibold border border-blue-500 rounded-full px-4 py-2 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer min-w-[110px]"
-                            >
-                                <option value="">Current FY</option>
-                                <option value="ALL">All Years</option>
-                                <option value="2026">2026</option>
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
-                            </select>
-                        </div>
-                        <div className="flex flex-col">
-                            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">SELECT MONTH</label>
-                            <select
-                                value={monthFilter}
-                                onChange={(e) => updateFilter('month', e.target.value)}
-                                className="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-white text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[120px]"
-                            >
-                                <option value="ALL">All Months</option>
-                                <option value="1">January</option>
-                                <option value="2">February</option>
-                                <option value="3">March</option>
-                                <option value="4">April</option>
-                                <option value="5">May</option>
-                                <option value="6">June</option>
-                                <option value="7">July</option>
-                                <option value="8">August</option>
-                                <option value="9">September</option>
-                                <option value="10">October</option>
-                                <option value="11">November</option>
-                                <option value="12">December</option>
-                            </select>
-                        </div>
-                    </div>
+
 
                     {/* Status pills */}
                     <div className="flex items-center gap-3 flex-wrap">
