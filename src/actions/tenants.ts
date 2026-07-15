@@ -104,6 +104,149 @@ export async function getTenants() {
     return withNotes;
 }
 
+export async function getTenantsPaginated(params: {
+    limit: number;
+    offset: number;
+    search?: string;
+    filterProperty?: string;
+    filterType?: string;
+    filterPayment?: string;
+    activeTab?: string;
+    currentMonth: string;
+}) {
+    const session = await getSession();
+    const isAuthorized = session && ['OWNER', 'STAFF', 'ADMIN'].includes(session.role);
+    if (!isAuthorized) throw new Error("Unauthorized");
+    const userId = session.userId;
+
+    const whereClause: Prisma.TenantWhereInput = {};
+
+    if (session.role === 'OWNER' || session.role === 'STAFF') {
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            include: { staffProfile: true }
+        });
+        
+        if (user?.staffProfile) {
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
+                select: { propertyId: true }
+            });
+            whereClause.propertyId = { in: assignments.map(a => a.propertyId) };
+        } else {
+            whereClause.property = { ownerId: user?.parentOwnerId || userId };
+        }
+    }
+
+    // Tab Logic
+    if (params.activeTab === 'ACTIVE') {
+        whereClause.status = 'Active';
+    } else if (params.activeTab === 'UPCOMING') {
+        whereClause.status = 'Upcoming';
+    } else if (params.activeTab === 'CHECKED_OUT') {
+        whereClause.status = 'Checked Out';
+    }
+
+    // Property Logic
+    if (params.filterProperty && params.filterProperty !== 'ALL') {
+        whereClause.property = { ...((whereClause.property as any) || {}), name: params.filterProperty };
+    }
+
+    // Type Logic
+    if (params.filterType && params.filterType !== 'ALL') {
+        whereClause.roomType = params.filterType;
+    }
+
+    // Search Logic
+    if (params.search && params.search.trim() !== '') {
+        const searchTerm = params.search.trim();
+        whereClause.OR = [
+            { name: { contains: searchTerm, mode: 'insensitive' } },
+            { roomNumber: { contains: searchTerm, mode: 'insensitive' } },
+            { displayId: { contains: searchTerm, mode: 'insensitive' } },
+            { booking: { displayId: { contains: searchTerm, mode: 'insensitive' } } }
+        ];
+    }
+
+    // Payment Logic (this requires a sub-query)
+    if (params.filterPayment && params.filterPayment !== 'ALL') {
+        if (params.filterPayment === 'BLOCKED') {
+            whereClause.status = 'Blocked';
+        } else if (params.filterPayment === 'VACATED_FILTER') {
+            whereClause.status = 'Checked Out';
+        } else if (params.filterPayment === 'DEBT_FILTER') {
+            whereClause.status = 'Checked Out';
+            whereClause.settlementRecord = { tenantDebt: { gt: 0 } };
+        } else if (params.filterPayment === 'PAID') {
+            whereClause.rentRecords = { some: { month: params.currentMonth, paid: true } };
+        } else if (params.filterPayment === 'UNPAID') {
+            whereClause.rentRecords = { some: { month: params.currentMonth, paid: false } };
+        }
+    }
+
+    const total = await prisma.tenant.count({ where: whereClause });
+
+    const tenants = await prisma.tenant.findMany({
+        where: whereClause,
+        include: {
+            property: { 
+                select: { name: true, displayId: true, address: true, city: true, foodType: true, foodPricePerMonth: true, owner: { select: { name: true, phone: true } } } 
+            },
+            rentRecords: { orderBy: { createdAt: 'desc' } },
+            billingProfile: { include: { invoices: { include: { payments: { where: { status: 'VERIFIED' } } } } } },
+            booking: { select: { id: true, displayId: true, status: true, moveInChecklist: true, foodSelected: true, foodPriceApplied: true,
+                    user: { select: { displayId: true, dateOfBirth: true, gender: true, nationality: true, emergencyContact: true, occupationType: true, occupationDetail: true, businessName: true, college: true, email: true, phone: true } } } },
+            settlementRecord: true
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: params.offset,
+        take: params.limit
+    });
+
+    const withNotes = await Promise.all(tenants.map(async (t) => {
+        const notes = await prisma.actionNote.findMany({
+            where: { targetId: t.id, targetType: 'TENANT' },
+            orderBy: { timestamp: 'desc' }
+        });
+        return { ...t, actionNotes: notes };
+    }));
+
+    return { data: withNotes, total };
+}
+
+export async function getTenantStats() {
+    const session = await getSession();
+    if (!session || !['OWNER', 'STAFF', 'ADMIN'].includes(session.role)) throw new Error("Unauthorized");
+    const userId = session.userId;
+
+    const baseWhere: Prisma.TenantWhereInput = {};
+
+    if (session.role === 'OWNER' || session.role === 'STAFF') {
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            include: { staffProfile: true }
+        });
+        
+        if (user?.staffProfile) {
+            const assignments = await prisma.staffPropertyAssignment.findMany({
+                where: { staffMemberId: user.staffProfile.id },
+                select: { propertyId: true }
+            });
+            baseWhere.propertyId = { in: assignments.map(a => a.propertyId) };
+        } else {
+            baseWhere.property = { ownerId: user?.parentOwnerId || userId };
+        }
+    }
+
+    const [active, upcoming, checkedOut] = await Promise.all([
+        prisma.tenant.count({ where: { ...baseWhere, status: 'Active' } }),
+        prisma.tenant.count({ where: { ...baseWhere, status: 'Upcoming' } }),
+        prisma.tenant.count({ where: { ...baseWhere, status: 'Checked Out' } })
+    ]);
+
+    return { active, upcoming, checkedOut };
+}
+
 /**
  * Tenant Lifecycle Management
  * State Machine: UPCOMING_MOVE_IN -> ACTIVE_TENANT -> MOVE_OUT_SCHEDULED -> MOVE_OUT_COMPLETED

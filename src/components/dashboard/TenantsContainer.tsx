@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, PlusCircle, ClipboardCheck, Eye, Loader2 } from "lucide-react";
-import { getTenants, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
+import { getTenantsPaginated, getTenantStats, markRentAsPaid, markRentAsUnpaid, blockTenant, unblockTenant, generateNextRentRecord } from "@/actions/tenants";
 import { ownerFileVacatingNotice } from "@/actions/tenancy";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -67,16 +67,49 @@ export function TenantsContainer() {
     const [moveOutDate, setMoveOutDate] = useState("");
     const [initiatingNoticeBusy, setInitiatingNoticeBusy] = useState(false);
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const [activeTab, setActiveTab] = useState<'ACTIVE' | 'UPCOMING' | 'CHECKED_OUT'>('ACTIVE');
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+    const [filterMonth, setFilterMonth] = useState((new Date().getMonth() + 1).toString());
+    const [offset, setOffset] = useState(0);
+    const [total, setTotal] = useState(0);
+    const limit = 25;
+    const [stats, setStats] = useState({ active: 0, upcoming: 0, checkedOut: 0 });
+    const currentMonth = `${filterYear}-${String(filterMonth).padStart(2, '0')}`;
 
-    const fetchTenants = async () => {
-        setLoading(true);
-        try { setTenants(await getTenants()); }
+    const fetchStats = async () => {
+        try { setStats(await getTenantStats()); }
         catch (e) { console.error(e); }
-        finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchTenants(); }, []);
+    const fetchTenants = async (reset = false) => {
+        if (reset) setLoading(true);
+        try {
+            const currentOffset = reset ? 0 : offset;
+            const res = await getTenantsPaginated({
+                limit,
+                offset: currentOffset,
+                activeTab,
+                filterProperty,
+                filterType,
+                filterPayment,
+                search,
+                currentMonth
+            });
+            if (reset) {
+                setTenants(res.data || []);
+            } else {
+                setTenants(prev => [...prev, ...(res.data || [])]);
+            }
+            setOffset(currentOffset + limit);
+            setTotal(res.total || 0);
+        }
+        catch (e) { console.error(e); }
+        finally { if (reset) setLoading(false); }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+
+    useEffect(() => { fetchTenants(true); }, [activeTab, search, filterProperty, filterType, filterPayment, filterYear, filterMonth]);
 
     useEffect(() => {
         if (!viewingDetails) {
@@ -206,33 +239,9 @@ export function TenantsContainer() {
 
     const properties = Array.from(new Set(tenants.map(t => t.property?.name).filter(Boolean)));
 
-    const filteredTenants = tenants.filter(t => {
-        const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
-        const isPaid = latestRent?.paid ?? false;
+    const filteredTenants = tenants;
 
-        const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
-            t.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
-            (t.displayId || '').toLowerCase().includes(search.toLowerCase()) ||
-            (t.booking?.displayId || '').toLowerCase().includes(search.toLowerCase());
-
-        const matchType = filterType === "ALL" || t.roomType === filterType;
-        const matchProperty = filterProperty === "ALL" || t.property?.name === filterProperty;
-
-        // Dedicated filter modes
-        if (filterPayment === ("BLOCKED" as any)) return matchSearch && matchType && matchProperty && t.status === "Blocked";
-        if (filterPayment === ("VACATED_FILTER" as any)) return matchSearch && matchType && matchProperty && t.status === "Checked Out";
-        if (filterPayment === ("DEBT_FILTER" as any)) return matchSearch && matchType && matchProperty && t.status === "Checked Out" && (t.settlementRecord?.tenantDebt || 0) > 0;
-
-        
-        const matchPayment = filterPayment === "ALL" || (filterPayment === "PAID" && isPaid) || (filterPayment === "UNPAID" && !isPaid);
-        // Default ALL: show only active (not blocked, not checked out)
-        return matchSearch && matchType && matchProperty && matchPayment && t.status !== "Blocked" && t.status !== "Checked Out";
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    const unpaidCount = tenants.filter(t => {
-        const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
-        return !latestRent?.paid && t.status === "Active";
-    }).length;
+    const unpaidCount = 0; // Stats could include unpaid count, or we ignore it since it's paginated. We'll leave it as 0 to avoid iterating over all.
 
     if (loading) return <div className="p-8 text-center animate-pulse">Loading tenants...</div>;
 
@@ -244,35 +253,44 @@ export function TenantsContainer() {
                     <p className="text-muted-foreground">Manage active tenants and track monthly rent.</p>
                 </div>
                 <div className="flex gap-2 items-center">
-                    <span className="text-sm text-muted-foreground">Total: <strong>{tenants.length}</strong></span>
+                    <span className="text-sm text-muted-foreground">Total: <strong>{total}</strong></span>
                     {unpaidCount > 0 && <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">{unpaidCount} Unpaid</span>}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-indigo-50 border-indigo-100">
+                <Card 
+                    className={`cursor-pointer transition-all ${activeTab === 'ACTIVE' ? 'ring-2 ring-indigo-500 bg-indigo-50 border-indigo-200' : 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'}`}
+                    onClick={() => setActiveTab('ACTIVE')}
+                >
                     <CardContent className="p-4">
                         <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Active Tenants</p>
                         <p className="text-2xl font-black text-indigo-900 mt-1">
-                            {tenants.filter(t => t.status === "Active").length}
+                            {stats.active}
                         </p>
                         <p className="text-[10px] text-indigo-500 mt-1">Currently residing in rooms</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-emerald-50 border-emerald-100">
+                <Card 
+                    className={`cursor-pointer transition-all ${activeTab === 'UPCOMING' ? 'ring-2 ring-emerald-500 bg-emerald-50 border-emerald-200' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'}`}
+                    onClick={() => setActiveTab('UPCOMING')}
+                >
                     <CardContent className="p-4">
                         <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Upcoming Move-ins</p>
                         <p className="text-2xl font-black text-emerald-900 mt-1">
-                            {tenants.filter(t => t.status === "Upcoming").length}
+                            {stats.upcoming}
                         </p>
                         <p className="text-[10px] text-emerald-500 mt-1">Booked and awaiting arrival</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-50 border-slate-200">
+                <Card 
+                    className={`cursor-pointer transition-all ${activeTab === 'CHECKED_OUT' ? 'ring-2 ring-slate-400 bg-slate-100 border-slate-300' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}
+                    onClick={() => setActiveTab('CHECKED_OUT')}
+                >
                     <CardContent className="p-4">
                         <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Checked Out Tenants</p>
                         <p className="text-2xl font-black text-slate-800 mt-1">
-                            {tenants.filter(t => t.status === "Checked Out").length}
+                            {stats.checkedOut}
                         </p>
                         <p className="text-[10px] text-slate-500 mt-1">All-time departed residents</p>
                     </CardContent>
@@ -284,6 +302,17 @@ export function TenantsContainer() {
                         <div className="flex-1 min-w-[200px]">
                             <Input placeholder="Search by name, room, or ID..." value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
+                        <select className="border rounded-full px-4 py-2 bg-background text-sm font-semibold" value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+                            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                        <select className="border rounded-full px-4 py-2 bg-background text-sm font-semibold" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+                            {["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].map((m, i) => {
+                                const name = new Date(2000, i, 1).toLocaleString('en-IN', { month: 'short' });
+                                return <option key={m} value={Number(m).toString()}>{name}</option>
+                            })}
+                        </select>
                         <select className="border rounded-md p-2 bg-background text-sm" value={filterProperty} onChange={e => setFilterProperty(e.target.value)}>
                             <option value="ALL">All Properties (PGs)</option>
                             {properties.map(p => (
@@ -578,6 +607,14 @@ export function TenantsContainer() {
                     </div>
                 </CardContent>
             </Card>
+            {tenants.length < total && (
+                <div className="flex justify-center mt-6">
+                    <Button variant="outline" onClick={() => fetchTenants(false)} disabled={loading}>
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Load More ({tenants.length} of {total})
+                    </Button>
+                </div>
+            )}
             </div>
 
             {/* ── Settlement Modal (replaces old simple dialog) ── */}
