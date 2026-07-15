@@ -648,7 +648,7 @@ export default function StudentAgreementsPage() {
   }, []);
 
   return (
-    <div className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-[#3b5bdb] to-[#7048e8] px-4 pt-10 pb-20 relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />

@@ -205,7 +205,7 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="space-y-8 pb-8">
+        <div className="p-4 md:p-8 space-y-8 pb-8">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">

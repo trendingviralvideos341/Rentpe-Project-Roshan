@@ -12,10 +12,12 @@ export default async function FraudManagementPage() {
     ]);
 
     return (
-        <FraudDashboardClient
-            summary={summary}
-            flags={flags as any}
-            linkedAccounts={linkedAccounts as any}
-        />
+        <div className="p-4 md:p-8 space-y-6">
+            <FraudDashboardClient
+                summary={summary}
+                flags={flags as any}
+                linkedAccounts={linkedAccounts as any}
+            />
+        </div>
     );
 }

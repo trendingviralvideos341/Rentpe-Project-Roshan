@@ -458,7 +458,7 @@ export default function OwnerPaymentsPage() {
     const [selectedYear, selectedMonth] = month.split('-');
 
     return (
-        <div className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 p-4 md:p-8 space-y-6">
+        <div className="p-4 md:p-8 space-y-6">
             {/* Page Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>

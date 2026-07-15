@@ -683,7 +683,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
 
     if (!data.length) {
         return (
-            <div className="-mx-4 -mt-4 md:-mx-8 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 flex flex-col">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 flex flex-col">
                 <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-16 relative">
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
@@ -709,7 +709,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     }
 
     return (
-        <div className="-mx-4 -mt-4 md:-mx-8 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
 
             {/* ── Compact Header ── */}
             <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-5 pb-6 relative" style={{ zIndex: 20 }}>

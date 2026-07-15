@@ -186,7 +186,7 @@ export default function AdminOnboardingFeesClient({ data }: { data: PageData }) 
     const gst        = Math.round((data.feeAmount - feeBase) * 100) / 100;
 
     return (
-        <div className="-mx-4 -mt-4 md:-mx-8 md:-mt-8 min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 px-4 pt-5 pb-8 relative overflow-hidden">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />

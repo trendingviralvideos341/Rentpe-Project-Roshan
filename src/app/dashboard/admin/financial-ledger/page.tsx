@@ -440,7 +440,7 @@ export default function AdminFinancialLedgerPage() {
     const taxT = taxData?.totals || {};
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20 -mx-4 md:-mx-8 -mt-4 md:-mt-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20">
             {/* Premium Header */}
             <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 pt-10 pb-24 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #6366f1 0%, transparent 50%), radial-gradient(circle at 80% 20%, #8b5cf6 0%, transparent 50%)' }} />

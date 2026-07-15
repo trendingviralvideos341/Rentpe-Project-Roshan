@@ -140,7 +140,7 @@ export default function OwnerDashboard() {
     );
 
     return (
-        <div className="space-y-6 pb-8">
+        <div className="p-4 md:p-8 space-y-6 pb-8">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">Owner Dashboard</h1>
