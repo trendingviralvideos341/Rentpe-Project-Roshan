@@ -4,13 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
-import { Utensils, Save, Building2, ChefHat } from "lucide-react";
+import { Utensils, Save, Building2, ChefHat, Plus, Trash2 } from "lucide-react";
 import { getFoodMenu, updateFoodMenu } from "@/actions/ops";
 import { getProperties } from "@/actions/properties";
 import { toast } from "sonner";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const MEAL_TYPES = [
+    { label: "🌅 Breakfast",   value: "Breakfast",   defaultFrom: "07:00", defaultTo: "09:00" },
+    { label: "☕ Morning Tea",  value: "MorningTea",  defaultFrom: "09:30", defaultTo: "10:30" },
+    { label: "☀️ Lunch",       value: "Lunch",       defaultFrom: "12:30", defaultTo: "14:30" },
+    { label: "🍪 Snacks",      value: "Snacks",      defaultFrom: "17:00", defaultTo: "18:00" },
+    { label: "🌙 Dinner",      value: "Dinner",      defaultFrom: "20:00", defaultTo: "22:00" },
+    { label: "🌃 Late Night",  value: "LateNight",   defaultFrom: "22:00", defaultTo: "23:30" },
+    { label: "✏️ Custom",      value: "Custom",      defaultFrom: "12:00", defaultTo: "13:00" },
+];
 
 export function FoodMenuContainer() {
     const [properties, setProperties] = useState<any[]>([]);
@@ -20,13 +30,13 @@ export function FoodMenuContainer() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
     const [activeDay, setActiveDay] = useState("Monday");
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         const fetchInitial = async () => {
             try {
                 const props = await getProperties();
                 setProperties(props);
-                // Never auto-select even if only 1 property — per your requirement
             } catch {
                 toast.error("Failed to load properties");
             } finally {
@@ -44,6 +54,7 @@ export function FoodMenuContainer() {
         } else {
             setSelectedProperty(null);
             setMenu([]);
+            setIsDirty(false);
         }
     }, [selectedPropertyId]);
 
@@ -52,15 +63,43 @@ export function FoodMenuContainer() {
         try {
             const data = await getFoodMenu(selectedPropertyId);
             const aggregatedMenu = DAYS.map(dayName => {
-                const dayMeals = data.filter((m: any) => m.dayOfWeek === dayName);
+                const dayRows = data.filter((m: any) => m.dayOfWeek === dayName);
+                const dailySlotsRow = dayRows.find((m: any) => m.mealType === 'DAILY_SLOTS');
+                
+                let slots: any[] = [];
+                if (dailySlotsRow && dailySlotsRow.weeklyMenu) {
+                    try {
+                        const parsed = JSON.parse(dailySlotsRow.weeklyMenu);
+                        if (parsed[dayName]) slots = parsed[dayName];
+                    } catch (e) {
+                        console.error("Failed to parse weekly menu json for", dayName);
+                    }
+                } else if (dayRows.length > 0) {
+                    // migrate from old rows
+                    const breakfast = dayRows.find((m: any) => m.mealType === 'Breakfast');
+                    const lunch = dayRows.find((m: any) => m.mealType === 'Lunch');
+                    const dinner = dayRows.find((m: any) => m.mealType === 'Dinner');
+                    if (breakfast?.items) slots.push({ type: "Breakfast", from: "07:00", to: "09:00", items: breakfast.items });
+                    if (lunch?.items) slots.push({ type: "Lunch", from: "12:30", to: "14:30", items: lunch.items });
+                    if (dinner?.items) slots.push({ type: "Dinner", from: "20:00", to: "22:00", items: dinner.items });
+                }
+
+                // If slots is still empty, populate defaults
+                if (slots.length === 0) {
+                    slots = [
+                        { type: "Breakfast", from: "07:00", to: "09:00", items: "" },
+                        { type: "Lunch", from: "12:30", to: "14:30", items: "" },
+                        { type: "Dinner", from: "20:00", to: "22:00", items: "" },
+                    ];
+                }
+
                 return {
                     day: dayName,
-                    breakfast: dayMeals.find((m: any) => m.mealType === 'Breakfast')?.items || "",
-                    lunch: dayMeals.find((m: any) => m.mealType === 'Lunch')?.items || "",
-                    dinner: dayMeals.find((m: any) => m.mealType === 'Dinner')?.items || "",
+                    slots: slots
                 };
             });
             setMenu(aggregatedMenu);
+            setIsDirty(false);
         } catch {
             toast.error("Failed to fetch menu");
         } finally {
@@ -68,26 +107,43 @@ export function FoodMenuContainer() {
         }
     };
 
-    const handleUpdate = (day: string, type: 'breakfast' | 'lunch' | 'dinner', val: string) => {
-        setMenu(prev => prev.map(m => m.day === day ? { ...m, [type]: val } : m));
+    const handleUpdateSlot = (day: string, index: number, field: string, val: string) => {
+        setMenu(prev => prev.map(m => {
+            if (m.day !== day) return m;
+            const newSlots = [...m.slots];
+            newSlots[index] = { ...newSlots[index], [field]: val };
+            // auto-fill default timings when meal type changes
+            if (field === 'type') {
+                const mealTypeInfo = MEAL_TYPES.find(t => t.value === val);
+                if (mealTypeInfo) {
+                    newSlots[index].from = mealTypeInfo.defaultFrom;
+                    newSlots[index].to = mealTypeInfo.defaultTo;
+                }
+            }
+            return { ...m, slots: newSlots };
+        }));
+        setIsDirty(true);
     };
 
-    const handleSave = async (day: string) => {
-        const item = menu.find(m => m.day === day);
-        if (!item) return;
-        setSaving(day);
-        try {
-            await updateFoodMenu(selectedPropertyId, day, {
-                breakfast: item.breakfast,
-                lunch: item.lunch,
-                dinner: item.dinner,
-            });
-            toast.success(`${day} menu saved!`);
-        } catch {
-            toast.error("Failed to save menu.");
-        } finally {
-            setSaving(null);
-        }
+    const handleAddSlot = (day: string) => {
+        setMenu(prev => prev.map(m => {
+            if (m.day !== day) return m;
+            return {
+                ...m,
+                slots: [...m.slots, { type: "Custom", from: "12:00", to: "13:00", items: "" }]
+            };
+        }));
+        setIsDirty(true);
+    };
+
+    const handleRemoveSlot = (day: string, index: number) => {
+        setMenu(prev => prev.map(m => {
+            if (m.day !== day) return m;
+            const newSlots = [...m.slots];
+            newSlots.splice(index, 1);
+            return { ...m, slots: newSlots };
+        }));
+        setIsDirty(true);
     };
 
     const handleSaveAll = async () => {
@@ -96,15 +152,14 @@ export function FoodMenuContainer() {
             await Promise.all(
                 menu.map(item =>
                     updateFoodMenu(selectedPropertyId, item.day, {
-                        breakfast: item.breakfast,
-                        lunch: item.lunch,
-                        dinner: item.dinner,
+                        slots: item.slots
                     })
                 )
             );
-            toast.success("All 7 days saved!");
+            toast.success("All changes saved successfully!");
+            setIsDirty(false);
         } catch {
-            toast.error("Failed to save all menus.");
+            toast.error("Failed to save menus.");
         } finally {
             setSaving(null);
         }
@@ -132,6 +187,61 @@ export function FoodMenuContainer() {
     );
 
     const activeDayMenu = menu.find(m => m.day === activeDay);
+
+    const renderSlot = (slot: any, day: string, index: number) => (
+        <div key={index} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center relative">
+            <div className="flex flex-col gap-2 min-w-[200px]">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Meal Type</label>
+                <select 
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    value={slot.type}
+                    onChange={(e) => handleUpdateSlot(day, index, 'type', e.target.value)}
+                >
+                    {MEAL_TYPES.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                </select>
+            </div>
+            
+            <div className="flex flex-col gap-2 min-w-[120px]">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">From</label>
+                <input 
+                    type="time" 
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    value={slot.from}
+                    onChange={(e) => handleUpdateSlot(day, index, 'from', e.target.value)}
+                />
+            </div>
+
+            <div className="flex flex-col gap-2 min-w-[120px]">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">To</label>
+                <input 
+                    type="time" 
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    value={slot.to}
+                    onChange={(e) => handleUpdateSlot(day, index, 'to', e.target.value)}
+                />
+            </div>
+
+            <div className="flex flex-col gap-2 flex-1 w-full">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Items</label>
+                <Input
+                    placeholder="e.g. Idli, Sambar, Chutney..."
+                    value={slot.items}
+                    onChange={(e) => handleUpdateSlot(day, index, 'items', e.target.value)}
+                    className="rounded-lg bg-slate-50"
+                />
+            </div>
+
+            <button 
+                onClick={() => handleRemoveSlot(day, index)}
+                className="mt-6 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                title="Remove slot"
+            >
+                <Trash2 className="h-5 w-5" />
+            </button>
+        </div>
+    );
 
     return (
         <div className="space-y-6">
@@ -167,29 +277,20 @@ export function FoodMenuContainer() {
 
                 {/* Active property banner — shows when selected */}
                 {selectedProperty && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl">
-                        <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
-                            <Building2 className="h-4 w-4 text-indigo-600" />
+                    <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
+                                <Building2 className="h-4 w-4 text-indigo-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-black text-indigo-900 truncate">
+                                    {selectedProperty.name}
+                                </p>
+                                <p className="text-xs text-indigo-500">
+                                    {selectedProperty.city} · editing weekly menu
+                                </p>
+                            </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-black text-indigo-900 truncate">
-                                {selectedProperty.name}
-                            </p>
-                            <p className="text-xs text-indigo-500">
-                                {selectedProperty.city} · editing weekly menu
-                            </p>
-                        </div>
-                        {selectedPropertyId && menu.length > 0 && (
-                            <Button
-                                size="sm"
-                                onClick={handleSaveAll}
-                                disabled={saving === 'ALL'}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs shrink-0"
-                            >
-                                <Save className="h-3.5 w-3.5 mr-1.5" />
-                                {saving === 'ALL' ? "Saving..." : "Save all"}
-                            </Button>
-                        )}
                     </div>
                 )}
             </div>
@@ -216,13 +317,13 @@ export function FoodMenuContainer() {
                 </div>
 
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
 
                     {/* ── Day selector tabs ── */}
                     <div className="flex gap-2 flex-wrap">
                         {DAYS.map((day, i) => {
                             const dayMenu = menu.find(m => m.day === day);
-                            const hasContent = dayMenu && (dayMenu.breakfast || dayMenu.lunch || dayMenu.dinner);
+                            const hasContent = dayMenu && dayMenu.slots.some((s: any) => s.items.trim() !== "");
                             return (
                                 <button
                                     key={day}
@@ -254,8 +355,8 @@ export function FoodMenuContainer() {
 
                     {/* ── Single day view ── */}
                     {activeDay !== "ALL" && activeDayMenu && (
-                        <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0 bg-slate-50 border-b border-slate-100">
+                        <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-slate-50/30">
+                            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0 border-b border-slate-100 bg-white">
                                 <CardTitle className="text-base font-black flex items-center gap-2 text-slate-800">
                                     <Utensils className="h-4 w-4 text-indigo-500" />
                                     {activeDay}
@@ -263,93 +364,66 @@ export function FoodMenuContainer() {
                                         — {selectedProperty?.name}
                                     </span>
                                 </CardTitle>
-                                <Button
-                                    size="sm"
-                                    onClick={() => handleSave(activeDay)}
-                                    disabled={saving === activeDay}
-                                    className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
-                                >
-                                    <Save className="h-3.5 w-3.5 mr-1.5" />
-                                    {saving === activeDay ? "Saving..." : `Save ${DAY_SHORT[DAYS.indexOf(activeDay)]}`}
-                                </Button>
                             </CardHeader>
-                            <CardContent className="pt-5">
-                                <div className="grid md:grid-cols-3 gap-4">
-                                    {(['breakfast', 'lunch', 'dinner'] as const).map((meal) => (
-                                        <div key={meal} className="space-y-2">
-                                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                                                <span className="text-base">
-                                                    {meal === 'breakfast' ? '🌅' : meal === 'lunch' ? '☀️' : '🌙'}
-                                                </span>
-                                                {meal}
-                                            </label>
-                                            <Input
-                                                placeholder={
-                                                    meal === 'breakfast' ? "e.g. Idli, Sambar, Chutney" :
-                                                    meal === 'lunch' ? "e.g. Rice, Dal, Sabzi, Salad" :
-                                                    "e.g. Roti, Paneer, Dal, Kheer"
-                                                }
-                                                value={activeDayMenu[meal] || ""}
-                                                onChange={(e) => handleUpdate(activeDay, meal, e.target.value)}
-                                                className={`rounded-xl transition-all ${
-                                                    activeDayMenu[meal]
-                                                        ? "border-indigo-200 bg-indigo-50/50 text-indigo-900 font-medium"
-                                                        : ""
-                                                }`}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
+                            <CardContent className="pt-5 space-y-4">
+                                {activeDayMenu.slots.map((slot: any, index: number) => renderSlot(slot, activeDay, index))}
+                                
+                                <Button 
+                                    onClick={() => handleAddSlot(activeDay)} 
+                                    variant="outline" 
+                                    className="w-full border-dashed border-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 h-12 rounded-xl"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add meal slot
+                                </Button>
                             </CardContent>
                         </Card>
                     )}
 
                     {/* ── All days view ── */}
                     {activeDay === "ALL" && (
-                        <div className="space-y-3">
+                        <div className="space-y-6">
                             {menu.map((dayItem) => (
-                                <Card key={dayItem.day} className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:border-indigo-200 transition-all">
-                                    <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0 bg-slate-50 border-b border-slate-100">
+                                <Card key={dayItem.day} className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-slate-50/30">
+                                    <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0 border-b border-slate-100 bg-white">
                                         <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800">
                                             <Utensils className="h-3.5 w-3.5 text-indigo-500" />
                                             {dayItem.day}
                                         </CardTitle>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => handleSave(dayItem.day)}
-                                            disabled={saving === dayItem.day}
-                                            variant="outline"
-                                            className="rounded-xl text-xs h-8"
-                                        >
-                                            <Save className="h-3 w-3 mr-1" />
-                                            {saving === dayItem.day ? "Saving..." : "Save"}
-                                        </Button>
                                     </CardHeader>
-                                    <CardContent className="pt-4">
-                                        <div className="grid md:grid-cols-3 gap-3">
-                                            {(['breakfast', 'lunch', 'dinner'] as const).map((meal) => (
-                                                <div key={meal} className="space-y-1.5">
-                                                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                                        {meal === 'breakfast' ? '🌅' : meal === 'lunch' ? '☀️' : '🌙'} {meal}
-                                                    </label>
-                                                    <Input
-                                                        placeholder={
-                                                            meal === 'breakfast' ? "Breakfast items..." :
-                                                            meal === 'lunch' ? "Lunch items..." :
-                                                            "Dinner items..."
-                                                        }
-                                                        value={dayItem[meal] || ""}
-                                                        onChange={(e) => handleUpdate(dayItem.day, meal, e.target.value)}
-                                                        className="rounded-xl text-sm"
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <CardContent className="pt-5 space-y-4">
+                                        {dayItem.slots.map((slot: any, index: number) => renderSlot(slot, dayItem.day, index))}
+                                        
+                                        <Button 
+                                            onClick={() => handleAddSlot(dayItem.day)} 
+                                            variant="outline" 
+                                            className="w-full border-dashed border-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 h-12 rounded-xl"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add meal slot for {dayItem.day}
+                                        </Button>
                                     </CardContent>
                                 </Card>
                             ))}
                         </div>
                     )}
+
+                    {/* ── Save All Button (Fixed at bottom) ── */}
+                    <div className="pt-4 pb-12 sticky bottom-0 z-10 bg-gradient-to-t from-white via-white to-transparent">
+                        <Button 
+                            onClick={handleSaveAll}
+                            disabled={!isDirty || saving === 'ALL'}
+                            className={`w-full rounded-2xl h-14 text-base font-black transition-all shadow-md ${
+                                isDirty 
+                                    ? 'bg-green-600 hover:bg-green-700 text-white hover:shadow-lg hover:-translate-y-0.5' 
+                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                            }`}
+                        >
+                            <Save className="h-5 w-5 mr-2" />
+                            {saving === 'ALL' ? "Saving all days..." : isDirty ? "Save all changes" : "No changes to save"}
+                        </Button>
+                    </div>
+
                 </div>
             )}
         </div>

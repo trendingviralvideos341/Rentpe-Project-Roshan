@@ -13,23 +13,40 @@ export async function getFoodMenu(propertyId: string) {
     });
 }
 
-export async function updateFoodMenu(propertyId: string, day: string, meals: { breakfast?: string, lunch?: string, dinner?: string }) {
+export async function updateFoodMenu(propertyId: string, day: string, data: any) {
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
-    const updateCalls = [];
-
-    if (meals.breakfast !== undefined) {
-        updateCalls.push(updateOrInsertMeal(propertyId, day, 'Breakfast', meals.breakfast));
-    }
-    if (meals.lunch !== undefined) {
-        updateCalls.push(updateOrInsertMeal(propertyId, day, 'Lunch', meals.lunch));
-    }
-    if (meals.dinner !== undefined) {
-        updateCalls.push(updateOrInsertMeal(propertyId, day, 'Dinner', meals.dinner));
+    // data could be old format {breakfast, lunch, dinner} or new format { slots }
+    // We will save new format only.
+    let slots = data.slots;
+    if (!slots) {
+        slots = [];
+        if (data.breakfast !== undefined) slots.push({ type: "Breakfast", from: "07:00", to: "09:00", items: data.breakfast });
+        if (data.lunch !== undefined) slots.push({ type: "Lunch", from: "12:30", to: "14:30", items: data.lunch });
+        if (data.dinner !== undefined) slots.push({ type: "Dinner", from: "20:00", to: "22:00", items: data.dinner });
     }
 
-    await Promise.all(updateCalls);
+    const existing = await prisma.foodMenu.findFirst({
+        where: { propertyId, dayOfWeek: day, mealType: 'DAILY_SLOTS' }
+    });
+
+    if (existing) {
+        await prisma.foodMenu.update({
+            where: { id: existing.id },
+            data: { weeklyMenu: JSON.stringify({ [day]: slots }) }
+        });
+    } else {
+        await prisma.foodMenu.create({
+            data: {
+                propertyId,
+                dayOfWeek: day,
+                mealType: 'DAILY_SLOTS',
+                items: 'See weeklyMenu',
+                weeklyMenu: JSON.stringify({ [day]: slots })
+            }
+        });
+    }
 
     logAuditEvent({
         actorId: (session as any).userId,
@@ -38,28 +55,11 @@ export async function updateFoodMenu(propertyId: string, day: string, meals: { b
         actionType: 'UPDATE',
         entityType: 'PROPERTY',
         entityId: propertyId,
-        description: `Food menu updated for ${day}: ${Object.entries(meals).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}`).join(', ')}`,
+        description: `Food menu slots updated for ${day}`,
     });
 
     revalidatePath('/dashboard/owner/food-menu');
     return { success: true };
-}
-
-async function updateOrInsertMeal(propertyId: string, day: string, mealType: string, items: string) {
-    const existing = await prisma.foodMenu.findFirst({
-        where: { propertyId, dayOfWeek: day, mealType }
-    });
-
-    if (existing) {
-        return prisma.foodMenu.update({
-            where: { id: existing.id },
-            data: { items }
-        });
-    } else {
-        return prisma.foodMenu.create({
-            data: { propertyId, dayOfWeek: day, mealType, items }
-        });
-    }
 }
 
 // --- Support Tickets ---
