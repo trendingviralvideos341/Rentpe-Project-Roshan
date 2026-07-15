@@ -17,14 +17,18 @@ export async function updateFoodMenu(propertyId: string, day: string, data: any)
     const session = await getSession();
     if (!session || !['OWNER', 'STAFF'].includes(session.role)) throw new Error("Unauthorized");
 
-    // data could be old format {breakfast, lunch, dinner} or new format { slots }
-    // We will save new format only.
-    let slots = data.slots;
-    if (!slots) {
-        slots = [];
-        if (data.breakfast !== undefined) slots.push({ type: "Breakfast", from: "07:00", to: "09:00", items: data.breakfast });
-        if (data.lunch !== undefined) slots.push({ type: "Lunch", from: "12:30", to: "14:30", items: data.lunch });
-        if (data.dinner !== undefined) slots.push({ type: "Dinner", from: "20:00", to: "22:00", items: data.dinner });
+    // data could be old format {breakfast, lunch, dinner}, new format { slots }, or directly the array of slots
+    let slots = [];
+    if (Array.isArray(data)) {
+        slots = data;
+    } else if (data && typeof data === 'object') {
+        if (data.slots) {
+            slots = data.slots;
+        } else {
+            if (data.breakfast !== undefined) slots.push({ type: "Breakfast", from: "07:00", to: "09:00", items: data.breakfast });
+            if (data.lunch !== undefined) slots.push({ type: "Lunch", from: "12:30", to: "14:30", items: data.lunch });
+            if (data.dinner !== undefined) slots.push({ type: "Dinner", from: "20:00", to: "22:00", items: data.dinner });
+        }
     }
 
     const existing = await prisma.foodMenu.findFirst({

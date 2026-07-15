@@ -12,94 +12,112 @@ import { toast } from "sonner";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Meal types in logical daily order — used for auto-sorting
 const MEAL_TYPES = [
-    { label: "🌅 Breakfast",   value: "Breakfast",   defaultFrom: "07:00", defaultTo: "09:00" },
-    { label: "☕ Morning Tea",  value: "MorningTea",  defaultFrom: "09:30", defaultTo: "10:30" },
-    { label: "☀️ Lunch",       value: "Lunch",       defaultFrom: "12:30", defaultTo: "14:30" },
-    { label: "🍪 Snacks",      value: "Snacks",      defaultFrom: "17:00", defaultTo: "18:00" },
-    { label: "🌙 Dinner",      value: "Dinner",      defaultFrom: "20:00", defaultTo: "22:00" },
-    { label: "🌃 Late Night",  value: "LateNight",   defaultFrom: "22:00", defaultTo: "23:30" },
-    { label: "✏️ Custom",      value: "Custom",      defaultFrom: "12:00", defaultTo: "13:00" },
+    { value: "EarlyMorning", label: "Early Morning", emoji: "🌄", order: 1,  defaultFrom: "05:00", defaultTo: "06:30" },
+    { value: "MorningTea",   label: "Morning Tea",   emoji: "☕", order: 2,  defaultFrom: "07:00", defaultTo: "08:00" },
+    { value: "Breakfast",    label: "Breakfast",     emoji: "🌅", order: 3,  defaultFrom: "08:00", defaultTo: "10:00" },
+    { value: "BrunchTea",    label: "Mid-Morning",   emoji: "🍵", order: 4,  defaultFrom: "10:30", defaultTo: "11:30" },
+    { value: "Lunch",        label: "Lunch",         emoji: "☀️", order: 5,  defaultFrom: "12:30", defaultTo: "14:30" },
+    { value: "Snacks",       label: "Snacks",        emoji: "🍪", order: 6,  defaultFrom: "16:00", defaultTo: "17:30" },
+    { value: "EveningTea",   label: "Evening Tea",   emoji: "🫖", order: 7,  defaultFrom: "17:00", defaultTo: "18:00" },
+    { value: "Dinner",       label: "Dinner",        emoji: "🌙", order: 8,  defaultFrom: "20:00", defaultTo: "22:00" },
+    { value: "LateNight",    label: "Late Night",    emoji: "🌃", order: 9,  defaultFrom: "22:00", defaultTo: "23:30" },
+    { value: "Custom",       label: "Custom",        emoji: "✏️", order: 10, defaultFrom: "12:00", defaultTo: "13:00" },
+];
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTES = ["00", "15", "30", "45"];
+
+const getMealMeta = (val: string) => MEAL_TYPES.find(m => m.value === val) || MEAL_TYPES[MEAL_TYPES.length - 1];
+
+const sortSlots = (slots: any[]) =>
+    [...slots].sort((a, b) => {
+        const orderA = getMealMeta(a.type).order;
+        const orderB = getMealMeta(b.type).order;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.from.localeCompare(b.from);
+    });
+
+const defaultSlots = () => [
+    { id: Date.now() + 1, type: "Breakfast", from: "08:00", to: "10:00", items: "" },
+    { id: Date.now() + 2, type: "Lunch",     from: "12:30", to: "14:30", items: "" },
+    { id: Date.now() + 3, type: "Dinner",    from: "20:00", to: "22:00", items: "" },
 ];
 
 export function FoodMenuContainer() {
     const [properties, setProperties] = useState<any[]>([]);
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
     const [selectedProperty, setSelectedProperty] = useState<any>(null);
-    const [menu, setMenu] = useState<any[]>([]);
+    const [menu, setMenu] = useState<Record<string, any[]>>({});
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState<string | null>(null);
-    const [activeDay, setActiveDay] = useState("Monday");
+    const [saving, setSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [activeDay, setActiveDay] = useState("Monday");
 
     useEffect(() => {
-        const fetchInitial = async () => {
-            try {
-                const props = await getProperties();
-                setProperties(props);
-            } catch {
-                toast.error("Failed to load properties");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchInitial();
+        getProperties()
+            .then(setProperties)
+            .catch(() => toast.error("Failed to load properties"))
+            .finally(() => setLoading(false));
     }, []);
 
     useEffect(() => {
-        if (selectedPropertyId) {
-            const prop = properties.find(p => p.id === selectedPropertyId);
-            setSelectedProperty(prop || null);
-            fetchMenu();
-        } else {
+        if (!selectedPropertyId) {
             setSelectedProperty(null);
-            setMenu([]);
-            setIsDirty(false);
+            setMenu({});
+            return;
         }
+        const prop = properties.find(p => p.id === selectedPropertyId);
+        setSelectedProperty(prop || null);
+        fetchMenu();
+        setIsDirty(false);
     }, [selectedPropertyId]);
 
     const fetchMenu = async () => {
         setLoading(true);
         try {
             const data = await getFoodMenu(selectedPropertyId);
-            const aggregatedMenu = DAYS.map(dayName => {
-                const dayRows = data.filter((m: any) => m.dayOfWeek === dayName);
-                const dailySlotsRow = dayRows.find((m: any) => m.mealType === 'DAILY_SLOTS');
-                
-                let slots: any[] = [];
+            // Build menu from DB data or use defaults
+            const built: Record<string, any[]> = {};
+            for (const day of DAYS) {
+                const dayMeals = data.filter((m: any) => m.dayOfWeek === day);
+                const dailySlotsRow = dayMeals.find((m: any) => m.mealType === 'DAILY_SLOTS');
+
                 if (dailySlotsRow && dailySlotsRow.weeklyMenu) {
                     try {
                         const parsed = JSON.parse(dailySlotsRow.weeklyMenu);
-                        if (parsed[dayName]) slots = parsed[dayName];
+                        if (parsed[day]) {
+                            built[day] = sortSlots(parsed[day].map((s: any, i: number) => ({
+                                id: s.id || Date.now() + i + Math.random(),
+                                type: s.type || "Custom",
+                                from: s.from || "12:00",
+                                to: s.to || "13:00",
+                                items: s.items || "",
+                            })));
+                        }
                     } catch (e) {
-                        console.error("Failed to parse weekly menu json for", dayName);
+                        console.error("Failed to parse weekly menu json for", day);
                     }
-                } else if (dayRows.length > 0) {
-                    // migrate from old rows
-                    const breakfast = dayRows.find((m: any) => m.mealType === 'Breakfast');
-                    const lunch = dayRows.find((m: any) => m.mealType === 'Lunch');
-                    const dinner = dayRows.find((m: any) => m.mealType === 'Dinner');
-                    if (breakfast?.items) slots.push({ type: "Breakfast", from: "07:00", to: "09:00", items: breakfast.items });
-                    if (lunch?.items) slots.push({ type: "Lunch", from: "12:30", to: "14:30", items: lunch.items });
-                    if (dinner?.items) slots.push({ type: "Dinner", from: "20:00", to: "22:00", items: dinner.items });
                 }
 
-                // If slots is still empty, populate defaults
-                if (slots.length === 0) {
-                    slots = [
-                        { type: "Breakfast", from: "07:00", to: "09:00", items: "" },
-                        { type: "Lunch", from: "12:30", to: "14:30", items: "" },
-                        { type: "Dinner", from: "20:00", to: "22:00", items: "" },
-                    ];
+                if (!built[day]) {
+                    // Fallback to legacy structure or defaults
+                    const legacyMeals = dayMeals.filter((m: any) => m.mealType !== 'DAILY_SLOTS');
+                    if (legacyMeals.length > 0) {
+                        built[day] = sortSlots(legacyMeals.map((m: any, i: number) => ({
+                            id: Date.now() + i + Math.random(),
+                            type: m.mealType || "Custom",
+                            from: m.fromTime || (m.mealType === 'Breakfast' ? "08:00" : m.mealType === 'Lunch' ? "12:30" : m.mealType === 'Dinner' ? "20:00" : "12:00"),
+                            to: m.toTime || (m.mealType === 'Breakfast' ? "10:00" : m.mealType === 'Lunch' ? "14:30" : m.mealType === 'Dinner' ? "22:00" : "13:00"),
+                            items: m.items || "",
+                        })));
+                    } else {
+                        built[day] = defaultSlots().map(s => ({ ...s, id: Date.now() + Math.random() }));
+                    }
                 }
-
-                return {
-                    day: dayName,
-                    slots: slots
-                };
-            });
-            setMenu(aggregatedMenu);
-            setIsDirty(false);
+            }
+            setMenu(built);
         } catch {
             toast.error("Failed to fetch menu");
         } finally {
@@ -107,236 +125,142 @@ export function FoodMenuContainer() {
         }
     };
 
-    const handleUpdateSlot = (day: string, index: number, field: string, val: string) => {
-        setMenu(prev => prev.map(m => {
-            if (m.day !== day) return m;
-            const newSlots = [...m.slots];
-            newSlots[index] = { ...newSlots[index], [field]: val };
-            // auto-fill default timings when meal type changes
+    const updateSlot = (day: string, id: number, field: string, value: string) => {
+        setMenu(prev => {
+            let updated = prev[day].map(s => s.id === id ? { ...s, [field]: value } : s);
             if (field === 'type') {
-                const mealTypeInfo = MEAL_TYPES.find(t => t.value === val);
-                if (mealTypeInfo) {
-                    newSlots[index].from = mealTypeInfo.defaultFrom;
-                    newSlots[index].to = mealTypeInfo.defaultTo;
-                }
+                const meta = getMealMeta(value);
+                updated = updated.map(s => s.id === id ? { ...s, from: meta.defaultFrom, to: meta.defaultTo } : s);
             }
-            return { ...m, slots: newSlots };
-        }));
+            return { ...prev, [day]: sortSlots(updated) };
+        });
         setIsDirty(true);
     };
 
-    const handleAddSlot = (day: string) => {
-        setMenu(prev => prev.map(m => {
-            if (m.day !== day) return m;
-            return {
-                ...m,
-                slots: [...m.slots, { type: "Custom", from: "12:00", to: "13:00", items: "" }]
-            };
-        }));
+    const addSlot = (day: string) => {
+        const newSlot = { id: Date.now(), type: "Custom", from: "12:00", to: "13:00", items: "" };
+        setMenu(prev => ({ ...prev, [day]: sortSlots([...prev[day], newSlot]) }));
         setIsDirty(true);
     };
 
-    const handleRemoveSlot = (day: string, index: number) => {
-        setMenu(prev => prev.map(m => {
-            if (m.day !== day) return m;
-            const newSlots = [...m.slots];
-            newSlots.splice(index, 1);
-            return { ...m, slots: newSlots };
-        }));
+    const removeSlot = (day: string, id: number) => {
+        setMenu(prev => ({ ...prev, [day]: prev[day].filter(s => s.id !== id) }));
         setIsDirty(true);
     };
 
     const handleSaveAll = async () => {
-        setSaving('ALL');
+        setSaving(true);
         try {
             await Promise.all(
-                menu.map(item =>
-                    updateFoodMenu(selectedPropertyId, item.day, {
-                        slots: item.slots
-                    })
+                DAYS.map(day =>
+                    updateFoodMenu(selectedPropertyId, day, menu[day] || [])
                 )
             );
-            toast.success("All changes saved successfully!");
+            toast.success("All 7 days saved!");
             setIsDirty(false);
         } catch {
-            toast.error("Failed to save menus.");
+            toast.error("Failed to save menu.");
         } finally {
-            setSaving(null);
+            setSaving(false);
         }
     };
 
-    // Loading state
     if (loading && properties.length === 0) return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
             <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground text-xs tracking-widest uppercase">Loading properties...</p>
+            <p className="text-xs text-muted-foreground tracking-widest uppercase">Loading properties...</p>
         </div>
     );
 
-    // No properties at all
     if (!loading && properties.length === 0) return (
-        <div className="p-12 text-center border-2 border-dashed rounded-2xl bg-slate-50/50">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Building2 className="h-7 w-7 text-slate-400" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-700">No properties found</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-                You must be assigned to at least one property to manage food menus.
-            </p>
-        </div>
-    );
-
-    const activeDayMenu = menu.find(m => m.day === activeDay);
-
-    const renderSlot = (slot: any, day: string, index: number) => (
-        <div key={index} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center relative">
-            <div className="flex flex-col gap-2 min-w-[200px]">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Meal Type</label>
-                <select 
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                    value={slot.type}
-                    onChange={(e) => handleUpdateSlot(day, index, 'type', e.target.value)}
-                >
-                    {MEAL_TYPES.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                </select>
-            </div>
-            
-            <div className="flex flex-col gap-2 min-w-[120px]">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">From</label>
-                <input 
-                    type="time" 
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                    value={slot.from}
-                    onChange={(e) => handleUpdateSlot(day, index, 'from', e.target.value)}
-                />
-            </div>
-
-            <div className="flex flex-col gap-2 min-w-[120px]">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">To</label>
-                <input 
-                    type="time" 
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                    value={slot.to}
-                    onChange={(e) => handleUpdateSlot(day, index, 'to', e.target.value)}
-                />
-            </div>
-
-            <div className="flex flex-col gap-2 flex-1 w-full">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Items</label>
-                <Input
-                    placeholder="e.g. Idli, Sambar, Chutney..."
-                    value={slot.items}
-                    onChange={(e) => handleUpdateSlot(day, index, 'items', e.target.value)}
-                    className="rounded-lg bg-slate-50"
-                />
-            </div>
-
-            <button 
-                onClick={() => handleRemoveSlot(day, index)}
-                className="mt-6 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                title="Remove slot"
-            >
-                <Trash2 className="h-5 w-5" />
-            </button>
+        <div className="p-12 text-center border-2 border-dashed rounded-2xl bg-slate-50">
+            <Building2 className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+            <p className="font-bold text-slate-600">No properties found</p>
+            <p className="text-sm text-muted-foreground mt-1">Add a property to manage food menus.</p>
         </div>
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
 
-            {/* ── Header ── */}
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* ── Top header ── */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5">
+                    <ChefHat className="h-5 w-5 text-indigo-500" />
                     <div>
-                        <h1 className="text-2xl font-black flex items-center gap-2">
-                            <ChefHat className="h-6 w-6 text-primary" />
-                            Food menu
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                            Weekly meal plan for residents
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground whitespace-nowrap">Property</span>
-                        <select
-                            className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all outline-none min-w-[260px] cursor-pointer"
-                            value={selectedPropertyId}
-                            onChange={(e) => setSelectedPropertyId(e.target.value)}
-                        >
-                            <option value="">— Select a property —</option>
-                            {properties.map(p => (
-                                <option key={p.id} value={p.id}>
-                                    [{p.displayId}] {p.name}
-                                </option>
-                            ))}
-                        </select>
+                        <h1 className="text-xl font-black text-slate-900">Food menu</h1>
+                        <p className="text-xs text-muted-foreground">Weekly meal plan for residents</p>
                     </div>
                 </div>
-
-                {/* Active property banner — shows when selected */}
-                {selectedProperty && (
-                    <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex-wrap gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
-                                <Building2 className="h-4 w-4 text-indigo-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-black text-indigo-900 truncate">
-                                    {selectedProperty.name}
-                                </p>
-                                <p className="text-xs text-indigo-500">
-                                    {selectedProperty.city} · editing weekly menu
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">Property</span>
+                    <select
+                        className="border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 bg-white focus:border-indigo-400 outline-none min-w-[240px] cursor-pointer"
+                        value={selectedPropertyId}
+                        onChange={e => { setSelectedPropertyId(e.target.value); setActiveDay("Monday"); }}
+                    >
+                        <option value="">— Select a property —</option>
+                        {properties.map(p => (
+                            <option key={p.id} value={p.id}>[{p.displayId}] {p.name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
-            {/* ── Empty state — no property selected ── */}
-            {!selectedPropertyId ? (
-                <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 space-y-4">
-                    <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">
-                        <Utensils className="h-8 w-8 text-slate-300" />
+            {/* ── Selected property — center badge ── */}
+            {selectedProperty && (
+                <div className="flex flex-col items-center justify-center py-3 gap-1">
+                    <div className="flex items-center gap-2 px-5 py-2 bg-indigo-50 border border-indigo-200 rounded-full">
+                        <Building2 className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <span className="text-sm font-black text-indigo-800">{selectedProperty.name}</span>
+                        <span className="text-xs text-indigo-400">·</span>
+                        <span className="text-xs text-indigo-500">{selectedProperty.city}</span>
                     </div>
-                    <div className="text-center space-y-1">
-                        <h3 className="text-base font-bold text-slate-700">
-                            Select a property to view or edit its menu
-                        </h3>
-                        <p className="text-sm text-slate-400 max-w-xs">
-                            Choose a property from the dropdown above to manage its weekly food plan for residents.
+                    <p className="text-[11px] text-muted-foreground">Editing weekly food menu</p>
+                </div>
+            )}
+
+            {/* ── Empty state ── */}
+            {!selectedPropertyId ? (
+                <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 gap-4">
+                    <div className="w-14 h-14 bg-white border border-slate-200 rounded-2xl flex items-center justify-center">
+                        <Utensils className="h-7 w-7 text-slate-300" />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-bold text-slate-600">Select a property to view or edit its menu</p>
+                        <p className="text-sm text-slate-400 mt-1 max-w-xs">
+                            Choose a property from the dropdown above to manage its weekly food plan.
                         </p>
                     </div>
                 </div>
 
             ) : loading ? (
-                <div className="py-16 text-center text-sm text-muted-foreground animate-pulse">
-                    Loading menu...
-                </div>
+                <div className="py-16 text-center text-sm text-muted-foreground animate-pulse">Loading menu...</div>
 
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
 
-                    {/* ── Day selector tabs ── */}
-                    <div className="flex gap-2 flex-wrap">
+                    {/* ── Day tabs ── */}
+                    <div className="flex items-center gap-2 flex-wrap">
                         {DAYS.map((day, i) => {
-                            const dayMenu = menu.find(m => m.day === day);
-                            const hasContent = dayMenu && dayMenu.slots.some((s: any) => s.items.trim() !== "");
+                            const slots = menu[day] || [];
+                            const hasContent = slots.some(s => s.items?.trim());
+                            const isActive = activeDay === day;
                             return (
                                 <button
                                     key={day}
                                     onClick={() => setActiveDay(day)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-                                        activeDay === day
+                                    className={`relative px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                        isActive
                                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                                            : "bg-white border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
+                                            : "bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
                                     }`}
                                 >
                                     {DAY_SHORT[i]}
                                     {hasContent && (
-                                        <span className={`w-1.5 h-1.5 rounded-full ${activeDay === day ? "bg-indigo-200" : "bg-green-400"}`} />
+                                        <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border-2 ${
+                                            isActive ? "bg-green-300 border-indigo-600" : "bg-green-400 border-white"
+                                        }`} />
                                     )}
                                 </button>
                             );
@@ -353,79 +277,198 @@ export function FoodMenuContainer() {
                         </button>
                     </div>
 
-                    {/* ── Single day view ── */}
-                    {activeDay !== "ALL" && activeDayMenu && (
-                        <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-slate-50/30">
-                            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0 border-b border-slate-100 bg-white">
-                                <CardTitle className="text-base font-black flex items-center gap-2 text-slate-800">
-                                    <Utensils className="h-4 w-4 text-indigo-500" />
-                                    {activeDay}
-                                    <span className="text-xs font-normal text-muted-foreground ml-1">
-                                        — {selectedProperty?.name}
-                                    </span>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-5 space-y-4">
-                                {activeDayMenu.slots.map((slot: any, index: number) => renderSlot(slot, activeDay, index))}
-                                
-                                <Button 
-                                    onClick={() => handleAddSlot(activeDay)} 
-                                    variant="outline" 
-                                    className="w-full border-dashed border-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 h-12 rounded-xl"
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add meal slot
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    )}
+                    {/* ── Day cards ── */}
+                    {(activeDay === "ALL" ? DAYS : [activeDay]).map(day => (
+                        <DayCard
+                            key={day}
+                            day={day}
+                            slots={menu[day] || []}
+                            onUpdate={updateSlot}
+                            onAdd={addSlot}
+                            onRemove={removeSlot}
+                            compact={activeDay === "ALL"}
+                        />
+                    ))}
 
-                    {/* ── All days view ── */}
-                    {activeDay === "ALL" && (
-                        <div className="space-y-6">
-                            {menu.map((dayItem) => (
-                                <Card key={dayItem.day} className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-slate-50/30">
-                                    <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0 border-b border-slate-100 bg-white">
-                                        <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800">
-                                            <Utensils className="h-3.5 w-3.5 text-indigo-500" />
-                                            {dayItem.day}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pt-5 space-y-4">
-                                        {dayItem.slots.map((slot: any, index: number) => renderSlot(slot, dayItem.day, index))}
-                                        
-                                        <Button 
-                                            onClick={() => handleAddSlot(dayItem.day)} 
-                                            variant="outline" 
-                                            className="w-full border-dashed border-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 h-12 rounded-xl"
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add meal slot for {dayItem.day}
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* ── Save All Button (Fixed at bottom) ── */}
-                    <div className="pt-4 pb-12 sticky bottom-0 z-10 bg-gradient-to-t from-white via-white to-transparent">
-                        <Button 
+                    {/* ── Save all — bottom, green, dirty only ── */}
+                    <div className="pt-2 pb-4">
+                        <button
                             onClick={handleSaveAll}
-                            disabled={!isDirty || saving === 'ALL'}
-                            className={`w-full rounded-2xl h-14 text-base font-black transition-all shadow-md ${
-                                isDirty 
-                                    ? 'bg-green-600 hover:bg-green-700 text-white hover:shadow-lg hover:-translate-y-0.5' 
-                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                            disabled={!isDirty || saving}
+                            className={`w-full h-12 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all ${
+                                isDirty && !saving
+                                    ? "bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
                             }`}
                         >
-                            <Save className="h-5 w-5 mr-2" />
-                            {saving === 'ALL' ? "Saving all days..." : isDirty ? "Save all changes" : "No changes to save"}
-                        </Button>
+                            <Save className="h-4 w-4" />
+                            {saving ? "Saving all days..." : isDirty ? "Save all changes" : "No unsaved changes"}
+                        </button>
                     </div>
-
                 </div>
             )}
+        </div>
+    );
+}
+
+// ── Day card sub-component ──
+function DayCard({ day, slots, onUpdate, onAdd, onRemove, compact }: {
+    day: string;
+    slots: any[];
+    onUpdate: (day: string, id: number, field: string, value: string) => void;
+    onAdd: (day: string) => void;
+    onRemove: (day: string, id: number) => void;
+    compact?: boolean;
+}) {
+    const dayIndex = DAYS.indexOf(day);
+    const dayEmojis = ["🌟", "🔥", "💧", "🌿", "⚡", "🎉", "😴"];
+
+    return (
+        <Card className="rounded-2xl border border-slate-200 overflow-hidden">
+            {/* Day header */}
+            <div className="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+                <div className="w-9 h-9 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center text-base shrink-0">
+                    {dayEmojis[dayIndex]}
+                </div>
+                <div>
+                    <p className="text-sm font-black text-slate-800">{day}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                        {slots.length} meal slot{slots.length !== 1 ? "s" : ""}
+                        {slots.some(s => s.items?.trim()) ? " · menu set" : " · no items yet"}
+                    </p>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                    {slots.map(s => {
+                        const meta = getMealMeta(s.type);
+                        return (
+                            <span key={s.id} title={meta.label}
+                                className="w-6 h-6 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-xs">
+                                {meta.emoji}
+                            </span>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <CardContent className="p-4 space-y-3">
+                {slots.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-4">
+                        No meal slots yet — add one below
+                    </p>
+                ) : (
+                    slots.map((slot, idx) => {
+                        const meta = getMealMeta(slot.type);
+                        return (
+                            <div key={slot.id}
+                                className="grid gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl"
+                                style={{ gridTemplateColumns: "160px 1fr 1fr auto" }}
+                            >
+                                {/* Meal type */}
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Meal type</p>
+                                    <div className="relative">
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm pointer-events-none">
+                                            {meta.emoji}
+                                        </span>
+                                        <select
+                                            value={slot.type}
+                                            onChange={e => onUpdate(day, slot.id, 'type', e.target.value)}
+                                            className="w-full pl-8 pr-2 py-2 text-xs font-medium border border-slate-200 rounded-lg bg-white focus:border-indigo-400 outline-none cursor-pointer appearance-none"
+                                        >
+                                            {MEAL_TYPES.map(m => (
+                                                <option key={m.value} value={m.value}>{m.emoji} {m.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* From time */}
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">From</p>
+                                    <TimePicker
+                                        value={slot.from}
+                                        onChange={v => onUpdate(day, slot.id, 'from', v)}
+                                    />
+                                </div>
+
+                                {/* To time */}
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">To</p>
+                                    <TimePicker
+                                        value={slot.to}
+                                        onChange={v => onUpdate(day, slot.id, 'to', v)}
+                                    />
+                                </div>
+
+                                {/* Items + delete */}
+                                <button
+                                    onClick={() => onRemove(day, slot.id)}
+                                    className="self-end p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                    title="Remove slot"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+
+                                {/* Items — full width */}
+                                <div className="col-span-4 space-y-1">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                                        {meta.emoji} {meta.label} items
+                                    </p>
+                                    <Input
+                                        placeholder={`e.g. ${
+                                            slot.type === 'Breakfast' ? "Idli, Sambar, Chutney, Filter Coffee" :
+                                            slot.type === 'Lunch' ? "Rice, Dal Tadka, Sabzi, Salad, Buttermilk" :
+                                            slot.type === 'Dinner' ? "Roti, Paneer Curry, Dal, Raita, Kheer" :
+                                            slot.type === 'Snacks' ? "Tea, Samosa, Biscuits, Bhel" :
+                                            slot.type === 'MorningTea' ? "Tea/Coffee, Marie biscuits" :
+                                            "Food items for this slot..."
+                                        }`}
+                                        value={slot.items}
+                                        onChange={e => onUpdate(day, slot.id, 'items', e.target.value)}
+                                        className="rounded-xl text-sm"
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+
+                {/* Add slot */}
+                <button
+                    onClick={() => onAdd(day)}
+                    className="w-full py-2.5 border border-dashed border-indigo-300 rounded-xl text-xs font-bold text-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-1.5"
+                >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add meal slot for {day}
+                </button>
+            </CardContent>
+        </Card>
+    );
+}
+
+// ── Time picker — HH and MM separately ──
+function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const parts = (value || "12:00").split(":");
+    const hh = parts[0] || "12";
+    const mm = parts[1] || "00";
+
+    return (
+        <div className="flex items-center gap-1.5">
+            <select
+                value={hh}
+                onChange={e => onChange(`${e.target.value}:${mm}`)}
+                className="text-xs font-mono font-bold border border-slate-200 rounded-lg px-2 py-2 bg-white focus:border-indigo-400 outline-none cursor-pointer w-14 text-center"
+            >
+                {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+            <span className="text-slate-500 font-black text-sm">:</span>
+            <select
+                value={mm}
+                onChange={e => onChange(`${hh}:${e.target.value}`)}
+                className="text-xs font-mono font-bold border border-slate-200 rounded-lg px-2 py-2 bg-white focus:border-indigo-400 outline-none cursor-pointer w-14 text-center"
+            >
+                {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
         </div>
     );
 }
