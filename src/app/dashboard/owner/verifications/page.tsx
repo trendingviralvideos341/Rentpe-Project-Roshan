@@ -2,7 +2,7 @@ import { VerificationsContainer } from "@/components/dashboard/VerificationsCont
 
 export default function VerificationsPage() {
     return (
-        <div className="p-4 md:p-8">
+        <div className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 p-4 md:p-8">
             <VerificationsContainer />
         </div>
     );

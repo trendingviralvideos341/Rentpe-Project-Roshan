@@ -117,10 +117,33 @@ function PhysicalKycCard({ booking, onMarkVerified }: { booking: any; onMarkVeri
 
 // ─── Main Container ───────────────────────────────────────────────────────────
 export function VerificationsContainer() {
+    const currentYearNum = new Date().getFullYear();
+    const currentMonthNum = new Date().getMonth() + 1;
+    const defaultMonth = currentMonthNum.toString().padStart(2, '0');
+
     // Physical KYC Log state
     const [kycBookings, setKycBookings] = useState<any[]>([]);
     const [kycLoading, setKycLoading] = useState(true);
     const [kycSearch, setKycSearch] = useState("");
+    const [selectedYear, setSelectedYear] = useState(currentYearNum.toString());
+    const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+
+    const yearOptions = [
+        { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
+        { value: currentYearNum.toString(), label: currentYearNum.toString() },
+        { value: (currentYearNum + 1).toString(), label: (currentYearNum + 1).toString() },
+        { value: (currentYearNum + 2).toString(), label: (currentYearNum + 2).toString() }
+    ];
+
+    const monthOptions = [
+        { value: '01', label: 'January' }, { value: '02', label: 'February' },
+        { value: '03', label: 'March' }, { value: '04', label: 'April' },
+        { value: '05', label: 'May' }, { value: '06', label: 'June' },
+        { value: '07', label: 'July' }, { value: '08', label: 'August' },
+        { value: '09', label: 'September' }, { value: '10', label: 'October' },
+        { value: '11', label: 'November' }, { value: '12', label: 'December' }
+    ];
+
 
     const fetchKycBookings = async () => {
         setKycLoading(true);
@@ -151,14 +174,29 @@ export function VerificationsContainer() {
     };
 
     const filteredKycBookings = kycBookings.filter(b => {
+        let matchDate = true;
+        if (selectedYear && selectedMonth) {
+            const dateStr = b.kycVerifiedAt || b.createdAt || b.updatedAt;
+            if (dateStr) {
+                const date = new Date(dateStr);
+                const itemYear = date.getFullYear().toString();
+                const itemMonth = (date.getMonth() + 1).toString().padStart(2, '0');
+                if (itemYear !== selectedYear || itemMonth !== selectedMonth) {
+                    matchDate = false;
+                }
+            }
+        }
+
         const q = kycSearch.toLowerCase();
-        return (
+        const matchSearch = (
             b.guestName?.toLowerCase().includes(q) ||
             b.displayId?.toLowerCase().includes(q) ||
             b.propertyName?.toLowerCase().includes(q) ||
             b.tenant?.displayId?.toLowerCase().includes(q) ||
             b.property?.name?.toLowerCase().includes(q)
         );
+
+        return matchDate && matchSearch;
     });
 
     const verifiedKyc = filteredKycBookings.filter(b => b.kycVerified);
@@ -202,25 +240,51 @@ export function VerificationsContainer() {
 
             <div className="space-y-6">
                 {/* Search bar */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="relative">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
                             placeholder="Search by student name, booking ID, tenant ID or property..."
-                            className="pl-11 h-10 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm"
+                            className="pl-11 h-11 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl text-sm w-full"
                             value={kycSearch}
                             onChange={(e) => setKycSearch(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
+                    
+                    <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex items-center gap-3 shrink-0 h-11">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5 ml-2 -mt-1">SELECT YEAR</span>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(e.target.value)}
+                                className="appearance-none bg-white border-2 border-transparent hover:border-slate-100 focus:border-blue-500 rounded-full px-3 py-0.5 pr-7 text-xs font-black text-slate-700 focus:outline-none transition-all cursor-pointer relative"
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                            >
+                                {yearOptions.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
+                            </select>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                            <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending Verification</span>
+                        <div className="flex flex-col border-l border-slate-100 pl-3">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5 ml-2 -mt-1">SELECT MONTH</span>
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="appearance-none bg-white border-2 border-transparent hover:border-slate-100 focus:border-blue-500 rounded-full px-3 py-0.5 pr-7 text-xs font-black text-slate-700 focus:outline-none transition-all cursor-pointer"
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                            >
+                                {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select>
                         </div>
+                    </div>
+                </div>
+                
+                <div className="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 -mt-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span className="text-[11px] font-bold text-slate-600">{verifiedKyc.length} Verified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                        <span className="text-[11px] font-bold text-slate-600">{unverifiedKyc.length} Pending Verification</span>
                     </div>
                 </div>
 
