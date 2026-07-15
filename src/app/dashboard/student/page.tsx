@@ -1166,7 +1166,7 @@ export default function StudentDashboardPage() {
     );
 
     return (
-        <div className="container mx-auto py-6 px-4 max-w-4xl space-y-8 pb-24 md:pb-12">
+        <div className="w-full mx-auto py-6 px-4 md:px-8 space-y-8 pb-24 md:pb-12">
 
 
             {/* Main Tabs Segment */}

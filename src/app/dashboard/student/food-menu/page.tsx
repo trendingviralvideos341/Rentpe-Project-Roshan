@@ -54,14 +54,14 @@ export default async function StudentFoodMenuPage() {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
                 <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-20 relative overflow-hidden">
-                    <div className="max-w-3xl mx-auto relative z-10">
+                    <div className="w-full mx-auto relative z-10 px-4 md:px-8">
                         <Link href="/dashboard/student" className="text-indigo-200 text-xs font-bold flex items-center gap-1 mb-4 hover:text-white">
                             <ArrowLeft className="w-3 h-3" /> Dashboard
                         </Link>
                         <h1 className="text-2xl font-black text-white">Food Menu</h1>
                     </div>
                 </div>
-                <div className="max-w-3xl mx-auto px-4 -mt-12 relative z-10">
+                <div className="w-full mx-auto px-4 md:px-8 -mt-12 relative z-10">
                     <div className="bg-white rounded-3xl shadow-xl p-12 text-center border border-slate-100">
                         <span className="text-5xl mb-4 block">🍽️</span>
                         <h2 className="text-xl font-black text-slate-700">Not available at your current PG</h2>
@@ -92,7 +92,7 @@ export default async function StudentFoodMenuPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
             <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-20 relative overflow-hidden">
                 <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-                <div className="max-w-3xl mx-auto relative z-10">
+                <div className="w-full mx-auto relative z-10 px-4 md:px-8">
                     <Link href="/dashboard/student" className="text-indigo-200 text-xs font-bold flex items-center gap-1 mb-4 hover:text-white">
                         <ArrowLeft className="w-3 h-3" /> Dashboard
                     </Link>
@@ -111,7 +111,7 @@ export default async function StudentFoodMenuPage() {
                 </div>
             </div>
 
-            <div className="max-w-3xl mx-auto px-4 -mt-12 relative z-10">
+            <div className="w-full mx-auto px-4 md:px-8 -mt-12 relative z-10">
                 {/* Day Scroll */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                     <div className="overflow-x-auto">

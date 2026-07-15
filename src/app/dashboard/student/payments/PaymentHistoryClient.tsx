@@ -544,6 +544,8 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     const data = allData as BookingEntry[];
     const defaultId = useMemo(() => findCurrentBooking(data), [data]);
     const [selectedId, setSelectedId] = useState<string | null>(defaultId);
+    const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+    const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1).padStart(2, '0'));
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [depositReceiptOpen, setDepositReceiptOpen] = useState(false);
     const [tokenReceiptOpen, setTokenReceiptOpen] = useState(false);
@@ -671,8 +673,12 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                 });
             });
 
-        return rows.sort((a, b) => b.date.getTime() - a.date.getTime());
-    }, [booking, invoices, rawPayments, depositInfo]);
+        const sorted = rows.sort((a, b) => b.date.getTime() - a.date.getTime());
+        return sorted.filter(row => {
+            const d = new Date(row.date);
+            return d.getFullYear().toString() === selectedYear && String(d.getMonth() + 1).padStart(2, '0') === selectedMonth;
+        });
+    }, [booking, invoices, rawPayments, depositInfo, selectedYear, selectedMonth]);
 
     // Only show bookings with token paid or that are active/completed
     const meaningfulBookings = data.filter(d =>
@@ -688,7 +694,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                     </div>
-                    <div className="max-w-4xl mx-auto relative z-10">
+                    <div className="w-full mx-auto relative z-10 px-4 md:px-8">
                         <Link href="/dashboard/student"
                             className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2 rounded-full mb-5 transition-all border border-white/30 backdrop-blur-sm">
                             <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
@@ -717,7 +723,7 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                     <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                 </div>
 
-                <div className="max-w-4xl mx-auto relative" style={{ zIndex: 10 }}>
+                <div className="w-full mx-auto relative px-4 md:px-8" style={{ zIndex: 10 }}>
                     {/* Top row: back button + PG selector */}
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <Link
@@ -786,14 +792,45 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                     </div>
 
                     {/* Title row */}
-                    <div className="mt-3">
-                        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Payment History</h1>
-                        <p className="text-indigo-200 text-xs font-medium mt-0.5">Your complete rent ledger and receipts</p>
+                    <div className="mt-3 flex items-start justify-between flex-wrap gap-4">
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Payment History</h1>
+                            <p className="text-indigo-200 text-xs font-medium mt-0.5">Your complete rent ledger and receipts</p>
+                        </div>
+                        
+                        {/* YYYY and MM filter */}
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-col">
+                                <label className="text-[9px] font-bold uppercase tracking-widest text-indigo-200 mb-1">SELECT YEAR</label>
+                                <select 
+                                    className="bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 text-white text-xs font-bold rounded-xl px-3 py-1.5 outline-none appearance-none cursor-pointer"
+                                    value={selectedYear}
+                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                >
+                                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                        <option key={y} value={y.toString()} className="text-slate-900">{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="text-[9px] font-bold uppercase tracking-widest text-indigo-200 mb-1">SELECT MONTH</label>
+                                <select 
+                                    className="bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 text-white text-xs font-bold rounded-xl px-3 py-1.5 outline-none appearance-none cursor-pointer"
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                >
+                                    {Array.from({ length: 12 }, (_, i) => {
+                                        const m = String(i + 1).padStart(2, '0');
+                                        return <option key={m} value={m} className="text-slate-900">{new Date(2000, i, 1).toLocaleString('default', { month: 'short' })}</option>
+                                    })}
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 mt-5 relative space-y-5" style={{ zIndex: 10 }}>
+            <div className="w-full mx-auto px-4 md:px-8 mt-5 relative space-y-5" style={{ zIndex: 10 }}>
                 {/* ── Summary Cards ── */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-2xl p-4 shadow-lg shadow-indigo-100/50 border border-slate-100">
