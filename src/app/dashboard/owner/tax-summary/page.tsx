@@ -12,16 +12,14 @@ import {
 function buildFYOptions() {
     const year = new Date().getFullYear();
     return [
-        { label: `FY ${year - 1}-${year}`, from: new Date(`${year - 1}-04-01`), to: new Date(`${year}-03-31`) },
-        { label: `FY ${year}-${year + 1}`, from: new Date(`${year}-04-01`), to: new Date(`${year + 1}-03-31`) },
+        { label: `${year - 1}`, from: new Date(`${year - 1}-01-01`), to: new Date(`${year - 1}-12-31`) },
+        { label: `${year}`, from: new Date(`${year}-01-01`), to: new Date(`${year}-12-31`) },
+        { label: `${year + 1}`, from: new Date(`${year + 1}-01-01`), to: new Date(`${year + 1}-12-31`) },
     ];
 }
 
 function getCurrentFY() {
-    const now = new Date();
-    return now.getMonth() >= 3
-        ? `FY ${now.getFullYear()}-${now.getFullYear() + 1}`
-        : `FY ${now.getFullYear() - 1}-${now.getFullYear()}`;
+    return `${new Date().getFullYear()}`;
 }
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -95,6 +93,7 @@ export default function TaxSummaryPage() {
     const [endDate, setEndDate] = useState('');
     const [exportMonth, setExportMonth] = useState('ALL');
     const [exportFYLabel, setExportFYLabel] = useState(fyOptions[fyOptions.length - 1].label);
+    const [globalMonth, setGlobalMonth] = useState<string>(String(new Date().getMonth()));
 
     const uniqueProperties = Array.from(new Set((report?.report || []).map((r: any) => r.property))).filter(Boolean).sort() as string[];
 
@@ -123,6 +122,12 @@ export default function TaxSummaryPage() {
             const e = new Date(endDate);
             e.setHours(23,59,59,999);
             if (d > e) return false;
+        }
+        if (globalMonth !== 'ALL') {
+            const m = parseInt(globalMonth);
+            const year = m < 3 ? selectedFY.to.getFullYear() : selectedFY.from.getFullYear();
+            const d = new Date(r.date);
+            if (d.getMonth() !== m || d.getFullYear() !== year) return false;
         }
         return true;
     });
@@ -303,10 +308,38 @@ export default function TaxSummaryPage() {
         </div>
     );
 
-    const s = report?.summary;
+    const s = (() => {
+        if (!report) return null;
+        if (globalMonth === 'ALL') return report.summary;
+        
+        const filteredForSummary = (report.report || []).filter((r: any) => {
+            const m = parseInt(globalMonth);
+            const year = m < 3 ? selectedFY.to.getFullYear() : selectedFY.from.getFullYear();
+            const d = new Date(r.date);
+            return d.getMonth() === m && d.getFullYear() === year;
+        });
+
+        const totalGross = filteredForSummary.reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
+        const totalPlatformFeeCharged = filteredForSummary.reduce((acc: number, r: any) => acc + (r.platformFeeCharged || 0), 0);
+        const totalGstCharged = filteredForSummary.reduce((acc: number, r: any) => acc + (r.gstCharged || 0), 0);
+        const totalTdsDeducted = filteredForSummary.reduce((acc: number, r: any) => acc + (r.tdsDeducted || 0), 0);
+        const totalOwnerNetPayout = filteredForSummary.reduce((acc: number, r: any) => acc + (r.ownerNetPayout || 0), 0);
+        const totalRefunds = filteredForSummary.reduce((acc: number, r: any) => acc + (r.refundAmount || 0), 0);
+
+        return {
+            ...report.summary,
+            totalGross,
+            totalPlatformFeeCharged,
+            totalGstCharged,
+            totalTdsDeducted,
+            totalOwnerNetPayout,
+            confirmedBookings: filteredForSummary.length,
+            totalRefunds
+        };
+    })();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/20 pb-20 -mx-4 md:-mx-8 -mt-4 md:-mt-8">
             {/* Premium Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 px-6 pt-10 pb-24 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #a78bfa 0%, transparent 60%)' }} />
@@ -320,18 +353,56 @@ export default function TaxSummaryPage() {
                             <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">Tax Summary & Payout Ledger</h1>
                             <p className="text-indigo-100 text-sm font-medium mt-2">Your complete financial picture — GST, TDS, and net payouts</p>
                         </div>
-                        {/* FY Selector */}
-                        <div className="flex bg-white/15 rounded-xl p-1 gap-1">
-                            {fyOptions.map(fy => (
-                                <button key={fy.label} onClick={() => setSelectedFY(fy)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                        selectedFY.label === fy.label
-                                            ? 'bg-white text-indigo-700 shadow'
-                                            : 'text-white hover:bg-white/20'
-                                    }`}>
-                                    {fy.label}
-                                </button>
-                            ))}
+                        {/* FY & Month Selector */}
+                        <div className="flex items-center gap-4 bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mt-2 sm:mt-0">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Select Year</label>
+                                <div className="relative">
+                                    <select
+                                        className="appearance-none bg-white border border-slate-200 focus:border-blue-500 rounded-full pl-4 pr-10 py-2 text-sm font-bold text-slate-800 cursor-pointer transition-all focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+                                        value={selectedFY.label}
+                                        onChange={(e) => {
+                                            const fy = fyOptions.find(f => f.label === e.target.value);
+                                            if (fy) setSelectedFY(fy);
+                                        }}
+                                    >
+                                        {fyOptions.map(fy => (
+                                            <option key={fy.label} value={fy.label}>{fy.label}</option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Select Month</label>
+                                <div className="relative">
+                                    <select
+                                        className="appearance-none bg-white border border-slate-200 focus:border-blue-500 rounded-full pl-4 pr-10 py-2 text-sm font-bold text-slate-800 cursor-pointer transition-all focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+                                        value={globalMonth}
+                                        onChange={(e) => setGlobalMonth(e.target.value)}
+                                    >
+                                        <option value="ALL">All Months</option>
+                                        <option value="0">January</option>
+                                        <option value="1">February</option>
+                                        <option value="2">March</option>
+                                        <option value="3">April</option>
+                                        <option value="4">May</option>
+                                        <option value="5">June</option>
+                                        <option value="6">July</option>
+                                        <option value="7">August</option>
+                                        <option value="8">September</option>
+                                        <option value="9">October</option>
+                                        <option value="10">November</option>
+                                        <option value="11">December</option>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
