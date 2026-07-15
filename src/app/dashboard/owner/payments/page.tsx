@@ -145,7 +145,7 @@ function PayoutsTab({ month }: { month: string }) {
         <div className="space-y-6">
             {/* Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Gross Rent Collected" value={fmtShort(stats.totalGross ?? 0)} sub="All time" icon={TrendingUp} gradient="from-violet-600 to-violet-800" />
+                <StatCard label="Gross Rent Collected" value={fmtShort(stats.totalGross ?? 0)} sub={`For ${new Date(month + "-01").toLocaleString("en-IN", { month: "short", year: "numeric" })}`} icon={TrendingUp} gradient="from-violet-600 to-violet-800" />
                 <StatCard label="Platform Commission" value={fmtShort(stats.totalCommission ?? 0)} sub="Incl. GST (18%)" icon={ReceiptText} gradient="from-amber-500 to-orange-600" />
                 <StatCard label="Net Paid to Bank" value={fmtShort(stats.totalNet ?? 0)} sub="After commission & TDS" icon={BanknoteIcon} gradient="from-emerald-500 to-emerald-700" />
                 <StatCard label="Pending Payouts" value={fmtShort(stats.pendingNet ?? 0)} sub="Awaiting processing" icon={Clock} gradient="from-rose-500 to-red-700" />
@@ -295,7 +295,7 @@ function RefundsTab({ month }: { month: string }) {
         <div className="space-y-6">
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <StatCard label="Total Refunded" value={fmtShort(stats.totalRefunded ?? 0)} sub="Processed refunds" icon={TrendingDown} gradient="from-rose-500 to-red-700" />
+                <StatCard label="Total Refunded" value={fmtShort(stats.totalRefunded ?? 0)} sub={`For ${new Date(month + "-01").toLocaleString("en-IN", { month: "short", year: "numeric" })}`} icon={TrendingDown} gradient="from-rose-500 to-red-700" />
                 <StatCard label="Pending Refunds" value={`${stats.pendingCount ?? 0} Requests`} sub="Awaiting admin action" icon={Clock} gradient="from-amber-500 to-orange-600" />
             </div>
 
