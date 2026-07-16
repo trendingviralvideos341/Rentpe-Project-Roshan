@@ -39,6 +39,7 @@ export default function OwnerNoticesPage() {
     const [selectedYear, setSelectedYear] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const [selectedProperty, setSelectedProperty] = useState<string>('ALL');
+    const [currentPage, setCurrentPage] = useState<number>(1);
     const [ownerProperties, setOwnerProperties] = useState<any[]>([]);
 
     const handleYearChange = (year: string) => {
@@ -46,23 +47,18 @@ export default function OwnerNoticesPage() {
         if (year !== 'ALL') {
             const newDate = new Date(currentDate);
             newDate.setFullYear(Number(year));
-            setCurrentDate(newDate);
-        }
     };
 
     const handleMonthChange = (month: string) => {
         setSelectedMonth(month);
-        if (month !== 'ALL') {
-            const newDate = new Date(currentDate);
-            newDate.setMonth(Number(month));
-            setCurrentDate(newDate);
-        }
     };
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedProperty, selectedYear, selectedMonth, noticeFilter]);
 
     const handleCalendarNavigate = (newDate: Date) => {
         setCurrentDate(newDate);
-        setSelectedYear(newDate.getFullYear().toString());
-        setSelectedMonth(newDate.getMonth().toString());
     };
 
     const startYear = 2026;
@@ -86,9 +82,10 @@ export default function OwnerNoticesPage() {
         { value: '11', label: 'December' }
     ];
     
-    const MONTHS = selectedYear === currentYear.toString()
+    const baseMonthOptions = selectedYear === currentYear.toString()
         ? ALL_MONTHS.slice(0, new Date().getMonth() + 1)
         : ALL_MONTHS;
+    const MONTHS = [{ value: 'ALL', label: 'All Months' }, ...baseMonthOptions];
 
     // Generates the complete, legally-valid official HTML for the settlement receipt
     const getReceiptHtml = (d: any) => {
@@ -250,21 +247,10 @@ export default function OwnerNoticesPage() {
         getOwnerVacatingNotices().then(data => {
             setNotices(data);
             setLoading(false);
-
-            if (data && data.length > 0) {
-                const dates = data.map((n: any) => new Date(n.plannedMoveOut));
-                const latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
-                const y = latestDate.getFullYear().toString();
-                const m = latestDate.getMonth().toString();
-                setSelectedYear(y);
-                setSelectedMonth(m);
-                setCurrentDate(latestDate);
-            } else {
-                const now = new Date();
-                setSelectedYear(now.getFullYear().toString());
-                setSelectedMonth(now.getMonth().toString());
-                setCurrentDate(now);
-            }
+            const now = new Date();
+            setSelectedYear(now.getFullYear().toString());
+            setSelectedMonth(now.getMonth().toString());
+            setCurrentDate(now);
         });
     }, []);
 
@@ -324,6 +310,10 @@ export default function OwnerNoticesPage() {
         const monthMatch = selectedMonth === 'ALL' || date.getMonth() === Number(selectedMonth);
         return yearMatch && monthMatch;
     });
+
+    const ITEMS_PER_PAGE = 25;
+    const totalPages = Math.ceil(filteredNotices.length / ITEMS_PER_PAGE) || 1;
+    const paginatedNotices = filteredNotices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center">
@@ -476,7 +466,7 @@ export default function OwnerNoticesPage() {
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-50">
-                                    {filteredNotices.map(notice => {
+                                    {paginatedNotices.map(notice => {
                                         const sc = STATUS_CONFIG[notice.status] || STATUS_CONFIG.SUBMITTED;
                                         const daysLeft = Math.ceil((new Date(notice.plannedMoveOut).getTime() - Date.now()) / 86400000);
                                         return (
@@ -611,6 +601,32 @@ export default function OwnerNoticesPage() {
                                 </div>
                             )}
                         </div>
+                        {totalPages > 1 && (
+                            <div className="border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-white px-6 py-4 rounded-b-2xl shadow-sm">
+                                <div className="text-sm text-slate-500 font-bold mb-4 sm:mb-0">
+                                    Showing <span className="text-indigo-600">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-indigo-600">{Math.min(currentPage * ITEMS_PER_PAGE, filteredNotices.length)}</span> of <span className="text-indigo-600">{filteredNotices.length}</span> entries
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={currentPage === 1}
+                                        className="px-4 py-2 rounded-xl text-sm font-black transition-all bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                    >
+                                        Previous
+                                    </button>
+                                    <div className="px-4 py-2 rounded-xl text-sm font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        Page {currentPage} of {totalPages}
+                                    </div>
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={currentPage === totalPages}
+                                        className="px-4 py-2 rounded-xl text-sm font-black transition-all bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </>
                 ) : (
                     /* CALENDAR VIEW */

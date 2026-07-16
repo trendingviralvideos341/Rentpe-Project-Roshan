@@ -697,6 +697,7 @@ export default function OwnerAgreementsPage() {
   const [selectedProperty, setSelectedProperty] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState(currentYearNum.toString());
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadAgreements = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -728,6 +729,10 @@ export default function OwnerAgreementsPage() {
     fetchOwnerProps();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedProperty, selectedYear, selectedMonth, activeTab]);
+
   const propertiesList = Array.from(new Set([
       ...ownerProperties.map(p => p.name),
       ...agreements.map(a => a.propertyName)
@@ -748,9 +753,10 @@ export default function OwnerAgreementsPage() {
       { value: '11', label: 'November' }, { value: '12', label: 'December' }
   ];
 
-  const monthOptions = selectedYear === currentYearNum.toString()
+  const baseMonthOptions = selectedYear === currentYearNum.toString()
       ? allMonths.slice(0, new Date().getMonth() + 1)
       : allMonths;
+  const monthOptions = [{ value: 'ALL', label: 'All Months' }, ...baseMonthOptions];
 
   const filteredAgreements = agreements.filter(a => {
       let matchStatus = true;
@@ -769,13 +775,15 @@ export default function OwnerAgreementsPage() {
           const date = new Date(a.createdAt);
           const itemYear = date.getFullYear().toString();
           const itemMonth = (date.getMonth() + 1).toString().padStart(2, '0');
-          if (itemYear !== selectedYear || itemMonth !== selectedMonth) {
+          if (itemYear !== selectedYear || (selectedMonth !== 'ALL' && itemMonth !== selectedMonth)) {
               matchDate = false;
           }
-      }
-
       return matchStatus && matchProperty && matchDate;
   });
+
+  const ITEMS_PER_PAGE = 25;
+  const totalPages = Math.ceil(filteredAgreements.length / ITEMS_PER_PAGE) || 1;
+  const paginatedAgreements = filteredAgreements.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Computed stats
   const stats = {
@@ -913,7 +921,7 @@ export default function OwnerAgreementsPage() {
               <>
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-4">
-                  {filteredAgreements.map(agreement => (
+                  {paginatedAgreements.map(agreement => (
                     <AgreementRow
                       key={agreement.id}
                       agreement={agreement}
@@ -948,8 +956,8 @@ export default function OwnerAgreementsPage() {
                           <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">Actions</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {filteredAgreements.map(agreement => (
+                      <tbody className="divide-y divide-purple-50">
+                        {paginatedAgreements.map(agreement => (
                           <AgreementRow
                             key={agreement.id}
                             agreement={agreement}
@@ -961,6 +969,32 @@ export default function OwnerAgreementsPage() {
                     </table>
                   </div>
                 </div>
+                {totalPages > 1 && (
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="text-sm text-slate-500 font-bold mb-4 sm:mb-0">
+                      Showing <span className="text-indigo-600">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-indigo-600">{Math.min(currentPage * ITEMS_PER_PAGE, filteredAgreements.length)}</span> of <span className="text-indigo-600">{filteredAgreements.length}</span> entries
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-xl text-sm font-black transition-all bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      >
+                        Previous
+                      </button>
+                      <div className="px-4 py-2 rounded-xl text-sm font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-xl text-sm font-black transition-all bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </>
