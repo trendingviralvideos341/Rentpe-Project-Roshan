@@ -106,7 +106,7 @@ function TimePicker({
                 <select
                     value={h12}
                     onChange={e => updateTime(e.target.value, min, ampm)}
-                    className="w-12 text-center text-xs font-mono font-bold border border-slate-300 rounded-none py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    className="w-12 text-center text-xs font-mono font-bold border border-slate-300 rounded-md py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                     {HOURS_12.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
@@ -118,7 +118,7 @@ function TimePicker({
                 <select
                     value={min}
                     onChange={e => updateTime(h12, e.target.value, ampm)}
-                    className="w-12 text-center text-xs font-mono font-bold border border-slate-300 rounded-none py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    className="w-12 text-center text-xs font-mono font-bold border border-slate-300 rounded-md py-1.5 bg-white text-slate-800 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                     {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -129,7 +129,7 @@ function TimePicker({
                 <select
                     value={ampm}
                     onChange={e => updateTime(h12, min, e.target.value)}
-                    className="w-16 text-center text-xs font-bold border border-slate-300 rounded-none py-1.5 bg-white outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-slate-800"
+                    className="w-16 text-center text-xs font-bold border border-slate-300 rounded-md py-1.5 bg-white outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-slate-800"
                 >
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
@@ -329,7 +329,7 @@ export function FoodMenuContainer() {
                 <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-400 font-medium">Property</span>
                     <select
-                        className="border border-slate-300 rounded-none px-3 py-2.5 text-sm font-medium text-slate-700 bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none min-w-[260px] cursor-pointer transition-all"
+                        className="border border-slate-300 rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none min-w-[260px] cursor-pointer transition-all"
                         value={selectedPropertyId}
                         onChange={e => { setSelectedPropertyId(e.target.value); setActiveDay("Monday"); setViewAll(false); }}
                     >
@@ -525,7 +525,7 @@ function DayCard({
                                             <select
                                                 value={slot.type}
                                                 onChange={e => onUpdate(day, slot.id, "type", e.target.value)}
-                                                className="text-xs font-medium border border-slate-300 rounded-none px-2 py-1.5 bg-white text-slate-700 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 flex-1 min-w-0 transition-all"
+                                                className="text-xs font-medium border border-slate-300 rounded-md px-2 py-1.5 bg-white text-slate-700 outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 flex-1 min-w-0 transition-all"
                                             >
                                                 {MEAL_TYPES.map(mt => (
                                                     <option key={mt.value} value={mt.value}>
@@ -579,7 +579,7 @@ function DayCard({
                                                 value={slot.items}
                                                 onChange={e => onUpdate(day, slot.id, "items", e.target.value)}
                                                 className={cn(
-                                                    "w-full text-sm px-3 py-2 border rounded-none outline-none transition-all font-medium resize-y min-h-[60px]",
+                                                    "w-full text-sm px-3 py-2 border rounded-md outline-none transition-all font-medium resize-y min-h-[60px]",
                                                     slot.items
                                                         ? "border-indigo-300 bg-indigo-50 text-indigo-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                                                         : "border-slate-300 bg-white text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
