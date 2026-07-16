@@ -260,39 +260,39 @@ export function TenantsContainer() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card 
-                    className={`cursor-pointer transition-all ${activeTab === 'ACTIVE' ? 'ring-2 ring-indigo-500 bg-indigo-50 border-indigo-200' : 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'}`}
+                    className={`cursor-pointer transition-all ${activeTab === 'ACTIVE' ? 'bg-indigo-600 border-indigo-600 shadow-md text-white' : 'bg-indigo-50/50 border-indigo-100 hover:bg-indigo-50'}`}
                     onClick={() => setActiveTab('ACTIVE')}
                 >
                     <CardContent className="p-4">
-                        <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Active Tenants</p>
-                        <p className="text-2xl font-black text-indigo-900 mt-1">
+                        <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'ACTIVE' ? 'text-indigo-100' : 'text-indigo-600'}`}>Total Active Tenants</p>
+                        <p className={`text-2xl font-black mt-1 ${activeTab === 'ACTIVE' ? 'text-white' : 'text-indigo-900'}`}>
                             {stats.active}
                         </p>
-                        <p className="text-[10px] text-indigo-500 mt-1">Currently residing in rooms</p>
+                        <p className={`text-[10px] mt-1 ${activeTab === 'ACTIVE' ? 'text-indigo-200' : 'text-indigo-500'}`}>Currently residing in rooms</p>
                     </CardContent>
                 </Card>
                 <Card 
-                    className={`cursor-pointer transition-all ${activeTab === 'UPCOMING' ? 'ring-2 ring-emerald-500 bg-emerald-50 border-emerald-200' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'}`}
+                    className={`cursor-pointer transition-all ${activeTab === 'UPCOMING' ? 'bg-emerald-600 border-emerald-600 shadow-md text-white' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50'}`}
                     onClick={() => setActiveTab('UPCOMING')}
                 >
                     <CardContent className="p-4">
-                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Upcoming Move-ins</p>
-                        <p className="text-2xl font-black text-emerald-900 mt-1">
+                        <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'UPCOMING' ? 'text-emerald-100' : 'text-emerald-600'}`}>Upcoming Move-ins</p>
+                        <p className={`text-2xl font-black mt-1 ${activeTab === 'UPCOMING' ? 'text-white' : 'text-emerald-900'}`}>
                             {stats.upcoming}
                         </p>
-                        <p className="text-[10px] text-emerald-500 mt-1">Booked and awaiting arrival</p>
+                        <p className={`text-[10px] mt-1 ${activeTab === 'UPCOMING' ? 'text-emerald-200' : 'text-emerald-500'}`}>Booked and awaiting arrival</p>
                     </CardContent>
                 </Card>
                 <Card 
-                    className={`cursor-pointer transition-all ${activeTab === 'CHECKED_OUT' ? 'ring-2 ring-slate-400 bg-slate-100 border-slate-300' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}
+                    className={`cursor-pointer transition-all ${activeTab === 'CHECKED_OUT' ? 'bg-slate-700 border-slate-700 shadow-md text-white' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}
                     onClick={() => setActiveTab('CHECKED_OUT')}
                 >
                     <CardContent className="p-4">
-                        <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Checked Out Tenants</p>
-                        <p className="text-2xl font-black text-slate-800 mt-1">
+                        <p className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'CHECKED_OUT' ? 'text-slate-300' : 'text-slate-600'}`}>Checked Out Tenants</p>
+                        <p className={`text-2xl font-black mt-1 ${activeTab === 'CHECKED_OUT' ? 'text-white' : 'text-slate-800'}`}>
                             {stats.checkedOut}
                         </p>
-                        <p className="text-[10px] text-slate-500 mt-1">All-time departed residents</p>
+                        <p className={`text-[10px] mt-1 ${activeTab === 'CHECKED_OUT' ? 'text-slate-400' : 'text-slate-500'}`}>All-time departed residents</p>
                     </CardContent>
                 </Card>
             </div>
