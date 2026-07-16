@@ -7,6 +7,7 @@ import {
     CheckCircle, XCircle, Building2, RefreshCcw, Info, Shield, ShieldCheck, Search
 } from "lucide-react";
 import { getPhysicalKycBookings, markPhysicalKycVerified } from "@/actions/bookings";
+import { getProperties } from "@/actions/properties";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
@@ -128,8 +129,12 @@ export function VerificationsContainer() {
     const [selectedYear, setSelectedYear] = useState(currentYearNum.toString());
     const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
     const [selectedProperty, setSelectedProperty] = useState("ALL");
+    const [ownerProperties, setOwnerProperties] = useState<any[]>([]);
 
-    const properties = Array.from(new Set(kycBookings.map(b => b.property?.name || b.propertyName).filter(Boolean))) as string[];
+    const properties = Array.from(new Set([
+        ...ownerProperties.map(p => p.name),
+        ...kycBookings.map(b => b.property?.name || b.propertyName)
+    ].filter(Boolean))) as string[];
 
     const yearOptions = [
         { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
@@ -160,8 +165,18 @@ export function VerificationsContainer() {
         }
     };
 
+    const fetchOwnerProps = async () => {
+        try {
+            const props = await getProperties();
+            setOwnerProperties(props);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     useEffect(() => {
         fetchKycBookings();
+        fetchOwnerProps();
     }, []);
 
     const handleMarkVerified = async (bookingId: string) => {
@@ -224,10 +239,10 @@ export function VerificationsContainer() {
                         </div>
                         Physical KYC Center
                     </h1>
-                    <div className="mt-1">
-                        <p className="text-slate-500 font-bold text-xs uppercase tracking-tight">Physical document verification & logs</p>
-                        <p className="text-slate-500 text-xs mt-1.5 max-w-4xl leading-relaxed">
-                            All students must present physical documents (ID proof, address proof) during in-person check-in as per Government laws and police verification. Once verified, records will show here who verified it and from whom.
+                    <div className="mt-1.5">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-tight mb-0.5">Physical document verification & logs</p>
+                        <p className="text-slate-500 text-xs max-w-4xl leading-relaxed">
+                            Make sure to keep a copy of all verified documents as per government rules and police verification regulations. Once verified, records will show here who verified it and from whom.
                         </p>
                     </div>
                 </div>
@@ -256,7 +271,7 @@ export function VerificationsContainer() {
                     </div>
                     
                     <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex items-center gap-3 shrink-0">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col pr-3">
                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5 ml-2 -mt-1">PROPERTY</span>
                             <select
                                 value={selectedProperty}
@@ -268,8 +283,8 @@ export function VerificationsContainer() {
                                 {properties.map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                         </div>
-                        <div className="w-px h-6 bg-slate-100 mx-1"></div>
-                        <div className="flex flex-col">
+                        <div className="w-px h-8 bg-slate-200 mx-3"></div>
+                        <div className="flex flex-col pl-1">
                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5 ml-2 -mt-1">SELECT YEAR</span>
                             <select
                                 value={selectedYear}
