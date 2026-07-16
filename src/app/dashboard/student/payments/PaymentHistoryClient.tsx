@@ -694,15 +694,15 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                     </div>
-                    <div className="w-full mx-auto relative z-10 px-4 md:px-8 flex items-center justify-between gap-4 flex-wrap">
+                    <div className="w-full mx-auto relative z-10 px-4 md:px-8 flex flex-col items-start">
+                        <Link href="/dashboard/student"
+                            className="inline-flex items-center gap-2 bg-white text-indigo-600 hover:bg-indigo-50 hover:shadow-md text-xs font-bold px-4 py-2 rounded-full mb-4 transition-all shadow-sm">
+                            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+                        </Link>
                         <div>
                             <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Payment History</h1>
                             <p className="text-indigo-200 text-xs font-medium mt-0.5">Your complete rent ledger and receipts</p>
                         </div>
-                        <Link href="/dashboard/student"
-                            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/25 text-white text-xs font-bold px-4 py-2 rounded-full transition-all border border-white/20 backdrop-blur-md shadow-sm">
-                            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-                        </Link>
                     </div>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
