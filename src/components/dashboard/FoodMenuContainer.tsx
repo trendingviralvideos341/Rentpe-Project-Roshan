@@ -129,7 +129,7 @@ function TimePicker({
                 <select
                     value={ampm}
                     onChange={e => updateTime(h12, min, e.target.value)}
-                    className="w-16 text-center text-xs font-bold border border-slate-300 rounded-none py-1.5 bg-white outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-indigo-600"
+                    className="w-16 text-center text-xs font-bold border border-slate-300 rounded-none py-1.5 bg-white outline-none cursor-pointer focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-slate-800"
                 >
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
@@ -309,7 +309,7 @@ export function FoodMenuContainer() {
                 {/* ── Property banner — center, vivid ── */}
                 {selectedProperty && (
                     <div className="flex flex-col items-center gap-1 py-1">
-                        <div className="flex items-center gap-2.5 px-6 py-2.5 rounded-none bg-gradient-to-r from-indigo-600 to-violet-600 shadow-md shadow-indigo-200">
+                        <div className="flex items-center gap-2.5 px-6 py-2.5 rounded-md bg-gradient-to-r from-indigo-600 to-violet-600 shadow-md shadow-indigo-200">
                             <Building2 className="h-5 w-5 text-white shrink-0" />
                             <span className="text-base font-black text-white tracking-tight">
                                 {selectedProperty.name}
@@ -543,7 +543,7 @@ function DayCard({
                                                 value={slot.from}
                                                 onChange={v => onUpdate(day, slot.id, "from", v)}
                                             />
-                                            <p className="text-[10px] font-mono text-indigo-500 font-bold pl-0.5">
+                                            <p className="text-[10px] font-mono text-slate-800 font-bold pl-0.5">
                                                 {fromIST}
                                             </p>
                                         </div>
@@ -561,7 +561,7 @@ function DayCard({
                                                 value={slot.to}
                                                 onChange={v => onUpdate(day, slot.id, "to", v)}
                                             />
-                                            <p className="text-[10px] font-mono text-indigo-500 font-bold pl-0.5">
+                                            <p className="text-[10px] font-mono text-slate-800 font-bold pl-0.5">
                                                 {toIST}
                                             </p>
                                         </div>
