@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { ExportModal } from './ExportModal';
+import { FileSpreadsheet } from 'lucide-react';
 
 type Tab = 'ALL' | 'ONLINE' | 'CASH' | 'PENDING' | 'OVERDUE' | 'TOKEN';
 
@@ -591,6 +593,7 @@ export function RentCollectionContainer({ month }: { month: string }) {
     const [receiptModal, setReceiptModal] = useState<string | null>(null);
     const [historyModal, setHistoryModal] = useState<{ tenantName: string; tenantDisplayId: string; history: any[] } | null>(null);
     const [commissionModal, setCommissionModal] = useState<{ tenantName: string; tenantDisplayId: string; history: any[] } | null>(null);
+    const [exportModalOpen, setExportModalOpen] = useState(false);
     const [allowCashPayment, setAllowCashPayment] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [sendingId, setSendingId] = useState<string | null>(null);
@@ -712,8 +715,12 @@ export function RentCollectionContainer({ month }: { month: string }) {
                     <p className="text-sm text-slate-500 mt-0.5">Full rent collection dashboard</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button onClick={() => setExportModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition-all shadow-sm mt-3.5 h-11">
+                        <FileSpreadsheet className="w-4 h-4" /> Download Excel Report
+                    </button>
                     <button onClick={() => reload(month)} disabled={loading}
-                        className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm mt-3.5 h-11 w-11 flex items-center justify-center">
+                        className="p-2 rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm mt-3.5 h-11 w-11 flex items-center justify-center transition-all">
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
@@ -992,7 +999,7 @@ export function RentCollectionContainer({ month }: { month: string }) {
                 )}
             </div>
 
-            {/* Cash Confirm Modal */}
+            {/* Modals */}
             {cashModal && (
                 <CashConfirmModal
                     inv={cashModal}
@@ -1000,8 +1007,7 @@ export function RentCollectionContainer({ month }: { month: string }) {
                     onConfirm={handleCashPaid}
                 />
             )}
-
-            {/* Receipt Preview Modal */}
+            
             {receiptModal && (
                 <ReceiptModal
                     invoiceId={receiptModal}
@@ -1009,7 +1015,6 @@ export function RentCollectionContainer({ month }: { month: string }) {
                 />
             )}
 
-            {/* History Preview Modal */}
             {historyModal && (
                 <HistoryModal
                     tenantName={historyModal.tenantName}
@@ -1023,13 +1028,19 @@ export function RentCollectionContainer({ month }: { month: string }) {
                 />
             )}
 
-            {/* Commission Preview Modal */}
             {commissionModal && (
                 <CommissionModal
                     tenantName={commissionModal.tenantName}
                     tenantDisplayId={commissionModal.tenantDisplayId}
                     history={commissionModal.history}
                     onClose={() => setCommissionModal(null)}
+                />
+            )}
+
+            {exportModalOpen && (
+                <ExportModal
+                    type="RENT_INFLOWS"
+                    onClose={() => setExportModalOpen(false)}
                 />
             )}
         </div>

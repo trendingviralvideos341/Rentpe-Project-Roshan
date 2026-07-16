@@ -10,8 +10,9 @@ import {
     IndianRupee, TrendingUp, TrendingDown, ReceiptText,
     BanknoteIcon, RefreshCw, Copy, Check, Download,
     ArrowDownLeft, AlertTriangle, Clock, ShieldCheck,
-    FileText, Loader2, Activity
+    FileText, Loader2, Activity, FileSpreadsheet
 } from 'lucide-react';
+import { ExportModal } from '@/components/dashboard/ExportModal';
 
 function getCurrentMonth() {
     const n = new Date();
@@ -122,6 +123,7 @@ function PayoutsTab({ month }: { month: string }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [exportModalOpen, setExportModalOpen] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -165,9 +167,15 @@ function PayoutsTab({ month }: { month: string }) {
             {/* Header row */}
             <div className="flex items-center justify-between">
                 <p className="text-sm font-black text-slate-700">{payouts.length} Payout Records</p>
-                <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-all">
-                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setExportModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition-all shadow-sm">
+                        <FileSpreadsheet className="w-3.5 h-3.5" /> Download Excel Report
+                    </button>
+                    <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-all">
+                        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -261,6 +269,8 @@ function PayoutsTab({ month }: { month: string }) {
                     </div>
                 )}
             </div>
+            
+            {exportModalOpen && <ExportModal type="PAYOUTS" onClose={() => setExportModalOpen(false)} />}
         </div>
     );
 }
@@ -302,9 +312,15 @@ function RefundsTab({ month }: { month: string }) {
             {/* Header row */}
             <div className="flex items-center justify-between">
                 <p className="text-sm font-black text-slate-700">{refunds.length} Refund Records</p>
-                <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all">
-                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setExportModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition-all shadow-sm">
+                        <FileSpreadsheet className="w-3.5 h-3.5" /> Download Excel Report
+                    </button>
+                    <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all">
+                        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -401,6 +417,8 @@ function RefundsTab({ month }: { month: string }) {
                     </div>
                 )}
             </div>
+
+            {exportModalOpen && <ExportModal type="REFUNDS" onClose={() => setExportModalOpen(false)} />}
         </div>
     );
 }
@@ -439,14 +457,19 @@ export default function OwnerPaymentsPage() {
     const [month, setMonth] = useState(getCurrentMonth());
 
     const currentYearNum = new Date().getFullYear();
-    const yearOptions = [
-        { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
-        { value: currentYearNum.toString(), label: currentYearNum.toString() },
-        { value: (currentYearNum + 1).toString(), label: (currentYearNum + 1).toString() },
-        { value: (currentYearNum + 2).toString(), label: (currentYearNum + 2).toString() }
-    ];
+    const currentMonthNum = new Date().getMonth() + 1;
+    
+    // Start strictly from 2026 up to current year
+    const startYear = 2026;
+    const yearOptions = Array.from({ length: Math.max(1, currentYearNum - startYear + 1) }, (_, i) => {
+        const yr = (startYear + i).toString();
+        return { value: yr, label: yr };
+    });
 
-    const monthOptions = [
+    const [selectedYear, selectedMonth] = month.split('-');
+
+    // Hide future months if the selected year is the current year
+    const allMonths = [
         { value: '01', label: 'January' }, { value: '02', label: 'February' },
         { value: '03', label: 'March' }, { value: '04', label: 'April' },
         { value: '05', label: 'May' }, { value: '06', label: 'June' },
@@ -455,7 +478,12 @@ export default function OwnerPaymentsPage() {
         { value: '11', label: 'November' }, { value: '12', label: 'December' }
     ];
 
-    const [selectedYear, selectedMonth] = month.split('-');
+    const monthOptions = allMonths.filter(m => {
+        if (selectedYear === currentYearNum.toString()) {
+            return parseInt(m.value) <= currentMonthNum;
+        }
+        return true;
+    });
 
     return (
         <div className="p-4 md:p-8 space-y-6">
