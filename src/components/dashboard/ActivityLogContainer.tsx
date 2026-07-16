@@ -251,12 +251,9 @@ function LogTable({ loading, activeLogs, expandedRows, toggleRow, showActor }: a
                                                             {log.entityName}
                                                         </div>
                                                     )}
-                                                    <div className="font-mono text-[9px] font-bold text-indigo-600 truncate max-w-[120px] leading-tight" title={log.entityId}>
-                                                        ID: {log.entityId || "N/A"}
-                                                    </div>
                                                 </td>
                                                 <td className="p-4">
-                                                    {showActor && <div className="text-[10px] font-bold text-indigo-600 mb-1">BY: {log.actor?.displayId || log.actorId}</div>}
+                                                    {showActor && <div className="text-[10px] font-bold text-indigo-600 mb-1">BY: {log.actor?.name || log.actor?.displayId || "Staff"}</div>}
                                                     <p className="text-xs font-medium text-slate-600 line-clamp-2">{log.description || "No notes recorded"}</p>
                                                 </td>
                                                 <td className="p-4 text-slate-400">{hasDetails && (isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}</td>
@@ -270,16 +267,16 @@ function LogTable({ loading, activeLogs, expandedRows, toggleRow, showActor }: a
                                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t-2 border-indigo-50">
                                                                 <div>
                                                                     <div className="text-[9px] font-black text-slate-400 uppercase">Actor</div>
-                                                                    <div className="text-[10px] font-bold text-slate-700">{log.actor?.name || "System"} ({log.actor?.displayId || "ID-N/A"})</div>
-                                                                    {log.actor?.email && <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate" title={log.actor.email}>{log.actor.email}</div>}
+                                                                    <div className="text-[10px] font-bold text-slate-700">{log.actor?.name || "System"}</div>
+                                                                    <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate">({log.actor?.displayId || "ID-N/A"})</div>
                                                                 </div>
                                                                 <div>
                                                                     <div className="text-[9px] font-black text-slate-400 uppercase">Action</div>
                                                                     <div className="text-[10px] font-bold text-slate-700">{log.actionType}</div>
                                                                 </div>
                                                                 <div>
-                                                                    <div className="text-[9px] font-black text-slate-400 uppercase">Entity</div>
-                                                                    <div className="text-[10px] font-bold text-slate-700">{log.entityType}: {log.entityId}</div>
+                                                                    <div className="text-[9px] font-black text-slate-400 uppercase">Target Entity</div>
+                                                                    <div className="text-[10px] font-bold text-slate-700">{log.entityName || log.entityType}</div>
                                                                 </div>
                                                                 <div>
                                                                     <div className="text-[9px] font-black text-slate-400 uppercase">Date/Time</div>
