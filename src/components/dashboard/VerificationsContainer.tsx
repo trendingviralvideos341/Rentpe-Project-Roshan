@@ -127,6 +127,9 @@ export function VerificationsContainer() {
     const [kycSearch, setKycSearch] = useState("");
     const [selectedYear, setSelectedYear] = useState(currentYearNum.toString());
     const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+    const [selectedProperty, setSelectedProperty] = useState("ALL");
+
+    const properties = Array.from(new Set(kycBookings.map(b => b.property?.name || b.propertyName).filter(Boolean))) as string[];
 
     const yearOptions = [
         { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
@@ -187,6 +190,14 @@ export function VerificationsContainer() {
             }
         }
 
+        let matchProperty = true;
+        if (selectedProperty !== "ALL") {
+            const propName = b.property?.name || b.propertyName;
+            if (propName !== selectedProperty) {
+                matchProperty = false;
+            }
+        }
+
         const q = kycSearch.toLowerCase();
         const matchSearch = (
             b.guestName?.toLowerCase().includes(q) ||
@@ -196,16 +207,16 @@ export function VerificationsContainer() {
             b.property?.name?.toLowerCase().includes(q)
         );
 
-        return matchDate && matchSearch;
+        return matchDate && matchSearch && matchProperty;
     });
 
     const verifiedKyc = filteredKycBookings.filter(b => b.kycVerified);
     const unverifiedKyc = filteredKycBookings.filter(b => !b.kycVerified);
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6 pb-10">
+        <div className="w-full space-y-6 pb-10">
             {/* ── Header ── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 bg-white p-6 rounded-2xl border shadow-sm">
                 <div>
                     <h1 className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-3">
                         <div className="p-2 bg-indigo-600 rounded-xl text-white">
@@ -213,9 +224,14 @@ export function VerificationsContainer() {
                         </div>
                         Physical KYC Center
                     </h1>
-                    <p className="text-slate-500 mt-1 font-bold text-xs uppercase tracking-tight">Physical document verification & logs</p>
+                    <div className="mt-1">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-tight">Physical document verification & logs</p>
+                        <p className="text-slate-500 text-xs mt-1.5 max-w-4xl leading-relaxed">
+                            All students must present physical documents (ID proof, address proof) during in-person check-in as per Government laws and police verification. Once verified, records will show here who verified it and from whom.
+                        </p>
+                    </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                     <Button
                         variant="outline" size="sm"
                         onClick={fetchKycBookings}
@@ -223,18 +239,6 @@ export function VerificationsContainer() {
                     >
                         <RefreshCcw className="w-3 h-3 mr-2" /> Refresh
                     </Button>
-                </div>
-            </div>
-
-            {/* ── Physical KYC Bypass Notice ── */}
-            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 flex gap-3 text-amber-900 shadow-sm">
-                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                    <p className="text-xs font-black uppercase tracking-wider">Physical Verification Mandatory at Check-in</p>
-                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
-                        Student online document uploads are bypassed. All students must present physical documents (ID proof, address proof) during in-person check-in.
-                        Please use this log to record and audit successful physical verifications.
-                    </p>
                 </div>
             </div>
 
@@ -251,7 +255,20 @@ export function VerificationsContainer() {
                         />
                     </div>
                     
-                    <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex items-center gap-3 shrink-0 h-11">
+                    <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex items-center gap-3 shrink-0">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5 ml-2 -mt-1">PROPERTY</span>
+                            <select
+                                value={selectedProperty}
+                                onChange={(e) => setSelectedProperty(e.target.value)}
+                                className="appearance-none bg-white rounded-md border-2 border-transparent hover:border-slate-100 focus:border-blue-500 px-3 py-0.5 pr-7 text-xs font-black text-slate-700 focus:outline-none transition-all cursor-pointer relative"
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                            >
+                                <option value="ALL">All Properties</option>
+                                {properties.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </div>
+                        <div className="w-px h-6 bg-slate-100 mx-1"></div>
                         <div className="flex flex-col">
                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5 ml-2 -mt-1">SELECT YEAR</span>
                             <select
