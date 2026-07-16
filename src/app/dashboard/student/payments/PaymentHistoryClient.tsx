@@ -690,17 +690,19 @@ export default function PaymentHistoryClient({ allData }: { allData: any[] }) {
     if (!data.length) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 flex flex-col">
-                <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-10 pb-16 relative">
+                <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 pt-5 pb-6 relative shadow-sm">
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute -right-20 -top-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
                     </div>
-                    <div className="w-full mx-auto relative z-10 px-4 md:px-8">
+                    <div className="w-full mx-auto relative z-10 px-4 md:px-8 flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Payment History</h1>
+                            <p className="text-indigo-200 text-xs font-medium mt-0.5">Your complete rent ledger and receipts</p>
+                        </div>
                         <Link href="/dashboard/student"
-                            className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2 rounded-full mb-5 transition-all border border-white/30 backdrop-blur-sm">
+                            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/25 text-white text-xs font-bold px-4 py-2 rounded-full transition-all border border-white/20 backdrop-blur-md shadow-sm">
                             <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
                         </Link>
-                        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Payment History</h1>
-                        <p className="text-indigo-200 text-sm font-medium mt-1">Your complete rent ledger and receipts</p>
                     </div>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
