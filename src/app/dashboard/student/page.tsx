@@ -1166,12 +1166,12 @@ export default function StudentDashboardPage() {
     );
 
     return (
-        <div className="w-full mx-auto py-6 px-4 md:px-8 space-y-8 pb-24 md:pb-12">
+        <div className="w-full mx-auto pt-0 px-4 md:px-8 space-y-8 pb-24 md:pb-12">
 
 
             {/* Main Tabs Segment */}
             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="flex w-full mb-4 p-1.5 bg-slate-100 rounded-2xl h-auto gap-0">
+                <TabsList className="flex w-full mb-0 p-1.5 bg-slate-100 rounded-2xl h-auto gap-0">
                     <TabsTrigger value="active-stay" className="flex-1 font-bold py-3 text-sm whitespace-nowrap rounded-xl relative data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-200 data-[state=inactive]:after:content-[''] data-[state=inactive]:after:absolute data-[state=inactive]:after:right-0 data-[state=inactive]:after:top-[20%] data-[state=inactive]:after:h-[60%] data-[state=inactive]:after:w-px data-[state=inactive]:after:bg-slate-300">
                         <Building2 className="h-4 w-4 mr-2 hidden sm:block" /> Active Stay
                     </TabsTrigger>
@@ -1305,7 +1305,7 @@ export default function StudentDashboardPage() {
                 </TabsContent>
 
                 {/* ── Profile Tab Content ── */}
-                <TabsContent value="profile" className="space-y-6 pt-0">
+                <TabsContent value="profile" className="space-y-0 pt-0 -mt-1">
                     {(() => {
                         const isProfileLocked = !!profile?.dateOfBirth;
                         return (
@@ -1491,7 +1491,7 @@ export default function StudentDashboardPage() {
                             ) : (
                                 <div className="space-y-4">
                                     {/* Hero row */}
-                                    <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-b-2xl rounded-t-none p-5 flex items-center gap-4 relative">
+                                    <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-teal-600 rounded-b-2xl rounded-t-none p-5 border-t-0 flex items-center gap-4 relative">
                                         <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
                                             <User className="h-8 w-8 text-white" />
                                         </div>
