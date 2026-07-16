@@ -306,8 +306,12 @@ export function TenantsContainer() {
                             ))}
                         </select>
                         <select className="border rounded-full px-4 py-2 bg-background text-sm font-semibold" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
-                            {["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].map((m, i) => {
-                                const name = new Date(2000, i, 1).toLocaleString('en-IN', { month: 'short' });
+                            {["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].filter(m => {
+                                const currentYear = new Date().getFullYear();
+                                const currentMonth = new Date().getMonth() + 1;
+                                return !(Number(filterYear) === currentYear && Number(m) > currentMonth);
+                            }).map((m, i) => {
+                                const name = new Date(2000, Number(m) - 1, 1).toLocaleString('en-IN', { month: 'short' });
                                 return <option key={m} value={Number(m).toString()}>{name}</option>
                             })}
                         </select>

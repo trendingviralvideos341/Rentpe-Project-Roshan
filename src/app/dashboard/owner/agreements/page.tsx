@@ -733,8 +733,8 @@ export default function OwnerAgreementsPage() {
       ...agreements.map(a => a.propertyName)
   ].filter(Boolean))) as string[];
 
-  const startYear = 2024;
-  const yearOptions = Array.from({ length: currentYearNum - startYear + 1 }, (_, i) => {
+  const startYear = 2026;
+  const yearOptions = Array.from({ length: Math.max(1, currentYearNum - startYear + 1) }, (_, i) => {
       const y = (currentYearNum - i).toString();
       return { value: y, label: y };
   });

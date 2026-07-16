@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { getOwnerVacatingNotices, acknowledgeVacatingNotice, getTenantForSettlement, getSettlementForNotice } from '@/actions/tenancy';
+import { getProperties } from '@/actions/properties';
 import { toast } from 'sonner';
 import { FileText, Clock, CheckCircle2, Loader2, X, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Home, AlertTriangle, FileDown, Eye, Printer } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
@@ -38,6 +39,7 @@ export default function OwnerNoticesPage() {
     const [selectedYear, setSelectedYear] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const [selectedProperty, setSelectedProperty] = useState<string>('ALL');
+    const [ownerProperties, setOwnerProperties] = useState<any[]>([]);
 
     const handleYearChange = (year: string) => {
         setSelectedYear(year);
@@ -63,16 +65,13 @@ export default function OwnerNoticesPage() {
         setSelectedMonth(newDate.getMonth().toString());
     };
 
-    const uniqueYears = Array.from(new Set(
-        notices.map(n => new Date(n.plannedMoveOut).getFullYear())
-    )).sort((a, b) => b - a);
+    const startYear = 2026;
     const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    if (!uniqueYears.includes(currentYear)) uniqueYears.push(currentYear);
-    if (!uniqueYears.includes(nextYear)) uniqueYears.push(nextYear);
-    uniqueYears.sort((a, b) => b - a);
+    const uniqueYears = Array.from({ length: Math.max(1, currentYear - startYear + 1) }, (_, i) => {
+        return (currentYear - i).toString();
+    });
 
-    const MONTHS = [
+    const ALL_MONTHS = [
         { value: '0', label: 'January' },
         { value: '1', label: 'February' },
         { value: '2', label: 'March' },
@@ -86,6 +85,10 @@ export default function OwnerNoticesPage() {
         { value: '10', label: 'November' },
         { value: '11', label: 'December' }
     ];
+    
+    const MONTHS = selectedYear === currentYear.toString()
+        ? ALL_MONTHS.slice(0, new Date().getMonth() + 1)
+        : ALL_MONTHS;
 
     // Generates the complete, legally-valid official HTML for the settlement receipt
     const getReceiptHtml = (d: any) => {
@@ -236,6 +239,14 @@ export default function OwnerNoticesPage() {
     };
 
     useEffect(() => {
+        const fetchProps = async () => {
+            try {
+                const props = await getProperties();
+                setOwnerProperties(props);
+            } catch (e) { console.error(e); }
+        };
+        fetchProps();
+
         getOwnerVacatingNotices().then(data => {
             setNotices(data);
             setLoading(false);
@@ -288,7 +299,10 @@ export default function OwnerNoticesPage() {
         return notices.filter(n => n.status !== 'WITHDRAWN' && isSameDay(new Date(n.plannedMoveOut), day));
     };
 
-    const uniqueProperties = Array.from(new Set(notices.map(n => n.booking?.propertyName))).filter(Boolean).sort() as string[];
+    const uniqueProperties = Array.from(new Set([
+        ...ownerProperties.map(p => p.name),
+        ...notices.map(n => n.booking?.propertyName)
+    ].filter(Boolean))).sort() as string[];
 
     const filteredNotices = notices.filter(n => {
         const date = new Date(n.plannedMoveOut);
@@ -330,11 +344,12 @@ export default function OwnerNoticesPage() {
                         <div className="flex items-center gap-4 flex-wrap">
                             <div className="flex gap-4">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Property</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT PROPERTY</span>
                                     <select
                                         value={selectedProperty}
                                         onChange={(e) => setSelectedProperty(e.target.value)}
-                                        className="text-xs font-black rounded-full px-4 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[130px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-8"
+                                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                                     >
                                         <option value="ALL">All Properties</option>
                                         {uniqueProperties.map(p => (
@@ -343,26 +358,26 @@ export default function OwnerNoticesPage() {
                                     </select>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Year</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT YEAR</span>
                                     <select
                                         value={selectedYear}
                                         onChange={(e) => handleYearChange(e.target.value)}
-                                        className="text-xs font-black rounded-full px-4 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[110px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-8"
+                                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                                     >
-                                        <option value="ALL">All Years</option>
                                         {uniqueYears.map(y => (
                                             <option key={y} value={y.toString()}>{y}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Month</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT MONTH</span>
                                     <select
                                         value={selectedMonth}
                                         onChange={(e) => handleMonthChange(e.target.value)}
-                                        className="text-xs font-black rounded-full px-4 py-2.5 bg-white/90 hover:bg-white text-indigo-900 focus:outline-none focus:ring-4 focus:ring-white/20 cursor-pointer min-w-[130px] shadow-lg transition-all border-0 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23312E81%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_16px_center] bg-[length:10px_auto] pr-8"
+                                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                                     >
-                                        <option value="ALL">All Months</option>
                                         {MONTHS.map(m => (
                                             <option key={m.value} value={m.value}>{m.label}</option>
                                         ))}
