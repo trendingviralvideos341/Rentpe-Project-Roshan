@@ -5,11 +5,11 @@ import { getOwnerRoomChangeRequests, updateRoomChangeStatus } from '@/actions/ro
 import { toast } from 'sonner';
 import { RefreshCw, Loader2, X, BedDouble } from 'lucide-react';
 
-const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-    PENDING:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-    APPROVED:  { label: 'Approved',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    REJECTED:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700 border-red-200' },
-    COMPLETED: { label: 'Completed', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+const STATUS_CONFIG: Record<string, { label: string; cls: string; activeCls: string }> = {
+    PENDING:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-200', activeCls: 'bg-amber-500 text-white border-amber-600 shadow-amber-500/30' },
+    APPROVED:  { label: 'Approved',  cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', activeCls: 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-500/30' },
+    REJECTED:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700 border-red-200', activeCls: 'bg-red-500 text-white border-red-600 shadow-red-500/30' },
+    COMPLETED: { label: 'Completed', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200', activeCls: 'bg-indigo-500 text-white border-indigo-600 shadow-indigo-500/30' },
 };
 
 export default function OwnerRoomChangesPage() {
@@ -21,6 +21,8 @@ export default function OwnerRoomChangesPage() {
 
     const [selectedYear, setSelectedYear] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>('');
+    const [selectedProperty, setSelectedProperty] = useState<string>('ALL');
+    const [activeTab, setActiveTab] = useState<string>('ALL');
 
     useEffect(() => {
         getOwnerRoomChangeRequests().then(data => {
@@ -83,14 +85,23 @@ export default function OwnerRoomChangesPage() {
         { value: '11', label: 'December' }
     ];
 
-    const filteredRequests = requests.filter(r => {
+    const uniqueProperties = Array.from(new Set(
+        requests.map((r: any) => r.booking?.propertyName).filter(Boolean)
+    )).sort();
+
+    const baseFilteredRequests = requests.filter(r => {
         const date = new Date(r.createdAt);
         const yearMatch = selectedYear === 'ALL' || date.getFullYear() === Number(selectedYear);
         const monthMatch = selectedMonth === 'ALL' || date.getMonth() === Number(selectedMonth);
-        return yearMatch && monthMatch;
+        const propertyMatch = selectedProperty === 'ALL' || r.booking?.propertyName === selectedProperty;
+        return yearMatch && monthMatch && propertyMatch;
     });
 
-    const pending = filteredRequests.filter(r => r.status === 'PENDING').length;
+    const displayRequests = activeTab === 'ALL' 
+        ? baseFilteredRequests 
+        : baseFilteredRequests.filter(r => r.status === activeTab);
+
+    const pending = baseFilteredRequests.filter(r => r.status === 'PENDING').length;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
@@ -107,7 +118,20 @@ export default function OwnerRoomChangesPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex gap-4">
+                        <div className="flex gap-4 flex-wrap justify-end">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Property</span>
+                                <select
+                                    value={selectedProperty}
+                                    onChange={(e) => setSelectedProperty(e.target.value)}
+                                    className="bg-white text-slate-800 text-xs font-black px-4 py-2.5 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent cursor-pointer min-w-[140px]"
+                                >
+                                    <option value="ALL">All Properties</option>
+                                    {uniqueProperties.map(p => (
+                                        <option key={p as string} value={p as string}>{p as string}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Select Year</span>
                                 <select
@@ -142,16 +166,28 @@ export default function OwnerRoomChangesPage() {
             <div className="w-full px-4 -mt-12 relative z-10 space-y-6">
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {(['PENDING','APPROVED','REJECTED','COMPLETED'] as const).map(s => (
-                        <div key={s} className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 text-center">
-                            <p className="text-2xl font-black text-slate-900">{filteredRequests.filter(r => r.status === s).length}</p>
-                            <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${STATUS_CONFIG[s].cls.split(' ')[1]}`}>{s}</p>
-                        </div>
-                    ))}
+                    {(['PENDING','APPROVED','REJECTED','COMPLETED'] as const).map(s => {
+                        const isActive = activeTab === s;
+                        const config = STATUS_CONFIG[s];
+                        return (
+                            <div 
+                                key={s} 
+                                onClick={() => setActiveTab(isActive ? 'ALL' : s)}
+                                className={`rounded-2xl p-4 shadow-lg border text-center cursor-pointer transition-all duration-300 transform hover:scale-105 active:scale-95 ${isActive ? config.activeCls : 'bg-white border-slate-100 hover:shadow-xl'}`}
+                            >
+                                <p className={`text-2xl font-black ${isActive ? 'text-white' : 'text-slate-900'}`}>
+                                    {baseFilteredRequests.filter(r => r.status === s).length}
+                                </p>
+                                <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${isActive ? 'text-white/90' : config.cls.split(' ')[1]}`}>
+                                    {s}
+                                </p>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Request List */}
-                {filteredRequests.length === 0 ? (
+                {displayRequests.length === 0 ? (
                     <div className="bg-white rounded-3xl shadow-xl p-12 text-center border border-slate-100">
                         <RefreshCw className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                         <p className="font-black text-slate-500 text-lg">No room change requests yet</p>
@@ -164,7 +200,7 @@ export default function OwnerRoomChangesPage() {
                             </h2>
                         </div>
                         <div className="divide-y divide-slate-50">
-                            {filteredRequests.map(req => {
+                            {displayRequests.map(req => {
                                 const sc = STATUS_CONFIG[req.status] || STATUS_CONFIG.PENDING;
                                 return (
                                     <div key={req.id} className="p-5 hover:bg-slate-50/50 transition-colors">

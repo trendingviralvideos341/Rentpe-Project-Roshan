@@ -454,14 +454,7 @@ export default function TenantsPage() {
         return matchSearch && matchProperty && matchType && matchStatus;
     });
 
-    if (loading && tenants.length === 0) {
-        return (
-            <div className="min-h-[400px] flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-                <p className="text-slate-500 font-bold">Loading Tenants...</p>
-            </div>
-        );
-    }
+
 
     return (
         <div className="space-y-6">
@@ -579,10 +572,22 @@ export default function TenantsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 text-sm">
-                                {filteredTenants.length === 0 ? (
+                                {loading ? (
                                     <tr>
-                                        <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">
-                                            No tenants match your search filter.
+                                        <td colSpan={8} className="p-12 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-3">
+                                                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                                                <p className="text-indigo-600 font-bold animate-pulse">Loading Tenants...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filteredTenants.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="p-12 text-center bg-slate-50">
+                                            <div className="space-y-2">
+                                                <p className="text-slate-500 font-black text-lg">NO Tenants available in these records</p>
+                                                <p className="text-sm text-slate-400">Try adjusting your filters or search terms.</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (

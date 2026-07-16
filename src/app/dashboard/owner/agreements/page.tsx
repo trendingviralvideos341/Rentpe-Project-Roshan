@@ -650,11 +650,11 @@ function AgreementRow({ agreement, onActionComplete, onTerminate }: AgreementRow
 
 // ─── SUMMARY CARD ─────────────────────────────────────────────────────────────
 
-function SummaryCard({ label, count, color, isActive, onClick }: { label: string; count: number; color: string; isActive?: boolean; onClick?: () => void }) {
+function SummaryCard({ label, count, inactiveColor, activeColor, isActive, onClick }: { label: string; count: number; inactiveColor: string; activeColor: string; isActive?: boolean; onClick?: () => void }) {
   return (
     <button 
       onClick={onClick}
-      className={`w-full text-left rounded-2xl p-4 border transition-all ${color} ${isActive ? 'ring-2 ring-offset-2 ring-indigo-500 shadow-lg scale-[1.02]' : 'hover:scale-[1.01] hover:shadow-md'}`}
+      className={`w-full text-left rounded-2xl p-4 border transition-all ${isActive ? activeColor : inactiveColor} ${isActive ? 'shadow-lg shadow-black/10 scale-[1.02] border-transparent' : 'hover:scale-[1.01] hover:shadow-md'}`}
     >
       <p className="text-2xl font-black">{count}</p>
       <p className="text-sm font-bold mt-0.5 opacity-90">{label}</p>
@@ -733,14 +733,13 @@ export default function OwnerAgreementsPage() {
       ...agreements.map(a => a.propertyName)
   ].filter(Boolean))) as string[];
 
-  const yearOptions = [
-      { value: (currentYearNum - 1).toString(), label: (currentYearNum - 1).toString() },
-      { value: currentYearNum.toString(), label: currentYearNum.toString() },
-      { value: (currentYearNum + 1).toString(), label: (currentYearNum + 1).toString() },
-      { value: (currentYearNum + 2).toString(), label: (currentYearNum + 2).toString() }
-  ];
+  const startYear = 2024;
+  const yearOptions = Array.from({ length: currentYearNum - startYear + 1 }, (_, i) => {
+      const y = (currentYearNum - i).toString();
+      return { value: y, label: y };
+  });
 
-  const monthOptions = [
+  const allMonths = [
       { value: '01', label: 'January' }, { value: '02', label: 'February' },
       { value: '03', label: 'March' }, { value: '04', label: 'April' },
       { value: '05', label: 'May' }, { value: '06', label: 'June' },
@@ -748,6 +747,10 @@ export default function OwnerAgreementsPage() {
       { value: '09', label: 'September' }, { value: '10', label: 'October' },
       { value: '11', label: 'November' }, { value: '12', label: 'December' }
   ];
+
+  const monthOptions = selectedYear === currentYearNum.toString()
+      ? allMonths.slice(0, new Date().getMonth() + 1)
+      : allMonths;
 
   const filteredAgreements = agreements.filter(a => {
       let matchStatus = true;
@@ -800,42 +803,41 @@ export default function OwnerAgreementsPage() {
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 mt-4 lg:mt-0 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row items-end gap-4 shrink-0 mt-4 lg:mt-0 w-full lg:w-auto">
             {/* Filters */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2 border border-white/20 flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
-                <div className="flex flex-col pr-3">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5 ml-2 -mt-1">PROPERTY</span>
+            <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT PROPERTY</span>
                     <select
                         value={selectedProperty}
                         onChange={(e) => setSelectedProperty(e.target.value)}
-                        className="appearance-none bg-white/20 text-white rounded-md border border-white/10 hover:border-white/30 focus:border-purple-300 px-3 py-0.5 pr-7 text-xs font-black focus:outline-none transition-all cursor-pointer relative"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                     >
-                        <option value="ALL" className="text-slate-900">All Properties</option>
-                        {propertiesList.map(p => <option key={p} value={p} className="text-slate-900">{p}</option>)}
+                        <option value="ALL">All Properties</option>
+                        {propertiesList.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                 </div>
-                <div className="w-px h-8 bg-white/20 mx-1"></div>
-                <div className="flex flex-col pl-1">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5 ml-2 -mt-1">SELECT YEAR</span>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT YEAR</span>
                     <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(e.target.value)}
-                        className="appearance-none bg-white/20 text-white border border-white/10 hover:border-white/30 focus:border-purple-300 rounded-md px-3 py-0.5 pr-7 text-xs font-black focus:outline-none transition-all cursor-pointer relative"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                     >
-                        {yearOptions.map(y => <option key={y.value} value={y.value} className="text-slate-900">{y.label}</option>)}
+                        {yearOptions.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
                     </select>
                 </div>
-                <div className="flex flex-col pl-1">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-200 mb-0.5 ml-2 -mt-1">SELECT MONTH</span>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1 ml-3">SELECT MONTH</span>
                     <select
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="appearance-none bg-white/20 text-white border border-white/10 hover:border-white/30 focus:border-purple-300 rounded-md px-3 py-0.5 pr-7 text-xs font-black focus:outline-none transition-all cursor-pointer relative"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '0.875rem' }}
+                        className="appearance-none bg-white text-indigo-950 rounded-full px-5 py-2.5 pr-10 text-sm font-black focus:outline-none transition-all cursor-pointer relative shadow-lg shadow-indigo-900/20"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231e1b4b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                     >
-                        {monthOptions.map(m => <option key={m.value} value={m.value} className="text-slate-900">{m.label}</option>)}
+                        {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                 </div>
             </div>
@@ -874,28 +876,32 @@ export default function OwnerAgreementsPage() {
               <SummaryCard
                 label="📄 Pending Tenant Verify"
                 count={stats.pendingTenantVerify}
-                color="bg-amber-50 border-amber-200 text-amber-800"
+                inactiveColor="bg-amber-50 border-amber-200 text-amber-800"
+                activeColor="bg-amber-500 text-white"
                 isActive={activeTab === 'PENDING_TENANT_VERIFY'}
                 onClick={() => setActiveTab(activeTab === 'PENDING_TENANT_VERIFY' ? 'ALL' : 'PENDING_TENANT_VERIFY')}
               />
               <SummaryCard
                 label="⏳ Awaiting My Counter-Sign"
                 count={stats.awaitingCounterSign}
-                color="bg-blue-50 border-blue-200 text-blue-800"
+                inactiveColor="bg-blue-50 border-blue-200 text-blue-800"
+                activeColor="bg-[#3b5bdb] text-white"
                 isActive={activeTab === 'AWAITING_COUNTER_SIGN'}
                 onClick={() => setActiveTab(activeTab === 'AWAITING_COUNTER_SIGN' ? 'ALL' : 'AWAITING_COUNTER_SIGN')}
               />
               <SummaryCard
                 label="📥 Ready for Upload"
                 count={stats.readyForUpload}
-                color="bg-indigo-50 border-indigo-200 text-indigo-800"
+                inactiveColor="bg-indigo-50 border-indigo-200 text-indigo-800"
+                activeColor="bg-indigo-600 text-white"
                 isActive={activeTab === 'READY_FOR_UPLOAD'}
                 onClick={() => setActiveTab(activeTab === 'READY_FOR_UPLOAD' ? 'ALL' : 'READY_FOR_UPLOAD')}
               />
               <SummaryCard
                 label="✅ Completed"
                 count={stats.completed}
-                color="bg-emerald-50 border-emerald-200 text-emerald-800"
+                inactiveColor="bg-emerald-50 border-emerald-200 text-emerald-800"
+                activeColor="bg-emerald-500 text-white"
                 isActive={activeTab === 'COMPLETED'}
                 onClick={() => setActiveTab(activeTab === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
               />

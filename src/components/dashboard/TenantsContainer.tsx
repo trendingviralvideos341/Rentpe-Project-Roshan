@@ -243,8 +243,6 @@ export function TenantsContainer() {
 
     const unpaidCount = 0; // Stats could include unpaid count, or we ignore it since it's paginated. We'll leave it as 0 to avoid iterating over all.
 
-    if (loading) return <div className="p-8 text-center animate-pulse">Loading tenants...</div>;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -340,8 +338,16 @@ export function TenantsContainer() {
 
             {/* ── Mobile Cards ── */}
             <div className="md:hidden space-y-3">
-                {filteredTenants.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-12">No tenants found.</p>
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                        <p className="text-center text-indigo-600 font-bold animate-pulse">Loading tenants...</p>
+                    </div>
+                ) : filteredTenants.length === 0 ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3 shadow-inner">
+                        <p className="text-slate-500 font-black text-lg">NO Tenants available in these records</p>
+                        <p className="text-xs text-slate-400">Try adjusting your filters or search terms.</p>
+                    </div>
                 ) : filteredTenants.map(t => {
                     const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
                     const isPaid = latestRent?.paid ?? false;
@@ -442,7 +448,25 @@ export function TenantsContainer() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredTenants.map(t => {
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={9} className="p-12 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-3">
+                                                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                                                <p className="text-indigo-600 font-bold animate-pulse">Loading tenants...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filteredTenants.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={9} className="p-12 text-center bg-slate-50">
+                                            <div className="space-y-2">
+                                                <p className="text-slate-500 font-black text-lg">NO Tenants available in these records</p>
+                                                <p className="text-sm text-slate-400">Try adjusting your filters or search terms.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filteredTenants.map(t => {
                                     const latestRent = t.rentRecords.find((r: any) => r.month === currentMonth);
                                     const isPaid = latestRent?.paid ?? false;
                                     const isBlocked = t.status === "Blocked";
